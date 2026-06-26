@@ -1,0 +1,18 @@
+# OPTIONAL priority seeds — games to scrape FIRST, before the broad catalog.
+# Leave this empty to just accumulate the whole catalog (CATALOG_SEARCH in scraper.py).
+# These are resolved once on the first run and recorded in catalog.json.
+#
+# One entry per line. Three kinds are accepted:
+#   1. A full Steam store SEARCH URL  (keeps all your filters/tags/sort)
+#   2. Plain search TERMS             (e.g.  survival craft)
+#   3. A bare numeric APP ID          (e.g.  892970)
+# Lines starting with # are ignored.
+#
+# --- examples (delete / replace, or leave all commented to skip priority seeding) ---
+
+# Released, well-reviewed survival-craft games first:
+# https://store.steampowered.com/search/?tags=1662,4434&category1=998&supportedlang=english&filter=topsellers
+
+# Specific games by app id:
+# 1623730
+# 322330
