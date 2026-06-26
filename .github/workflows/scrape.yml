@@ -1,20 +1,22 @@
 name: Scrape Steam -> games.json
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:        # run manually from the Actions tab
   schedule:
-    - cron: "0 */6 * * *"
+    # off-peak, offset minute (avoid :00 and the 22:00-02:00 UTC congestion window)
+    - cron: "17 7,13,18 * * *"
 
 permissions:
-  contents: write
+  contents: write           # the scraper commits games.json + catalog.json as it runs
 
 concurrency:
-  group: steam-scrape
+  group: steam-scrape       # never overlap runs
   cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 330     # under the 6h hard cap; RUN_MINUTES below stays well inside this
     steps:
       - uses: actions/checkout@v4
 
@@ -25,17 +27,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run accumulation scraper
-        run: python scraper.py
-
-      - name: Commit dataset + state
+      - name: Configure git (scraper commits progress itself)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add games.json catalog.json
-          if git diff --staged --quiet; then
-            echo "No changes this run"
-          else
-            git commit -m "Accumulate games.json ($(date -u +'%Y-%m-%d %H:%M') UTC)"
-            git push
-          fi
+
+      - name: Run scraper
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional; enables clean full-catalog + smart refresh
+          RUN_MINUTES: "180"                            # scrape budget per run
+        run: python scraper.py
