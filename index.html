@@ -11,7 +11,7 @@
   :root{
     --bg:#0e1320; --panel:#192133; --panel-2:#212c42; --line:#2c3858;
     --text:#f1f4fb; --title:#ffffff; --muted:#b9c4dd; --muted-2:#94a0c0;
-    --gold:#ffc24d; --gold-deep:#b98a28; --blue:#6f9bff; --coral:#ff7d7d;
+    --gold:#ffc24d; --gold-deep:#b98a28; --gold-soft:#3a2f17; --blue:#6f9bff; --coral:#ff7d7d;
     --teal:#5dd6a8; --green:#54c98a; --red:#ff7d7d;
     --sans:"IBM Plex Sans",system-ui,sans-serif;
     --mono:"IBM Plex Mono",ui-monospace,monospace;
@@ -25,68 +25,89 @@
   }
   a{color:var(--blue); text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{width:100%; max-width:1640px; margin:0 auto; padding:26px clamp(14px,2.5vw,34px) 70px}
+  .wrap{width:100%; max-width:1720px; margin:0 auto; padding:0 clamp(12px,2vw,30px) 70px}
 
-  /* ---- masthead ---- */
-  .mast{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:20px}
-  .brand{display:flex; align-items:baseline; gap:15px}
-  .logo{font-weight:700; font-size:32px; letter-spacing:-.04em; line-height:1;
+  /* ---- sticky header ---- */
+  .topbar{position:sticky; top:0; z-index:40; padding-top:18px;
+        background:linear-gradient(180deg,#0e1320 72%, #0e132000);
+  }
+  .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px;
+        box-shadow:0 8px 26px #0006;}
+  .bar-main{display:flex; align-items:center; gap:16px; padding:13px 16px; flex-wrap:wrap}
+  .collapse-btn{flex:none; width:34px; height:34px; border-radius:9px; border:1px solid var(--line);
+        background:var(--panel); color:var(--muted); cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center}
+  .collapse-btn:hover{color:var(--text); border-color:var(--muted-2)}
+  .brand{display:flex; align-items:baseline; gap:13px; flex:none}
+  .logo{font-weight:700; font-size:28px; letter-spacing:-.04em; line-height:1;
         background:linear-gradient(180deg,#fff,#d6deef); -webkit-background-clip:text; background-clip:text; color:transparent}
   .logo b{color:var(--gold); -webkit-text-fill-color:var(--gold)}
   .tagline{font-family:var(--mono); font-size:13px; color:var(--muted); letter-spacing:.02em}
-  .meta{font-family:var(--mono); font-size:13px; color:var(--muted); text-align:right; line-height:1.7}
+  .search{flex:1 1 240px; min-width:180px; position:relative}
+  .search input{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
+        font-family:var(--sans); font-size:14px; padding:10px 12px 10px 36px; border-radius:9px; outline:none}
+  .search input::placeholder{color:var(--muted-2)}
+  .search input:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  .search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted-2)}
+  .meta{font-family:var(--mono); font-size:13px; color:var(--muted); text-align:right; line-height:1.55; flex:none}
   .meta .n{color:var(--text)}
   .preview-badge{display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid var(--gold-deep);
         color:var(--gold); border-radius:999px; font-size:12px; letter-spacing:.05em; text-transform:uppercase}
 
-  /* ---- control panel ---- */
-  .panel{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px;
-        padding:16px 16px 14px; margin-bottom:16px}
+  .bar-filters{padding:0 16px 14px; border-top:1px solid var(--line); margin-top:2px; padding-top:14px;
+        max-height:1400px; overflow:visible; transition:max-height .25s ease, opacity .2s ease, padding .25s ease}
+  .topbar.compact .bar-filters{max-height:0; opacity:0; padding-top:0; padding-bottom:0; overflow:hidden; border-top:0}
+  .topbar.compact .tagline{display:none}
+  .topbar.compact .logo{font-size:23px}
+  .topbar.compact .barwrap{box-shadow:0 6px 20px #0008}
+
   .ctl-row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px}
   .ctl-row:last-child{margin-bottom:0}
   .field{display:flex; flex-direction:column; gap:6px}
   .field > label{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.05em; text-transform:uppercase}
 
-  .search{flex:1 1 260px; min-width:210px; position:relative}
-  .search input{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
-        font-family:var(--sans); font-size:14px; padding:11px 12px 11px 36px; border-radius:9px; outline:none}
-  .search input::placeholder{color:var(--muted-2)}
-  .search input:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
-  .search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted-2)}
-
   .seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:9px; overflow:hidden}
   .seg button{appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--mono);
-        font-size:13px; padding:10px 13px; cursor:pointer; letter-spacing:.01em; white-space:nowrap}
+        font-size:13px; padding:9px 12px; cursor:pointer; letter-spacing:.01em; white-space:nowrap}
   .seg button[aria-pressed="true"]{background:var(--panel-2); color:var(--text)}
+  /* active-filter highlight (gold) for HLTB metric */
+  .seg.metric button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
 
   .toggle{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
-        font-family:var(--mono); font-size:13px; padding:10px 14px; border-radius:9px; cursor:pointer; letter-spacing:.01em}
+        font-family:var(--mono); font-size:13px; padding:9px 14px; border-radius:9px; cursor:pointer; letter-spacing:.01em}
   .toggle[aria-pressed="true"]{border-color:var(--coral); color:var(--coral)}
   .toggle.wish[aria-pressed="true"]{border-color:var(--gold); color:var(--gold)}
   .toggle:focus-visible{outline:2px solid var(--blue); outline-offset:2px}
+  .linkbtn{background:none; border:0; color:var(--muted-2); font-family:var(--mono); font-size:12px;
+        cursor:pointer; text-decoration:underline; padding:6px 2px}
+  .linkbtn:hover{color:var(--text)}
 
-  .pricefilter{display:inline-flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
-        border-radius:9px; padding:0 12px; font-family:var(--mono); font-size:13px; color:var(--muted)}
-  .pricefilter input{width:62px; background:transparent; border:0; color:var(--text); font-family:var(--mono);
-        font-size:14px; padding:10px 0; outline:none}
+  .pricefilter{display:inline-flex; align-items:center; gap:5px; background:var(--panel); border:1px solid var(--line);
+        border-radius:9px; padding:0 11px; font-family:var(--mono); font-size:13px; color:var(--muted-2)}
+  .pricefilter input{width:64px; background:transparent; border:0; color:var(--text); font-family:var(--mono);
+        font-size:14px; padding:9px 0; outline:none; text-align:right}
+  .pricefilter input::-webkit-outer-spin-button,.pricefilter input::-webkit-inner-spin-button{opacity:1; height:22px}
   .pricefilter:focus-within{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  .pricesep{color:var(--muted-2)}
 
   /* steam id / wishlist */
   .wishbox{display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:0 0 0 12px}
-  .wishbox input{width:230px; background:transparent; border:0; color:var(--text); font-family:var(--mono); font-size:13px; padding:10px 0; outline:none}
+  .wishbox input{width:240px; background:transparent; border:0; color:var(--text); font-family:var(--mono); font-size:13px; padding:9px 0; outline:none}
   .wishbox input::placeholder{color:var(--muted-2)}
   .wishbox button{background:var(--panel-2); border:0; border-left:1px solid var(--line); color:var(--text);
-        font-family:var(--mono); font-size:13px; padding:10px 14px; cursor:pointer; border-radius:0 8px 8px 0}
+        font-family:var(--mono); font-size:13px; padding:9px 14px; cursor:pointer; border-radius:0 8px 8px 0}
   .wishbox button:hover{background:#283656}
   .wishbox:focus-within{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
-  .wishstatus{font-family:var(--mono); font-size:13px; margin-top:7px; color:var(--muted)}
+  .wishclear{background:var(--panel); border:1px solid var(--line); color:var(--muted); border-radius:9px;
+        font-family:var(--mono); font-size:13px; padding:9px 12px; cursor:pointer}
+  .wishclear:hover{border-color:var(--coral); color:var(--coral)}
+  .wishstatus{font-family:var(--mono); font-size:13px; margin-top:9px; color:var(--muted)}
   .wishstatus.err{color:var(--coral)}
   .wishstatus.ok{color:var(--teal)}
   .wishstatus a{color:var(--blue)}
 
-  /* qhpp dual range */
-  .rangefield{min-width:280px; flex:1 1 300px; max-width:460px}
+  /* qhpp dual range (log scale, dynamic domain) */
+  .rangefield{min-width:300px; flex:1 1 320px; max-width:500px}
   .rangewrap{position:relative; height:30px; margin-top:2px}
   .rangetrack{position:absolute; top:13px; left:2px; right:2px; height:5px; background:#2c3858; border-radius:99px}
   .rangefill{position:absolute; top:0; height:100%; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); border-radius:99px}
@@ -100,43 +121,54 @@
   .rangevals{font-family:var(--mono); font-size:13px; color:var(--muted); margin-top:3px}
   .rangevals b{color:var(--gold); font-weight:600}
 
-  /* tag rail with 3 states */
-  .tagrail{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-  .rail-hint{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-right:4px}
+  /* grouped + searchable tag rail */
+  .tagtools{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+  .tagsearch{position:relative}
+  .tagsearch input{background:var(--panel); border:1px solid var(--line); color:var(--text); font-family:var(--mono);
+        font-size:13px; padding:8px 12px 8px 30px; border-radius:9px; outline:none; width:210px}
+  .tagsearch input::placeholder{color:var(--muted-2)}
+  .tagsearch input:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  .tagsearch svg{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted-2)}
+  .rail-hint{font-family:var(--mono); font-size:12px; color:var(--muted-2)}
+  .taggroup{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-bottom:8px}
+  .grouplabel{font-family:var(--mono); font-size:12px; color:var(--gold); letter-spacing:.05em; text-transform:uppercase;
+        flex:none; width:120px; text-align:right; opacity:.85}
+  .grouptags{display:flex; gap:7px; flex-wrap:wrap; flex:1}
   .chip{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
-        font-family:var(--mono); font-size:13px; padding:6px 11px; border-radius:999px; cursor:pointer; white-space:nowrap}
+        font-family:var(--mono); font-size:13px; padding:5px 11px; border-radius:999px; cursor:pointer; white-space:nowrap}
   .chip:hover{border-color:var(--muted-2); color:var(--text)}
-  .chip.inc{background:#1c3528; border-color:var(--green); color:#8be6b4}
-  .chip.exc{background:#3a2026; border-color:var(--red); color:#ffb0b0; text-decoration:line-through}
+  .chip.inc{background:#1c3528; border-color:var(--green); color:#9cf0c2}
+  .chip.exc{background:#3a2026; border-color:var(--red); color:#ffb4b4; text-decoration:line-through}
   .chip .mk{margin-right:5px; font-weight:600}
+  .chip .ct{opacity:.55; margin-left:5px}
 
   /* ---- table ---- */
-  .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:16px}
   .tablescroll{overflow-x:auto}
-  table{width:100%; border-collapse:collapse; min-width:1100px}
+  table{width:100%; border-collapse:collapse; min-width:1080px}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
-        color:var(--muted); text-align:left; padding:14px 14px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none}
+        color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none}
   thead th.sortable{cursor:pointer}
   thead th.sortable:hover{color:var(--text)}
   thead th.num{text-align:right}
   thead th.center{text-align:center}
   .arrow{color:var(--gold); margin-left:5px; font-size:12px}
-  tbody td{padding:11px 14px; border-bottom:1px solid #222d45; vertical-align:middle}
+  tbody td{padding:7px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
   tbody tr:last-child td{border-bottom:0}
   tbody tr:hover{background:#1b2640}
 
-  /* game cell with thumbnail */
-  .gamecell{display:flex; align-items:center; gap:12px; min-width:300px}
-  .thumb{position:relative; flex:none; width:92px; height:43px; border-radius:5px; overflow:hidden; background:#0b0f18; border:1px solid #2a3550}
+  /* game cell: big full-height thumbnail + compact meta */
+  .gamecell{display:flex; align-items:center; gap:13px; min-width:280px}
+  .thumb{position:relative; flex:none; width:158px; height:60px; border-radius:5px; overflow:hidden; background:#0b0f18; border:1px solid #2a3550}
   .thumb img{width:100%; height:100%; object-fit:cover; display:block}
-  .thumb .pop{position:fixed; z-index:50; width:330px; height:154px; border-radius:8px; overflow:hidden;
-        border:1px solid var(--line); box-shadow:0 12px 36px #000a; display:none; pointer-events:none; background:#0b0f18}
+  .thumb .pop{position:fixed; z-index:60; width:380px; height:178px; border-radius:8px; overflow:hidden;
+        border:1px solid var(--line); box-shadow:0 14px 40px #000b; display:none; pointer-events:none; background:#0b0f18}
   .thumb .pop img{width:100%; height:100%; object-fit:cover}
   .gmeta{min-width:0}
-  .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer}
+  .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; display:inline-block; line-height:1.25}
   .gtitle:hover{text-decoration:underline}
-  .gsub{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:3px}
-  .wish-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--gold); margin-left:6px; vertical-align:middle}
+  .gsub{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px}
+  .wish-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--gold); margin-left:7px; vertical-align:middle}
 
   .num{font-family:var(--mono); text-align:right; white-space:nowrap}
   .center{text-align:center}
@@ -145,10 +177,12 @@
   .rval{font-family:var(--mono); font-size:14px}
   .rcount{font-family:var(--mono); font-size:12px; color:var(--muted-2)}
 
+  /* stacked price */
+  .pricebox{display:flex; flex-direction:column; align-items:flex-start; gap:1px; line-height:1.2}
+  .price-init{font-family:var(--mono); font-size:12px; color:var(--muted-2); text-decoration:line-through}
+  .price-final-row{display:flex; align-items:center; gap:6px}
   .price-final{font-family:var(--mono); font-size:14px; font-weight:600}
-  .price-init{font-family:var(--mono); font-size:12px; color:var(--muted-2); text-decoration:line-through; margin-right:6px}
-  .disc{display:inline-block; margin-left:7px; font-family:var(--mono); font-size:12px; color:#0e1320;
-        background:var(--coral); padding:1px 6px; border-radius:5px; font-weight:600}
+  .disc{font-family:var(--mono); font-size:12px; color:#0e1320; background:var(--coral); padding:1px 6px; border-radius:5px; font-weight:600}
   .free{font-family:var(--mono); font-size:13px; color:var(--teal)}
 
   .countdown{font-family:var(--mono); font-size:13px; color:var(--coral)}
@@ -156,22 +190,23 @@
   .nosale{color:var(--muted-2)}
   .rel{font-family:var(--mono); font-size:13px; color:var(--muted)}
 
-  .tags{display:flex; gap:6px; flex-wrap:wrap; max-width:260px}
+  .tags{display:flex; gap:6px; flex-wrap:wrap; max-width:240px}
   .tag{font-family:var(--mono); font-size:12px; color:var(--muted); background:#212c44; border:1px solid #2e3a58;
         padding:2px 8px; border-radius:6px; cursor:pointer; white-space:nowrap}
   .tag:hover{color:var(--text); border-color:var(--blue)}
   .tag.more{cursor:default; color:var(--muted-2); border-style:dashed}
 
-  /* hltb cell: 3 values + avg below */
-  .hltb-cell{min-width:170px}
+  /* hltb cell: equal-size values + emphasized avg */
+  .hltb-cell{min-width:178px}
   .hltb{display:flex; gap:13px; justify-content:flex-end}
   .hcol{text-align:center}
-  .hcol .v{font-family:var(--mono); font-size:14px}
+  .hcol .v{font-family:var(--mono); font-size:15px}
   .hcol .l{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.04em; text-transform:uppercase}
   .hcol.sel .v{color:var(--gold)}
   .hcol.sel .l{color:var(--gold)}
-  .havg{font-family:var(--mono); font-size:12px; color:var(--muted); text-align:right; margin-top:5px}
-  .havg b{color:var(--text); font-weight:600}
+  .havg{font-family:var(--mono); font-size:14px; color:var(--muted); text-align:right; margin-top:4px}
+  .havg b{color:var(--text); font-weight:700; font-size:15px}
+  .havg.sel{color:var(--gold)}
   .havg.sel b{color:var(--gold)}
 
   /* signature: QHPP value meter */
@@ -189,18 +224,19 @@
   .foot{margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--muted-2); line-height:1.9}
   .foot code{color:var(--muted)}
 
-  /* ---- responsive: cards under 1000px, taller rows ---- */
-  @media (max-width:1000px){
+  /* ---- responsive: cards under 1040px ---- */
+  @media (max-width:1040px){
     table{min-width:0}
     thead{display:none}
     table,tbody,tr,td{display:block; width:100%}
-    tbody tr{padding:16px 14px; border-bottom:1px solid var(--line)}
+    tbody tr{padding:14px 12px; border-bottom:1px solid var(--line)}
     tbody tr:hover{background:transparent}
-    tbody td{padding:6px 0; border:0; display:flex; justify-content:space-between; align-items:center; gap:16px}
+    tbody td{padding:5px 0; border:0; display:flex; justify-content:space-between; align-items:center; gap:16px}
     tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:12px; letter-spacing:.04em;
         text-transform:uppercase; color:var(--muted-2); flex:none}
     .gamecell{min-width:0}
-    .thumb{width:120px; height:56px}
+    .thumb{width:184px; height:69px}
+    .pricebox{align-items:flex-end}
     .tags{max-width:none; justify-content:flex-end}
     .num,.qtop,.hltb,.rating,.havg{justify-content:flex-end}
     .center{justify-content:flex-end !important}
@@ -208,89 +244,109 @@
     .qcell{min-width:0; flex:1}
     .qbar{flex:1; max-width:180px; margin-top:0}
     .hltb-cell{min-width:0}
+    .grouplabel{width:auto; text-align:left}
   }
-  @media (prefers-reduced-motion:reduce){ .qfill{transition:none} }
+  @media (prefers-reduced-motion:reduce){ .qfill,.bar-filters{transition:none} }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <div class="mast">
-    <div class="brand">
-      <div class="logo">Q<b>H</b>PP</div>
-      <div class="tagline">quality hours per dollar · steam value hunter</div>
-    </div>
-    <div class="meta" id="meta"></div>
-  </div>
-
-  <div class="panel">
-    <div class="ctl-row">
+<div class="topbar" id="topbar">
+ <div class="wrap">
+  <div class="barwrap">
+    <div class="bar-main">
+      <button class="collapse-btn" id="collapseBtn" title="Show / hide filters" aria-label="Show or hide filters">⌃</button>
+      <div class="brand">
+        <div class="logo">Q<b>H</b>PP</div>
+        <div class="tagline">quality hours per dollar · steam value hunter</div>
+      </div>
       <label class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
       </label>
-      <div class="field">
-        <label>Wishlist (your SteamID64 or profile URL)</label>
-        <div class="wishbox">
-          <input id="steamid" type="text" placeholder="7656119… or steamcommunity.com/profiles/…" autocomplete="off" />
-          <button id="wishimport" type="button">Import</button>
-        </div>
-      </div>
-      <button class="toggle wish" id="wishOnly" aria-pressed="false" style="display:none">Wishlist only</button>
-      <button class="toggle" id="clear" style="border-color:var(--line);color:var(--muted)">Reset</button>
-    </div>
-    <div class="wishstatus" id="wishstatus" style="display:none"></div>
-
-    <div class="ctl-row">
-      <div class="field">
-        <label>QHPP price basis</label>
-        <div class="seg" role="group" aria-label="QHPP price basis">
-          <button id="qb-after"  aria-pressed="true">After discount</button>
-          <button id="qb-before" aria-pressed="false">Before</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>HLTB metric for QHPP</label>
-        <div class="seg" role="group" aria-label="HLTB metric">
-          <button data-metric="main"     aria-pressed="false">Main</button>
-          <button data-metric="extra"    aria-pressed="false">+Extras</button>
-          <button data-metric="complete" aria-pressed="false">100%</button>
-          <button data-metric="avg"      aria-pressed="true">Average</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Min rating</label>
-        <div class="seg" role="group" aria-label="Minimum rating">
-          <button data-minscore="0"  aria-pressed="true">Any</button>
-          <button data-minscore="70" aria-pressed="false">70+</button>
-          <button data-minscore="80" aria-pressed="false">80+</button>
-          <button data-minscore="90" aria-pressed="false">90+</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Max price</label>
-        <label class="pricefilter">max $<input id="maxprice" type="number" min="0" step="1" inputmode="numeric" placeholder="∞" /></label>
-      </div>
-      <div class="field" style="align-self:flex-end">
-        <label>&nbsp;</label>
-        <button class="toggle" id="saleOnly" aria-pressed="false">On sale only</button>
-      </div>
-      <div class="field rangefield">
-        <label>QHPP range</label>
-        <div class="rangewrap">
-          <div class="rangetrack"><div class="rangefill" id="qrangefill"></div></div>
-          <input type="range" id="qmin" />
-          <input type="range" id="qmax" />
-        </div>
-        <div class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">0</b></div>
-      </div>
+      <div class="meta" id="meta"></div>
     </div>
 
-    <div class="ctl-row">
-      <div class="tagrail" id="tagrail"></div>
+    <div class="bar-filters" id="barFilters">
+      <div class="ctl-row">
+        <div class="field" style="flex:1 1 260px">
+          <label>Wishlist (your SteamID64 or profile URL)</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <div class="wishbox">
+              <input id="steamid" type="text" placeholder="7656119… or steamcommunity.com/profiles/…" autocomplete="off" />
+              <button id="wishimport" type="button">Import</button>
+            </div>
+            <button class="toggle wish" id="wishOnly" aria-pressed="false" style="display:none">Wishlist only</button>
+            <button class="wishclear" id="wishClear" style="display:none">✕ Clear wishlist</button>
+          </div>
+        </div>
+        <button class="linkbtn" id="clear" style="align-self:flex-end">Reset all filters</button>
+      </div>
+      <div class="wishstatus" id="wishstatus" style="display:none"></div>
+
+      <div class="ctl-row">
+        <div class="field">
+          <label>QHPP price basis</label>
+          <div class="seg" role="group" aria-label="QHPP price basis">
+            <button id="qb-after"  aria-pressed="true">After discount</button>
+            <button id="qb-before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>HLTB metric for QHPP</label>
+          <div class="seg metric" role="group" aria-label="HLTB metric">
+            <button data-metric="main"     aria-pressed="false">Main</button>
+            <button data-metric="extra"    aria-pressed="false">+Extras</button>
+            <button data-metric="complete" aria-pressed="false">100%</button>
+            <button data-metric="avg"      aria-pressed="true">Average</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Min rating</label>
+          <div class="seg" role="group" aria-label="Minimum rating">
+            <button data-minscore="0"  aria-pressed="true">Any</button>
+            <button data-minscore="60" aria-pressed="false">60+</button>
+            <button data-minscore="70" aria-pressed="false">70+</button>
+            <button data-minscore="80" aria-pressed="false">80+</button>
+            <button data-minscore="90" aria-pressed="false">90+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Price range (USD)</label>
+          <div class="pricefilter">min $<input id="minprice" type="number" min="0" step="1" inputmode="decimal" placeholder="0" />
+            <span class="pricesep">–</span> max $<input id="maxprice" type="number" min="0" step="1" inputmode="decimal" placeholder="∞" /></div>
+        </div>
+        <div class="field" style="align-self:flex-end">
+          <label>&nbsp;</label>
+          <button class="toggle" id="saleOnly" aria-pressed="false">On sale only</button>
+        </div>
+        <div class="field rangefield">
+          <label>QHPP range (log scale, fits current results)</label>
+          <div class="rangewrap">
+            <div class="rangetrack"><div class="rangefill" id="qrangefill"></div></div>
+            <input type="range" id="qmin" min="0" max="1000" step="1" value="0" />
+            <input type="range" id="qmax" min="0" max="1000" step="1" value="1000" />
+          </div>
+          <div class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></div>
+        </div>
+      </div>
+
+      <div class="ctl-row" style="flex-direction:column; align-items:stretch; gap:8px">
+        <div class="tagtools">
+          <label class="tagsearch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+            <input id="tagsearch" type="search" placeholder="Find a tag (e.g. Shooter)…" autocomplete="off" />
+          </label>
+          <span class="rail-hint">click a tag to require it · click again to exclude it · once more to clear</span>
+        </div>
+        <div id="tagrail"></div>
+      </div>
     </div>
   </div>
+ </div>
+</div>
 
+<div class="wrap">
   <div class="tablecard">
     <div class="tablescroll">
       <table>
@@ -315,25 +371,33 @@
   <div class="foot" id="foot"></div>
 </div>
 
-<div class="thumb-pop-host"></div>
-
 <script>
-// ----- embedded preview data (used only if games.json can't be fetched, e.g. file://) -----
 const NOW = () => Math.floor(Date.now()/1000);
 const SAMPLE = {sample:true, generated_at: NOW(), count:6, games:[
  {appid:413150,title:"Stardew Valley",url:"https://store.steampowered.com/app/413150",release_ts:1456444800,rating_pct:98,review_count:1015944,price_initial:14.99,price_final:8.99,discount_pct:40,discount_end:NOW()+6*86400,is_free:false,tags:["Farming Sim","Pixel Graphics","Life Sim","Multiplayer","Relaxing","Open World","Crafting","Co-op"],hltb_main:53.4,hltb_extra:94.8,hltb_complete:171.8,hltb_avg:106.7},
  {appid:105600,title:"Terraria",url:"https://store.steampowered.com/app/105600",release_ts:1305158400,rating_pct:97,review_count:1530879,price_initial:9.99,price_final:4.99,discount_pct:50,discount_end:NOW()+4*86400+3600*5,is_free:false,tags:["Open World Survival Craft","Sandbox","Survival","2D","Adventure","Crafting","Co-op","Building"],hltb_main:51.8,hltb_extra:91.9,hltb_complete:205.7,hltb_avg:116.5},
  {appid:548430,title:"Deep Rock Galactic",url:"https://store.steampowered.com/app/548430",release_ts:1589846400,rating_pct:97,review_count:377132,price_initial:29.99,price_final:8.99,discount_pct:70,discount_end:NOW()+6*86400,is_free:false,tags:["Co-op","FPS","Mining","Multiplayer","Dwarf","Procedural Generation","PvE","Sci-fi"],hltb_main:44.8,hltb_extra:139.4,hltb_complete:493.8,hltb_avg:226.0},
- {appid:367520,title:"Hollow Knight",url:"https://store.steampowered.com/app/367520",release_ts:1456963200,rating_pct:97,review_count:712000,price_initial:14.99,price_final:14.99,discount_pct:0,discount_end:null,is_free:false,tags:["Metroidvania","Souls-like","Difficult","Atmospheric","Hand-drawn","Exploration","2D","Singleplayer"],hltb_main:26.6,hltb_extra:39.4,hltb_complete:62.9,hltb_avg:43.0},
+ {appid:367520,title:"Hollow Knight",url:"https://store.steampowered.com/app/367520",release_ts:1487894400,rating_pct:97,review_count:712000,price_initial:14.99,price_final:14.99,discount_pct:0,discount_end:null,is_free:false,tags:["Metroidvania","Souls-like","Difficult","Atmospheric","Hand-drawn","Exploration","2D","Singleplayer"],hltb_main:26.6,hltb_extra:39.4,hltb_complete:62.9,hltb_avg:43.0},
  {appid:570,title:"Dota 2",url:"https://store.steampowered.com/app/570",release_ts:1373414400,rating_pct:84,review_count:2150000,price_initial:null,price_final:null,discount_pct:0,discount_end:null,is_free:true,tags:["Free to Play","MOBA","Multiplayer","Strategy","Competitive","Team-Based","PvP","Difficult"],hltb_main:null,hltb_extra:null,hltb_complete:null,hltb_avg:null},
  {appid:1623730,title:"Palworld",url:"https://store.steampowered.com/app/1623730",release_ts:1705968000,rating_pct:92,review_count:280000,price_initial:29.99,price_final:29.99,discount_pct:0,discount_end:null,is_free:false,tags:["Open World Survival Craft","Multiplayer","Creature Collector","Crafting","Base Building","Co-op","Open World","Adventure"],hltb_main:30.0,hltb_extra:65.0,hltb_complete:140.0,hltb_avg:78.3}
 ]};
 
+// ----- tag categories (logical grouping; alphabetical within) -----
+const TAG_GROUPS = [
+  ["Players & Mode", ["singleplayer","co-op","online co-op","local co-op","split screen","local multiplayer","multiplayer","pvp","pve","team-based","competitive","massively multiplayer","mmorpg","mmo","co-op campaign","asynchronous multiplayer","4 player local","online pvp","local pvp","cross-platform multiplayer"]],
+  ["Genre", ["action","adventure","rpg","action rpg","jrpg","crpg","strategy","real-time strategy","rts","turn-based strategy","grand strategy","4x","simulation","life sim","farming sim","city builder","management","tycoon","puzzle","shooter","fps","third-person shooter","twin stick shooter","top-down shooter","platformer","precision platformer","fighting","beat 'em up","racing","sports","survival","open world survival craft","horror","survival horror","roguelike","roguelite","action roguelike","metroidvania","moba","tower defense","card game","card battler","deckbuilding","auto battler","visual novel","point & click","stealth","hack and slash","battle royale","sandbox","dungeon crawler","immersive sim","walking simulator","idle","clicker","rhythm","party game","arcade","souls-like","bullet hell","real time tactics","colony sim","automation","crafting","base building"]],
+  ["Theme & Setting", ["sci-fi","fantasy","dark fantasy","space","post-apocalyptic","cyberpunk","medieval","historical","war","military","zombies","mythology","lovecraftian","steampunk","western","supernatural","aliens","dystopian","horror","nature","underwater","naval","dinosaurs","superhero","detective","mystery","economy"]],
+  ["Style & Feel", ["pixel graphics","2d","3d","2.5d","anime","atmospheric","story rich","hand-drawn","cartoony","cartoon","retro","minimalist","colorful","cute","dark","funny","comedy","relaxing","difficult","fast-paced","gore","violent","nudity","sexual content","great soundtrack","cinematic","realistic","stylized","low-poly","voxel","isometric","top-down","side scroller","first-person","third person","female protagonist","choices matter","multiple endings","replay value","moddable","controller","vr","early access","free to play","classic","indie","casual","family friendly","physics","exploration","loot","procedural generation","open world","linear","short","great visuals","emotional","beautiful","memes","sandbox"]],
+];
+const TAG_CAT = {};
+TAG_GROUPS.forEach(([g,arr]) => arr.forEach(t => { if(!(t in TAG_CAT)) TAG_CAT[t] = g; }));
+const GROUP_ORDER = TAG_GROUPS.map(g => g[0]).concat(["Other"]);
+
 // ----- state -----
-const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
-                qBasis:"after", hltbMetric:"avg", minScore:0, maxPrice:null,
-                qMin:0, qMax:0, qDomain:0, wishlist:null, wishOnly:false,
-                sortKey:"qhpp", sortDir:-1 };
+const state = { data:null, q:"", tagq:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
+                qBasis:"after", hltbMetric:"avg", minScore:0, minPrice:null, maxPrice:null,
+                qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1,
+                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1 };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -384,35 +448,30 @@ function relTime(ts){
   return Math.floor(s/86400) + "d ago";
 }
 
-// ----- filtering / sorting -----
-function rangeActive(){ return state.qMin > 0.0001 || state.qMax < state.qDomain - 0.0001; }
+// ----- filters (everything except the QHPP range) -----
+function passNonRange(x){
+  if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
+  if(state.saleOnly && !(x.discount_pct > 0)) return false;
+  if(state.minScore > 0 && !(x.rating_pct != null && x.rating_pct >= state.minScore)) return false;
+  const p = x.is_free ? 0 : x.price_final;
+  if(state.minPrice != null){ if(p == null || p < state.minPrice) return false; }
+  if(state.maxPrice != null){ if(p == null || p > state.maxPrice) return false; }
+  if(state.wishOnly && state.wishlist && !state.wishlist.has(x.appid)) return false;
+  if(state.tagsInc.size || state.tagsExc.size){
+    const t = new Set((x.tags||[]).map(s=>s.toLowerCase()));
+    for(const w of state.tagsInc) if(!t.has(w)) return false;
+    for(const b of state.tagsExc) if(t.has(b)) return false;
+  }
+  return true;
+}
+function rangeActive(){ return state.qMinVal > 0.001 || !state.qMaxUnbounded; }
 
 function visibleGames(){
-  let g = state.data.games.slice();
-  const q = state.q.trim().toLowerCase();
-  if(q) g = g.filter(x => x.title.toLowerCase().includes(q));
-  if(state.saleOnly) g = g.filter(x => x.discount_pct > 0);
-  if(state.minScore > 0) g = g.filter(x => x.rating_pct != null && x.rating_pct >= state.minScore);
-  if(state.maxPrice != null) g = g.filter(x => {
-    const p = x.is_free ? 0 : x.price_final;
-    return p != null && p <= state.maxPrice;
-  });
-  if(state.wishOnly && state.wishlist) g = g.filter(x => state.wishlist.has(x.appid));
-  if(state.tagsInc.size) g = g.filter(x => {
-    const t = new Set((x.tags||[]).map(s=>s.toLowerCase()));
-    for(const want of state.tagsInc) if(!t.has(want)) return false;
-    return true;
-  });
-  if(state.tagsExc.size) g = g.filter(x => {
-    const t = new Set((x.tags||[]).map(s=>s.toLowerCase()));
-    for(const ban of state.tagsExc) if(t.has(ban)) return false;
-    return true;
-  });
+  let g = state.data.games.filter(passNonRange);
   if(rangeActive()) g = g.filter(x => {
     const q = activeQ(x);
-    return q != null && q >= state.qMin && q <= state.qMax;
+    return q != null && q >= state.qMinVal && (state.qMaxUnbounded || q <= state.qMaxVal);
   });
-
   const k = state.sortKey, dir = state.sortDir;
   const val = x => k === "qhpp" ? activeQ(x) : x[k];
   g.sort((a,b)=>{
@@ -427,22 +486,62 @@ function visibleGames(){
   return g;
 }
 
+// ----- QHPP log range slider with dynamic domain -----
+const posToVal = (pos, dmax) => Math.pow(dmax + 1, pos/1000) - 1;
+const valToPos = (v, dmax) => 1000 * Math.log(v + 1) / Math.log(dmax + 1);
+
+function recomputeDomain(){
+  let mx = 0;
+  for(const x of state.data.games){
+    if(passNonRange(x)){ const q = activeQ(x); if(q != null && q > mx) mx = q; }
+  }
+  state.qDomain = Math.max(1, Math.ceil(mx * 10) / 10);
+  if(state.qMinVal > state.qDomain) state.qMinVal = state.qDomain;
+  if(!state.qMaxUnbounded && state.qMaxVal > state.qDomain) state.qMaxVal = state.qDomain;
+  syncRangeUI();
+}
+function syncRangeUI(){
+  const d = state.qDomain;
+  $("#qmin").value = Math.round(valToPos(state.qMinVal, d));
+  $("#qmax").value = state.qMaxUnbounded ? 1000 : Math.round(valToPos(state.qMaxVal, d));
+  paintRange();
+}
+function paintRange(){
+  const d = state.qDomain;
+  const aPos = parseFloat($("#qmin").value), bPos = parseFloat($("#qmax").value);
+  const fill = $("#qrangefill");
+  fill.style.left  = (aPos/1000*100) + "%";
+  fill.style.width = ((bPos - aPos)/1000*100) + "%";
+  const fmt = v => v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+  $("#qminv").textContent = state.qMinVal <= 0.001 ? "0" : fmt(state.qMinVal);
+  $("#qmaxv").textContent = state.qMaxUnbounded ? "∞" : fmt(state.qMaxVal);
+}
+function onRangeInput(which){
+  const d = state.qDomain;
+  let aPos = parseFloat($("#qmin").value), bPos = parseFloat($("#qmax").value);
+  if(aPos > bPos){ if(which === "min") aPos = bPos; else bPos = aPos; $("#qmin").value = aPos; $("#qmax").value = bPos; }
+  state.qMinVal = posToVal(aPos, d);
+  state.qMaxUnbounded = bPos >= 999.5;
+  state.qMaxVal = posToVal(bPos, d);
+  paintRange(); render();
+}
+
 // ----- rendering -----
 function render(){
   const games = visibleGames();
   const tbody = $("#rows"), empty = $("#empty");
   const qs = games.map(activeQ).filter(v => v != null);
-  const qMin = Math.min(...qs), qMax = Math.max(...qs);
+  const qLo = Math.min(...qs), qHi = Math.max(...qs);
   const fillPct = v => {
     if(v == null || !qs.length) return 0;
-    if(qMax === qMin) return 100;
-    return 6 + 94 * (v - qMin) / (qMax - qMin);
+    if(qHi === qLo) return 100;
+    return 6 + 94 * (v - qLo) / (qHi - qLo);
   };
 
   if(!games.length){
     tbody.innerHTML = "";
     empty.style.display = "block";
-    empty.innerHTML = "<b>No games match these filters.</b><br>Loosen the range, clear tags, or reset.";
+    empty.innerHTML = "<b>No games match these filters.</b><br>Loosen the QHPP range, clear tags, or reset.";
     renderMeta();
     return;
   }
@@ -454,7 +553,8 @@ function render(){
     if(g.is_free) price = `<span class="free">Free</span>`;
     else if(g.price_final == null) price = `<span class="nosale">—</span>`;
     else if(g.discount_pct > 0)
-      price = `<span class="price-init">$${g.price_initial.toFixed(2)}</span><span class="price-final">$${g.price_final.toFixed(2)}</span><span class="disc">-${g.discount_pct}%</span>`;
+      price = `<div class="pricebox"><span class="price-init">$${g.price_initial.toFixed(2)}</span>`+
+              `<span class="price-final-row"><span class="price-final">$${g.price_final.toFixed(2)}</span><span class="disc">-${g.discount_pct}%</span></span></div>`;
     else price = `<span class="price-final">$${g.price_final.toFixed(2)}</span>`;
 
     let sale;
@@ -489,7 +589,7 @@ function render(){
       <td data-label="Game"><div class="gamecell">
           <span class="thumb" data-appid="${g.appid}">
             <img loading="lazy" src="${capsuleUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
-                 onerror="this.onerror=null;this.src='${headerUrl(g.appid)}';this.dataset.fb=1;" />
+                 onerror="this.onerror=null;this.src='${headerUrl(g.appid)}';" />
             <span class="pop"><img alt="" referrerpolicy="no-referrer" /></span>
           </span>
           <span class="gmeta">
@@ -517,7 +617,7 @@ setInterval(() => {
   });
 }, 1000);
 
-// ----- thumbnail hover-enlarge (lazy: header loads only on hover) -----
+// ----- thumbnail hover-enlarge -----
 document.body.addEventListener("mouseover", e => {
   const thumb = e.target.closest(".thumb");
   if(!thumb) return;
@@ -526,9 +626,9 @@ document.body.addEventListener("mouseover", e => {
   if(!img.src){ img.src = headerUrl(thumb.dataset.appid); }
   const r = thumb.getBoundingClientRect();
   let top = r.bottom + 8;
-  if(top + 154 > window.innerHeight) top = r.top - 154 - 8;
+  if(top + 178 > window.innerHeight) top = r.top - 178 - 8;
   let left = r.left;
-  if(left + 330 > window.innerWidth) left = window.innerWidth - 330 - 10;
+  if(left + 380 > window.innerWidth) left = window.innerWidth - 380 - 10;
   pop.style.left = Math.max(8,left) + "px";
   pop.style.top = Math.max(8,top) + "px";
   pop.style.display = "block";
@@ -538,61 +638,53 @@ document.body.addEventListener("mouseout", e => {
   if(thumb && !thumb.contains(e.relatedTarget)) thumb.querySelector(".pop").style.display = "none";
 });
 
-// ----- tag rail (3-state: neutral -> include -> exclude) -----
+// ----- grouped + searchable tag rail (3-state) -----
 function buildTagRail(){
   const counts = {};
   state.data.games.forEach(g => (g.tags||[]).forEach(t => {
     const k = t.toLowerCase(); counts[k] = (counts[k]||0)+1;
   }));
-  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,22);
-  const rail = $("#tagrail");
-  rail.innerHTML = `<span class="rail-hint">tags — click to require, again to exclude:</span>` + top.map(([t]) => {
-    const label = t.replace(/\b\w/g, c=>c.toUpperCase());
+  const q = state.tagq.trim().toLowerCase();
+  const cap = q ? 999 : 12;              // when searching, show all matches; else cap per group
+
+  // bucket tags by category
+  const buckets = {}; GROUP_ORDER.forEach(g => buckets[g] = []);
+  Object.keys(counts).forEach(t => {
+    if(q && !t.includes(q)) return;
+    (buckets[TAG_CAT[t] || "Other"]).push(t);
+  });
+  // always surface active tags even if filtered out / beyond cap
+  const active = new Set([...state.tagsInc, ...state.tagsExc]);
+
+  const label = t => t.replace(/\b\w/g, c=>c.toUpperCase());
+  const chipHtml = t => {
     let cls = "chip", mk = "";
     if(state.tagsInc.has(t)){ cls += " inc"; mk = '<span class="mk">✓</span>'; }
     else if(state.tagsExc.has(t)){ cls += " exc"; mk = '<span class="mk">✕</span>'; }
-    return `<button class="${cls}" data-tag="${esc(t)}">${mk}${esc(label)}</button>`;
-  }).join("");
+    return `<button class="${cls}" data-tag="${esc(t)}">${mk}${esc(label(t))}<span class="ct">${counts[t]}</span></button>`;
+  };
+
+  let html = "";
+  GROUP_ORDER.forEach(g => {
+    let tags = buckets[g];
+    if(!tags.length) return;
+    tags.sort((a,b) => a.localeCompare(b));
+    // keep active ones, then most common up to cap
+    const act = tags.filter(t => active.has(t));
+    let rest = tags.filter(t => !active.has(t)).sort((a,b)=>counts[b]-counts[a]).slice(0, cap).sort((a,b)=>a.localeCompare(b));
+    const list = [...new Set([...act, ...rest])];
+    if(!list.length) return;
+    html += `<div class="taggroup"><span class="grouplabel">${g}</span><span class="grouptags">${list.map(chipHtml).join("")}</span></div>`;
+  });
+  if(!html) html = `<div class="rail-hint" style="padding:4px 0">No tags match “${esc(state.tagq)}”.</div>`;
+  $("#tagrail").innerHTML = html;
 }
 function cycleTag(t){
   t = t.toLowerCase();
   if(state.tagsInc.has(t)){ state.tagsInc.delete(t); state.tagsExc.add(t); }
   else if(state.tagsExc.has(t)){ state.tagsExc.delete(t); }
   else { state.tagsInc.add(t); }
-  buildTagRail(); render();
-}
-
-// ----- QHPP dual-range slider -----
-function initRange(){
-  let dmax = 0;
-  for(const g of state.data.games){
-    for(const basis of ["before","after"]){
-      for(const m of ["main","extra","complete","avg"]){
-        const h = m==="main"?g.hltb_main : m==="extra"?g.hltb_extra : m==="complete"?g.hltb_complete : g.hltb_avg;
-        const p = g.is_free ? null : (basis==="after"?g.price_final:g.price_initial);
-        if(h && g.rating_pct && p && p>0){ const q = (h*(g.rating_pct/100))/p; if(q>dmax) dmax=q; }
-      }
-    }
-  }
-  state.qDomain = Math.max(1, Math.ceil(dmax));
-  state.qMin = 0; state.qMax = state.qDomain;
-  const lo = $("#qmin"), hi = $("#qmax");
-  const step = state.qDomain > 40 ? 0.5 : 0.1;
-  [lo,hi].forEach(el => { el.min=0; el.max=state.qDomain; el.step=step; });
-  lo.value = 0; hi.value = state.qDomain;
-  paintRange();
-}
-function paintRange(){
-  const lo = $("#qmin"), hi = $("#qmax");
-  let a = parseFloat(lo.value), b = parseFloat(hi.value);
-  if(a > b){ [a,b] = [b,a]; }
-  state.qMin = a; state.qMax = b;
-  const d = state.qDomain || 1;
-  const fill = $("#qrangefill");
-  fill.style.left  = (a/d*100) + "%";
-  fill.style.width = ((b-a)/d*100) + "%";
-  $("#qminv").textContent = a.toFixed(a<10?1:0);
-  $("#qmaxv").textContent = (b>=d ? b.toFixed(0)+"+" : b.toFixed(b<10?1:0));
+  buildTagRail(); recomputeDomain(); render();
 }
 
 // ----- meta + footer -----
@@ -600,16 +692,16 @@ function renderMeta(){
   const d = state.data;
   const shown = $("#rows").children.length;
   const badge = d.sample ? '<span class="preview-badge">preview data</span>' : '';
-  const when = d.sample ? '' : `updated ${relTime(d.generated_at)} · `;
+  const when = d.sample ? '' : `${relTime(d.generated_at)} · `;
   $("#meta").innerHTML = `<span class="n">${shown}</span> / ${d.games.length} games · ${when}USD${badge}`;
 }
 function renderFoot(){
   $("#foot").innerHTML =
-    `QHPP = (chosen HLTB hours × rating%) ÷ price — pick the HLTB metric above; higher = more quality-adjusted hours per dollar. Null for free games & games without HLTB data.<br>`+
+    `QHPP = (chosen HLTB hours × rating%) ÷ price — pick the HLTB metric above. Higher = more quality-adjusted hours per dollar. Null for free games & games without HLTB data.<br>`+
     `Thumbnails load lazily from Steam's CDN. Wishlist import reads your public Steam wishlist. Data: Steam store + reviews, SteamSpy tags, How Long To Beat.`;
 }
 
-// ----- wishlist import -----
+// ----- wishlist -----
 function parseSteamId(input){
   input = (input||"").trim();
   let m = input.match(/profiles\/(\d{17})/);
@@ -623,7 +715,7 @@ async function importWishlist(){
   const id = parseSteamId($("#steamid").value);
   if(!id){
     status.className = "wishstatus err";
-    status.innerHTML = `Enter your 17-digit SteamID64, or a <code>steamcommunity.com/profiles/&lt;id&gt;</code> URL. ` +
+    status.innerHTML = `Enter your 17-digit SteamID64, or a <code>steamcommunity.com/profiles/&lt;id&gt;</code> URL. `+
       `Vanity (<code>/id/name</code>) URLs can't be resolved here — find your number at <a href="https://steamid.io" target="_blank" rel="noopener">steamid.io</a>.`;
     return;
   }
@@ -632,15 +724,12 @@ async function importWishlist(){
   let data = null;
   try { const r = await fetch(api); if(r.ok) data = await r.json(); } catch(e){}
   if(!data || !data.response){
-    try {
-      const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(api)}`;
-      const r = await fetch(proxied); if(r.ok) data = await r.json();
-    } catch(e){}
+    try { const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(api)}`); if(r.ok) data = await r.json(); } catch(e){}
   }
   const items = data && data.response && data.response.items;
   if(!Array.isArray(items)){
     status.className = "wishstatus err";
-    status.innerHTML = `Couldn't read that wishlist. If your profile is private, set <b>Game details</b> to Public at ` +
+    status.innerHTML = `Couldn't read that wishlist. If your profile is private, set <b>Game details</b> to Public at `+
       `<a href="https://steamcommunity.com/my/edit/settings" target="_blank" rel="noopener">steamcommunity.com/my/edit/settings</a>, then try again.`;
     return;
   }
@@ -648,11 +737,18 @@ async function importWishlist(){
   const inDb = state.data.games.filter(g => state.wishlist.has(g.appid)).length;
   status.className = "wishstatus ok";
   status.innerHTML = `Imported <b>${state.wishlist.size}</b> wishlist games — <b>${inDb}</b> are in this database.`;
-  $("#wishOnly").style.display = "";
-  buildTagRail(); render();
+  $("#wishOnly").style.display = ""; $("#wishClear").style.display = "";
+  buildTagRail(); recomputeDomain(); render();
+}
+function clearWishlist(){
+  state.wishlist = null; state.wishOnly = false;
+  $("#wishOnly").style.display = "none"; $("#wishOnly").setAttribute("aria-pressed","false");
+  $("#wishClear").style.display = "none";
+  $("#wishstatus").style.display = "none"; $("#steamid").value = "";
+  recomputeDomain(); render();
 }
 
-// ----- sorting + wiring -----
+// ----- sorting -----
 function setSort(key){
   if(state.sortKey === key){ state.sortDir *= -1; }
   else { state.sortKey = key; state.sortDir = (key === "title") ? 1 : -1; }
@@ -670,21 +766,30 @@ function setBasis(b){
   state.qBasis = b;
   $("#qb-after").setAttribute("aria-pressed", b==="after");
   $("#qb-before").setAttribute("aria-pressed", b==="before");
-  render();
+  recomputeDomain(); render();
 }
 function setMetric(m){
   state.hltbMetric = m;
   document.querySelectorAll("[data-metric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.metric===m));
-  render();
+  recomputeDomain(); render();
 }
+
+// ----- sticky header collapse -----
+let manualHeader = false;
+function setCompact(on){ $("#topbar").classList.toggle("compact", on); }
+window.addEventListener("scroll", () => {
+  const y = window.scrollY;
+  if(y < 60){ manualHeader = false; setCompact(false); }
+  else if(!manualHeader && y > 150){ setCompact(true); }
+}, {passive:true});
 
 function init(data){
   state.data = data;
-  initRange(); buildTagRail(); renderFoot(); render();
+  recomputeDomain(); buildTagRail(); renderFoot(); render();
 
-  $("#q").addEventListener("input", e => { state.q = e.target.value; render(); });
+  $("#q").addEventListener("input", e => { state.q = e.target.value; recomputeDomain(); render(); });
   $("#saleOnly").addEventListener("click", e => {
-    state.saleOnly = !state.saleOnly; e.currentTarget.setAttribute("aria-pressed", state.saleOnly); render();
+    state.saleOnly = !state.saleOnly; e.currentTarget.setAttribute("aria-pressed", state.saleOnly); recomputeDomain(); render();
   });
   $("#qb-after").addEventListener("click", () => setBasis("after"));
   $("#qb-before").addEventListener("click", () => setBasis("before"));
@@ -693,36 +798,47 @@ function init(data){
     b.addEventListener("click", () => {
       state.minScore = parseInt(b.dataset.minscore, 10);
       document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o === b));
-      render();
+      recomputeDomain(); render();
     }));
-  $("#maxprice").addEventListener("input", e => {
-    const v = e.target.value.trim();
-    state.maxPrice = v === "" ? null : Math.max(0, parseFloat(v));
-    render();
-  });
-  $("#qmin").addEventListener("input", () => { paintRange(); render(); });
-  $("#qmax").addEventListener("input", () => { paintRange(); render(); });
+  const priceHandler = () => {
+    const lo = $("#minprice").value.trim(), hi = $("#maxprice").value.trim();
+    state.minPrice = lo === "" ? null : Math.max(0, parseFloat(lo));
+    state.maxPrice = hi === "" ? null : Math.max(0, parseFloat(hi));
+    recomputeDomain(); render();
+  };
+  $("#minprice").addEventListener("input", priceHandler);
+  $("#maxprice").addEventListener("input", priceHandler);
+  $("#qmin").addEventListener("input", () => onRangeInput("min"));
+  $("#qmax").addEventListener("input", () => onRangeInput("max"));
+  $("#tagsearch").addEventListener("input", e => { state.tagq = e.target.value; buildTagRail(); });
 
   $("#wishimport").addEventListener("click", importWishlist);
   $("#steamid").addEventListener("keydown", e => { if(e.key === "Enter") importWishlist(); });
   $("#wishOnly").addEventListener("click", e => {
-    state.wishOnly = !state.wishOnly; e.currentTarget.setAttribute("aria-pressed", state.wishOnly); render();
+    state.wishOnly = !state.wishOnly; e.currentTarget.setAttribute("aria-pressed", state.wishOnly); recomputeDomain(); render();
+  });
+  $("#wishClear").addEventListener("click", clearWishlist);
+
+  $("#collapseBtn").addEventListener("click", () => {
+    const c = $("#topbar").classList.toggle("compact");
+    manualHeader = true;
+    $("#collapseBtn").textContent = c ? "⌄" : "⌃";
   });
 
   $("#clear").addEventListener("click", () => {
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.minScore=0; state.maxPrice=null; state.wishOnly=false;
-    state.qMin=0; state.qMax=state.qDomain;
-    $("#q").value=""; $("#maxprice").value=""; $("#saleOnly").setAttribute("aria-pressed","false");
+    state.q=""; state.tagq=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
+    state.minScore=0; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
+    state.qMinVal=0; state.qMaxUnbounded=true; state.qMaxVal=0;
+    $("#q").value=""; $("#tagsearch").value=""; $("#minprice").value=""; $("#maxprice").value="";
+    $("#saleOnly").setAttribute("aria-pressed","false");
     $("#wishOnly").setAttribute("aria-pressed","false");
-    $("#qmin").value=0; $("#qmax").value=state.qDomain; paintRange();
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
-    buildTagRail(); render();
+    recomputeDomain(); buildTagRail(); render();
   });
 
   document.querySelectorAll("thead th.sortable").forEach(th =>
     th.addEventListener("click", () => setSort(th.dataset.sort)));
-  // delegated tag clicks (rail + in-row): rail cycles 3-state, in-row tags cycle too
+  // delegated tag clicks (rail chips + in-row tags) cycle 3-state
   document.body.addEventListener("click", e => {
     const t = e.target.closest("[data-tag]");
     if(t) cycleTag(t.dataset.tag);
