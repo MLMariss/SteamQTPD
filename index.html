@@ -25,18 +25,13 @@
   }
   a{color:var(--blue); text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{width:100%; max-width:1720px; margin:0 auto; padding:0 clamp(12px,2vw,30px) 70px}
+  .wrap{width:100%; max-width:1720px; margin:0 auto; padding:0 clamp(12px,2vw,30px)}
+  .wrap.body{padding-bottom:70px}
 
-  /* ---- sticky header ---- */
-  .topbar{position:sticky; top:0; z-index:40; padding-top:18px;
-        background:linear-gradient(180deg,#0e1320 72%, #0e132000);
-  }
-  .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px;
-        box-shadow:0 8px 26px #0006;}
-  .bar-main{display:flex; align-items:center; gap:16px; padding:13px 16px; flex-wrap:wrap}
-  .collapse-btn{flex:none; width:34px; height:34px; border-radius:9px; border:1px solid var(--line);
-        background:var(--panel); color:var(--muted); cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center}
-  .collapse-btn:hover{color:var(--text); border-color:var(--muted-2)}
+  /* ---- sticky header (no shadow, tight) ---- */
+  .topbar{position:sticky; top:0; z-index:40; padding-top:10px; background:var(--bg)}
+  .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  .bar-main{display:flex; align-items:center; gap:16px; padding:12px 16px; flex-wrap:wrap}
   .brand{display:flex; align-items:baseline; gap:13px; flex:none}
   .logo{font-weight:700; font-size:28px; letter-spacing:-.04em; line-height:1;
         background:linear-gradient(180deg,#fff,#d6deef); -webkit-background-clip:text; background-clip:text; color:transparent}
@@ -53,12 +48,16 @@
   .preview-badge{display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid var(--gold-deep);
         color:var(--gold); border-radius:999px; font-size:12px; letter-spacing:.05em; text-transform:uppercase}
 
-  .bar-filters{padding:0 16px 14px; border-top:1px solid var(--line); margin-top:2px; padding-top:14px;
-        max-height:1400px; overflow:visible; transition:max-height .25s ease, opacity .2s ease, padding .25s ease}
+  .bar-filters{padding:14px 16px; border-top:1px solid var(--line);
+        max-height:1500px; transition:max-height .25s ease, opacity .2s ease, padding .25s ease}
   .topbar.compact .bar-filters{max-height:0; opacity:0; padding-top:0; padding-bottom:0; overflow:hidden; border-top:0}
   .topbar.compact .tagline{display:none}
   .topbar.compact .logo{font-size:23px}
-  .topbar.compact .barwrap{box-shadow:0 6px 20px #0008}
+
+  /* wide, reachable collapse handle */
+  .collapse-handle{display:block; width:100%; border:0; border-top:1px solid var(--line); background:var(--panel);
+        color:var(--muted); font-family:var(--mono); font-size:13px; letter-spacing:.04em; padding:8px; cursor:pointer}
+  .collapse-handle:hover{background:var(--panel-2); color:var(--text)}
 
   .ctl-row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px}
   .ctl-row:last-child{margin-bottom:0}
@@ -69,7 +68,6 @@
   .seg button{appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--mono);
         font-size:13px; padding:9px 12px; cursor:pointer; letter-spacing:.01em; white-space:nowrap}
   .seg button[aria-pressed="true"]{background:var(--panel-2); color:var(--text)}
-  /* active-filter highlight (gold) for HLTB metric */
   .seg.metric button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
 
@@ -82,15 +80,21 @@
         cursor:pointer; text-decoration:underline; padding:6px 2px}
   .linkbtn:hover{color:var(--text)}
 
-  .pricefilter{display:inline-flex; align-items:center; gap:5px; background:var(--panel); border:1px solid var(--line);
-        border-radius:9px; padding:0 11px; font-family:var(--mono); font-size:13px; color:var(--muted-2)}
-  .pricefilter input{width:64px; background:transparent; border:0; color:var(--text); font-family:var(--mono);
-        font-size:14px; padding:9px 0; outline:none; text-align:right}
-  .pricefilter input::-webkit-outer-spin-button,.pricefilter input::-webkit-inner-spin-button{opacity:1; height:22px}
-  .pricefilter:focus-within{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
-  .pricesep{color:var(--muted-2)}
+  /* themed number steppers with spacing */
+  .numinput{display:inline-flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+        border-radius:9px; padding:0 8px 0 11px; font-family:var(--mono); font-size:13px; color:var(--muted-2)}
+  .numinput input{width:54px; background:transparent; border:0; color:var(--text); font-family:var(--mono);
+        font-size:14px; padding:9px 0; outline:none; text-align:right;
+        -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield}
+  .numinput input::-webkit-outer-spin-button,.numinput input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .numinput:focus-within{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  .steppers{display:flex; flex-direction:column; gap:2px}
+  .steppers button{width:22px; height:17px; line-height:1; border:1px solid var(--line); background:var(--panel-2);
+        color:var(--muted); border-radius:4px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; padding:0}
+  .steppers button:hover{color:var(--gold); border-color:var(--gold-deep)}
+  .pricesep{color:var(--muted-2); padding:0 2px}
 
-  /* steam id / wishlist */
+  /* wishlist */
   .wishbox{display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:0 0 0 12px}
   .wishbox input{width:240px; background:transparent; border:0; color:var(--text); font-family:var(--mono); font-size:13px; padding:9px 0; outline:none}
   .wishbox input::placeholder{color:var(--muted-2)}
@@ -102,12 +106,10 @@
         font-family:var(--mono); font-size:13px; padding:9px 12px; cursor:pointer}
   .wishclear:hover{border-color:var(--coral); color:var(--coral)}
   .wishstatus{font-family:var(--mono); font-size:13px; margin-top:9px; color:var(--muted)}
-  .wishstatus.err{color:var(--coral)}
-  .wishstatus.ok{color:var(--teal)}
-  .wishstatus a{color:var(--blue)}
+  .wishstatus.err{color:var(--coral)} .wishstatus.ok{color:var(--teal)} .wishstatus a{color:var(--blue)}
 
-  /* qhpp dual range (log scale, dynamic domain) */
-  .rangefield{min-width:300px; flex:1 1 320px; max-width:500px}
+  /* qhpp dual range */
+  .rangefield{min-width:300px; flex:1 1 320px; max-width:520px}
   .rangewrap{position:relative; height:30px; margin-top:2px}
   .rangetrack{position:absolute; top:13px; left:2px; right:2px; height:5px; background:#2c3858; border-radius:99px}
   .rangefill{position:absolute; top:0; height:100%; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); border-radius:99px}
@@ -142,32 +144,38 @@
   .chip .mk{margin-right:5px; font-weight:600}
   .chip .ct{opacity:.55; margin-left:5px}
 
-  /* ---- table ---- */
-  .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:16px}
+  /* ---- table (balanced fixed columns) ---- */
+  .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:12px}
   .tablescroll{overflow-x:auto}
-  table{width:100%; border-collapse:collapse; min-width:1080px}
+  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1120px}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
         color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none}
   thead th.sortable{cursor:pointer}
   thead th.sortable:hover{color:var(--text)}
   thead th.num{text-align:right}
   thead th.center{text-align:center}
+  /* column widths — Tags absorbs slack; metrics get breathing room */
+  col.c-game{width:328px} col.c-rating{width:88px} col.c-price{width:128px}
+  col.c-sale{width:108px} col.c-rel{width:96px} col.c-tags{width:auto}
+  col.c-hltb{width:212px} col.c-qhpp{width:186px}
   .arrow{color:var(--gold); margin-left:5px; font-size:12px}
-  tbody td{padding:7px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
+  tbody td{padding:8px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
+  td.pad{padding-left:18px; padding-right:18px}
   tbody tr:last-child td{border-bottom:0}
   tbody tr:hover{background:#1b2640}
 
-  /* game cell: big full-height thumbnail + compact meta */
-  .gamecell{display:flex; align-items:center; gap:13px; min-width:280px}
-  .thumb{position:relative; flex:none; width:158px; height:60px; border-radius:5px; overflow:hidden; background:#0b0f18; border:1px solid #2a3550}
+  /* game cell: big thumb + wrapping title */
+  .gamecell{display:flex; align-items:center; gap:13px}
+  .thumb{position:relative; flex:none; width:150px; height:57px; border-radius:5px; overflow:hidden; background:#0b0f18; border:1px solid #2a3550}
   .thumb img{width:100%; height:100%; object-fit:cover; display:block}
   .thumb .pop{position:fixed; z-index:60; width:380px; height:178px; border-radius:8px; overflow:hidden;
         border:1px solid var(--line); box-shadow:0 14px 40px #000b; display:none; pointer-events:none; background:#0b0f18}
   .thumb .pop img{width:100%; height:100%; object-fit:cover}
-  .gmeta{min-width:0}
-  .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; display:inline-block; line-height:1.25}
+  .gmeta{min-width:0; flex:1}
+  .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; line-height:1.25;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gtitle:hover{text-decoration:underline}
-  .gsub{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px}
+  .gsub{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .wish-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--gold); margin-left:7px; vertical-align:middle}
 
   .num{font-family:var(--mono); text-align:right; white-space:nowrap}
@@ -175,7 +183,6 @@
   .rating{display:flex; align-items:center; gap:8px}
   .dot{width:9px; height:9px; border-radius:50%; flex:none}
   .rval{font-family:var(--mono); font-size:14px}
-  .rcount{font-family:var(--mono); font-size:12px; color:var(--muted-2)}
 
   /* stacked price */
   .pricebox{display:flex; flex-direction:column; align-items:flex-start; gap:1px; line-height:1.2}
@@ -190,27 +197,24 @@
   .nosale{color:var(--muted-2)}
   .rel{font-family:var(--mono); font-size:13px; color:var(--muted)}
 
-  .tags{display:flex; gap:6px; flex-wrap:wrap; max-width:240px}
+  .tags{display:flex; gap:6px; flex-wrap:wrap}
   .tag{font-family:var(--mono); font-size:12px; color:var(--muted); background:#212c44; border:1px solid #2e3a58;
         padding:2px 8px; border-radius:6px; cursor:pointer; white-space:nowrap}
   .tag:hover{color:var(--text); border-color:var(--blue)}
+  .tag.sel{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
   .tag.more{cursor:default; color:var(--muted-2); border-style:dashed}
 
-  /* hltb cell: equal-size values + emphasized avg */
-  .hltb-cell{min-width:178px}
-  .hltb{display:flex; gap:13px; justify-content:flex-end}
-  .hcol{text-align:center}
+  /* hltb cell: equal values + centered, emphasized avg */
+  .hltb-stack{display:inline-block; text-align:center}
+  .hltb{display:flex; gap:13px; justify-content:center}
   .hcol .v{font-family:var(--mono); font-size:15px}
   .hcol .l{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.04em; text-transform:uppercase}
-  .hcol.sel .v{color:var(--gold)}
-  .hcol.sel .l{color:var(--gold)}
-  .havg{font-family:var(--mono); font-size:14px; color:var(--muted); text-align:right; margin-top:4px}
+  .hcol.sel .v{color:var(--gold)} .hcol.sel .l{color:var(--gold)}
+  .havg{font-family:var(--mono); font-size:14px; color:var(--muted); text-align:center; margin-top:4px}
   .havg b{color:var(--text); font-weight:700; font-size:15px}
-  .havg.sel{color:var(--gold)}
-  .havg.sel b{color:var(--gold)}
+  .havg.sel{color:var(--gold)} .havg.sel b{color:var(--gold)}
 
-  /* signature: QHPP value meter */
-  .qcell{min-width:160px}
+  /* QHPP value meter */
   .qtop{display:flex; align-items:baseline; justify-content:flex-end; gap:8px}
   .qval{font-family:var(--mono); font-size:17px; font-weight:600; color:var(--gold)}
   .qalt{font-family:var(--mono); font-size:12px; color:var(--muted-2)}
@@ -222,28 +226,28 @@
   .empty{padding:54px 20px; text-align:center; color:var(--muted); font-size:15px}
   .empty b{color:var(--text); font-weight:600}
   .foot{margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--muted-2); line-height:1.9}
-  .foot code{color:var(--muted)}
 
   /* ---- responsive: cards under 1040px ---- */
   @media (max-width:1040px){
-    table{min-width:0}
+    table{min-width:0; table-layout:auto}
+    colgroup{display:none}
     thead{display:none}
     table,tbody,tr,td{display:block; width:100%}
     tbody tr{padding:14px 12px; border-bottom:1px solid var(--line)}
     tbody tr:hover{background:transparent}
     tbody td{padding:5px 0; border:0; display:flex; justify-content:space-between; align-items:center; gap:16px}
+    td.pad{padding:5px 0}
     tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:12px; letter-spacing:.04em;
         text-transform:uppercase; color:var(--muted-2); flex:none}
-    .gamecell{min-width:0}
+    .gtitle{-webkit-line-clamp:3}
     .thumb{width:184px; height:69px}
     .pricebox{align-items:flex-end}
-    .tags{max-width:none; justify-content:flex-end}
-    .num,.qtop,.hltb,.rating,.havg{justify-content:flex-end}
+    .tags{justify-content:flex-end}
+    .num,.qtop,.hltb,.rating{justify-content:flex-end}
     .center{justify-content:flex-end !important}
+    .hltb-stack{text-align:right}
     td.tdqhpp{flex-wrap:wrap}
-    .qcell{min-width:0; flex:1}
     .qbar{flex:1; max-width:180px; margin-top:0}
-    .hltb-cell{min-width:0}
     .grouplabel{width:auto; text-align:left}
   }
   @media (prefers-reduced-motion:reduce){ .qfill,.bar-filters{transition:none} }
@@ -255,7 +259,6 @@
  <div class="wrap">
   <div class="barwrap">
     <div class="bar-main">
-      <button class="collapse-btn" id="collapseBtn" title="Show / hide filters" aria-label="Show or hide filters">⌃</button>
       <div class="brand">
         <div class="logo">Q<b>H</b>PP</div>
         <div class="tagline">quality hours per dollar · steam value hunter</div>
@@ -313,8 +316,15 @@
         </div>
         <div class="field">
           <label>Price range (USD)</label>
-          <div class="pricefilter">min $<input id="minprice" type="number" min="0" step="1" inputmode="decimal" placeholder="0" />
-            <span class="pricesep">–</span> max $<input id="maxprice" type="number" min="0" step="1" inputmode="decimal" placeholder="∞" /></div>
+          <div style="display:flex; align-items:center; gap:6px">
+            <span class="rail-hint">min $</span>
+            <div class="numinput"><input id="minprice" type="number" min="0" step="1" inputmode="decimal" placeholder="0" />
+              <span class="steppers"><button type="button" data-step="minprice" data-d="1">▲</button><button type="button" data-step="minprice" data-d="-1">▼</button></span></div>
+            <span class="pricesep">–</span>
+            <span class="rail-hint">max $</span>
+            <div class="numinput"><input id="maxprice" type="number" min="0" step="1" inputmode="decimal" placeholder="∞" />
+              <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
+          </div>
         </div>
         <div class="field" style="align-self:flex-end">
           <label>&nbsp;</label>
@@ -342,14 +352,20 @@
         <div id="tagrail"></div>
       </div>
     </div>
+
+    <button class="collapse-handle" id="collapseBtn"><span id="collapseLabel">⌃ Hide filters</span></button>
   </div>
  </div>
 </div>
 
-<div class="wrap">
+<div class="wrap body">
   <div class="tablecard">
     <div class="tablescroll">
       <table>
+        <colgroup>
+          <col class="c-game"/><col class="c-rating"/><col class="c-price"/><col class="c-sale"/>
+          <col class="c-rel"/><col class="c-tags"/><col class="c-hltb"/><col class="c-qhpp"/>
+        </colgroup>
         <thead>
           <tr>
             <th class="sortable" data-sort="title">Game</th>
@@ -358,8 +374,8 @@
             <th class="sortable center" data-sort="discount_end">Sale ends</th>
             <th class="sortable center" data-sort="release_ts">Released</th>
             <th>Tags</th>
-            <th class="num hltb-cell" title="Main / Main+Extras / Completionist (hours), with average below">HLTB · M / E / 100%</th>
-            <th class="sortable num" data-sort="qhpp">QHPP <span class="arrow" id="qarrow">▼</span></th>
+            <th class="num pad" title="Main / Main+Extras / Completionist (hours), with average below">HLTB · M / E / 100%</th>
+            <th class="sortable num pad" data-sort="qhpp">QHPP <span class="arrow" id="qarrow">▼</span></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -374,17 +390,29 @@
 <script>
 const NOW = () => Math.floor(Date.now()/1000);
 const SAMPLE = {sample:true, generated_at: NOW(), count:6, games:[
- {appid:413150,title:"Stardew Valley",url:"https://store.steampowered.com/app/413150",release_ts:1456444800,rating_pct:98,review_count:1015944,price_initial:14.99,price_final:8.99,discount_pct:40,discount_end:NOW()+6*86400,is_free:false,tags:["Farming Sim","Pixel Graphics","Life Sim","Multiplayer","Relaxing","Open World","Crafting","Co-op"],hltb_main:53.4,hltb_extra:94.8,hltb_complete:171.8,hltb_avg:106.7},
- {appid:105600,title:"Terraria",url:"https://store.steampowered.com/app/105600",release_ts:1305158400,rating_pct:97,review_count:1530879,price_initial:9.99,price_final:4.99,discount_pct:50,discount_end:NOW()+4*86400+3600*5,is_free:false,tags:["Open World Survival Craft","Sandbox","Survival","2D","Adventure","Crafting","Co-op","Building"],hltb_main:51.8,hltb_extra:91.9,hltb_complete:205.7,hltb_avg:116.5},
- {appid:548430,title:"Deep Rock Galactic",url:"https://store.steampowered.com/app/548430",release_ts:1589846400,rating_pct:97,review_count:377132,price_initial:29.99,price_final:8.99,discount_pct:70,discount_end:NOW()+6*86400,is_free:false,tags:["Co-op","FPS","Mining","Multiplayer","Dwarf","Procedural Generation","PvE","Sci-fi"],hltb_main:44.8,hltb_extra:139.4,hltb_complete:493.8,hltb_avg:226.0},
+ {appid:413150,title:"Stardew Valley",url:"https://store.steampowered.com/app/413150",release_ts:1456444800,rating_pct:98,review_count:1015944,price_initial:14.99,price_final:8.99,discount_pct:40,discount_end:NOW()+6*86400,is_free:false,tags:["Farming Sim","Pixel Graphics","Life Sim","Multiplayer","Relaxing","Open World","Crafting","Online Co-Op"],hltb_main:53.4,hltb_extra:94.8,hltb_complete:171.8,hltb_avg:106.7},
+ {appid:105600,title:"Terraria",url:"https://store.steampowered.com/app/105600",release_ts:1305158400,rating_pct:97,review_count:1530879,price_initial:9.99,price_final:4.99,discount_pct:50,discount_end:NOW()+4*86400+3600*5,is_free:false,tags:["Open World Survival Craft","Sandbox","Survival","2D","Adventure","Crafting","Co-Op","Building"],hltb_main:51.8,hltb_extra:91.9,hltb_complete:205.7,hltb_avg:116.5},
+ {appid:548430,title:"Deep Rock Galactic",url:"https://store.steampowered.com/app/548430",release_ts:1589846400,rating_pct:97,review_count:377132,price_initial:29.99,price_final:8.99,discount_pct:70,discount_end:NOW()+6*86400,is_free:false,tags:["Co-Op","FPS","Mining","Multiplayer","Dwarf","Procedural Generation","PvE","Sci-fi"],hltb_main:44.8,hltb_extra:139.4,hltb_complete:493.8,hltb_avg:226.0},
  {appid:367520,title:"Hollow Knight",url:"https://store.steampowered.com/app/367520",release_ts:1487894400,rating_pct:97,review_count:712000,price_initial:14.99,price_final:14.99,discount_pct:0,discount_end:null,is_free:false,tags:["Metroidvania","Souls-like","Difficult","Atmospheric","Hand-drawn","Exploration","2D","Singleplayer"],hltb_main:26.6,hltb_extra:39.4,hltb_complete:62.9,hltb_avg:43.0},
  {appid:570,title:"Dota 2",url:"https://store.steampowered.com/app/570",release_ts:1373414400,rating_pct:84,review_count:2150000,price_initial:null,price_final:null,discount_pct:0,discount_end:null,is_free:true,tags:["Free to Play","MOBA","Multiplayer","Strategy","Competitive","Team-Based","PvP","Difficult"],hltb_main:null,hltb_extra:null,hltb_complete:null,hltb_avg:null},
- {appid:1623730,title:"Palworld",url:"https://store.steampowered.com/app/1623730",release_ts:1705968000,rating_pct:92,review_count:280000,price_initial:29.99,price_final:29.99,discount_pct:0,discount_end:null,is_free:false,tags:["Open World Survival Craft","Multiplayer","Creature Collector","Crafting","Base Building","Co-op","Open World","Adventure"],hltb_main:30.0,hltb_extra:65.0,hltb_complete:140.0,hltb_avg:78.3}
+ {appid:1623730,title:"Palworld",url:"https://store.steampowered.com/app/1623730",release_ts:1705968000,rating_pct:92,review_count:280000,price_initial:29.99,price_final:29.99,discount_pct:0,discount_end:null,is_free:false,tags:["Open World Survival Craft","Multiplayer","Creature Collector","Crafting","Base Building","Online Co-Op","Open World","Adventure"],hltb_main:30.0,hltb_extra:65.0,hltb_complete:140.0,hltb_avg:78.3}
 ]};
 
-// ----- tag categories (logical grouping; alphabetical within) -----
+// ----- tag canonicalisation: merge variants into one flag (still match the game's original tags) -----
+const CANON_GROUPS = {
+  "co-op": ["online co-op","local co-op","co-op campaign","online co-op campaign","local co-op campaign","4 player local"],
+  "multiplayer": ["online multiplayer","local multiplayer","lan multiplayer"],
+  "pvp": ["online pvp","local pvp"],
+  "singleplayer": ["single player"],
+};
+const CANON = {};
+Object.entries(CANON_GROUPS).forEach(([c,arr]) => arr.forEach(v => CANON[v] = c));
+const canon = t => CANON[t] || t;
+const canonSet = g => new Set((g.tags||[]).map(t => canon(t.toLowerCase())));
+
+// ----- tag categories -----
 const TAG_GROUPS = [
-  ["Players & Mode", ["singleplayer","co-op","online co-op","local co-op","split screen","local multiplayer","multiplayer","pvp","pve","team-based","competitive","massively multiplayer","mmorpg","mmo","co-op campaign","asynchronous multiplayer","4 player local","online pvp","local pvp","cross-platform multiplayer"]],
+  ["Players & Mode", ["singleplayer","co-op","split screen","multiplayer","pvp","pve","team-based","competitive","massively multiplayer","mmorpg","mmo","asynchronous multiplayer"]],
   ["Genre", ["action","adventure","rpg","action rpg","jrpg","crpg","strategy","real-time strategy","rts","turn-based strategy","grand strategy","4x","simulation","life sim","farming sim","city builder","management","tycoon","puzzle","shooter","fps","third-person shooter","twin stick shooter","top-down shooter","platformer","precision platformer","fighting","beat 'em up","racing","sports","survival","open world survival craft","horror","survival horror","roguelike","roguelite","action roguelike","metroidvania","moba","tower defense","card game","card battler","deckbuilding","auto battler","visual novel","point & click","stealth","hack and slash","battle royale","sandbox","dungeon crawler","immersive sim","walking simulator","idle","clicker","rhythm","party game","arcade","souls-like","bullet hell","real time tactics","colony sim","automation","crafting","base building"]],
   ["Theme & Setting", ["sci-fi","fantasy","dark fantasy","space","post-apocalyptic","cyberpunk","medieval","historical","war","military","zombies","mythology","lovecraftian","steampunk","western","supernatural","aliens","dystopian","horror","nature","underwater","naval","dinosaurs","superhero","detective","mystery","economy"]],
   ["Style & Feel", ["pixel graphics","2d","3d","2.5d","anime","atmospheric","story rich","hand-drawn","cartoony","cartoon","retro","minimalist","colorful","cute","dark","funny","comedy","relaxing","difficult","fast-paced","gore","violent","nudity","sexual content","great soundtrack","cinematic","realistic","stylized","low-poly","voxel","isometric","top-down","side scroller","first-person","third person","female protagonist","choices matter","multiple endings","replay value","moddable","controller","vr","early access","free to play","classic","indie","casual","family friendly","physics","exploration","loot","procedural generation","open world","linear","short","great visuals","emotional","beautiful","memes","sandbox"]],
@@ -392,12 +420,13 @@ const TAG_GROUPS = [
 const TAG_CAT = {};
 TAG_GROUPS.forEach(([g,arr]) => arr.forEach(t => { if(!(t in TAG_CAT)) TAG_CAT[t] = g; }));
 const GROUP_ORDER = TAG_GROUPS.map(g => g[0]).concat(["Other"]);
+const MIN_TAG_COUNT = 10;   // hide tags that fewer than this many games have
 
 // ----- state -----
 const state = { data:null, q:"", tagq:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
                 qBasis:"after", hltbMetric:"avg", minScore:0, minPrice:null, maxPrice:null,
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1,
-                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1 };
+                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, tagCounts:{} };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -448,7 +477,7 @@ function relTime(ts){
   return Math.floor(s/86400) + "d ago";
 }
 
-// ----- filters (everything except the QHPP range) -----
+// ----- filters (all except QHPP range), tag checks use canonical sets -----
 function passNonRange(x){
   if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
   if(state.saleOnly && !(x.discount_pct > 0)) return false;
@@ -458,9 +487,9 @@ function passNonRange(x){
   if(state.maxPrice != null){ if(p == null || p > state.maxPrice) return false; }
   if(state.wishOnly && state.wishlist && !state.wishlist.has(x.appid)) return false;
   if(state.tagsInc.size || state.tagsExc.size){
-    const t = new Set((x.tags||[]).map(s=>s.toLowerCase()));
-    for(const w of state.tagsInc) if(!t.has(w)) return false;
-    for(const b of state.tagsExc) if(t.has(b)) return false;
+    const cs = canonSet(x);
+    for(const w of state.tagsInc) if(!cs.has(w)) return false;
+    for(const b of state.tagsExc) if(cs.has(b)) return false;
   }
   return true;
 }
@@ -507,11 +536,9 @@ function syncRangeUI(){
   paintRange();
 }
 function paintRange(){
-  const d = state.qDomain;
   const aPos = parseFloat($("#qmin").value), bPos = parseFloat($("#qmax").value);
-  const fill = $("#qrangefill");
-  fill.style.left  = (aPos/1000*100) + "%";
-  fill.style.width = ((bPos - aPos)/1000*100) + "%";
+  $("#qrangefill").style.left  = (aPos/1000*100) + "%";
+  $("#qrangefill").style.width = ((bPos - aPos)/1000*100) + "%";
   const fmt = v => v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
   $("#qminv").textContent = state.qMinVal <= 0.001 ? "0" : fmt(state.qMinVal);
   $("#qmaxv").textContent = state.qMaxUnbounded ? "∞" : fmt(state.qMaxVal);
@@ -548,6 +575,7 @@ function render(){
   empty.style.display = "none";
 
   const sel = state.hltbMetric;
+  const inc = state.tagsInc;
   tbody.innerHTML = games.map(g => {
     let price;
     if(g.is_free) price = `<span class="free">Free</span>`;
@@ -565,14 +593,21 @@ function render(){
       sale = `<span class="countdown">on sale</span>`;
     } else sale = `<span class="nosale">—</span>`;
 
-    const shown = (g.tags||[]).slice(0,4);
-    const extra = (g.tags||[]).length - shown.length;
-    const tagHtml = shown.map(t => `<button class="tag" data-tag="${esc(t.toLowerCase())}">${esc(t)}</button>`).join("")
-                  + (extra>0 ? `<span class="tag more">+${extra}</span>` : "");
+    // tags: surface matched (selected) ones first, gold them; original labels kept
+    const all = g.tags || [];
+    const matched = all.filter(t => inc.has(canon(t.toLowerCase())));
+    const others  = all.filter(t => !inc.has(canon(t.toLowerCase())));
+    const ordered = [...matched, ...others];
+    const shownTags = ordered.slice(0,4);
+    const extra = ordered.length - shownTags.length;
+    const tagHtml = shownTags.map(t => {
+      const isSel = inc.has(canon(t.toLowerCase()));
+      return `<button class="tag${isSel?' sel':''}" data-tag="${esc(t.toLowerCase())}">${esc(t)}</button>`;
+    }).join("") + (extra>0 ? `<span class="tag more">+${extra}</span>` : "");
 
     const hc = (v,l,key) => `<div class="hcol${sel===key?' sel':''}"><div class="v">${v==null?'—':v}</div><div class="l">${l}</div></div>`;
-    const hltb = `<div class="hltb">${hc(g.hltb_main,'main','main')}${hc(g.hltb_extra,'+ext','extra')}${hc(g.hltb_complete,'100%','complete')}</div>`
-               + `<div class="havg${sel==='avg'?' sel':''}">avg <b>${g.hltb_avg==null?'—':g.hltb_avg}</b> h</div>`;
+    const hltb = `<div class="hltb-stack"><div class="hltb">${hc(g.hltb_main,'main','main')}${hc(g.hltb_extra,'+ext','extra')}${hc(g.hltb_complete,'100%','complete')}</div>`
+               + `<div class="havg${sel==='avg'?' sel':''}">avg <b>${g.hltb_avg==null?'—':g.hltb_avg}</b> h</div></div>`;
 
     const av = activeQ(g), other = altQ(g);
     let qhpp;
@@ -602,14 +637,13 @@ function render(){
       <td data-label="Sale ends" class="center">${sale}</td>
       <td data-label="Released" class="center"><span class="rel">${fmtRelease(g)}</span></td>
       <td data-label="Tags"><div class="tags">${tagHtml}</div></td>
-      <td data-label="HLTB M/E/100%" class="num hltb-cell">${hltb}</td>
-      <td data-label="QHPP" class="num tdqhpp qcell">${qhpp}</td>
+      <td data-label="HLTB M/E/100%" class="num pad">${hltb}</td>
+      <td data-label="QHPP" class="num pad tdqhpp">${qhpp}</td>
     </tr>`;
   }).join("");
   renderMeta();
 }
 
-// live countdown tick
 setInterval(() => {
   document.querySelectorAll(".countdown[data-end]").forEach(el => {
     const c = fmtCountdown(parseInt(el.dataset.end,10));
@@ -617,45 +651,39 @@ setInterval(() => {
   });
 }, 1000);
 
-// ----- thumbnail hover-enlarge -----
+// thumbnail hover-enlarge
 document.body.addEventListener("mouseover", e => {
   const thumb = e.target.closest(".thumb");
   if(!thumb) return;
-  const pop = thumb.querySelector(".pop");
-  const img = pop.querySelector("img");
+  const pop = thumb.querySelector(".pop"), img = pop.querySelector("img");
   if(!img.src){ img.src = headerUrl(thumb.dataset.appid); }
   const r = thumb.getBoundingClientRect();
-  let top = r.bottom + 8;
-  if(top + 178 > window.innerHeight) top = r.top - 178 - 8;
-  let left = r.left;
-  if(left + 380 > window.innerWidth) left = window.innerWidth - 380 - 10;
-  pop.style.left = Math.max(8,left) + "px";
-  pop.style.top = Math.max(8,top) + "px";
-  pop.style.display = "block";
+  let top = r.bottom + 8; if(top + 178 > window.innerHeight) top = r.top - 178 - 8;
+  let left = r.left;      if(left + 380 > window.innerWidth) left = window.innerWidth - 380 - 10;
+  pop.style.left = Math.max(8,left) + "px"; pop.style.top = Math.max(8,top) + "px"; pop.style.display = "block";
 });
 document.body.addEventListener("mouseout", e => {
   const thumb = e.target.closest(".thumb");
   if(thumb && !thumb.contains(e.relatedTarget)) thumb.querySelector(".pop").style.display = "none";
 });
 
-// ----- grouped + searchable tag rail (3-state) -----
-function buildTagRail(){
+// ----- tag rail: canonical, low-count hidden, STABLE alphabetical order -----
+function computeTagCounts(){
   const counts = {};
-  state.data.games.forEach(g => (g.tags||[]).forEach(t => {
-    const k = t.toLowerCase(); counts[k] = (counts[k]||0)+1;
-  }));
+  state.data.games.forEach(g => canonSet(g).forEach(t => counts[t] = (counts[t]||0)+1));
+  state.tagCounts = counts;
+}
+function buildTagRail(){
+  const counts = state.tagCounts;
   const q = state.tagq.trim().toLowerCase();
-  const cap = q ? 999 : 12;              // when searching, show all matches; else cap per group
-
-  // bucket tags by category
+  const active = new Set([...state.tagsInc, ...state.tagsExc]);
   const buckets = {}; GROUP_ORDER.forEach(g => buckets[g] = []);
   Object.keys(counts).forEach(t => {
-    if(q && !t.includes(q)) return;
-    (buckets[TAG_CAT[t] || "Other"]).push(t);
+    const isActive = active.has(t);
+    if(q){ if(!t.includes(q)) return; }
+    else if(counts[t] < MIN_TAG_COUNT && !isActive) return;   // hide rare tags (still findable via search)
+    buckets[TAG_CAT[t] || "Other"].push(t);
   });
-  // always surface active tags even if filtered out / beyond cap
-  const active = new Set([...state.tagsInc, ...state.tagsExc]);
-
   const label = t => t.replace(/\b\w/g, c=>c.toUpperCase());
   const chipHtml = t => {
     let cls = "chip", mk = "";
@@ -663,24 +691,18 @@ function buildTagRail(){
     else if(state.tagsExc.has(t)){ cls += " exc"; mk = '<span class="mk">✕</span>'; }
     return `<button class="${cls}" data-tag="${esc(t)}">${mk}${esc(label(t))}<span class="ct">${counts[t]}</span></button>`;
   };
-
   let html = "";
   GROUP_ORDER.forEach(g => {
-    let tags = buckets[g];
+    const tags = buckets[g];
     if(!tags.length) return;
-    tags.sort((a,b) => a.localeCompare(b));
-    // keep active ones, then most common up to cap
-    const act = tags.filter(t => active.has(t));
-    let rest = tags.filter(t => !active.has(t)).sort((a,b)=>counts[b]-counts[a]).slice(0, cap).sort((a,b)=>a.localeCompare(b));
-    const list = [...new Set([...act, ...rest])];
-    if(!list.length) return;
-    html += `<div class="taggroup"><span class="grouplabel">${g}</span><span class="grouptags">${list.map(chipHtml).join("")}</span></div>`;
+    tags.sort((a,b) => a.localeCompare(b));      // fixed order — chips never move on selection
+    html += `<div class="taggroup"><span class="grouplabel">${g}</span><span class="grouptags">${tags.map(chipHtml).join("")}</span></div>`;
   });
   if(!html) html = `<div class="rail-hint" style="padding:4px 0">No tags match “${esc(state.tagq)}”.</div>`;
   $("#tagrail").innerHTML = html;
 }
 function cycleTag(t){
-  t = t.toLowerCase();
+  t = canon(t.toLowerCase());
   if(state.tagsInc.has(t)){ state.tagsInc.delete(t); state.tagsExc.add(t); }
   else if(state.tagsExc.has(t)){ state.tagsExc.delete(t); }
   else { state.tagsInc.add(t); }
@@ -698,7 +720,7 @@ function renderMeta(){
 function renderFoot(){
   $("#foot").innerHTML =
     `QHPP = (chosen HLTB hours × rating%) ÷ price — pick the HLTB metric above. Higher = more quality-adjusted hours per dollar. Null for free games & games without HLTB data.<br>`+
-    `Thumbnails load lazily from Steam's CDN. Wishlist import reads your public Steam wishlist. Data: Steam store + reviews, SteamSpy tags, How Long To Beat.`;
+    `Tags like Online/Local Co-Op are merged under one flag. Thumbnails load lazily from Steam's CDN. Wishlist import reads your public Steam wishlist.`;
 }
 
 // ----- wishlist -----
@@ -738,13 +760,12 @@ async function importWishlist(){
   status.className = "wishstatus ok";
   status.innerHTML = `Imported <b>${state.wishlist.size}</b> wishlist games — <b>${inDb}</b> are in this database.`;
   $("#wishOnly").style.display = ""; $("#wishClear").style.display = "";
-  buildTagRail(); recomputeDomain(); render();
+  recomputeDomain(); render();
 }
 function clearWishlist(){
   state.wishlist = null; state.wishOnly = false;
   $("#wishOnly").style.display = "none"; $("#wishOnly").setAttribute("aria-pressed","false");
-  $("#wishClear").style.display = "none";
-  $("#wishstatus").style.display = "none"; $("#steamid").value = "";
+  $("#wishClear").style.display = "none"; $("#wishstatus").style.display = "none"; $("#steamid").value = "";
   recomputeDomain(); render();
 }
 
@@ -776,7 +797,10 @@ function setMetric(m){
 
 // ----- sticky header collapse -----
 let manualHeader = false;
-function setCompact(on){ $("#topbar").classList.toggle("compact", on); }
+function setCompact(on){
+  $("#topbar").classList.toggle("compact", on);
+  $("#collapseLabel").textContent = on ? "⌄ Show filters" : "⌃ Hide filters";
+}
 window.addEventListener("scroll", () => {
   const y = window.scrollY;
   if(y < 60){ manualHeader = false; setCompact(false); }
@@ -785,7 +809,7 @@ window.addEventListener("scroll", () => {
 
 function init(data){
   state.data = data;
-  recomputeDomain(); buildTagRail(); renderFoot(); render();
+  computeTagCounts(); recomputeDomain(); buildTagRail(); renderFoot(); render();
 
   $("#q").addEventListener("input", e => { state.q = e.target.value; recomputeDomain(); render(); });
   $("#saleOnly").addEventListener("click", e => {
@@ -808,6 +832,12 @@ function init(data){
   };
   $("#minprice").addEventListener("input", priceHandler);
   $("#maxprice").addEventListener("input", priceHandler);
+  document.querySelectorAll("[data-step]").forEach(btn => btn.addEventListener("click", () => {
+    const inp = $("#"+btn.dataset.step);
+    let v = parseFloat(inp.value || "0"); if(isNaN(v)) v = 0;
+    v = Math.max(0, v + parseInt(btn.dataset.d,10));
+    inp.value = v; priceHandler();
+  }));
   $("#qmin").addEventListener("input", () => onRangeInput("min"));
   $("#qmax").addEventListener("input", () => onRangeInput("max"));
   $("#tagsearch").addEventListener("input", e => { state.tagq = e.target.value; buildTagRail(); });
@@ -820,9 +850,8 @@ function init(data){
   $("#wishClear").addEventListener("click", clearWishlist);
 
   $("#collapseBtn").addEventListener("click", () => {
-    const c = $("#topbar").classList.toggle("compact");
-    manualHeader = true;
-    $("#collapseBtn").textContent = c ? "⌄" : "⌃";
+    const c = $("#topbar").classList.toggle("compact"); manualHeader = true;
+    $("#collapseLabel").textContent = c ? "⌄ Show filters" : "⌃ Hide filters";
   });
 
   $("#clear").addEventListener("click", () => {
@@ -830,15 +859,13 @@ function init(data){
     state.minScore=0; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.qMinVal=0; state.qMaxUnbounded=true; state.qMaxVal=0;
     $("#q").value=""; $("#tagsearch").value=""; $("#minprice").value=""; $("#maxprice").value="";
-    $("#saleOnly").setAttribute("aria-pressed","false");
-    $("#wishOnly").setAttribute("aria-pressed","false");
+    $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
     recomputeDomain(); buildTagRail(); render();
   });
 
   document.querySelectorAll("thead th.sortable").forEach(th =>
     th.addEventListener("click", () => setSort(th.dataset.sort)));
-  // delegated tag clicks (rail chips + in-row tags) cycle 3-state
   document.body.addEventListener("click", e => {
     const t = e.target.closest("[data-tag]");
     if(t) cycleTag(t.dataset.tag);
