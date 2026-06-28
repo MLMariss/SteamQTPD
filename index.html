@@ -153,8 +153,9 @@
   thead th.sortable:hover{color:var(--text)}
   thead th.num{text-align:right}
   thead th.center{text-align:center}
-  /* Game column has no width -> absorbs slack (wide for titles); Tags fixed + narrower */
-  col.c-rev{width:120px} col.c-trend{width:78px} col.c-price{width:104px} col.c-disc{width:88px} col.c-sale{width:98px}
+  /* Game column has no width -> absorbs slack (wide for titles); Tags fixed + narrower.
+     Price/Discount tightened to free space for the hide button left of each thumbnail. */
+  col.c-rev{width:120px} col.c-trend{width:78px} col.c-price{width:84px} col.c-disc{width:70px} col.c-sale{width:98px}
   col.c-rel{width:138px} col.c-tags{width:308px} col.c-hltb{width:206px} col.c-qhpp{width:178px}
   .arrow{color:var(--gold); margin-left:5px; font-size:12px}
   tbody td{padding:8px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
@@ -162,7 +163,8 @@
   tbody tr:last-child td{border-bottom:0}
   tbody tr:hover{background:#1b2640}
 
-  .gamecell{display:flex; align-items:center; gap:13px}
+  .gamecell{display:flex; align-items:center; gap:10px}
+  .gamecell .hidebtn{margin-right:-2px}   /* sit snug to the thumbnail */
   .thumb{position:relative; flex:none; width:150px; height:57px; border-radius:5px; overflow:hidden; background:#0b0f18; border:1px solid #2a3550}
   .thumb img{width:100%; height:100%; object-fit:cover; display:block}
   .thumb .pop{position:fixed; z-index:60; width:380px; height:178px; border-radius:8px; overflow:hidden;
@@ -211,18 +213,22 @@
 
   /* QHPP dual value: after-discount (left, primary) + full price (right). Active
      basis is highlighted (qsel), the inactive one dimmed (qdim). Positions fixed. */
+  /* QHPP dual value: after-discount (left, primary) + full price (right). Coloring is
+     driven entirely by qsel (active basis -> gold) and qdim (inactive -> muted), so the
+     base color must stay neutral or it would override them. */
   .qsel{color:var(--gold) !important; font-weight:700}
-  .qdim{color:var(--muted-2)}
+  .qdim{color:var(--muted-2) !important}
   .qval.qdim{font-weight:600}
 
-  /* hide-game [x] button on the thumbnail (appears on row hover) */
-  .hidebtn{position:absolute; top:3px; right:3px; width:20px; height:20px; line-height:18px;
-        padding:0; border-radius:5px; border:1px solid #5a3540; background:rgba(20,10,14,.78);
-        color:#e7a3b0; font-size:15px; cursor:pointer; opacity:0; transition:opacity .12s, background .12s;
-        display:flex; align-items:center; justify-content:center}
-  tr:hover .hidebtn{opacity:1}
+  /* hide-game [x] button: sits to the LEFT of the thumbnail (not overlaying it).
+     Subtle by default, reddens on hover. Slim so it costs little horizontal space. */
+  .hidebtn{flex:none; width:18px; height:38px; padding:0; border-radius:5px;
+        border:1px solid #3a2530; background:#1a1014; color:#9a7480; font-size:15px;
+        line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+        transition:background .12s, color .12s, border-color .12s}
   .hidebtn:hover{background:#7a2535; color:#fff; border-color:#a33}
-  @media (hover:none){ .hidebtn{opacity:1} }   /* touch: always visible */
+  tr:hover .hidebtn{color:#c98a96}            /* row hover: nudge it more visible */
+  tr:hover .hidebtn:hover{color:#fff}
 
   .unhide-link{font-family:var(--mono); font-size:inherit; color:var(--blue); background:none;
         border:none; padding:0; cursor:pointer}
@@ -245,7 +251,7 @@
   .havg.sel{color:var(--gold)} .havg.sel b{color:var(--gold)}
 
   .qtop{display:flex; align-items:baseline; justify-content:flex-end; gap:8px}
-  .qval{font-family:var(--mono); font-size:17px; font-weight:600; color:var(--gold)}
+  .qval{font-family:var(--mono); font-size:17px; font-weight:600; color:var(--text)}
   .qalt{font-family:var(--mono); font-size:12px; color:var(--muted-2)}
   .qbar{position:relative; height:6px; background:#2a3550; border-radius:99px; margin-top:7px; overflow:hidden}
   .qfill{position:absolute; left:0; top:0; bottom:0; border-radius:99px;
@@ -345,8 +351,8 @@
           <label>Min reviews</label>
           <div class="seg" role="group" aria-label="Minimum review count">
             <button data-minrev="0"     aria-pressed="false">Any</button>
-            <button data-minrev="100"   aria-pressed="false">100</button>
-            <button data-minrev="500"   aria-pressed="true">500</button>
+            <button data-minrev="100"   aria-pressed="true">100</button>
+            <button data-minrev="500"   aria-pressed="false">500</button>
             <button data-minrev="1000"  aria-pressed="false">1k</button>
             <button data-minrev="5000"  aria-pressed="false">5k</button>
             <button data-minrev="10000" aria-pressed="false">10k</button>
@@ -479,7 +485,7 @@ const MIN_TAG_COUNT = 10;
 
 // ----- state -----
 const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
-                qBasis:"after", hltbMetric:"avg", minScore:0, minReviews:500, minPrice:null, maxPrice:null,
+                qBasis:"after", hltbMetric:"avg", minScore:0, minReviews:100, minPrice:null, maxPrice:null,
                 trendFilter:"any", updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
                 hidden:new Set(),
@@ -733,7 +739,7 @@ function render(){
       // single number (not discounted, or one side missing); highlight if its basis is active
       const v = qAfter != null ? qAfter : qFull;
       const barV = activeQ(g);
-      qhpp = `<div class="qtop"><span class="qval" title="Quality-adjusted hours per dollar at this game's current price">${v.toFixed(2)}</span></div>`
+      qhpp = `<div class="qtop"><span class="qval qsel" title="Quality-adjusted hours per dollar at this game's current price">${v.toFixed(2)}</span></div>`
            + `<div class="qbar"><div class="qfill" style="width:${fillPct(barV).toFixed(1)}%"></div></div>`;
     } else {
       const aSel = state.qBasis === "after", bSel = state.qBasis === "before";
@@ -775,11 +781,11 @@ function render(){
 
     return `<tr>
       <td data-label="Game"><div class="gamecell">
+          <button class="hidebtn" data-hide="${g.appid}" title="Hide this game for this session" aria-label="Hide ${esc(g.title)}">×</button>
           <span class="thumb" data-appid="${g.appid}">
             <img loading="lazy" src="${capsuleUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
                  onerror="this.onerror=null;this.src='${headerUrl(g.appid)}';" />
             <span class="pop"><img alt="" referrerpolicy="no-referrer" /></span>
-            <button class="hidebtn" data-hide="${g.appid}" title="Hide this game for this session" aria-label="Hide ${esc(g.title)}">×</button>
           </span>
           <span class="gmeta">
             <a class="gtitle" href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.title)}</a>${wished}
@@ -1006,7 +1012,7 @@ function syncURL(){
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.hltbMetric !== "avg") p.set("hltb", state.hltbMetric);
   if(state.minScore) p.set("minscore", state.minScore);
-  if(state.minReviews !== 500) p.set("minrev", state.minReviews);
+  if(state.minReviews !== 100) p.set("minrev", state.minReviews);
   if(state.minPrice != null) p.set("pmin", state.minPrice);
   if(state.maxPrice != null) p.set("pmax", state.maxPrice);
   if(state.trendFilter !== "any") p.set("trend", state.trendFilter);
@@ -1093,7 +1099,7 @@ function init(data){
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.qBasis="after"; state.hltbMetric="avg"; state.minScore=0; state.minReviews=500;
+    state.qBasis="after"; state.hltbMetric="avg"; state.minScore=0; state.minReviews=100;
     state.minPrice=null; state.maxPrice=null; state.trendFilter="any"; state.updatedWithin="any";
     state.wishOnly=false; state.sortKey="qhpp"; state.sortDir=-1; state.qRangeTouched=false;
     loadFromURL();
@@ -1163,12 +1169,12 @@ function init(data){
 
   $("#clear").addEventListener("click", () => {
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.minScore=0; state.minReviews=500; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
+    state.minScore=0; state.minReviews=100; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.trendFilter="any"; state.updatedWithin="any";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
-    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev==="500"));
+    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev==="100"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", o.dataset.trend==="any"));
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
     update();
