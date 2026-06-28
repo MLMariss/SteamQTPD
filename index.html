@@ -323,6 +323,17 @@
           </div>
         </div>
         <div class="field">
+          <label>Min reviews</label>
+          <div class="seg" role="group" aria-label="Minimum review count">
+            <button data-minrev="0"     aria-pressed="false">Any</button>
+            <button data-minrev="100"   aria-pressed="false">100</button>
+            <button data-minrev="500"   aria-pressed="true">500</button>
+            <button data-minrev="1000"  aria-pressed="false">1k</button>
+            <button data-minrev="5000"  aria-pressed="false">5k</button>
+            <button data-minrev="10000" aria-pressed="false">10k</button>
+          </div>
+        </div>
+        <div class="field">
           <label>Price range (USD)</label>
           <div style="display:flex; align-items:center; gap:6px">
             <span class="pricesep">min $</span>
@@ -449,7 +460,7 @@ const MIN_TAG_COUNT = 10;
 
 // ----- state -----
 const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
-                qBasis:"after", hltbMetric:"avg", minScore:0, minPrice:null, maxPrice:null,
+                qBasis:"after", hltbMetric:"avg", minScore:0, minReviews:500, minPrice:null, maxPrice:null,
                 trendFilter:"any", updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1,
                 wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, fullCounts:{} };
@@ -545,6 +556,7 @@ function passNonRange(x){
   if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
   if(state.saleOnly && !(x.discount_pct > 0)) return false;
   if(state.minScore > 0 && !(x.rating_pct != null && x.rating_pct >= state.minScore)) return false;
+  if(state.minReviews > 0 && !(x.review_count != null && x.review_count >= state.minReviews)) return false;
   const p = x.is_free ? 0 : x.price_final;
   if(state.minPrice != null){ if(p == null || p < state.minPrice) return false; }
   if(state.maxPrice != null){ if(p == null || p > state.maxPrice) return false; }
@@ -930,6 +942,12 @@ function init(data){
       document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o === b));
       update();
     }));
+  document.querySelectorAll("[data-minrev]").forEach(b =>
+    b.addEventListener("click", () => {
+      state.minReviews = parseInt(b.dataset.minrev, 10);
+      document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      update();
+    }));
   document.querySelectorAll("[data-trend]").forEach(b =>
     b.addEventListener("click", () => {
       state.trendFilter = b.dataset.trend;
@@ -974,11 +992,12 @@ function init(data){
 
   $("#clear").addEventListener("click", () => {
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.minScore=0; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
+    state.minScore=0; state.minReviews=500; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.trendFilter="any"; state.updatedWithin="any";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
+    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev==="500"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", o.dataset.trend==="any"));
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
     update();
