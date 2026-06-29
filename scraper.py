@@ -68,11 +68,10 @@ TIME_BUFFER = 120               # stop scraping this long before the budget, to 
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
 
-TOP_TAGS = 8
+# TOP_TAGS / SteamSpy tags moved to tags_refresh.py (it was the slowest per-game call).
 COUNTRY = "us"                  # cc=us => USD prices
 
 STEAM_DELAY = 1.5               # seconds between storefront calls (~200/5min limit)
-STEAMSPY_DELAY = 1.0            # SteamSpy allows ~1 req/sec
 WEBAPI_DELAY = 1.0             # between GetAppList pages
 NEWS_DELAY = 0.3               # between News API calls (api.steampowered.com; huge budget)
 MAX_RETRIES = 4
@@ -247,18 +246,6 @@ def ensure_priority(catalog):
 # that used to live here, and decoupled from this slow, rate-limited main scrape.
 
 
-def tags_from_steamspy(appid):
-    data = get("https://steamspy.com/api.php",
-               params={"request": "appdetails", "appid": appid}, expect_json=True)
-    time.sleep(STEAMSPY_DELAY)
-    if isinstance(data, dict):
-        tags = data.get("tags") or {}
-        if isinstance(tags, dict) and tags:
-            ranked = sorted(tags.items(), key=lambda kv: kv[1], reverse=True)
-            return [name for name, _ in ranked[:TOP_TAGS]]
-    return []
-
-
 def rating_from_reviews(appid):
     data = get(f"https://store.steampowered.com/appreviews/{appid}",
                params={"json": 1, "language": "all", "purchase_type": "all",
@@ -361,17 +348,16 @@ def build_record(appid, prev=None):
     # extensions. The main scraper only records that a discount exists (discount_pct) and
     # the prices; the frontend merges sales.json for the countdown.
 
-    # The three remaining per-game lookups — reviews (storefront), tags (SteamSpy), and
-    # last-update (News API) — are independent of each other and hit DIFFERENT hosts, so
-    # we run them concurrently. Each keeps its own internal rate-pacing sleep; overlapping
-    # those sleeps is exactly the speedup (per-game time drops from ~the sum to ~the max).
-    genre_fallback = [g["description"] for g in d.get("genres", []) if g.get("description")]
-    with ThreadPoolExecutor(max_workers=3) as ex:
+    # Two remaining per-game lookups — reviews (storefront) and last-update (News API) —
+    # run concurrently. SteamSpy tags were decoupled to tags_refresh.py (tags.json): even
+    # without erroring, SteamSpy was slow to respond and dominated per-game time. We store
+    # the Steam store "genres" here as a fallback; the frontend merges richer SteamSpy
+    # user-tags from tags.json on top when available.
+    tags = [g["description"] for g in d.get("genres", []) if g.get("description")]
+    with ThreadPoolExecutor(max_workers=2) as ex:
         f_reviews = ex.submit(rating_from_reviews, appid)
-        f_tags = ex.submit(tags_from_steamspy, appid)
         f_news = ex.submit(last_update_from_news, appid)
         rating_pct, review_count = f_reviews.result()
-        tags = f_tags.result() or genre_fallback
         last_update_ts = f_news.result()
 
     # HLTB is no longer fetched in the main loop — it was the dominant per-game cost

@@ -1263,11 +1263,13 @@ Promise.all([
   fetch("games.json",  {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("prices.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("hltb.json",   {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch("tags.json",   {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("recent.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-]).then(([g, pj, hj, rj]) => {
+]).then(([g, pj, hj, tj, rj]) => {
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
   const hltbMap   = (hj && hj.hltb)   ? hj.hltb   : null;
+  const tagsMap   = (tj && tj.tags)   ? tj.tags   : null;
   const recentMap = (rj && rj.recent) ? rj.recent : null;
   const now = NOW();
   data.games.forEach(game => {
@@ -1287,6 +1289,11 @@ Promise.all([
       const h = hltbMap[key];
       game.hltb_main = h.main; game.hltb_extra = h.extra;
       game.hltb_complete = h.complete; game.hltb_avg = h.avg; game.hltb_match = h.match;
+    }
+    // tags.json provides SteamSpy user-tags; they replace the genre fallback in games.json
+    // when present (richer/more specific). A non-empty list wins; otherwise keep the fallback.
+    if(tagsMap && Array.isArray(tagsMap[key]) && tagsMap[key].length){
+      game.tags = tagsMap[key];
     }
     if(recentMap && recentMap[key]){
       const r = recentMap[key];
