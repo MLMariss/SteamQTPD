@@ -1,0 +1,41 @@
+name: Refresh SteamSpy tags -> tags.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab
+  schedule:
+    # SteamSpy tags are nearly static, so this just fills games that don't have an entry
+    # yet and rarely re-fetches. It's slow per game (SteamSpy is slow to respond), so it
+    # runs out of band on its own schedule and never blocks the main scrape. Offset to :29
+    # to avoid the other jobs; own concurrency group prevents overlap.
+    - cron: "29 */6 * * *"  # every 6 hours
+
+permissions:
+  contents: write           # commits tags.json as it runs
+
+concurrency:
+  group: steam-tags         # never overlap tags runs (separate from all other jobs)
+  cancel-in-progress: false
+
+jobs:
+  tags:
+    runs-on: ubuntu-latest
+    timeout-minutes: 135     # RUN_MINUTES=120 leaves headroom; SteamSpy is slow per game
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits progress itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh SteamSpy tags
+        env:
+          RUN_MINUTES: "120"
+        run: python tags_refresh.py
