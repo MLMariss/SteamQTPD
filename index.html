@@ -69,6 +69,17 @@
   .seg.metric button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
 
+  /* per-page size selector in the top bar */
+  .pagesize{display:inline-flex; align-items:center; gap:7px; flex:none}
+  .pagesize-lbl{font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
+  .pagesize button{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
+        font-family:var(--mono); font-size:12px; padding:5px 9px; cursor:pointer; border-radius:7px}
+  .pagesize button:hover{color:var(--text)}
+  .pagesize button.on{background:var(--gold-soft); color:var(--gold); border-color:var(--gold-soft)}
+  .pagesize button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
+  /* infinite-scroll sentinel / "loading more" row */
+  .loadmore{text-align:center; padding:18px; font-family:var(--mono); font-size:12px; color:var(--muted)}
+
   .toggle{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
         font-family:var(--mono); font-size:13px; padding:9px 14px; border-radius:9px; cursor:pointer; letter-spacing:.01em}
   .toggle[aria-pressed="true"]{border-color:var(--coral); color:var(--coral)}
@@ -313,6 +324,12 @@
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
       </label>
       <div class="meta" id="meta"></div>
+      <div class="pagesize" id="pagesize" title="Games shown per page (scroll down to load more)">
+        <span class="pagesize-lbl">per page</span>
+        <button data-size="50">50</button>
+        <button data-size="100" class="on">100</button>
+        <button data-size="200">200</button>
+      </div>
     </div>
 
     <div class="bar-filters" id="barFilters">
@@ -449,6 +466,7 @@
         <tbody id="rows"></tbody>
       </table>
     </div>
+    <div class="loadmore" id="loadmore" style="display:none"></div>
     <div class="empty" id="empty" style="display:none"></div>
   </div>
 
@@ -498,6 +516,7 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:
                 trendFilter:"any", updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
                 hidden:new Set(),
+                pageSize:100, pagesShown:1,
                 wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, fullCounts:{} };
 
 // ----- helpers -----
@@ -682,8 +701,12 @@ function onRangeInput(which){
 
 // ----- rendering -----
 function render(){
-  const games = visibleGames();
+  const allGames = visibleGames();
   const tbody = $("#rows"), empty = $("#empty");
+  // Pagination: only render the first (pageSize × pagesShown) games; more load on scroll.
+  const limit = state.pageSize * state.pagesShown;
+  const games = allGames.slice(0, limit);
+  state._totalFiltered = allGames.length;   // for the meta line + sentinel logic
   const qs = games.map(activeQ).filter(v => v != null);
   const qLo = Math.min(...qs), qHi = Math.max(...qs);
   // log-scaled fill: matches the slider's log domain so a single huge-QHPP outlier
@@ -695,7 +718,7 @@ function render(){
     return 6 + 94 * (Math.log(v + 1) - lLo) / (lHi - lLo);
   };
 
-  if(!games.length){
+  if(!allGames.length){
     tbody.innerHTML = "";
     empty.style.display = "block";
     empty.innerHTML = "<b>No games match these filters.</b><br>Loosen the QHPP range, clear tags, or reset.";
@@ -811,8 +834,43 @@ function render(){
       <td data-label="QHPP" class="num pad tdqhpp">${qhpp}</td>
     </tr>`;
   }).join("");
+
+  // Infinite scroll: if more filtered games remain beyond the current page, show a
+  // sentinel row at the bottom; an IntersectionObserver loads the next page when it
+  // scrolls into view. Otherwise show nothing (we've rendered everything).
+  const remaining = state._totalFiltered - games.length;
+  const foot = $("#loadmore");
+  if(remaining > 0){
+    foot.style.display = "";
+    foot.textContent = `Showing ${games.length} of ${state._totalFiltered} — scroll for more…`;
+    ensurePageObserver();
+  } else {
+    foot.style.display = "none";
+  }
   renderMeta();
 }
+
+// Lazily create one IntersectionObserver that watches the loadmore sentinel. When it
+// becomes visible, bump pagesShown and re-render (which appends the next slice).
+let _pageObserver = null;
+function ensurePageObserver(){
+  if(_pageObserver) return;
+  const foot = $("#loadmore");
+  _pageObserver = new IntersectionObserver(entries => {
+    if(entries.some(e => e.isIntersecting)){
+      // Only grow if there's actually more to show.
+      if(state.pageSize * state.pagesShown < state._totalFiltered){
+        state.pagesShown += 1;
+        render();
+      }
+    }
+  }, {rootMargin: "400px"});   // start loading a bit before the user hits the very bottom
+  _pageObserver.observe(foot);
+}
+
+// Reset to page 1 whenever the filtered set changes (filter/sort/search/page-size change),
+// so the user starts at the top of the new result set rather than deep in a stale page.
+function resetPaging(){ state.pagesShown = 1; }
 
 setInterval(() => {
   document.querySelectorAll(".countdown[data-end]").forEach(el => {
@@ -904,19 +962,21 @@ function cycleTag(t, dir){
   update();
 }
 
-// central update for any non-range filter change (refits range + faceted counts)
-function update(){ recomputeDomain(); buildTagRail(); render(); syncURL(); }
+// central update for any non-range filter change (refits range + faceted counts).
+// Any filter/sort/search/page-size change resets to page 1 of the new result set.
+function update(){ resetPaging(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
 
 // ----- meta + footer -----
 function renderMeta(){
   const d = state.data;
-  const shown = $("#rows").children.length;
+  // Show the full filtered count, not just the rows currently paged into view.
+  const total = (state._totalFiltered != null) ? state._totalFiltered : $("#rows").children.length;
   const badge = d.sample ? '<span class="preview-badge">preview data</span>' : '';
   const when = d.sample ? '' : `${relTime(d.generated_at)} · `;
   const hid = state.hidden.size
     ? ` · <button id="unhide" class="unhide-link" title="Show the games you've hidden this session">${state.hidden.size} hidden ✕</button>`
     : '';
-  $("#meta").innerHTML = `<span class="n">${shown}</span> / ${d.games.length} games · ${when}USD${badge}${hid}`;
+  $("#meta").innerHTML = `<span class="n">${total}</span> / ${d.games.length} games · ${when}USD${badge}${hid}`;
   const ub = $("#unhide"); if(ub) ub.addEventListener("click", unhideAll);
 }
 function renderFoot(){
@@ -1064,6 +1124,7 @@ function syncURL(){
   if(state.wishOnly) p.set("wishonly", "1");
   if(state.sortKey !== "qhpp") p.set("sort", state.sortKey);
   if(!(state.sortKey === "qhpp" && state.sortDir === -1)) p.set("dir", state.sortDir < 0 ? "d" : "a");
+  if(state.pageSize !== 100) p.set("per", state.pageSize);
   if(state.qRangeTouched){
     p.set("qmin", state.qMinVal.toFixed(3));
     if(!state.qMaxUnbounded) p.set("qmax", state.qMaxVal.toFixed(3));
@@ -1100,6 +1161,8 @@ function loadFromURL(){
   setIf("wishonly", () => { state.wishOnly = true; });
   setIf("sort", v => { state.sortKey = v; });
   setIf("dir", v => { state.sortDir = v==="a" ? 1 : -1; });
+  setIf("per", v => { const n = parseInt(v,10); if([50,100,200].includes(n)){ state.pageSize = n;
+    document.querySelectorAll("#pagesize button").forEach(o => o.classList.toggle("on", o.dataset.size===String(n))); } });
   // QHPP range restored after domain is computed (see applyURLRange), just capture raw:
   state._pendingQMin = p.has("qmin") ? parseFloat(p.get("qmin")) : null;
   state._pendingQMax = p.has("qmax") ? parseFloat(p.get("qmax")) : null;
@@ -1151,6 +1214,13 @@ function init(data){
   });
 
   $("#q").addEventListener("input", e => { state.q = e.target.value; update(); });
+  // Page-size selector: change games-per-page, reset to page 1, re-render.
+  document.querySelectorAll("#pagesize button").forEach(b =>
+    b.addEventListener("click", () => {
+      state.pageSize = parseInt(b.dataset.size, 10);
+      document.querySelectorAll("#pagesize button").forEach(x => x.classList.toggle("on", x === b));
+      resetPaging(); render(); syncURL();
+    }));
   $("#saleOnly").addEventListener("click", e => {
     state.saleOnly = !state.saleOnly; e.currentTarget.setAttribute("aria-pressed", state.saleOnly); update();
   });
