@@ -1,0 +1,41 @@
+name: Refresh HLTB times -> hltb.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab
+  schedule:
+    # HLTB completion times are static, so this just fills in games that don't have an
+    # entry yet and never re-fetches. It's the slow part (scrapes howlongtobeat.com), so
+    # it runs out of band on its own schedule and never blocks the main scrape. Offset to
+    # :53 to avoid the other jobs; own concurrency group prevents overlap.
+    - cron: "53 */6 * * *"  # every 6 hours
+
+permissions:
+  contents: write           # commits hltb.json as it runs
+
+concurrency:
+  group: steam-hltb         # never overlap HLTB runs (separate from all other jobs)
+  cancel-in-progress: false
+
+jobs:
+  hltb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 135     # RUN_MINUTES=120 leaves headroom; HLTB is slow per game
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests howlongtobeatpy
+
+      - name: Configure git (script commits progress itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh HowLongToBeat times
+        env:
+          RUN_MINUTES: "120"
+        run: python hltb_refresh.py

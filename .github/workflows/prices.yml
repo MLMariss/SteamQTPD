@@ -1,0 +1,43 @@
+name: Refresh prices + sale dates -> prices.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab
+  schedule:
+    # Prices + sale end-dates are the fast-changing layer, and both endpoints are batched
+    # and cheap (~32 price calls + a few GetItems calls for the whole catalog), so we
+    # refresh often. Offset to :07 so it doesn't collide with the scraper (:17), recent
+    # reviews (:41), or HLTB; its own concurrency group prevents overlapping runs.
+    - cron: "7 */3 * * *"   # every 3 hours
+
+permissions:
+  contents: write           # commits prices.json as it runs
+
+concurrency:
+  group: steam-prices       # never overlap price runs (separate from scraper/recent/hltb)
+  cancel-in-progress: false
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits progress itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh prices and sale end-dates
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          QHPP_CC: "US"
+          RUN_MINUTES: "60"
+        run: python price_and_sale.py
