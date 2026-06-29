@@ -432,15 +432,31 @@ def save_catalog(c):
 
 
 def git_checkpoint(msg):
+    """Commit games.json + catalog.json and push, rebasing onto whatever the other jobs
+    (prices/hltb/tags/recent) have pushed in the meantime. With several Actions all
+    committing to main, a naked push gets rejected ('fetch first') whenever another job
+    pushed between our pull and our push — so we pull --rebase first and retry the
+    pull→push a few times in case another job pushes again mid-rebase. Each job owns
+    distinct files, so the rebase replays cleanly without conflicts."""
     if not IN_ACTIONS:
         return
     try:
         subprocess.run(["git", "add", "games.json", "catalog.json"], check=False)
-        staged = subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode
-        if staged != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            subprocess.run(["git", "push"], check=False)
-            log(f"  committed: {msg}")
+        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
+            return                                    # nothing to commit
+        subprocess.run(["git", "commit", "-m", msg], check=False)
+        for attempt in range(1, 5):                   # retry against concurrent pushers
+            subprocess.run(["git", "pull", "--rebase", "--autostash"], check=False)
+            push = subprocess.run(["git", "push"],
+                                  capture_output=True, text=True)
+            if push.returncode == 0:
+                log(f"  committed: {msg}")
+                return
+            log(f"  push rejected (attempt {attempt}/4), another job pushed; "
+                f"re-pulling and retrying")
+            time.sleep(2 * attempt)
+        log(f"  push still failing after retries; progress kept locally, "
+            f"next checkpoint will carry it")
     except Exception as e:
         log(f"  git checkpoint failed: {e}")
 

@@ -129,9 +129,12 @@ def git_checkpoint(msg):
         subprocess.run(["git", "add", "tags.json"], check=False)
         if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
             subprocess.run(["git", "commit", "-m", msg], check=False)
-            subprocess.run(["git", "pull", "--rebase", "--autostash"], check=False)
-            subprocess.run(["git", "push"], check=False)
-            log(f"  committed: {msg}")
+            for _attempt in range(1, 5):    # retry against other jobs pushing concurrently
+                subprocess.run(["git", "pull", "--rebase", "--autostash"], check=False)
+                if subprocess.run(["git", "push"], capture_output=True, text=True).returncode == 0:
+                    log(f"  committed: {msg}")
+                    break
+                time.sleep(2 * _attempt)
     except Exception as e:
         log(f"  git checkpoint failed: {e}")
 
