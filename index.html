@@ -213,6 +213,7 @@
 
   .countdown{font-family:var(--mono); font-size:13px; color:var(--coral)}
   .countdown.soon{font-weight:600}
+  .countdown.ended{color:var(--muted-2); font-weight:400; font-style:italic}
   .nosale{color:var(--muted-2)}
   .rel{font-family:var(--mono); font-size:13px; color:var(--muted)}
   .age{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px}
@@ -815,8 +816,17 @@ function render(){
 
 setInterval(() => {
   document.querySelectorAll(".countdown[data-end]").forEach(el => {
-    const c = fmtCountdown(parseInt(el.dataset.end,10));
-    if(c){ el.textContent = c.text; el.classList.toggle("soon", c.soon); }
+    const end = parseInt(el.dataset.end, 10);
+    if(end - NOW() <= 0){
+      // Sale ended while the tab was open. Per design: show "sale ended" here and leave
+      // the price/QHPP columns as-is; a reload re-normalizes to the clean base-price look.
+      el.textContent = "sale ended";
+      el.classList.add("soon", "ended");
+      el.removeAttribute("data-end");     // stop ticking this one
+    } else {
+      const c = fmtCountdown(end);
+      if(c){ el.textContent = c.text; el.classList.toggle("soon", c.soon); }
+    }
   });
 }, 1000);
 
@@ -1202,19 +1212,43 @@ function init(data){
   });
 }
 
-// load catalog + recent scores together, merge recent into each game by appid
+// Collapse a sale whose end date has passed: show base price, no discount, no QHPP
+// discount — entirely offline, no scraping. Returns true if it changed the game.
+function expireSaleIfEnded(game, now){
+  if(game.discount_end && game.discount_end <= now && game.discount_pct > 0){
+    game.discount_pct = 0;
+    if(game.price_initial != null) game.price_final = game.price_initial;
+    game._expired_sale = true;     // marks "sale just ended" for display until reload
+    game.discount_end = null;
+    return true;
+  }
+  return false;
+}
+
+// load catalog + recent scores + sale end-dates together, merge each by appid.
+// games.json: catalog/price/discount_pct. recent.json: 30-day scores.
+// sales.json: live discount_end (sole owner). Then expire any past-due sales offline.
 Promise.all([
   fetch("games.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("recent.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-]).then(([g, rj]) => {
+  fetch("sales.json",  {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+]).then(([g, rj, sj]) => {
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const recentMap = (rj && rj.recent) ? rj.recent : null;
-  if(recentMap){
-    data.games.forEach(game => {
+  const salesMap  = (sj && sj.sales)  ? sj.sales  : null;
+  const now = NOW();
+  data.games.forEach(game => {
+    if(recentMap){
       const r = recentMap[String(game.appid)];
       if(r){ game.recent_pct = r.recent_pct; game.recent_count = r.recent_count; game.recent_scraped_at = r.recent_scraped_at; }
-    });
-  }
+    }
+    // sales.json is the single source of truth for discount_end. If a game is on sale
+    // but has no entry (no dated end, or pruned), leave discount_end null -> shows
+    // "on sale" with no countdown, exactly as before.
+    game.discount_end = (salesMap && salesMap[String(game.appid)])
+      ? salesMap[String(game.appid)].discount_end : null;
+    expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
+  });
   init(data);
 });
 </script>

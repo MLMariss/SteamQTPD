@@ -234,55 +234,10 @@ def ensure_priority(catalog):
 # --------------------------------------------------------------------------- #
 # Per-game data sources
 # --------------------------------------------------------------------------- #
-def build_discount_expiration_map():
-    out = {}
-    data = get("https://store.steampowered.com/api/featuredcategories",
-               params={"cc": COUNTRY, "l": "english"}, expect_json=True)
-    if not isinstance(data, dict):
-        return out
-
-    def harvest(node):
-        if isinstance(node, dict):
-            if "id" in node and node.get("discount_expiration"):
-                try:
-                    out[int(node["id"])] = int(node["discount_expiration"])
-                except (TypeError, ValueError):
-                    pass
-            for v in node.values():
-                harvest(v)
-        elif isinstance(node, list):
-            for v in node:
-                harvest(v)
-
-    harvest(data)
-    log(f"Discount-expiration map: {len(out)} games in current specials")
-    return out
-
-
-_COUNTDOWN_PATTERNS = [
-    r'game_purchase_discount_countdown[^>]*data-end-?time="(\d{9,10})"',
-    r'"discount_end_date"\s*:\s*"?(\d{9,10})"?',
-    r'"discount_expiration"\s*:\s*"?(\d{9,10})"?',
-    r'discountCountdown\D{0,40}?(\d{9,10})',
-    r'data-untiltime="(\d{9,10})"',
-]
-
-
-def discount_end_from_page(appid):
-    html = get(f"https://store.steampowered.com/app/{appid}/",
-               params={"cc": COUNTRY, "l": "english"})
-    time.sleep(STEAM_DELAY)
-    if not html:
-        return None
-    for pat in _COUNTDOWN_PATTERNS:
-        m = re.search(pat, html)
-        if m:
-            ts = int(m.group(1))
-            if 1_500_000_000 < ts < 4_000_000_000:
-                return ts
-    if "game_purchase_discount_countdown" in html:
-        log(f"  appid {appid}: countdown present but no timestamp matched")
-    return None
+# NOTE: sale end-dates are no longer fetched here. They're owned by sales_refresh.py
+# (sales.json), which uses the batched IStoreBrowseService/GetItems endpoint — far
+# cheaper and more reliable than the old featuredcategories map + per-page HTML scrape
+# that used to live here, and decoupled from this slow, rate-limited main scrape.
 
 
 def tags_from_steamspy(appid):
@@ -391,7 +346,7 @@ def qhpp(avg_hours, rating_pct, price_usd):
 # Returns dict (released, scraped) | ("pending", date, ts) (not yet released ->
 # waiting room) | "skip" (non-game/delisted -> permanent) | None (transient error)
 # --------------------------------------------------------------------------- #
-def build_record(appid, discount_map, prev=None):
+def build_record(appid, prev=None):
     detail = get("https://store.steampowered.com/api/appdetails",
                  params={"appids": appid, "cc": COUNTRY, "l": "english"},
                  expect_json=True)
@@ -426,9 +381,10 @@ def build_record(appid, discount_map, prev=None):
         price_final = round(po.get("final", 0) / 100, 2) or None
         discount_pct = int(po.get("discount_percent", 0))
 
-    discount_end = None
-    if discount_pct > 0:
-        discount_end = discount_map.get(appid) or discount_end_from_page(appid)
+    # discount_end is no longer scraped here. It's owned by sales_refresh.py (sales.json),
+    # which polls IStoreBrowseService/GetItems frequently to track live end dates and
+    # extensions. The main scraper only records that a discount exists (discount_pct) and
+    # the prices; the frontend merges sales.json for the countdown.
 
     rating_pct, review_count = rating_from_reviews(appid)
     tags = tags_from_steamspy(appid) or [g["description"] for g in d.get("genres", [])
@@ -449,7 +405,7 @@ def build_record(appid, discount_map, prev=None):
         "url": f"https://store.steampowered.com/app/{appid}",
         "rating_pct": rating_pct, "review_count": review_count,
         "price_initial": price_initial, "price_final": price_final,
-        "discount_pct": discount_pct, "discount_end": discount_end, "is_free": is_free,
+        "discount_pct": discount_pct, "is_free": is_free,
         "release_date": release_date, "release_ts": release_ts, "tags": tags,
         "last_update_ts": last_update_ts,
         "hltb_main": h["main"], "hltb_extra": h["extra"], "hltb_complete": h["complete"],
@@ -625,7 +581,6 @@ def main():
         f"to-do: {len(new_ids)} new, {len(refresh_ids)} refresh")
     log(f"Budget: {RUN_MINUTES} min (refresh changed games first, then new coverage)")
 
-    discount_map = build_discount_expiration_map()
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})
     budget = RUN_MINUTES * 60
@@ -638,7 +593,7 @@ def main():
             log("Time budget reached; wrapping up.")
             break
         prev = processed.get(str(aid)) if kind == "refresh" else None
-        res = build_record(aid, discount_map, prev=prev)
+        res = build_record(aid, prev=prev)
         if isinstance(res, dict):
             res["scraped_at"] = int(time.time())
             processed[str(aid)] = res
