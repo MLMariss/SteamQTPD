@@ -447,8 +447,7 @@ def git_checkpoint(msg):
         subprocess.run(["git", "commit", "-m", msg], check=False)
         for attempt in range(1, 5):                   # retry against concurrent pushers
             subprocess.run(["git", "pull", "--rebase", "--autostash"], check=False)
-            push = subprocess.run(["git", "push"],
-                                  capture_output=True, text=True)
+            push = subprocess.run(["git", "push"], capture_output=True, text=True)
             if push.returncode == 0:
                 log(f"  committed: {msg}")
                 return
@@ -530,7 +529,13 @@ def select_work(master, has_lm, processed, catalog):
             changed = lm is not None and lm > sat
         else:
             changed = (now - sat) >= REFRESH_DAYS * 86400
-        if changed or rec.get("discount_pct", 0) > 0:
+        # Refresh ONLY when Steam's last_modified actually moved (or, without an API key,
+        # the fallback timer elapsed). We deliberately do NOT refresh just because a game
+        # is on sale: prices/discounts/sale-end-dates are owned by price_and_sale.py, which
+        # re-checks every on-sale game cheaply every few hours. Re-scraping on-sale games
+        # here would be pure waste — during a big sale that was ~1k+ needless refreshes per
+        # run, starving the new-game frontier.
+        if changed:
             cands.append((sat, aid))
     cands.sort()
     refresh_ids = [a for _, a in cands]
