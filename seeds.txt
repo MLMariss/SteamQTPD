@@ -1,12 +1,37 @@
 # OPTIONAL priority seeds — games to scrape FIRST, before the broad catalog.
-# Leave this empty to just accumulate the whole catalog (CATALOG_SEARCH in scraper.py).
-# These are resolved once on the first run and recorded in catalog.json.
+# Leave this empty (all lines commented) to just accumulate the whole catalog.
+#
+# This file is now LIVE: it's re-read every run and reconciled against catalog.json
+# (the ledger lives in catalog["seeds_ledger"]). You can add or remove lines anytime.
+#   * Add a line      -> its games are queued to the front on the next run.
+#   * Remove a line    -> "forget": it stops being prioritized. Already-scraped games
+#                         STAY in games.json (nothing is deleted); the ledger entry is
+#                         dropped so catalog.json stays clean.
+#   * Search TERMS/URLs stay live: re-resolved at most once every 24h, so they keep
+#     catching newly-released matching games over time.
+#
+# Edits are picked up at the START of a run AND mid-run: a running scrape re-checks
+# this file from origin at every checkpoint (~10 min), so a change applies within the
+# current run, not ~6h later. Trigger scrape.yml from the Actions tab only if you want
+# it truly instant.
+#
+# The release gate is ABSOLUTE: priority only changes the ORDER. An unreleased / coming-
+# soon match is never stored — it waits in the pending room and is scraped the moment
+# its release date passes. Seeds can't pull shell entries.
 #
 # One entry per line. Three kinds are accepted:
 #   1. A full Steam store SEARCH URL  (keeps all your filters/tags/sort)
 #   2. Plain search TERMS             (e.g.  survival craft)
 #   3. A bare numeric APP ID          (e.g.  892970)
 # Lines starting with # are ignored.
+#
+# FORCE a re-scrape: prefix any line with "!" to re-scrape its already-stored matches
+# once (e.g. to refresh stale data). It fires a single time, then latches so it does
+# NOT loop. Remove the "!" once done; re-adding it later forces again.
+#   !2495100              <- re-scrape this one stored game next run
+#   !survival craft       <- re-scrape every currently-stored match of this term once
+#
+# Every add / remove / re-resolve / force is logged to seeds_log.txt (committed).
 #
 # --- examples (delete / replace, or leave all commented to skip priority seeding) ---
 

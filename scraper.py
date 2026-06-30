@@ -41,6 +41,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,7 +57,8 @@ import requests
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"          # display data + scraped state (committed)
 CATALOG_FILE = HERE / "catalog.json"      # tiny state: last_sync, skip list, priority (committed)
-SEEDS_FILE = HERE / "seeds.txt"           # OPTIONAL games to scrape FIRST
+SEEDS_FILE = HERE / "seeds.txt"           # OPTIONAL games to scrape FIRST (human-edited only)
+SEEDS_LOG_FILE = HERE / "seeds_log.txt"   # append-only audit of seed reconciliations (scraper-owned)
 
 # Free Steam Web API key from https://steamcommunity.com/dev/apikey (GitHub secret
 # STEAM_API_KEY). Without it, falls back to the keyless full list (all app types,
@@ -68,6 +70,7 @@ CHECKPOINT_SECONDS = 600        # git-commit progress at least this often during
 TIME_BUFFER = 120               # stop scraping this long before the budget, to commit
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
+SEED_RESOLVE_TTL = 24 * 3600    # live term/URL seeds: re-resolve at most once per this interval
 
 # TOP_TAGS / SteamSpy tags moved to tags_refresh.py (it was the slowest per-game call).
 COUNTRY = "us"                  # cc=us => USD prices
@@ -214,28 +217,181 @@ def fetch_search_page(params, start):
     return ids, total
 
 
-def ensure_priority(catalog):
-    if catalog.get("priority") is not None:
+def parse_seed_line(raw):
+    """Parse one seeds.txt line. Returns (key, kind, force, payload) or None.
+
+    Three seed kinds are accepted, each optionally prefixed with '!' to FORCE a
+    re-scrape of already-stored matches (one-shot per edit; see reconcile_seeds):
+      * bare numeric APP ID        -> kind 'id',   payload = int(appid)
+      * full Steam store SEARCH URL -> kind 'url',  payload = the URL
+      * plain search TERMS          -> kind 'term', payload = the term string
+
+    `key` is a stable identity used in the ledger. It deliberately EXCLUDES the '!'
+    so toggling force is never seen as add+remove (it would re-resolve/re-log for
+    nothing). For URLs the query is canonicalized (sorted params, minus volatile
+    start/count/infinite) so cosmetic URL edits don't fork the identity.
+    """
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        return None
+    force = line.startswith("!")
+    if force:
+        line = line[1:].strip()
+        if not line:
+            return None
+    if line.isdigit():
+        return (f"id:{int(line)}", "id", force, int(line))
+    if line.startswith("http"):
+        u = urlparse(line)
+        q = parse_qs(u.query)
+        for k in ("start", "count", "infinite"):
+            q.pop(k, None)
+        canon = "&".join(f"{k}={','.join(q[k])}" for k in sorted(q))
+        return (f"url:{u.path}?{canon}", "url", force, line)
+    term = " ".join(line.lower().split())
+    return (f"term:{term}", "term", force, line)
+
+
+def resolve_seed(kind, payload):
+    """Resolve a seed to a list of appids. Bare IDs cost ZERO network; term/URL seeds
+    page the storefront search (same path the old resolver used)."""
+    if kind == "id":
+        return [int(payload)]
+    params = search_params(payload); start = 0
+    ids = []
+    for _ in range(10):
+        page, total = fetch_search_page(params, start)
+        if not page:
+            break
+        ids.extend(page); start += 100
+        if total and start >= total:
+            break
+    return list(dict.fromkeys(ids))
+
+
+def seed_log(lines):
+    """Append human-readable reconciliation events to seeds_log.txt (scraper-owned,
+    append-only; committed alongside catalog.json). No-op when there's nothing to say."""
+    if not lines:
         return
-    pr = []
-    if SEEDS_FILE.exists():
-        for raw in SEEDS_FILE.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.isdigit():
-                pr.append(int(line))
-            else:
-                params = search_params(line); start = 0
-                for _ in range(10):
-                    ids, total = fetch_search_page(params, start)
-                    if not ids:
-                        break
-                    pr.extend(ids); start += 100
-                    if total and start >= total:
-                        break
-    catalog["priority"] = list(dict.fromkeys(pr))
-    log(f"Priority seeds resolved: {len(catalog['priority'])} appids")
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    block = "".join(f"{stamp}  {ln}\n" for ln in lines)
+    with open(SEEDS_LOG_FILE, "a", encoding="utf-8") as fh:
+        fh.write(block)
+    for ln in lines:
+        log(f"  seed: {ln}")
+
+
+def fetch_origin_seeds():
+    """Return origin/main's current seeds.txt content, so a mid-run web edit is picked
+    up without waiting for the next cron. Read-only: fetches the remote ref and reads
+    the blob via `git show` — never touches the working tree or index, so the scraper
+    still only ever *commits* games.json/catalog.json/seeds_log.txt (seeds.txt stays
+    human-only). Returns None outside Actions or on any git error (caller then skips)."""
+    if not IN_ACTIONS:
+        return None
+    try:
+        subprocess.run(["git", "fetch", "origin", "main"], check=False,
+                       capture_output=True)
+        r = subprocess.run(["git", "show", "origin/main:seeds.txt"],
+                           capture_output=True, text=True)
+        return r.stdout if r.returncode == 0 else None
+    except Exception as e:
+        log(f"  seed origin-fetch failed: {e}")
+        return None
+
+
+def reconcile_seeds(catalog, processed, seeds_text=None):
+    """Declarative seed reconciliation (replaces the old one-shot ensure_priority).
+
+    Every run we diff the seed list against catalog['seeds_ledger'] FROM SCRATCH, so the
+    state self-heals against mid-run edits and concurrent pushes:
+      * ADDED line     -> resolve, store a ledger entry, queue its ids.
+      * REMOVED line   -> FORGET: drop the ledger entry only. games.json is never
+                          touched; the games just stop being prioritized.
+      * live term/URL  -> re-resolved when older than SEED_RESOLVE_TTL; newly matched
+                          ids are merged in (so seeds keep catching new releases).
+      * '!' force      -> one-shot per edit: queue this seed's already-STORED matches
+                          for a re-scrape, then latch (forced_applied) so it does NOT
+                          loop every run; dropping the '!' resets the latch so re-adding
+                          it later forces again.
+
+    seeds_text: if given, reconcile against that text instead of reading SEEDS_FILE.
+    Used for the mid-run re-check against origin/main's seeds.txt (see fetch_origin_seeds)
+    so a web edit lands in the CURRENT run; at run start it's None (reads the local file).
+
+    catalog['priority'] is then REBUILT as the union of all active seeds' ids (minus
+    what's already stored/skipped), so it self-shrinks and never accumulates stale ids.
+    The release gate is unaffected: priority only orders new_ids; build_record still
+    sends any unreleased match to the pending waiting room, and ripe-promotion scrapes
+    it once its date passes. The ledger only ever holds entries for CURRENTLY-ACTIVE
+    seeds, which keeps catalog.json clean by construction.
+    """
+    now = int(time.time())
+    ledger = dict(catalog.get("seeds_ledger") or {})
+    stored = {int(a) for a in processed}
+    events = []
+
+    # Parse the current seed list into {key: (kind, force, payload)}; last dup line wins.
+    if seeds_text is None:
+        seeds_text = SEEDS_FILE.read_text(encoding="utf-8") if SEEDS_FILE.exists() else ""
+    active = {}
+    for raw in seeds_text.splitlines():
+        parsed = parse_seed_line(raw)
+        if parsed:
+            key, kind, force, payload = parsed
+            active[key] = (kind, force, payload)
+
+    force_refresh = set(int(a) for a in (catalog.get("force_refresh") or []))
+
+    # 1. REMOVED seeds -> forget (drop entry; never purge games.json).
+    for key in [k for k in ledger if k not in active]:
+        ent = ledger.pop(key)
+        events.append(f"removed {key} (forget; {len(ent.get('ids', []))} ids "
+                      f"deprioritized, games kept)")
+
+    # 2. ADDED / refreshed / force, for every currently-active seed.
+    for key, (kind, force, payload) in active.items():
+        ent = ledger.get(key)
+        if ent is None:                                   # ADDED
+            ids = resolve_seed(kind, payload)
+            ent = {"kind": kind, "resolved_ts": now, "ids": ids,
+                   "forced_applied": False}
+            ledger[key] = ent
+            events.append(f"added {key} (+{len(ids)} ids queued)")
+        elif kind in ("term", "url") and (now - ent.get("resolved_ts", 0)) >= SEED_RESOLVE_TTL:
+            fresh = resolve_seed(kind, payload)            # live re-resolution
+            old = set(ent.get("ids", []))
+            merged = list(dict.fromkeys(list(ent.get("ids", [])) + fresh))
+            added_n = len(set(merged) - old)
+            ent["ids"] = merged; ent["resolved_ts"] = now
+            if added_n:
+                events.append(f"re-resolved {key} (+{added_n} new match(es))")
+
+        # One-shot force latch.
+        if force and not ent.get("forced_applied"):
+            requeue = [a for a in ent.get("ids", []) if a in stored]
+            force_refresh.update(requeue)
+            ent["forced_applied"] = True
+            events.append(f"force {key} ({len(requeue)} stored match(es) re-queued; "
+                          f"remove '!' when done)")
+        elif not force and ent.get("forced_applied"):
+            ent["forced_applied"] = False                  # reset latch; '!' can re-trigger
+
+    # 3. Rebuild priority declaratively from the surviving (active) ledger entries.
+    skipped = set(catalog.get("skipped") or [])
+    pri = []
+    for ent in ledger.values():
+        for a in ent.get("ids", []):
+            if a not in stored and a not in skipped:
+                pri.append(a)
+    catalog["priority"] = list(dict.fromkeys(pri))
+    catalog["seeds_ledger"] = ledger
+    catalog["force_refresh"] = sorted(force_refresh)
+
+    seed_log(events)
+    log(f"Seeds: {len(active)} active line(s), {len(catalog['priority'])} priority appid(s), "
+        f"{len(force_refresh)} forced re-scrape(s) pending")
 
 
 # --------------------------------------------------------------------------- #
@@ -409,7 +565,12 @@ def load_catalog():
             c = json.loads(CATALOG_FILE.read_text(encoding="utf-8"))
             c.setdefault("last_sync", 0)
             c.setdefault("skipped", [])
-            c.setdefault("priority", None)
+            # priority is now REBUILT every run by reconcile_seeds, so its stored value
+            # is just a cache. (Legacy catalogs froze it once; that's why a late-added
+            # seed never appeared. Reconciliation ignores the stale value and recomputes.)
+            c.setdefault("priority", [])
+            c.setdefault("seeds_ledger", {})     # {seed_key: {kind, resolved_ts, ids, forced_applied}}
+            c.setdefault("force_refresh", [])    # appids queued for a one-shot forced re-scrape
             # pending = unreleased games seen but not yet out: {appid: release_ts|null}.
             # Normalize from any legacy list form to the dict form we use now.
             pend = c.get("pending")
@@ -422,7 +583,8 @@ def load_catalog():
             return c
         except (ValueError, TypeError):
             pass
-    return {"last_sync": 0, "skipped": [], "priority": None, "pending": {}}
+    return {"last_sync": 0, "skipped": [], "priority": [], "pending": {},
+            "seeds_ledger": {}, "force_refresh": []}
 
 
 def save_catalog(c):
@@ -442,7 +604,7 @@ def git_checkpoint(msg):
     if not IN_ACTIONS:
         return
     try:
-        subprocess.run(["git", "add", "games.json", "catalog.json"], check=False)
+        subprocess.run(["git", "add", "games.json", "catalog.json", "seeds_log.txt"], check=False)
         if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
             return                                    # nothing to commit
         subprocess.run(["git", "commit", "-m", msg], check=False)
@@ -524,9 +686,16 @@ def select_work(master, has_lm, processed, catalog):
                + [a for a in fresh if a not in pri_set
                   and a not in ripe_set and a not in touched_set])
 
+    # Forced re-scrapes (from '!'-prefixed seeds) jump the refresh queue even though
+    # last_modified hasn't moved. Only stored appids make sense to force-refresh.
+    forced = [int(a) for a in (catalog.get("force_refresh") or []) if str(a) in processed]
+    forced_set = set(forced)
+
     cands = []
     for k, rec in processed.items():
         aid = int(k); sat = rec.get("scraped_at", 0)
+        if aid in forced_set:
+            continue                       # queued explicitly up front; don't double-add
         if has_lm:
             lm = master.get(aid)
             changed = lm is not None and lm > sat
@@ -541,7 +710,7 @@ def select_work(master, has_lm, processed, catalog):
         if changed:
             cands.append((sat, aid))
     cands.sort()
-    refresh_ids = [a for _, a in cands]
+    refresh_ids = forced + [a for _, a in cands]
     return new_ids, refresh_ids
 
 
@@ -552,7 +721,7 @@ def main():
     start = time.time()
     processed = load_games()
     catalog = load_catalog()
-    ensure_priority(catalog)
+    reconcile_seeds(catalog, processed)
 
     master, has_lm = fetch_app_universe()
     if not master:
@@ -567,21 +736,55 @@ def main():
 
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})
+    # Durable forced-refresh queue: an '!'-seed's stored matches stay queued across runs
+    # until actually re-scraped, so a budget-limited run doesn't drop them. The
+    # forced_applied latch in the ledger stops them being re-added (no loop).
+    force_set = set(int(a) for a in (catalog.get("force_refresh") or []))
     budget = RUN_MINUTES * 60
     last_commit = time.time()
     n_new = n_ref = n_pend = 0
 
-    work = [(a, "refresh") for a in refresh_ids] + [(a, "new") for a in new_ids]
-    for aid, kind in work:
+    work = deque([(a, "refresh") for a in refresh_ids] + [(a, "new") for a in new_ids])
+    queued = {a for a, _ in work}          # every appid ever placed in the queue
+    handled = set()                        # every appid already popped + processed
+
+    def inject_new_seeds():
+        """Mid-run pickup: re-read seeds.txt from origin/main and splice any newly-added
+        priorities to the FRONT of the queue, so a web edit lands in THIS run instead of
+        waiting ~6h for the next cron. Idempotent / no-op when nothing changed. Removals
+        and force edits are honored here too (reconcile is fully declarative)."""
+        text = fetch_origin_seeds()
+        if text is None:
+            return
+        reconcile_seeds(catalog, processed, seeds_text=text)
+        added_new = [a for a in catalog.get("priority", [])
+                     if a not in queued and a not in handled]
+        force_set.update(a for a in catalog.get("force_refresh", []) if a not in handled)
+        added_forced = [a for a in catalog.get("force_refresh", [])
+                        if a not in queued and a not in handled and str(a) in processed]
+        for a in reversed(added_new):              # newest priority appids first
+            work.appendleft((a, "new")); queued.add(a)
+        for a in reversed(added_forced):
+            work.appendleft((a, "refresh")); queued.add(a)
+        if added_new or added_forced:
+            log(f"  mid-run seed pickup: +{len(added_new)} new, "
+                f"+{len(added_forced)} forced re-scrape queued to front")
+
+    while work:
         if budget - (time.time() - start) < TIME_BUFFER:
             log("Time budget reached; wrapping up.")
             break
+        aid, kind = work.popleft()
+        if aid in handled:                 # dedup (e.g. re-injected after already done)
+            continue
+        handled.add(aid)
         prev = processed.get(str(aid)) if kind == "refresh" else None
         res = build_record(aid, prev=prev)
         if isinstance(res, dict):
             res["scraped_at"] = int(time.time())
             processed[str(aid)] = res
             pending.pop(aid, None)          # graduated from waiting room (if it was there)
+            force_set.discard(aid)          # forced re-scrape satisfied (if it was queued)
             n_ref += kind == "refresh"; n_new += kind == "new"
         elif isinstance(res, tuple) and res and res[0] == "pending":
             # Not out yet -> waiting room. Store its release_ts (or None for TBA) so
@@ -596,12 +799,15 @@ def main():
         if time.time() - last_commit > CHECKPOINT_SECONDS:
             catalog["skipped"] = sorted(skipped)
             catalog["pending"] = pending
+            catalog["force_refresh"] = sorted(force_set)
             save_games(processed); save_catalog(catalog)
             git_checkpoint(f"checkpoint: {len(processed)} games stored")
+            inject_new_seeds()              # after the push, pull any seeds.txt edit into this run
             last_commit = time.time()
 
     catalog["skipped"] = sorted(skipped)
     catalog["pending"] = pending
+    catalog["force_refresh"] = sorted(force_set)
     catalog["last_sync"] = int(start)
     save_games(processed); save_catalog(catalog)
     git_checkpoint(f"scrape: {len(processed)} games (+{n_new} new, {n_ref} refreshed, "
