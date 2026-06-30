@@ -103,19 +103,23 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
 
 ### 2.2 Known problems — real gaps worth engineering effort
 
-- **🔴 T5 — HLTB coverage is poor (~90% no-match) and there's no re-scrape yet.** Of
-  ~17.7k HLTB entries (2026-06-30), **~16.0k are genuine no-matches** — HLTB has no page
-  for most of Steam's long tail, so this is largely irreducible. But an unknown slice are
-  *recoverable* misses (oddly-named games HLTB has under a different title) plus
-  **partial entries** that may have gained data since. The HLTB job currently only
-  fetches games it has **never** touched — it's still completing its first full pass and
-  never retries. **Planned re-scrape pass**, in priority order once the first pass is
-  done: (1) partial entries (≥1 real value), (2) blank entries (retry for newly-added
-  HLTB titles), (3) full-real entries (low-yield change check). The `fetched_at` stamp
-  and the `raw`/overwrite model are already the groundwork — real values overwrite,
-  estimates recompute, blank re-fetches don't wipe data. Could also improve matching
-  (currently title-similarity ≥ 0.65) with appid/year disambiguation. (§5.3 no-match
-  reality; §8 raw model. Detail: §14 → T5.)
+- **🟢 ~~T5 — HLTB coverage: re-scrape pass + matching decision.~~** Of
+  ~19.5k HLTB entries (2026-06-30: 656 full-real, 1,194 partial, 17,646 blank), most blanks
+  are genuine no-matches — HLTB has no page for most of Steam's long tail, so this is largely
+  irreducible. **Part (a) re-scrape pass — done (2026-06-30):** `hltb_refresh.py` now re-fetches
+  existing entries with leftover budget once the first pass is complete, in priority order
+  partial → blank → full (oldest `fetched_at` first within each), gated by per-bucket staleness
+  windows (`RESCRAPE_PARTIAL_DAYS=14` / `RESCRAPE_BLANK_DAYS=60` / `RESCRAPE_FULL_DAYS=365`) so
+  no title is re-hit every run. Re-fetch reuses the same `hltb_for`→`make_entry` path, so the
+  `raw`/overwrite model merges cleanly — real values overwrite, estimates recompute, and a
+  transient error leaves the existing entry untouched (never overwrites good data with a blank).
+  **Part (b) better matching — decided against (2026-06-30):** `HLTB_MIN_SIMILARITY` stays at
+  **0.65** by choice. Loosening the threshold or adding fuzzy fallbacks risks pulling in *wrong*
+  games that silently corrupt data, and there's no ground truth to validate matches against. A
+  tight match that yields a blank is safer than a loose one that yields a wrong answer — so the
+  remaining no-matches are accepted as the correct trade for now. (§5.3 no-match reality; §8 raw
+  model. Detail: §14 → T5.)
+  (§5.3 no-match reality; §8 raw model. Detail: §14 → T5.)
 
 - **🔴 T6 — Missing / broken thumbnails, especially for adult-content games.**
   Thumbnails are derived **100% client-side from the appid** (`capsule_231x87.jpg`, with
@@ -381,10 +385,12 @@ howlongtobeat.com **once**, since completion times are static. This was historic
 the slowest part of the whole pipeline (2–10 s per game, sometimes hanging), which is
 why it was pulled out of the main scraper into its own slow background job.
 
-It only fetches games it has never resolved (`appid not in hltb`), and records a
-genuine no-match as a blank entry so it doesn't re-search forever. It hits
-howlongtobeat.com, **not** Steam, so it doesn't compete for the storefront rate
-budget — safe to run near-continuously.
+It fetches never-resolved games first (`appid not in hltb`), recording a genuine
+no-match as a blank entry so it doesn't re-search it every run. Once that first pass is
+done, spare budget drives a **re-scrape pass** over existing entries (partial → blank →
+full, oldest-first, on per-bucket staleness windows — see §2 → T5) to recover data HLTB
+added later. It hits howlongtobeat.com, **not** Steam, so it doesn't compete for the
+storefront rate budget — safe to run near-continuously.
 
 **The no-match rate is high, and that's expected — not a bug.** As of 2026-06-30,
 ~17.7k of ~23.2k games had an HLTB entry, and of those entries **~16.0k (≈90%) are
@@ -992,28 +998,53 @@ It pinned `checkout@v4` / `setup-python@v5` while every recurring job is on `@v5
 so nothing stale remains to pin. All surviving workflows are on the current action
 versions. (Workflows: §9.)
 
-### T5 — HLTB re-scraping + better matching (§2.2)
+### T5 — HLTB re-scraping + better matching (§2.2) — ✅ done 2026-06-30 (re-scrape built; matching kept tight by decision)
 
-Currently the HLTB job only fetches games it has *never* touched — it finishes one full
-pass over the whole catalog before any re-scraping, and never retries. Two distinct
-improvements:
+The HLTB job used to fetch only games it had *never* touched — finishing one full pass
+over the whole catalog, then idling forever (it would exit in seconds every run with
+nothing to do). Two distinct improvements; (a) is now implemented, (b) is still open.
 
-**(a) Re-scrape pass.** Once the first pass is complete, retry in priority order:
-**(1) partial entries** (≥1 real value — likely more data exists now),
-**(2) blank entries** (no match first time — retry for newly-added HLTB titles),
-**(3) full-real entries** (re-check for changes only — lowest yield). The `fetched_at`
-stamp (added in §8) is the groundwork: it lets that job order by staleness within each
-bucket. The overwrite-into-`raw` logic the data model already supports makes this clean
-— real values overwrite, estimates recompute, blank re-fetches don't wipe existing data.
+**(a) Re-scrape pass — ✅ done.** `hltb_refresh.py` now runs a second phase after the
+first pass: when the never-seen queue is exhausted *and* time-budget remains, it
+re-fetches existing entries in priority order **partial → blank → full**, oldest
+`fetched_at` first within each bucket. Yield drives the order (measured against the live
+corpus): partials are ~17× the hits-per-minute of blanks (HLTB already has the page, so
+missing fields fill in over time), blanks are mostly irreducible, full triples almost
+never change. Per-bucket **staleness windows** gate eligibility so no title is re-hit
+every run — `RESCRAPE_PARTIAL_DAYS=14`, `RESCRAPE_BLANK_DAYS=60`, `RESCRAPE_FULL_DAYS=365`
+(config knobs at the top of the file). The mechanism:
+- `build_rescrape_queue()` classifies each entry via `HE.raw_of` (real-value count),
+  filters out anything refetched within its window, and sorts oldest-first per bucket.
+- Each re-fetch reuses the **identical** `hltb_for`→`HE.make_entry` path the first pass
+  uses, so the `raw`/overwrite model merges cleanly: real values overwrite `raw`,
+  estimates recompute from the new `raw`, and every refetch restamps `fetched_at`.
+- **Transient-error safety:** `hltb_for` returns `None` on error; on a re-scrape that
+  means *keep the existing entry untouched* — good data is never overwritten with a blank.
+- **First-pass priority preserved:** the re-scrape phase only runs if the new-game queue
+  finished with budget left; if new games consume the whole run, re-scrape is never
+  reached. (At the 2026-06-30 state — ~4.8k new games left, ~48 min at 0.6s — the first
+  pass now fits inside one 110-min run, so re-scrape activates the very next run and
+  clears all 1,194 partials in run 1, then self-throttles to the slow blank window.)
+Verified with a mocked-HLTB test harness covering: first-pass-then-rescrape ordering,
+budget-exhaustion skip, partial-gains-data, the transient-error guard, and staleness
+gating. Commit/log wording distinguishes new scrapes from re-scrapes for Actions-tab
+visibility (no data-shape change — entries are still overwritten in place, one value set
+per game). `HLTB_DELAY` is unchanged (0.6 s, matched to HLTB's throttle).
 
-**(b) Better matching.** ~90% of entries are no-matches (§5.3) — mostly irreducible
-(HLTB genuinely lacks the page), but some are recoverable misses where the title-only
-fuzzy match (`HLTB_MIN_SIMILARITY = 0.65`) fails on an oddly-named or
-differently-punctuated game. Options: disambiguate with release **year** or platform
-when HLTB returns multiple candidates; try a normalized/cleaned title (strip edition
-suffixes, trademark symbols); or fall back to a secondary lookup for the borderline
-0.5–0.65 similarity band rather than discarding it outright. (No-match reality: §5.3;
-`raw` model: §8.)
+**(b) Better matching — ✅ decided against (keep tight).** Most blank entries are
+no-matches (§5.3) — mostly irreducible (HLTB genuinely lacks the page), and some are
+recoverable misses where the title-only fuzzy match (`HLTB_MIN_SIMILARITY = 0.65`) fails
+on an oddly-named or differently-punctuated game. The candidate fixes — disambiguating
+with release year/platform, normalizing titles (stripping edition suffixes / trademark
+symbols), or accepting the borderline 0.5–0.65 similarity band — were all weighed and
+**deliberately rejected for now.** Rationale: each one loosens matching, and a loose
+match can pull in the *wrong* game, writing plausible-but-incorrect completion times into
+`hltb.json` with no ground truth to catch it. A tight threshold that returns a blank is
+strictly safer than a loose one that returns a confident wrong answer — a blank is
+visibly missing, a wrong match silently corrupts QHPP. So `HLTB_MIN_SIMILARITY` stays at
+0.65 and the remaining no-matches are accepted as the correct trade. This can be
+revisited if a safe disambiguation signal (e.g. exact appid↔HLTB mapping) becomes
+available, but there's no action to take today. (No-match reality: §5.3; `raw` model: §8.)
 
 ### T6 — Missing / broken thumbnails, especially adult-content games (§2.2)
 
