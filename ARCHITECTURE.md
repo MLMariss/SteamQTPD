@@ -89,14 +89,17 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
   `.py`/`.yml`; both scripts still compile. Comment-and-file-deletion only — no behavior
   change. (Ownership: §4. Detail: §14 → T2.)
 
-- **🔴 T3 — Delete the spent one-off scripts + workflows.** `hltb_backfill.py` +
-  `backfill-hltb.yml` and `backfill_updates.py` + `backfill.yml` have already run and
-  served their purpose. Removing them also resolves T4 for free. Keep `hltb_estimate.py`
-  — the live refresher imports it permanently. (Scripts: §5.8; workflows: §9. Detail: §14 → T3.)
+- **🟢 ~~T3 — Delete the spent one-off scripts + workflows.~~** `hltb_backfill.py` +
+  `backfill-hltb.yml` and `backfill_updates.py` + `backfill.yml` had already run and
+  served their purpose. **Done (2026-06-30):** all four deleted. `hltb_estimate.py` kept
+  (the live `hltb_refresh.py` imports it). Verified nothing else imports the removed
+  scripts and no surviving workflow references them; 5 recurring workflows remain.
+  (Scripts: §5.8; workflows: §9. Detail: §14 → T3.)
 
-- **🔴 T4 — Bump `backfill-hltb.yml` action versions** *if it's kept* rather than deleted
-  per T3. It still pins `checkout@v4` / `setup-python@v5` while every recurring job is on
-  `@v5` / `@v6`. Deleting it (T3) is the simpler resolution. (Workflows: §9. Detail: §14 → T4.)
+- **🟢 ~~T4 — Bump `backfill-hltb.yml` action versions.~~** It pinned `checkout@v4` /
+  `setup-python@v5` while every recurring job is on `@v5` / `@v6`. **Resolved by T3:**
+  the workflow was deleted outright (2026-06-30), so there's nothing left to bump.
+  (Workflows: §9. Detail: §14 → T4.)
 
 ### 2.2 Known problems — real gaps worth engineering effort
 
@@ -149,8 +152,7 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
 ### 2.3 Optional / nice-to-have
 
 - **🔵 T8 — Factor out the duplicated `get()` and `git_checkpoint` helpers.** Every
-  scraping script reimplements the same HTTP retry/backoff and push-retry logic (and the
-  update-detection heuristic is duplicated between `scraper.py` and `backfill_updates.py`).
+  scraping script reimplements the same HTTP retry/backoff and push-retry logic.
   This is currently a deliberate "each job is a self-contained single file" trade. Only
   worth doing if a contract needs to change in lockstep across jobs; weigh against the
   simplicity the duplication buys. (Resilience: §9. Detail: §14 → T8.)
@@ -342,8 +344,9 @@ classifies them: the `patchnotes` tag is the strong signal; a keyword allow-list
 the fallback; and a block-list (`_NOT_UPDATE`: sale, discount, wishlist, launch,
 trailer, …) suppresses obvious non-updates. It's deliberately good-enough, not exact —
 `last_update_ts` drives refresh-priority and the recent-review queue, where occasional
-mislabeling is harmless. **This exact logic is duplicated in `backfill_updates.py`** so
-backfilled values match live ones (see §14 — a candidate for de-duplication).
+mislabeling is harmless. (This logic was once duplicated in `backfill_updates.py` so
+backfilled values matched live ones; that one-off was removed in §2 → T3, so the live
+heuristic in `scraper.py` is now the sole copy.)
 
 ### 5.2 `price_and_sale.py` — the pricing layer
 
@@ -401,9 +404,10 @@ threshold), `RUN_MINUTES = 120`, `CHECKPOINT_SECONDS = 300`.
 
 ### 5.4 `hltb_estimate.py` — shared HLTB estimation logic
 
-Not a job — a **shared module** imported by both `hltb_refresh.py` (live, for new
-games) and `hltb_backfill.py` (one-time sweep). Centralizing it means the two paths
-can never disagree. Full design in §8.
+Not a job — a **shared module** imported by `hltb_refresh.py` (live, for new games). It
+was also used by the one-time `hltb_backfill.py` sweep (since removed, §2 → T3); keeping
+the fill logic in one module means the live path and any future re-sweep can never
+disagree. Full design in §8.
 
 ### 5.5 `tags_refresh.py` — SteamSpy user tags
 
@@ -478,16 +482,16 @@ stored; the browser loads them directly by appid.
 
 These are run-once utilities (idempotent — safe to re-run; they no-op on clean data):
 
-- **`hltb_backfill.py`** — one-time sweep that rewrote every existing `hltb.json`
-  entry to add `raw`/`est`/`fetched_at` and fix the historically-skewed `avg`. See §8.
-  Already run; retained for reference / re-runs.
-- **`backfill_updates.py`** — one-off fill of `last_update_ts` for games scraped
-  before the scraper started recording it. Uses the News API (cheap, separate budget).
-  Already run.
 - **`cleanup_shells.py`** — removes "empty shell" entries (games scraped while still
   unreleased, carrying no real data) from `games.json`, filing them back into
   `catalog["pending"]` so the waiting-room promotes them when they release. Free and
   released-but-thin games are kept.
+
+> Two earlier one-offs lived here and were removed once spent (2026-06-30, see §2 → T3):
+> `hltb_backfill.py` (one-time sweep that rewrote every `hltb.json` entry to add
+> `raw`/`est`/`fetched_at` and fix the historically-skewed `avg`) and `backfill_updates.py`
+> (one-off fill of `last_update_ts` for games scraped before the scraper recorded it).
+> The live estimation logic they leaned on survives in `hltb_estimate.py` (§5.4).
 
 Once their work is done and committed, the backfill scripts (and their one-off
 workflows) can be deleted from the repo.
@@ -674,14 +678,16 @@ data is found later."* When an estimated column is *also* the selected QHPP metr
 gold (selection) wins for the number but the dotted underline stays so it still reads
 as estimated. A null value is never marked estimated even if its key is in `est`.
 
-### The one-time backfill
+### The one-time backfill (historical)
 
 `hltb_backfill.py` swept the existing `hltb.json` once to apply all of the above to
 games already in the file (the live refresher fixes new games at the source). It:
-adds `raw`/`est`/`fetched_at`, fills missing/zero values, corrects `avg`. It's
-**idempotent** (estimates derive from `raw`, so re-running is a no-op) and was run via
-the `backfill-hltb.yml` one-off workflow, which shares the `steam-hltb` concurrency
-group so it can never write `hltb.json` at the same time as the refresher.
+added `raw`/`est`/`fetched_at`, filled missing/zero values, corrected `avg`. It was
+**idempotent** (estimates derive from `raw`, so re-running was a no-op) and ran via
+the `backfill-hltb.yml` one-off workflow, which shared the `steam-hltb` concurrency
+group so it could never write `hltb.json` at the same time as the refresher. Both the
+script and its workflow were **deleted once spent** (2026-06-30, §2 → T3); this section
+is kept as a record of the migration.
 
 Result of the run (historical, at backfill time): **387 entries received estimates,
 347 skewed averages corrected, 7,600 genuine no-match blanks left untouched, 327
@@ -699,9 +705,9 @@ All workflows live in `.github/workflows/`. Each is `workflow_dispatch` (manual)
 **`actions/setup-python@v6`** (both Node 24-based — bumped off the deprecated Node 20).
 v5/v6 specifically, rather than the newest checkout v6/v7, because v5 keeps the
 credential-persistence behavior the commit-and-push flow relies on without requiring a
-newer runner. **Exception:** the one-off `backfill-hltb.yml` still pins the older
-`checkout@v4` / `setup-python@v5` — harmless (it's a manual one-shot that's already
-served its purpose), but worth bumping if it's ever kept rather than deleted (§2 → T4).
+newer runner. *(The old one-off `backfill-hltb.yml` pinned the stale `checkout@v4` /
+`setup-python@v5`; it was deleted rather than bumped — §2 → T3/T4 — so all remaining
+workflows are on the current pins.)*
 
 | Workflow            | Job             | Cron (UTC)             | Concurrency group | Runs                  |
 |---------------------|-----------------|------------------------|-------------------|-----------------------|
@@ -710,10 +716,9 @@ served its purpose), but worth bumping if it's ever kept rather than deleted (§
 | `hltb.yml`          | HLTB            | `53 */2 * * *` (2 h)   | `steam-hltb`      | `hltb_refresh.py`     |
 | `tags.yml`          | tags            | `29 */2 * * *` (2 h)   | *(own)*           | `tags_refresh.py`     |
 | `recent.yml`        | recent reviews  | `41 4,10,16,22 * * *`  | *(own)*           | `recent_refresh.py`   |
-| `backfill.yml`      | last_update one-off | manual only        | `steam-scrape`    | `backfill_updates.py` |
-| `backfill-hltb.yml` | HLTB est one-off    | manual only        | `steam-hltb`      | `hltb_backfill.py`    |
 
-That's **5 recurring jobs + 2 manual one-offs**. Not in this table — and not in this
+That's **5 recurring jobs** (the two manual one-off workflows, `backfill.yml` and
+`backfill-hltb.yml`, were deleted once spent — §2 → T3). Not in this table — and not in this
 repo — is the **wishlist Cloudflare Worker** (§5.9), which is deployed and scheduled
 entirely on Cloudflare's side, independent of GitHub Actions.
 
@@ -970,18 +975,22 @@ now-defunct §4 ownership-table row and §10 schema entry. Verified: no `sales_r
 `sales.json` strings remain in any `.py`/`.yml`, and both scripts compile clean.
 Comment-and-file-deletion only — no behavior change. (Ownership: §4.)
 
-### T3 — Delete the spent one-off scripts + workflows (§2.1)
+### T3 — Delete the spent one-off scripts + workflows (§2.1) — ✅ done 2026-06-30
 
-`hltb_backfill.py` + `backfill-hltb.yml` and `backfill_updates.py` + `backfill.yml` have
-done their jobs and can be removed from the repo whenever convenient. Removing
-`backfill-hltb.yml` also resolves T4 for free. `hltb_estimate.py` **stays** — the live
-refresher imports it permanently. (Scripts: §5.8; workflows: §9.)
+`hltb_backfill.py` + `backfill-hltb.yml` and `backfill_updates.py` + `backfill.yml` had
+done their jobs. **Resolved:** all four deleted from the repo. Before removing, verified
+that nothing else imports `hltb_backfill.py` or `backfill_updates.py` (they were
+standalone, invoked only by their own workflows) and that no surviving workflow
+references them. `hltb_estimate.py` was **kept** — the live `hltb_refresh.py` imports it
+permanently. Five recurring workflows remain (`scrape`, `prices`, `hltb`, `tags`,
+`recent`). Deleting `backfill-hltb.yml` also closed T4. (Scripts: §5.8; workflows: §9.)
 
-### T4 — Bump `backfill-hltb.yml` action versions if kept (§2.1)
+### T4 — Bump `backfill-hltb.yml` action versions if kept (§2.1) — ✅ done 2026-06-30 (via T3)
 
-It still pins `checkout@v4` / `setup-python@v5` while every recurring job is on `@v5` /
-`@v6`. Since it's a spent one-off, **deleting it (T3) is the simpler resolution**; only
-bump versions if you decide to keep it around. (Workflows: §9.)
+It pinned `checkout@v4` / `setup-python@v5` while every recurring job is on `@v5` / `@v6`.
+**Resolved by T3:** rather than bump a spent one-off, the workflow was deleted outright,
+so nothing stale remains to pin. All surviving workflows are on the current action
+versions. (Workflows: §9.)
 
 ### T5 — HLTB re-scraping + better matching (§2.2)
 
@@ -1058,8 +1067,9 @@ just doesn't match that yet. Deferred (not yet a problem). Fixes, roughly by eff
 ### T8 — Factor out the duplicated `get()` / `git_checkpoint` helpers (§2.3)
 
 Every scraping script reimplements the same HTTP retry/backoff (§9) and push-retry
-logic, and the update-detection heuristic is duplicated between `scraper.py` and
-`backfill_updates.py`. This is currently a deliberate "each job is a self-contained
+logic. (The update-detection heuristic was also duplicated in the now-removed
+`backfill_updates.py`, but that one-off is gone — §2 → T3 — so `scraper.py` holds the
+only copy.) This is currently a deliberate "each job is a self-contained
 single file you can read, run, and upload in isolation" trade. A shared `_http.py` /
 `_git.py` would remove the copy-paste drift risk, but only matters if a contract needs
 to change in lockstep across jobs — weigh against the simplicity the duplication buys.

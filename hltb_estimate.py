@@ -2,9 +2,10 @@
 """
 SteamQHPP — HLTB estimation helpers (shared)
 ============================================
-ONE place for the "fill the missing HLTB numbers" logic, imported by BOTH
-hltb_refresh.py (live, for new games) and hltb_backfill.py (one-time sweep of
-existing entries). Keeping it here means the two paths can never disagree.
+ONE place for the "fill the missing HLTB numbers" logic, imported by
+hltb_refresh.py (live, for new games). It was also used by the one-time
+hltb_backfill.py sweep of existing entries (since removed); keeping the fill
+logic here means the live path and any future re-sweep can never disagree.
 
 The problem this solves
 -----------------------
