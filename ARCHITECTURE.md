@@ -71,10 +71,11 @@ Rough priority order within each group is top-to-bottom.
 These are confirmed dead/misleading artifacts. None affect behavior; all reduce future
 confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
 
-- **🔴 T1 — Remove the dead `cursor` field from `catalog.json`.** A relic of the
-  pre-`GetAppList` search-pagination scraper. No current code reads or writes it; it
-  survives only because `save_catalog` round-trips unknown keys. Drop it from the file.
-  Zero risk. (Schema: §10. Detail: §14 → T1.)
+- **🟢 ~~T1 — Remove the dead `cursor` field from `catalog.json`.~~** A relic of the
+  pre-`GetAppList` search-pagination scraper. No current code read or wrote it; it
+  survived only because `save_catalog` round-trips unknown keys. **Done (2026-06-30):**
+  key dropped from the committed `catalog.json` (no code change needed — nothing
+  referenced it). Zero risk. (Schema: §10. Detail: §14 → T1.)
 
 - **🔴 T2 — Purge the orphaned `sales_refresh.py` / `sales.json` references.**
   `price_and_sale.py` replaced the old `sales_refresh.py`, and **nothing writes
@@ -189,7 +190,7 @@ Each data layer lives in its own file with a single owner:
 | File           | Sole writer          | Contents                                                        |
 |----------------|----------------------|-----------------------------------------------------------------|
 | `games.json`   | `scraper.py`         | Catalog: title, URL, rating %, review count, release date, genre fallback, `last_update_ts`. Also a base `price_*`/`discount_pct` snapshot from the scrape. |
-| `catalog.json` | `scraper.py`         | Scraper state: pending (waiting-room), skip-list, seeds ledger, force-refresh list, last sync. *(Also still carries a dead `cursor` field — legacy, never read; see §10 and §14.)* |
+| `catalog.json` | `scraper.py`         | Scraper state: pending (waiting-room), skip-list, seeds ledger, force-refresh list, last sync. |
 | `prices.json`  | `price_and_sale.py`  | The fast-changing pricing layer: `price_initial`, `price_final`, `discount_pct`, `discount_end`, `scraped_at`. **Source of truth for price.** |
 | `hltb.json`    | `hltb_refresh.py`    | Static HowLongToBeat completion times + estimated fills.        |
 | `tags.json`    | `tags_refresh.py`    | SteamSpy user tags per appid.                                   |
@@ -801,10 +802,6 @@ full shape (`raw`/`est`/`fetched_at`).
 **`catalog.json`** — scraper state (not merged by the frontend):
 ```json
 {
-  "cursor": 1000,                           // DEAD legacy field — never read or written
-                                            //   by any current code (see §2 → T1). Persists
-                                            //   only because save_catalog round-trips
-                                            //   unknown keys. Safe to delete.
   "pending":  { "385250": null },           // appid -> release_ts|null (waiting room)
   "skipped":  [206450, 208570],             // non-game / no-store-page appids
   "priority": [],                           // resolved seed queue (rebuilt every run)
@@ -953,13 +950,13 @@ Long-form rationale for the tasks indexed in **§2**. Items here carry the **sam
 IDs and order** as the tracker, so you can jump straight from a tracker line to its
 detail. When you add a task to §2, add its detail block here with the matching ID.
 
-### T1 — Remove the dead `cursor` state (§2.1)
+### T1 — Remove the dead `cursor` state (§2.1) — ✅ done 2026-06-30
 
-`catalog.json` still carries a `cursor` field that no current code reads or writes
-(it's a relic of the pre-`GetAppList` search-pagination scraper, which paged the store
-search by an offset cursor). It survives only because `save_catalog` does `dict(c)` and
-round-trips unknown keys. Dropping it from the committed file is harmless and tidies the
-schema. Low priority, zero risk. (Schema: §10.)
+`catalog.json` used to carry a `cursor` field that no code read or wrote (a relic of the
+pre-`GetAppList` search-pagination scraper, which paged the store search by an offset
+cursor). It survived only because `save_catalog` does `dict(c)` and round-trips unknown
+keys. **Resolved:** the key was deleted from the committed `catalog.json` directly — no
+code change was required, since nothing referenced it. (Schema: §10.)
 
 ### T2 — Purge the orphaned `sales.json` / `sales_refresh.py` references (§2.1)
 
