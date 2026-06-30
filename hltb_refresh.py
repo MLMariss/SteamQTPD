@@ -47,7 +47,7 @@ RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "120"))
 CHECKPOINT_SECONDS = 300
 TIME_BUFFER = 45
 HLTB_MIN_SIMILARITY = 0.65
-HLTB_DELAY = 1.0                          # gentle pacing between HLTB searches
+HLTB_DELAY = 0.6                          # pacing between HLTB searches (howlongtobeat tolerates this)
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
