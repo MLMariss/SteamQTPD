@@ -121,21 +121,24 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
   model. Detail: §14 → T5.)
   (§5.3 no-match reality; §8 raw model. Detail: §14 → T5.)
 
-- **🔴 T6 — Missing / broken thumbnails, especially for adult-content games.**
-  Thumbnails are derived **100% client-side from the appid** (`capsule_231x87.jpg`, with
-  an `onerror` fallback to `header.jpg`) — the scraper stores no image field. Two
-  problems: **(a) no final fallback** — `onerror` fires once (`this.onerror=null`), so if
-  *both* the capsule and header 404, the user gets a broken-image icon with no
-  placeholder; **(b) adult / sexually-tagged games** (≈21 currently carry
-  Nudity/Sexual-Content/Mature tags, and the count grows) frequently have age-gated or
-  absent CDN capsule assets that don't serve to an anonymous, cookie-less `<img>` request
-  — so they're the most common double-404 case. Steam *does* gate some mature capsule art
-  behind the age-check cookies the page can't send cross-origin. Fix directions: add a
-  **final SVG/placeholder fallback** on the second error (cheap, fixes the broken-icon
-  symptom for all causes); optionally try the **age-gated CDN path or a `library_600x900`
-  variant** before giving up; or, more involved, have the scraper **record a known-good
-  image URL / a "no public capsule" flag** per game so the frontend stops requesting
-  assets that will 404. (Frontend: §5.7. Detail: §14 → T6.)
+- **🟢 ~~T6 — Missing / broken thumbnails, especially for adult-content games.~~**
+  Thumbnails are derived 100% client-side from the appid (`capsule_231x87.jpg`, falling
+  back to `header.jpg`) — the scraper stores no image field. Two problems were: **(a)** the
+  old `onerror` was one-shot (`this.onerror=null`), so a double-404 left a broken-image
+  icon; and it didn't catch Steam's **200-with-blank-image** case (CDN sometimes serves a
+  degenerate image instead of a clean 404, so `onerror` never fires). **(b)** adult/
+  sexually-tagged games render their real art with no maturity treatment. **Done
+  (2026-07-01), pure `index.html` change, no scraper/data change:** (1) a **content-verified
+  fallback chain** (`stepThumb`) advances capsule -> header on *both* a hard error and a
+  "loaded but `naturalWidth <= 1`" result, catching the blank-200 case; header is the
+  terminal fallback; wired to the table thumb *and* the hover popup (which previously had
+  no error handling at all). (2) adult-tagged games (tags intersect {Nudity, Sexual Content,
+  Mature, NSFW, Hentai} — 61 in the current `tags.json`) now render the real art under a
+  **permanent CSS blur + centered "18+" badge**. Deliberately kept the deterministic
+  capsule/header chain (no per-game screenshot URL) to avoid a scraper field + ~2 MB
+  `games.json` growth (T7 tension) — screenshot fallback is parked. Blur is permanent (no
+  click-to-reveal) until a real age-verification gate exists. (Frontend: §5.7. Detail:
+  §14 -> T6.)
 
 - **🔵 T7 — Load-time / scaling ceiling as the dataset grows.** The frontend fetches the
   **entire `games.json` (~12 MB at ~23k games) plus four more JSON layers up front**, on
@@ -1046,33 +1049,55 @@ visibly missing, a wrong match silently corrupts QHPP. So `HLTB_MIN_SIMILARITY` 
 revisited if a safe disambiguation signal (e.g. exact appid↔HLTB mapping) becomes
 available, but there's no action to take today. (No-match reality: §5.3; `raw` model: §8.)
 
-### T6 — Missing / broken thumbnails, especially adult-content games (§2.2)
+### T6 — Missing / broken thumbnails, especially adult-content games (§2.2) — ✅ done 2026-07-01
 
 Thumbnails are derived **100% client-side from the appid** — `index.html` builds
-`…/<appid>/capsule_231x87.jpg` and, via `onerror`, falls back **once** to
-`…/<appid>/header.jpg` (the handler sets `this.onerror=null` so it won't fire again).
-The scraper stores no image field at all. Two concrete problems:
+`.../<appid>/capsule_231x87.jpg` and falls back to `.../<appid>/header.jpg`. The scraper
+stores no image field. Two problems, both fixed in a **pure `index.html` change** (no
+scraper edit, no `games.json` change, no schema change):
 
-- **(a) No final fallback.** Because `onerror` is one-shot, if *both* the capsule and
-  the header 404, the user gets the browser's broken-image icon with no placeholder.
-- **(b) Adult / sexually-tagged games are the common double-404 case.** ~21 games
-  currently carry Nudity / Sexual Content / Mature tags (verified 2026-06-30; the count
-  grows). Steam age-gates some mature **capsule art** behind the maturity-check cookies
-  the page can't send on a cross-origin, cookie-less `<img>` request — so these titles
-  disproportionately fail both the capsule and header fetch and hit problem (a).
+**Problem (a) — fallback was fragile.** The old handler was one-shot
+(`onerror="this.onerror=null;this.src=header"`), so a double-404 left the browser's
+broken-image icon. Worse, it only caught *hard* errors: Steam's CDN sometimes answers a
+missing capsule with a **200 + a blank/degenerate image** rather than a clean 404, so
+`onerror` never fires and you get a silently-blank thumb.
 
-Fix directions, cheapest first:
-1. **Add a final SVG/placeholder fallback on the second error** (e.g. a tinted box with
-   the title initial). Cheap, and fixes the broken-icon symptom for *every* cause, not
-   just adult games. This alone is probably worth shipping on its own.
-2. **Try an additional CDN variant before giving up** — e.g. `library_600x900.jpg` or
-   the age-gated `…/apps/<appid>/` path — though mature-gated assets may still refuse an
-   anonymous request.
-3. **Most robust:** have the scraper **record a known-good image URL (or a "no public
-   capsule" flag)** per game during the appdetails fetch (which already returns
-   `header_image` and capsule URLs), so the frontend never requests an asset that will
-   404. This adds one field to `games.json` and removes the guesswork entirely — at the
-   cost of a tiny bit more per-game data. (Frontend rendering: §5.7.)
+**Problem (b) — adult art shown untreated.** Games tagged Nudity / Sexual Content /
+Mature / NSFW / Hentai (61 in the current `tags.json`; tags are merged client-side from
+`tags.json`, not stored in `games.json`) rendered their real store art with no maturity
+treatment.
+
+**What shipped:**
+1. **Content-verified fallback chain** — `stepThumb(img, hardError)` + `imgChain(appid)`
+   (near the URL builders). The chain is `capsule -> header` (deterministic from appid;
+   header is terminal). It advances on **both** a hard `onerror` **and** an `onload` where
+   `naturalWidth <= 1` — so the blank-200 case is caught and falls through to header. If
+   header also fails, the last attempt is left in place (rare). Wired to the **table
+   thumb** (replacing the one-shot inline handler) **and** the **hover-enlarge popup**,
+   which previously had *no* error handling at all — a real gap, now closed.
+2. **Adult blur + 18+ badge** — a `.thumb.adult` class (added at render when
+   `isAdult(g)`) applies a permanent CSS `filter: blur()` to the img plus a centered
+   "18+" badge via `::after`. The real art is still fetched and rendered underneath; it's
+   just blurred. `isAdult` reads the merged `g.tags` (populated before render), so it
+   needs no new data.
+
+**Deliberately NOT done (and why):**
+- **No per-game screenshot fallback.** A screenshot would be a nicer terminal fallback
+  than a possibly-broken header, but screenshot filenames are opaque hashes — there's no
+  appid-derivable URL, so it would require the scraper to record a screenshot URL per game
+  (+~2 MB to `games.json`, which is exactly the pressure T7 is about) plus a slow re-scrape
+  backfill. Parked; revisit only if broken-header cases prove common in practice.
+- **No click-to-reveal on the blur.** The blur is permanent for now. Adding a reveal toggle
+  would imply an age check we don't actually have. **Future improvement:** once a real 18+
+  age-verification gate exists, make the blur a click-to-reveal / per-session toggle.
+
+**Testing note:** the sandbox can't reach the Steam CDN (`host_not_allowed`), so the
+fallback chain was verified with a mocked `<img>` harness (5/5 cases: real capsule kept;
+capsule-404 -> header; capsule-blank-200 -> header; both-fail -> header terminal;
+both-blank -> header terminal), `isAdult` was checked against real `tags.json` (61 flagged,
+normal games not), and the full app `<script>` passes `node --check`. Final visual
+confirmation (adult blur renders, broken capsules fall through, normal games unaffected)
+is a **browser-side check after deploy**. (Frontend rendering: §5.7.)
 
 ### T7 — Load-time / scaling ceiling as the dataset grows (§2.2)
 

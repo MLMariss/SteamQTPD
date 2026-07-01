@@ -183,6 +183,15 @@
   .thumb .pop{position:fixed; z-index:60; width:380px; height:178px; border-radius:8px; overflow:hidden;
         border:1px solid var(--line); box-shadow:0 14px 40px #000b; display:none; pointer-events:none; background:#0b0f18}
   .thumb .pop img{width:100%; height:100%; object-fit:cover}
+  /* Adult-tagged games (T6): serve the real art but blur it and mark 18+.
+     Permanent blur for now — no click-to-reveal until a real age gate exists. */
+  .thumb.adult img{filter:blur(8px); transform:scale(1.08)}   /* scale hides blurred edges */
+  .thumb.adult .pop img{filter:blur(16px); transform:scale(1.06)}
+  .thumb.adult::after{content:"18+"; position:absolute; inset:0; z-index:2;
+        display:flex; align-items:center; justify-content:center;
+        font:700 13px/1 system-ui,sans-serif; letter-spacing:.5px; color:#fff;
+        text-shadow:0 1px 3px #000c; pointer-events:none;
+        background:radial-gradient(circle at center, #0006, #0002)}
   .gmeta{min-width:96px; flex:1}     /* title never collapses below readable width */
   .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
@@ -535,6 +544,33 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":
 const CDN = "https://cdn.cloudflare.steamstatic.com/steam/apps";
 const capsuleUrl = a => `${CDN}/${a}/capsule_231x87.jpg`;
 const headerUrl  = a => `${CDN}/${a}/header.jpg`;
+
+// --- Thumbnail fallback with CONTENT verification (T6) ---------------------- //
+// Steam's CDN sometimes answers a missing capsule with a 200 + a blank/degenerate
+// image instead of a clean 404, so a plain onerror chain can silently show a broken
+// or empty thumb. We therefore advance the chain on BOTH a hard error AND a "loaded
+// but empty" result (naturalWidth === 0, or a degenerate 1px response). Chain is
+// deterministic from appid: capsule -> header, with header as the terminal fallback
+// (no screenshot step — screenshot URLs aren't derivable from appid; see T6 notes).
+const ADULT_TAGS = new Set(["Nudity","Sexual Content","Mature","NSFW","Hentai"]);
+const isAdult = g => (g.tags||[]).some(t => ADULT_TAGS.has(t));
+// Build the ordered source list once per appid.
+const imgChain = a => [capsuleUrl(a), headerUrl(a)];
+// onerror / onload handler shared by table thumb and popup. Reads the appid and the
+// current step from data-* attrs on the <img>, advances to the next source, and stops
+// at the end (leaving the last-attempted src in place).
+function stepThumb(img, hardError){
+  // "loaded but empty" guard: a successfully decoded real image has naturalWidth > 1.
+  if(!hardError && img.naturalWidth > 1) return;   // genuine image -> keep it
+  const a = img.getAttribute("data-appid");
+  let step = (+img.getAttribute("data-step") || 0) + 1;
+  const chain = imgChain(a);
+  if(step < chain.length){
+    img.setAttribute("data-step", step);
+    img.src = chain[step];
+  }
+  // else: exhausted the chain; leave the last attempt as-is (rare).
+}
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function hoursFor(g){
@@ -831,9 +867,10 @@ function render(){
     return `<tr>
       <td data-label="Game"><div class="gamecell">
           <button class="hidebtn" data-hide="${g.appid}" title="Hide this game for this session" aria-label="Hide ${esc(g.title)}">×</button>
-          <span class="thumb" data-appid="${g.appid}">
+          <span class="thumb${isAdult(g) ? ' adult' : ''}" data-appid="${g.appid}">
             <img loading="lazy" src="${capsuleUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
-                 onerror="this.onerror=null;this.src='${headerUrl(g.appid)}';" />
+                 data-appid="${g.appid}" data-step="0"
+                 onerror="stepThumb(this,true)" onload="stepThumb(this,false)" />
             <span class="pop"><img alt="" referrerpolicy="no-referrer" /></span>
           </span>
           <span class="gmeta">
@@ -910,7 +947,16 @@ document.body.addEventListener("mouseover", e => {
   const thumb = e.target.closest(".thumb");
   if(!thumb) return;
   const pop = thumb.querySelector(".pop"), img = pop.querySelector("img");
-  if(!img.src){ img.src = headerUrl(thumb.dataset.appid); }
+  if(!img.src){
+    // Same content-verified chain as the table thumb. Popup starts at the header
+    // (larger art), then would fall back per the chain; set data-* so stepThumb works.
+    const a = thumb.dataset.appid;
+    img.setAttribute("data-appid", a);
+    img.setAttribute("data-step", "1");            // header is index 1 in imgChain
+    img.onerror = () => stepThumb(img, true);
+    img.onload  = () => stepThumb(img, false);
+    img.src = headerUrl(a);
+  }
   const r = thumb.getBoundingClientRect();
   let top = r.bottom + 8; if(top + 178 > window.innerHeight) top = r.top - 178 - 8;
   let left = r.left;      if(left + 380 > window.innerWidth) left = window.innerWidth - 380 - 10;
