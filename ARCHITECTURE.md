@@ -72,7 +72,7 @@ lowest open T-number. Rough priority order within each tier is top-to-bottom.
 
 ### 2.1 Immediate — needed now
 
-- **🔴 T7 — Filter panel is too tall and the sticky-header scroll behavior is broken.**
+- **🟡 T7 — Filter panel too tall + sticky-header scroll behavior (IMPLEMENTED 2026-07-01, pending browser check).**
   On a 1440p screen the filter panel fills the *entire* viewport — the game table is
   pushed fully below the fold and never visible without scrolling; on smaller screens it's
   unusable. Root cause: the tag rail renders **every** tag above `MIN_TAG_COUNT` (≈150
@@ -1144,7 +1144,60 @@ normal games not), and the full app `<script>` passes `node --check`. Final visu
 confirmation (adult blur renders, broken capsules fall through, normal games unaffected)
 is a **browser-side check after deploy**. (Frontend rendering: §5.7.)
 
-### T7 — Top-nav height + sticky-scroll behavior + tag-rail trimming (§2.1) — 🔴 analysis done, not yet implemented
+### T7 — Top-nav height + sticky-scroll behavior + tag-rail trimming (§2.1) — 🟡 implemented 2026-07-01, pending browser verification
+
+**IMPLEMENTED 2026-07-01** (pure `index.html` change, no scraper/data change). Model C was
+chosen (see below). What shipped, by the reported points:
+- **(1) Panel height** — fixed via the tag-rail trim (point 5) + filters now collapsed by
+  default on load, so the table is the first thing every user sees.
+- **(2) Scroll no longer skips filters** — the topbar is no longer `position:sticky`
+  (`position:relative` now); it's normal page flow that scrolls away. No scroll-driven
+  auto-collapse at all — the panel only opens/closes via the button. So nothing collapses
+  out from under you mid-scroll.
+- **(3) Sticky table column header — DONE.** `thead th` is now `position:sticky; top:0;
+  z-index:30` with an opaque background. Once the nav scrolls off, the column/sort headers
+  pin to the top and stay usable. Layout order is unchanged (nav → table+headers, nothing
+  inserted between the table and its headers), exactly per the user caveat: the header only
+  sticks *after* the nav has scrolled away.
+- **(4) Full-nav reopen is deliberate** — filters reopen ONLY via the "Show filters"
+  button (`setFiltersCompact`); scroll never re-expands them. Removed `applyCompact` +
+  `headerLock` + the scroll listener entirely.
+- **(5) Two-tier tags — DONE per the clarified spec.** `buildTagRail` now splits each group
+  (except Players & Mode, and any group ≤10 tags) into a foundation of the 10 most-USED
+  tags (membership by `state.fullCounts` desc, name asc tiebreak) displayed ALPHABETICALLY,
+  plus an overflow of the rest behind a per-group **"+N more"** button, also sorted
+  alphabetically. Two independent A–Z lists; count only decides membership. Any active
+  (include/exclude) tag is forced into the foundation so a selected chip is never hidden.
+  Verified with an 11-case node test (foundation=top-10-by-count shown alpha; overflow
+  alpha; forced-active-tag; Players&Mode/small groups not split).
+- **(6) Per-page → 100 / 500 / 2000** — done; default stays 100.
+- **(7) Audit items addressed:** removed the per-scroll `applyCompact` (no more scroll
+  listener churn); removed the `headerLock` global-reset foot-gun; added
+  `scroll-margin-top` on `.tablecard`; filters collapsed-by-default (the suggested
+  table-first default). Note the `.tablescroll` **overflow gotcha**: `overflow-x:auto`
+  would trap the sticky `thead` in a scroll box, so it's now `overflow-x:visible` — wide
+  tables (narrow desktop widths 1040–1442px) fall back to the page's horizontal scroll,
+  which is acceptable and rare. On mobile (<1040px) `thead` is `display:none` (card
+  reflow), so sticky-header is desktop-only and mobile is unaffected.
+
+**Model C (chosen) + user caveat.** A thin persistent mini-bar was NOT used; instead the
+whole nav is normal flow that scrolls away, and the sticky `<thead>` becomes the pinned
+bar. Document order stays `nav → table + column heads` with nothing between the table and
+its headers, so the column header only becomes the top sticky element after the nav is
+gone — matching the user's explicit requirement.
+
+⚠ **BROWSER VERIFICATION STILL NEEDED after deploy** (sandbox can't render):
+  - Sticky `thead` actually pins on scroll-down and un-pins at the nav on scroll-up
+    (the `overflow-x:visible` fix is the main risk — confirm the header sticks in
+    Chrome/Firefox/Safari).
+  - "+N more" expands/collapses each group independently; foundation rows look right.
+  - Filters start collapsed; "Show filters" button toggles the full panel.
+  - 2000-per-page doesn't jank badly (heavy first paint) — test on a mid device.
+  - Selecting a tag that lives in overflow still works (it's forced into foundation on
+    re-render).
+
+--- (original analysis retained below for reference) ---
+
 
 Reported 2026-07-01 from a 1440p screenshot: the filter panel fills the whole viewport,
 the game table is entirely below the fold, and the sticky-header collapse behaves badly

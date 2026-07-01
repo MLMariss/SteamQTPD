@@ -28,8 +28,8 @@
   .wrap{width:100%; max-width:1720px; margin:0 auto; padding:0 clamp(12px,2vw,30px)}
   .wrap.body{padding-bottom:70px}
 
-  /* ---- sticky header (instant collapse, no shadow) ---- */
-  .topbar{position:sticky; top:0; z-index:40; padding-top:10px; background:var(--bg)}
+  /* ---- header (scrolls away; table header takes over as sticky, see thead below) ---- */
+  .topbar{position:relative; z-index:40; padding-top:10px; background:var(--bg)}
   .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px; overflow:hidden}
   .bar-main{display:flex; align-items:center; gap:16px; padding:12px 16px; flex-wrap:wrap}
   .brand{display:flex; align-items:baseline; gap:13px; flex:none}
@@ -153,13 +153,25 @@
   .chip.exc{background:#3a2026; border-color:var(--red); color:#ffb4b4; text-decoration:line-through; opacity:1}
   .chip .mk{margin-right:5px; font-weight:600}
   .chip .ct{opacity:.6; margin-left:5px}
+  /* T7: per-group overflow tier — hidden until the group's "+ more" is toggled */
+  .taggroup .chip.tag-extra{display:none}
+  .taggroup.expanded .chip.tag-extra{display:inline-flex}
+  .tagmore{appearance:none; background:transparent; border:1px dashed var(--muted-2); color:var(--muted-2);
+        border-radius:99px; padding:3px 10px; font-family:var(--mono); font-size:12px; cursor:pointer; white-space:nowrap}
+  .tagmore:hover{border-color:var(--gold); color:var(--gold)}
+  .taggroup.expanded .tagmore{border-style:solid}
 
   /* ---- table ---- */
   .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:12px}
-  .tablescroll{overflow-x:auto}
+  /* overflow-x:auto would trap the sticky thead in a scroll box; clip:visible keeps the
+     header sticking to the page. Horizontal overflow (narrow desktop widths) falls back to
+     the page's own horizontal scroll, which is acceptable and rare (table fits ≥1442px). */
+  .tablescroll{overflow-x:visible}
+  .tablecard{scroll-margin-top:8px}
   table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1360px}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
-        color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none}
+        color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none;
+        position:sticky; top:0; z-index:30; background:#141c2c}   /* sticks once the nav scrolls off; opaque bg so rows don't show through */
   thead th.sortable{cursor:pointer}
   thead th.sortable:hover{color:var(--text)}
   thead th.num{text-align:right}
@@ -330,7 +342,7 @@
 </head>
 <body>
 
-<div class="topbar" id="topbar">
+<div class="topbar compact" id="topbar">
  <div class="wrap">
   <div class="barwrap">
     <div class="bar-main">
@@ -345,9 +357,9 @@
       <div class="meta" id="meta"></div>
       <div class="pagesize" id="pagesize" title="Games shown per page (scroll down to load more)">
         <span class="pagesize-lbl">per page</span>
-        <button data-size="50">50</button>
         <button data-size="100" class="on">100</button>
-        <button data-size="200">200</button>
+        <button data-size="500">500</button>
+        <button data-size="2000">2000</button>
       </div>
     </div>
 
@@ -455,7 +467,7 @@
       </div>
     </div>
 
-    <button class="collapse-handle" id="collapseBtn"><span id="collapseLabel">⌃ Hide filters</span></button>
+    <button class="collapse-handle" id="collapseBtn"><span id="collapseLabel">⌄ Show filters</span></button>
   </div>
  </div>
 </div>
@@ -985,20 +997,51 @@ function buildTagRail(){
     buckets[TAG_CAT[t] || "Other"].push(t);
   });
   const label = t => t.replace(/\b\w/g, c=>c.toUpperCase());
-  const chipHtml = t => {
+  const chipHtml = (t, extra) => {
     const c = ctx[t] || 0;
     let cls = "chip", mk = "";
+    if(extra) cls += " tag-extra";
     if(state.tagsInc.has(t)){ cls += " inc"; mk = '<span class="mk">✓</span>'; }
     else if(state.tagsExc.has(t)){ cls += " exc"; mk = '<span class="mk">✕</span>'; }
     else if(c === 0){ cls += " dim"; }
     return `<button class="${cls}" data-tag="${esc(t)}">${mk}${esc(label(t))}<span class="ct">${c}</span></button>`;
   };
+  const byName = (a,b) => a.localeCompare(b);
+  // Groups small enough to always show in full (no top-10 split). Players & Mode is short.
+  const NO_SPLIT = new Set(["Players & Mode"]);
+  const TOP_N = 10;
+
   let html = "";
   GROUP_ORDER.forEach(g => {
     const tags = buckets[g];
     if(!tags.length) return;
-    tags.sort((a,b) => a.localeCompare(b));    // fixed alphabetical order — chips never move
-    html += `<div class="taggroup"><span class="grouplabel">${g}</span><span class="grouptags">${tags.map(chipHtml).join("")}</span></div>`;
+
+    let foundation, overflow;
+    if(NO_SPLIT.has(g) || tags.length <= TOP_N){
+      // Show everything, alphabetical. No overflow tier.
+      foundation = tags.slice().sort(byName);
+      overflow = [];
+    } else {
+      // Foundation = the TOP_N most-USED tags (membership by full-corpus count desc,
+      // name asc as a stable tiebreak). Overflow = the rest. Each tier is then sorted
+      // ALPHABETICALLY on its own, so chips never reshuffle by count — two independent
+      // A-Z lists (foundation row, then overflow row). Any active (include/exclude) tag
+      // is forced into the foundation so a selected chip is never hidden behind "+ more".
+      const forced = tags.filter(t => active.has(t));
+      const rest = tags.filter(t => !active.has(t));
+      rest.sort((a,b) => (full[b]-full[a]) || byName(a,b));   // rank by usage for membership
+      const topSet = new Set([...forced, ...rest.slice(0, Math.max(0, TOP_N - forced.length))]);
+      foundation = tags.filter(t => topSet.has(t)).sort(byName);
+      overflow   = tags.filter(t => !topSet.has(t)).sort(byName);
+    }
+
+    const chips = foundation.map(t => chipHtml(t, false)).join("")
+                + overflow.map(t => chipHtml(t, true)).join("");
+    const moreBtn = overflow.length
+      ? `<button class="tagmore" data-more="${esc(g)}">+${overflow.length} more</button>`
+      : "";
+    html += `<div class="taggroup" data-group="${esc(g)}"><span class="grouplabel">${g}</span>`
+          + `<span class="grouptags">${chips}${moreBtn}</span></div>`;
   });
   $("#tagrail").innerHTML = html;
 }
@@ -1244,19 +1287,13 @@ function applyURLRange(){
 }
 
 
-let headerLock = null;   // "open" | "closed" | null (auto)
-function applyCompact(){
-  let compact;
-  if(headerLock === "open") compact = false;
-  else if(headerLock === "closed") compact = true;
-  else compact = window.scrollY > 8;
+// Filters collapse/expand via the button ONLY — no scroll-driven auto-collapse (T7).
+// The nav is normal page flow: it scrolls away naturally and the sticky <thead> takes
+// over as the pinned bar, so the filter panel never ambushes the reader on scroll.
+function setFiltersCompact(compact){
   $("#topbar").classList.toggle("compact", compact);
   $("#collapseLabel").textContent = compact ? "⌄ Show filters" : "⌃ Hide filters";
 }
-window.addEventListener("scroll", () => {
-  if(window.scrollY <= 8) headerLock = null;   // back at top -> resume auto
-  applyCompact();
-}, {passive:true});
 
 function init(data){
   state.data = data;
@@ -1339,9 +1376,7 @@ function init(data){
   $("#wishClear").addEventListener("click", clearWishlist);
 
   $("#collapseBtn").addEventListener("click", () => {
-    const willCompact = !$("#topbar").classList.contains("compact");
-    headerLock = willCompact ? "closed" : "open";
-    applyCompact();
+    setFiltersCompact(!$("#topbar").classList.contains("compact"));
   });
 
   $("#clear").addEventListener("click", () => {
@@ -1362,6 +1397,8 @@ function init(data){
   document.body.addEventListener("click", e => {
     const h = e.target.closest("[data-hide]");
     if(h){ e.preventDefault(); e.stopPropagation(); hideGame(h.dataset.hide); return; }
+    const more = e.target.closest("[data-more]");
+    if(more){ e.preventDefault(); more.closest(".taggroup").classList.toggle("expanded"); return; }
     const t = e.target.closest("[data-tag]");
     if(t) cycleTag(t.dataset.tag, +1);          // left-click: forward
   });
