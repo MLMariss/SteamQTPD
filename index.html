@@ -152,7 +152,7 @@
   .chip.inc{background:#1c3528; border-color:var(--green); color:#9cf0c2; opacity:1}
   .chip.exc{background:#3a2026; border-color:var(--red); color:#ffb4b4; text-decoration:line-through; opacity:1}
   .chip .mk{margin-right:5px; font-weight:600}
-  .chip .ct{opacity:.6; margin-left:5px}
+  .chip .ct{opacity:.6; margin-left:5px; display:inline-block; text-align:left; box-sizing:content-box}
   /* T7: per-group overflow tier — hidden until the group's "+ more" is toggled */
   .taggroup .chip.tag-extra{display:none}
   .taggroup.expanded .chip.tag-extra{display:inline-flex}
@@ -168,7 +168,7 @@
      the page's own horizontal scroll, which is acceptable and rare (table fits ≥1442px). */
   .tablescroll{overflow-x:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1360px}
+  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1500px}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
         color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none;
         position:sticky; top:0; z-index:30; background:#141c2c}   /* sticks once the nav scrolls off; opaque bg so rows don't show through */
@@ -179,9 +179,9 @@
   /* Game column absorbs slack but has a hard minimum so titles stay readable even when
      squeezed. Other columns sized so the whole table fits a 1080p viewport (incl.
      scrollbar) without horizontal scroll. Price+Discount render as one tight unit. */
-  col.c-game{min-width:280px}
+  col.c-game{width:340px}
   col.c-rev{width:118px} col.c-trend{width:66px} col.c-price{width:76px} col.c-disc{width:64px} col.c-sale{width:90px}
-  col.c-rel{width:120px} col.c-tags{width:262px} col.c-hltb{width:198px} col.c-qhpp{width:168px}
+  col.c-rel{width:120px} col.c-tags{width:280px} col.c-hltb{width:230px} col.c-qhpp{width:172px}
   .arrow{color:var(--gold); margin-left:5px; font-size:12px}
   tbody td{padding:8px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
   td.pad{padding-left:18px; padding-right:18px}
@@ -283,7 +283,7 @@
   .tag.sel{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
 
   .hltb-stack{display:inline-block; text-align:center}
-  .hltb{display:flex; gap:13px; justify-content:center}
+  .hltb{display:flex; gap:10px; justify-content:center}
   .hcol .v{font-family:var(--mono); font-size:15px}
   .hcol .l{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.04em; text-transform:uppercase}
   .hcol.sel .v{color:var(--gold)} .hcol.sel .l{color:var(--gold)}
@@ -407,8 +407,8 @@
         <div class="field">
           <label>Min reviews</label>
           <div class="seg" role="group" aria-label="Minimum review count">
-            <button data-minrev="0"     aria-pressed="false">Any</button>
-            <button data-minrev="100"   aria-pressed="true">100</button>
+            <button data-minrev="0"     aria-pressed="true">Any</button>
+            <button data-minrev="100"   aria-pressed="false">100</button>
             <button data-minrev="500"   aria-pressed="false">500</button>
             <button data-minrev="1000"  aria-pressed="false">1k</button>
             <button data-minrev="5000"  aria-pressed="false">5k</button>
@@ -543,7 +543,7 @@ const MIN_TAG_COUNT = 10;
 
 // ----- state -----
 const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
-                qBasis:"after", hltbMetric:"avg", minScore:0, minReviews:100, minPrice:null, maxPrice:null,
+                qBasis:"after", hltbMetric:"avg", minScore:0, minReviews:0, minPrice:null, maxPrice:null,
                 trendFilter:"any", updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
                 hidden:new Set(),
@@ -765,7 +765,11 @@ function render(){
   const limit = state.pageSize * state.pagesShown;
   const games = allGames.slice(0, limit);
   state._totalFiltered = allGames.length;   // for the meta line + sentinel logic
-  const qs = games.map(activeQ).filter(v => v != null);
+  // Bar scale is computed from the ENTIRE filtered set (allGames), NOT the paged subset,
+  // so loading more rows per page never shifts the bars. The scale only changes when the
+  // filters change the result set — which is the intended behavior. (Previously this used
+  // the paged `games`, so changing per-page silently rescaled every bar. T7 follow-up.)
+  const qs = allGames.map(activeQ).filter(v => v != null);
   const qLo = Math.min(...qs), qHi = Math.max(...qs);
   // log-scaled fill: matches the slider's log domain so a single huge-QHPP outlier
   // doesn't squash every other bar to near-zero. Floor of 6% keeps tiny values visible.
@@ -999,12 +1003,22 @@ function buildTagRail(){
   const label = t => t.replace(/\b\w/g, c=>c.toUpperCase());
   const chipHtml = (t, extra) => {
     const c = ctx[t] || 0;
+    const f = full[t] || 0;
+    // Show one number when the filtered count equals the full-corpus count (e.g. on first
+    // load with no filters). Once filtering diverges them, show "filtered / total".
+    const countStr = (c === f) ? `${f}` : `${c} / ${f}`;
+    // Reserve width for the WIDEST form this chip can ever show ("full / full", e.g.
+    // "211 / 211") so that when a filter introduces the second number the chip doesn't
+    // grow — no reflow/flicker across the whole rail. In a mono font, ch units map to
+    // character widths exactly: 2×digits + 3 (the " / " separator) + ~1ch headroom.
+    const digits = String(f).length;
+    const reserveCh = 2 * digits + 3 + 1;
     let cls = "chip", mk = "";
     if(extra) cls += " tag-extra";
     if(state.tagsInc.has(t)){ cls += " inc"; mk = '<span class="mk">✓</span>'; }
     else if(state.tagsExc.has(t)){ cls += " exc"; mk = '<span class="mk">✕</span>'; }
     else if(c === 0){ cls += " dim"; }
-    return `<button class="${cls}" data-tag="${esc(t)}">${mk}${esc(label(t))}<span class="ct">${c}</span></button>`;
+    return `<button class="${cls}" data-tag="${esc(t)}" title="${c} of current results · ${f} total">${mk}${esc(label(t))}<span class="ct" style="min-width:${reserveCh}ch">${countStr}</span></button>`;
   };
   const byName = (a,b) => a.localeCompare(b);
   // Groups small enough to always show in full (no top-10 split). Players & Mode is short.
@@ -1222,7 +1236,7 @@ function syncURL(){
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.hltbMetric !== "avg") p.set("hltb", state.hltbMetric);
   if(state.minScore) p.set("minscore", state.minScore);
-  if(state.minReviews !== 100) p.set("minrev", state.minReviews);
+  if(state.minReviews !== 0) p.set("minrev", state.minReviews);
   if(state.minPrice != null) p.set("pmin", state.minPrice);
   if(state.maxPrice != null) p.set("pmax", state.maxPrice);
   if(state.trendFilter !== "any") p.set("trend", state.trendFilter);
@@ -1306,7 +1320,7 @@ function init(data){
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.qBasis="after"; state.hltbMetric="avg"; state.minScore=0; state.minReviews=100;
+    state.qBasis="after"; state.hltbMetric="avg"; state.minScore=0; state.minReviews=0;
     state.minPrice=null; state.maxPrice=null; state.trendFilter="any"; state.updatedWithin="any";
     state.wishOnly=false; state.sortKey="qhpp"; state.sortDir=-1; state.qRangeTouched=false;
     loadFromURL();
@@ -1381,12 +1395,12 @@ function init(data){
 
   $("#clear").addEventListener("click", () => {
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.minScore=0; state.minReviews=100; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
+    state.minScore=0; state.minReviews=0; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.trendFilter="any"; state.updatedWithin="any";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
-    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev==="100"));
+    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev==="0"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", o.dataset.trend==="any"));
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
     update();
