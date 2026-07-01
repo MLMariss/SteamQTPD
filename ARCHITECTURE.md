@@ -130,6 +130,22 @@ lowest open T-number. Rough priority order within each tier is top-to-bottom.
   renders. The infinite-scroll UI already only *shows* a page at a time; the data layer
   just doesn't match that yet. (Frontend: §5.7; caveats: §13. Detail: §14 → T8.)
 
+- **🟢 ~~T11 — HLTB estimation quality: real-data mode + extreme-inflation fix.~~** Two
+  parts, both shipped 2026-07-01. **(A) "Real only" data toggle** (frontend, next to the
+  HLTB-metric buttons): switches between *All* (use estimated fills, default) and *Real
+  only* (estimated HLTB values are hidden and NOT used — a game keeps all its other data
+  and stays visible, but shows no estimated hours and no QHPP when its selected metric is
+  estimated). Uses the existing `hltb_est` marker; no scraper change. **(B) Bucketed-ratio
+  estimator fix** (`hltb_estimate.py`): replaced the single global median ratio (which
+  over-inflated extremes — a 1,200 h completionist implied ~549 h main vs ~142 h empirical)
+  with **magnitude-bucketed median ratios** keyed by the anchor's size. Chosen over a
+  power-law fit after held-out validation: on grind games (complete > 200 h) bucketed cut
+  median error to ~58% vs the global model's ~320% (and beat power-law's ~72%); it also won
+  on typical games. The 1,200 h case now fills main ≈ 141 h. Backward-compatible with
+  callers (flat ratios preserved) and re-scrape-friendly (estimates derive from `raw`, so
+  the T5 re-scrape progressively re-fills existing entries with the better numbers).
+  (Estimator: §8; frontend: §5.7. Detail: §14 → T11.)
+
 ### 2.3 Nice-to-have — optional, do if convenient
 
 - **🔵 T9 — Factor out the duplicated `get()` and `git_checkpoint` helpers.** Every
@@ -1484,3 +1500,72 @@ this repo. If the Worker is lost or its Cloudflare account changes, wishlist imp
 silently degrades and there's nothing checked in to redeploy from. Consider committing
 the Worker script (and its `wrangler.toml`) into a `worker/` directory here, even though
 it deploys separately, so the whole system is reconstructable from one repo. (§5.9.)
+
+### T11 — HLTB estimation quality: real-data mode + extreme-inflation fix (§2.2) — ✅ shipped 2026-07-01
+
+Two independent parts. **A** is a frontend data-quality toggle; **B** fixes the estimator
+math. Both shipped together. Analysis was grounded in the live corpus (1,731 real `raw`
+triples).
+
+#### Part A — "Real only" toggle (frontend, `index.html`)
+A 2-way seg control **"HLTB data: All / Real only"** placed right after the HLTB-metric
+buttons (they're tied — both drive QHPP).
+  - **All (default):** today's behavior — estimated fills are shown (dotted/blue) and used
+    for QHPP.
+  - **Real only:** estimated HLTB values are treated as absent. Implementation:
+    `state.hltbQuality ∈ {loose, real}`; a `realHours(g, metric)` helper returns the
+    metric's value only when that field is NOT in `g.hltb_est` (and `avg` only when
+    `hltb_est` is empty, since avg spans the whole triple); `hoursFor` routes through it in
+    real mode. Because `hoursFor` then returns null for an estimated metric and `computeQ`
+    already null-guards on hours, **QHPP is automatically blank** for such games — no
+    separate filtering needed. In the table, estimated cells render as "—" in real mode (we
+    don't show the computed value). **The game is NOT hidden** — it keeps reviews, price,
+    tags, etc.; it just shows no estimated hours / no QHPP. Wired through the click handler,
+    URL param `hq`, and both resets. Logic verified with a 7-case node test.
+  - (The earlier-considered third tier, "complete-triples-only", was not needed — the user
+    wanted exactly the show-but-don't-use behavior above.)
+
+#### Part B — bucketed-ratio estimator (`hltb_estimate.py`)
+**Problem:** the estimator filled missing times with a single global median ratio applied
+linearly. But the real relationships are magnitude-dependent — `main/complete` collapses
+from ~0.60 (short games) to ~0.12 (grind/idle), so a flat 0.457 turned a 1,200 h
+completionist into a 549 h main story (empirical ~142 h, **3.8× too high**). Symmetric only
+in appearance: the `main`-anchored direction is mild (`complete/main` actually rises with
+main), the `complete`-anchored direction is the severe one.
+
+**Model choice — validated, not assumed.** Held-out test (70/30 split, seed 42) compared
+three models on median absolute % error:
+  - *Only-complete-known → predict main+extra* (the severe case), by complete size:
+      typical (<80 h): global 37% · bucketed **31%** · power 38%
+      80–200 h:        global 68% · bucketed 40% · power **39%**
+      >200 h (grind):  global **320%** · bucketed **58%** · power 72%
+  - Bucketed wins the severe tail decisively (58% vs 320%) AND is best/tied on typical
+    games, while being simpler and more robust than curve-fitting. **Chosen: bucketed.**
+
+**Implementation.** Each ratio direction now has a table of per-magnitude-bucket medians,
+keyed by the ANCHOR value's size:
+  - Bucket edges: `C_EDGES=[10,30,80,200]`, `M_EDGES=[5,15,40,100]`, `E_EDGES=[8,20,50,150]`
+    (5 buckets each). `BUCKET_ANCHOR` maps each direction to its anchor (complete-anchored
+    ratios bucket by complete, etc.). `_bucket_of(value, edges)` returns the index.
+  - `compute_ratios` now also builds live per-bucket medians under `ratios["_buckets"]`,
+    alongside the existing flat medians (kept for backward-compat and fallback). A bucket
+    with < `MIN_PER_BUCKET` (15) live samples falls back to a **frozen** per-bucket median
+    (`FALLBACK_BUCKETS`, computed from the 1,731 triples), then to the flat ratio. Cold-start
+    (< `MIN_TRIPLES_FOR_LIVE`) returns flat FALLBACK + FALLBACK_BUCKETS.
+  - `fill_entry` calls `_ratio(ratios, direction, anchor_value)` which picks the bucket for
+    the anchor's magnitude (flat-ratio fallback if buckets absent). The anti-pollution guard
+    (only real `raw` triples train it) and anchor-routing (prefer the adjacent real
+    neighbour) are unchanged.
+  - **Result:** the 1,200 h-completionist case now fills main ≈ 141 h (was 549). Mild
+    main-anchored fills stay reasonable. Verified: compiles; fixes the target case; all
+    edge cases pass (all-real passthrough, blank stays blank, partial fills, ordering
+    main ≤ extra ≤ complete holds); `hltb_refresh.py` still imports and its `ratios[...]`
+    log line still works (flat keys preserved).
+
+**Backward-compat / rollout:** `compute_ratios` still returns `(ratios, n)`; the new
+`_buckets` key is additive. Since estimates always derive from `raw`, no data migration is
+needed — the HLTB re-scrape pass (T5) will progressively re-fill existing entries with the
+improved numbers as it revisits them. Not done here but noted for future: an input-sanity
+check (enforce main ≤ extra ≤ complete on `raw`, null/clamp violators) would additionally
+guard against garbage source values (the "someone typed 500 h main" case) — orthogonal to
+the ratio model.

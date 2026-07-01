@@ -397,6 +397,13 @@
           </div>
         </div>
         <div class="field">
+          <label>HLTB data</label>
+          <div class="seg" role="group" aria-label="HLTB data quality">
+            <button data-hquality="loose" aria-pressed="true" title="Use estimated HLTB values (filled from genre-average ratios) when HowLongToBeat is missing a time.">All</button>
+            <button data-hquality="real" aria-pressed="false" title="Only use real HowLongToBeat values. Estimated times are hidden and not used, so games without a real value for the selected metric show no HLTB/QHPP.">Real only</button>
+          </div>
+        </div>
+        <div class="field">
           <label>Min rating</label>
           <div class="seg" role="group" aria-label="Minimum rating">
             <button data-minscore="0"  aria-pressed="true">Any</button>
@@ -570,7 +577,7 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
                 hidden:new Set(),
                 pageSize:100, pagesShown:1,
-                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, ratingSource:"recent", fullCounts:{} };
+                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, ratingSource:"recent", hltbQuality:"loose", fullCounts:{} };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -607,8 +614,18 @@ function stepThumb(img, hardError){
 }
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// In "real" data-quality mode, an estimated value is treated as absent. A per-metric
+// value is real when its field isn't in hltb_est; avg is real only when NOTHING is
+// estimated (empty hltb_est), since avg is computed over the whole triple.
+function realHours(g, metric){
+  const est = g.hltb_est || [];
+  if(metric === "avg") return est.length === 0 ? g.hltb_avg : null;
+  const v = metric==="main" ? g.hltb_main : metric==="extra" ? g.hltb_extra : g.hltb_complete;
+  return est.indexOf(metric) === -1 ? v : null;
+}
 function hoursFor(g){
   const m = state.hltbMetric;
+  if(state.hltbQuality === "real") return realHours(g, m);   // estimates not used -> no value
   return m==="main" ? g.hltb_main : m==="extra" ? g.hltb_extra : m==="complete" ? g.hltb_complete : g.hltb_avg;
 }
 function priceFor(g, basis){ if(g.is_free) return null; return basis==="after" ? g.price_final : g.price_initial; }
@@ -850,15 +867,20 @@ function render(){
     }).join("");
 
     const estSet = g.hltb_est || [];
+    const realMode = state.hltbQuality === "real";
     const ESTTIP = "Estimated from the genre-average ratio between main / extras / completionist times — not reported by HowLongToBeat. Replaced automatically if HLTB data is found later.";
     const hc = (v,l,key) => {
       const isEst = v!=null && estSet.indexOf(key)!==-1;
-      return `<div class="hcol${sel===key?' sel':''}${isEst?' est':''}"`
-           + (isEst?` title="${ESTTIP}"`:``)
-           + `><div class="v">${v==null?'—':v}</div><div class="l">${l}</div></div>`;
+      // In real-only mode, estimated cells are blanked (we don't show computed values).
+      const show = (realMode && isEst) ? null : v;
+      return `<div class="hcol${sel===key?' sel':''}${(isEst && !realMode)?' est':''}"`
+           + ((isEst && !realMode)?` title="${ESTTIP}"`:``)
+           + `><div class="v">${show==null?'—':show}</div><div class="l">${l}</div></div>`;
     };
+    // avg is only a "real" number when nothing in the triple was estimated.
+    const avgShown = (realMode && estSet.length>0) ? null : g.hltb_avg;
     const hltb = `<div class="hltb-stack"><div class="hltb">${hc(g.hltb_main,'main','main')}${hc(g.hltb_extra,'+ext','extra')}${hc(g.hltb_complete,'100%','complete')}</div>`
-               + `<div class="havg${sel==='avg'?' sel':''}">avg <b>${g.hltb_avg==null?'—':g.hltb_avg}</b> h</div></div>`;
+               + `<div class="havg${sel==='avg'?' sel':''}">avg <b>${avgShown==null?'—':avgShown}</b> h</div></div>`;
 
     // QHPP cell: positions are FIXED — after-discount (sale) always left/primary,
     // full-price always right/secondary — they never swap. The active price-basis
@@ -1269,6 +1291,7 @@ function syncURL(){
   if(state.saleOnly) p.set("sale", "1");
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.hltbMetric !== "main") p.set("hltb", state.hltbMetric);
+  if(state.hltbQuality !== "loose") p.set("hq", state.hltbQuality);
   if(state.minScore) p.set("minscore", state.minScore);
   { const def = [1,2,3,4].join(","), cur = [...state.revBands].sort().join(",");
     if(cur !== def) p.set("rev", cur); }
@@ -1304,6 +1327,8 @@ function loadFromURL(){
     $("#qb-after").setAttribute("aria-pressed", v==="after"); $("#qb-before").setAttribute("aria-pressed", v==="before"); } });
   setIf("hltb", v => { state.hltbMetric=v;
     document.querySelectorAll("[data-metric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.metric===v)); });
+  setIf("hq", v => { if(v==="loose"||v==="real"){ state.hltbQuality=v;
+    document.querySelectorAll("[data-hquality]").forEach(o => o.setAttribute("aria-pressed", o.dataset.hquality===v)); } });
   setIf("minscore", v => { state.minScore = parseInt(v,10)||0;
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore===String(state.minScore))); });
   setIf("rev", v => { const idxs = v.split(",").map(n => parseInt(n,10)).filter(n => n>=0 && n<REV_BANDS.length);
@@ -1367,7 +1392,7 @@ function init(data){
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
-    state.wishOnly=false; state.sortKey="qhpp"; state.sortDir=-1; state.ratingSource="recent"; state.qRangeTouched=false;
+    state.wishOnly=false; state.sortKey="qhpp"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="loose"; state.qRangeTouched=false;
     loadFromURL();
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); render();
   });
@@ -1386,6 +1411,12 @@ function init(data){
   $("#qb-after").addEventListener("click", () => setBasis("after"));
   $("#qb-before").addEventListener("click", () => setBasis("before"));
   document.querySelectorAll("[data-metric]").forEach(b => b.addEventListener("click", () => setMetric(b.dataset.metric)));
+  document.querySelectorAll("[data-hquality]").forEach(b =>
+    b.addEventListener("click", () => {
+      state.hltbQuality = b.dataset.hquality;
+      document.querySelectorAll("[data-hquality]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      update();
+    }));
   document.querySelectorAll("[data-minscore]").forEach(b =>
     b.addEventListener("click", () => {
       state.minScore = parseInt(b.dataset.minscore, 10);
@@ -1454,12 +1485,13 @@ function init(data){
   $("#clear").addEventListener("click", () => {
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
     state.minScore=0; state.revBands=new Set([1,2,3,4]); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
-    state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent";
+    state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent"; state.hltbQuality="loose";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", "true"));
     document.querySelectorAll("[data-ratesrc]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ratesrc==="recent"));
+    document.querySelectorAll("[data-hquality]").forEach(o => o.setAttribute("aria-pressed", o.dataset.hquality==="loose"));
     syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
     update();
