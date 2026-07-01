@@ -162,7 +162,9 @@
   .taggroup.expanded .tagmore{border-style:solid}
 
   /* ---- table ---- */
-  .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:12px}
+  /* NOTE: no overflow:hidden here — it would clip the sticky <thead> to the card and stop
+     it pinning to the viewport. Rounded corners still render via border-radius + border. */
+  .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; margin-top:12px}
   /* overflow-x:auto would trap the sticky thead in a scroll box; clip:visible keeps the
      header sticking to the page. Horizontal overflow (narrow desktop widths) falls back to
      the page's own horizontal scroll, which is acceptable and rare (table fits ≥1442px). */
@@ -388,10 +390,10 @@
         <div class="field">
           <label>HLTB metric for QHPP</label>
           <div class="seg metric" role="group" aria-label="HLTB metric">
-            <button data-metric="main"     aria-pressed="false">Main</button>
+            <button data-metric="main"     aria-pressed="true">Main</button>
             <button data-metric="extra"    aria-pressed="false">+Extras</button>
             <button data-metric="complete" aria-pressed="false">100%</button>
-            <button data-metric="avg"      aria-pressed="true">Average</button>
+            <button data-metric="avg"      aria-pressed="false">Average</button>
           </div>
         </div>
         <div class="field">
@@ -405,14 +407,20 @@
           </div>
         </div>
         <div class="field">
+          <label>Reviews sort by</label>
+          <div class="seg" role="group" aria-label="Rating source for the Reviews column sort">
+            <button data-ratesrc="all"    aria-pressed="false">All-time</button>
+            <button data-ratesrc="recent" aria-pressed="true">30-day</button>
+          </div>
+        </div>
+        <div class="field">
           <label>Min reviews</label>
           <div class="seg" role="group" aria-label="Minimum review count">
-            <button data-minrev="0"     aria-pressed="true">Any</button>
-            <button data-minrev="100"   aria-pressed="false">100</button>
-            <button data-minrev="500"   aria-pressed="false">500</button>
-            <button data-minrev="1000"  aria-pressed="false">1k</button>
-            <button data-minrev="5000"  aria-pressed="false">5k</button>
-            <button data-minrev="10000" aria-pressed="false">10k</button>
+            <button data-rev="0" aria-pressed="false" title="0-9 reviews">0</button>
+            <button data-rev="1" aria-pressed="true" title="10-99 reviews">10</button>
+            <button data-rev="2" aria-pressed="true" title="100-999 reviews">100</button>
+            <button data-rev="3" aria-pressed="true" title="1k-4.9k reviews">1k</button>
+            <button data-rev="4" aria-pressed="true" title="5k+ reviews">5k+</button>
           </div>
         </div>
         <div class="field">
@@ -433,10 +441,9 @@
         <div class="field">
           <label>Review trend</label>
           <div class="seg" role="group" aria-label="Review trend">
-            <button data-trend="any"  aria-pressed="true">Any</button>
-            <button data-trend="up">Improving</button>
-            <button data-trend="flat">Stable</button>
-            <button data-trend="down">Declining</button>
+            <button data-trend="up" aria-pressed="true" title="Improving: recent score above all-time">▲</button>
+            <button data-trend="flat" aria-pressed="true" title="Stable: recent score near all-time">≈</button>
+            <button data-trend="down" aria-pressed="true" title="Declining: recent score below all-time">▼</button>
           </div>
         </div>
         <div class="field">
@@ -540,15 +547,22 @@ const TAG_CAT = {};
 TAG_GROUPS.forEach(([g,arr]) => arr.forEach(t => { if(!(t in TAG_CAT)) TAG_CAT[t] = g; }));
 const GROUP_ORDER = TAG_GROUPS.map(g => g[0]).concat(["Other"]);
 const MIN_TAG_COUNT = 10;
+// Min-reviews is a two-handle range across these lower-bound bands (indices 0..4):
+//   0 -> 0-9, 1 -> 10-99, 2 -> 100-999, 3 -> 1k-4999, 4 -> 5000+.
+// revLow/revHigh are inclusive band indices; everything between is included. The effective
+// review filter is: count >= REV_BANDS[revLow]  AND  count <= REV_MAX(revHigh).
+const REV_BANDS = [0, 10, 100, 1000, 5000];
+const revMin = lowIdx => REV_BANDS[lowIdx];
+const revMax = highIdx => (highIdx >= REV_BANDS.length - 1) ? Infinity : (REV_BANDS[highIdx + 1] - 1);
 
 // ----- state -----
 const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
-                qBasis:"after", hltbMetric:"avg", minScore:0, minReviews:0, minPrice:null, maxPrice:null,
-                trendFilter:"any", updatedWithin:"any",
+                qBasis:"after", hltbMetric:"main", minScore:0, revLow:1, revHigh:4, minPrice:null, maxPrice:null,
+                trendSet:new Set(["up","flat","down"]), updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
                 hidden:new Set(),
                 pageSize:100, pagesShown:1,
-                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, fullCounts:{} };
+                wishlist:null, wishOnly:false, sortKey:"qhpp", sortDir:-1, ratingSource:"recent", fullCounts:{} };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -669,12 +683,21 @@ function passNonRange(x){
   if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
   if(state.saleOnly && !(x.discount_pct > 0)) return false;
   if(state.minScore > 0 && !(x.rating_pct != null && x.rating_pct >= state.minScore)) return false;
-  if(state.minReviews > 0 && !(x.review_count != null && x.review_count >= state.minReviews)) return false;
+  // Two-handle review-count range. Default (revLow=1..revHigh=4) is effectively "10+".
+  // Games with a null review_count are excluded unless the low handle is 0 (0-9 band).
+  {
+    const lo = revMin(state.revLow), hi = revMax(state.revHigh);
+    const rc = x.review_count;
+    if(rc == null){ if(lo > 0) return false; }
+    else if(rc < lo || rc > hi) return false;
+  }
   const p = x.is_free ? 0 : x.price_final;
   if(state.minPrice != null){ if(p == null || p < state.minPrice) return false; }
   if(state.maxPrice != null){ if(p == null || p > state.maxPrice) return false; }
   if(state.wishOnly && state.wishlist && !state.wishlist.has(x.appid)) return false;
-  if(state.trendFilter !== "any" && trendClass(x) !== state.trendFilter) return false;
+  // Trend is a multi-toggle: a game passes if its trend class is enabled. All-on (size 3)
+  // or none-on (size 0) both mean "no trend filter" — everything passes.
+  if(state.trendSet.size > 0 && state.trendSet.size < 3 && !state.trendSet.has(trendClass(x))) return false;
   if(state.updatedWithin !== "any"){
     const age = x.last_update_ts ? (NOW() - x.last_update_ts) : Infinity;
     if(state.updatedWithin === "1yr+"){ if(!(age > 365*86400)) return false; }
@@ -699,7 +722,14 @@ function visibleGames(){
     return q != null && q >= state.qMinVal && (state.qMaxUnbounded || q <= state.qMaxVal);
   });
   const k = state.sortKey, dir = state.sortDir;
-  const val = x => k === "qhpp" ? activeQ(x) : k === "trend" ? gTrend(x) : k === "hltb" ? hoursFor(x) : x[k];
+  // The Reviews column (data-sort="rating_pct") sorts by all-time or 30-day depending on
+  // the rating-source toggle (#3). "recent" is the default; fall back to all-time when a
+  // game has no recent score so it still sorts sensibly.
+  const ratingVal = x => (state.ratingSource === "recent")
+    ? (x.recent_pct != null ? x.recent_pct : x.rating_pct)
+    : x.rating_pct;
+  const val = x => k === "qhpp" ? activeQ(x) : k === "trend" ? gTrend(x) : k === "hltb" ? hoursFor(x)
+                 : k === "rating_pct" ? ratingVal(x) : x[k];
   g.sort((a,b)=>{
     if(k === "title") return dir * a.title.localeCompare(b.title);
     let av = val(a), bv = val(b);
@@ -1234,14 +1264,15 @@ function syncURL(){
   if(state.tagsExc.size) p.set("exc", [...state.tagsExc].join(","));
   if(state.saleOnly) p.set("sale", "1");
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
-  if(state.hltbMetric !== "avg") p.set("hltb", state.hltbMetric);
+  if(state.hltbMetric !== "main") p.set("hltb", state.hltbMetric);
   if(state.minScore) p.set("minscore", state.minScore);
-  if(state.minReviews !== 0) p.set("minrev", state.minReviews);
+  if(!(state.revLow === 1 && state.revHigh === 4)) p.set("rev", state.revLow + "-" + state.revHigh);
   if(state.minPrice != null) p.set("pmin", state.minPrice);
   if(state.maxPrice != null) p.set("pmax", state.maxPrice);
-  if(state.trendFilter !== "any") p.set("trend", state.trendFilter);
+  if(state.trendSet.size > 0 && state.trendSet.size < 3) p.set("trend", [...state.trendSet].join(","));
   if(state.updatedWithin !== "any") p.set("upd", state.updatedWithin);
   if(state.wishOnly) p.set("wishonly", "1");
+  if(state.ratingSource !== "recent") p.set("ratesrc", state.ratingSource);
   if(state.sortKey !== "qhpp") p.set("sort", state.sortKey);
   if(!(state.sortKey === "qhpp" && state.sortDir === -1)) p.set("dir", state.sortDir < 0 ? "d" : "a");
   if(state.pageSize !== 100) p.set("per", state.pageSize);
@@ -1270,18 +1301,22 @@ function loadFromURL(){
     document.querySelectorAll("[data-metric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.metric===v)); });
   setIf("minscore", v => { state.minScore = parseInt(v,10)||0;
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore===String(state.minScore))); });
-  setIf("minrev", v => { state.minReviews = parseInt(v,10)||0;
-    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev===String(state.minReviews))); });
+  setIf("rev", v => { const m = v.split("-").map(n => parseInt(n,10));
+    if(m.length===2 && m[0]>=0 && m[1]<REV_BANDS.length && m[0]<=m[1]){ state.revLow=m[0]; state.revHigh=m[1]; }
+    syncRevButtons(); });
   setIf("pmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minPrice=n; const el=$("#minprice"); if(el) el.value=n; } });
   setIf("pmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxPrice=n; const el=$("#maxprice"); if(el) el.value=n; } });
-  setIf("trend", v => { state.trendFilter=v;
-    document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", o.dataset.trend===v)); });
+  setIf("trend", v => { state.trendSet = new Set(v.split(",").filter(x => ["up","flat","down"].includes(x)));
+    if(state.trendSet.size === 0) state.trendSet = new Set(["up","flat","down"]);
+    document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", state.trendSet.has(o.dataset.trend))); });
   setIf("upd", v => { state.updatedWithin=v;
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd===v)); });
   setIf("wishonly", () => { state.wishOnly = true; });
   setIf("sort", v => { state.sortKey = v; });
   setIf("dir", v => { state.sortDir = v==="a" ? 1 : -1; });
-  setIf("per", v => { const n = parseInt(v,10); if([50,100,200].includes(n)){ state.pageSize = n;
+  setIf("ratesrc", v => { if(v==="all"||v==="recent"){ state.ratingSource = v;
+    document.querySelectorAll("[data-ratesrc]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ratesrc===v)); } });
+  setIf("per", v => { const n = parseInt(v,10); if([100,500,2000].includes(n)){ state.pageSize = n;
     document.querySelectorAll("#pagesize button").forEach(o => o.classList.toggle("on", o.dataset.size===String(n))); } });
   // QHPP range restored after domain is computed (see applyURLRange), just capture raw:
   state._pendingQMin = p.has("qmin") ? parseFloat(p.get("qmin")) : null;
@@ -1301,6 +1336,14 @@ function applyURLRange(){
 }
 
 
+// Reflect the two-handle review range on the band buttons: every band from revLow to
+// revHigh (inclusive) is pressed.
+function syncRevButtons(){
+  document.querySelectorAll("[data-rev]").forEach(o => {
+    const i = parseInt(o.dataset.rev, 10);
+    o.setAttribute("aria-pressed", i >= state.revLow && i <= state.revHigh);
+  });
+}
 // Filters collapse/expand via the button ONLY — no scroll-driven auto-collapse (T7).
 // The nav is normal page flow: it scrolls away naturally and the sticky <thead> takes
 // over as the pinned bar, so the filter panel never ambushes the reader on scroll.
@@ -1320,9 +1363,9 @@ function init(data){
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.qBasis="after"; state.hltbMetric="avg"; state.minScore=0; state.minReviews=0;
-    state.minPrice=null; state.maxPrice=null; state.trendFilter="any"; state.updatedWithin="any";
-    state.wishOnly=false; state.sortKey="qhpp"; state.sortDir=-1; state.qRangeTouched=false;
+    state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revLow=1; state.revHigh=4;
+    state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
+    state.wishOnly=false; state.sortKey="qhpp"; state.sortDir=-1; state.ratingSource="recent"; state.qRangeTouched=false;
     loadFromURL();
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); render();
   });
@@ -1347,16 +1390,37 @@ function init(data){
       document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o === b));
       update();
     }));
-  document.querySelectorAll("[data-minrev]").forEach(b =>
+  document.querySelectorAll("[data-ratesrc]").forEach(b =>
     b.addEventListener("click", () => {
-      state.minReviews = parseInt(b.dataset.minrev, 10);
-      document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      state.ratingSource = b.dataset.ratesrc;
+      document.querySelectorAll("[data-ratesrc]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      syncSortArrows();     // header hint reflects which score drives the Reviews sort
+      // Only re-sort if the Reviews column is the active sort; otherwise just record it.
+      if(state.sortKey === "rating_pct"){ render(); } 
+      syncURL();
+    }));
+  document.querySelectorAll("[data-rev]").forEach(b =>
+    b.addEventListener("click", () => {
+      const i = parseInt(b.dataset.rev, 10);
+      // Two-handle range: clicking below the low handle extends low down; clicking above
+      // the high handle extends high up; clicking inside the range moves whichever handle
+      // is nearer to i (ties collapse toward that band). Range can never invert or empty.
+      if(i < state.revLow){ state.revLow = i; }
+      else if(i > state.revHigh){ state.revHigh = i; }
+      else {
+        const dLow = i - state.revLow, dHigh = state.revHigh - i;
+        if(dLow <= dHigh) state.revLow = i; else state.revHigh = i;
+      }
+      syncRevButtons();
       update();
     }));
   document.querySelectorAll("[data-trend]").forEach(b =>
     b.addEventListener("click", () => {
-      state.trendFilter = b.dataset.trend;
-      document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      const k = b.dataset.trend;
+      if(state.trendSet.has(k)) state.trendSet.delete(k); else state.trendSet.add(k);
+      // Never allow all-off (confusing empty result) — treat empty as all-on.
+      if(state.trendSet.size === 0) state.trendSet = new Set(["up","flat","down"]);
+      document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", state.trendSet.has(o.dataset.trend)));
       update();
     }));
   document.querySelectorAll("[data-upd]").forEach(b =>
@@ -1395,13 +1459,14 @@ function init(data){
 
   $("#clear").addEventListener("click", () => {
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
-    state.minScore=0; state.minReviews=0; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
-    state.trendFilter="any"; state.updatedWithin="any";
+    state.minScore=0; state.revLow=1; state.revHigh=4; state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
+    state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
-    document.querySelectorAll("[data-minrev]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minrev==="0"));
-    document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", o.dataset.trend==="any"));
+    document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", "true"));
+    document.querySelectorAll("[data-ratesrc]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ratesrc==="recent"));
+    syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
     update();
   });

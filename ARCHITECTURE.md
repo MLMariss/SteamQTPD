@@ -72,7 +72,7 @@ lowest open T-number. Rough priority order within each tier is top-to-bottom.
 
 ### 2.1 Immediate — needed now
 
-- **🟡 T7 — Filter panel too tall + sticky-header scroll behavior (IMPLEMENTED 2026-07-01, pending browser check).**
+- **🟡 T7 — Filter panel / sticky-header / tag rail (build + QA round 2 shipped 2026-07-01; #5 tag-search parked, pending browser check).** Core T7 (points 1–7) implemented; QA round 2 shipped the sticky-header fix + 5 control redesigns (min-reviews range, rating-source sort toggle, trend arrows, default Main metric, per-page loader fix). One item (#5 tag-search dropdown) is specified + partially attempted but parked — the `+N more` expander remains live meanwhile. See §14 → T7 "QA Round 2" for detail and #5 continuation steps.
   On a 1440p screen the filter panel fills the *entire* viewport — the game table is
   pushed fully below the fold and never visible without scrolling; on smaller screens it's
   unusable. Root cause: the tag rail renders **every** tag above `MIN_TAG_COUNT` (≈150
@@ -1311,6 +1311,92 @@ the render cost. Flag for the user; likely fine on desktop, test on mobile.
      the model is chosen (the (a)/(b)/(c) options above) — this is the involved part and
      shouldn't be pieced together ad hoc.
   (Frontend rendering: §5.7; all logic in `index.html`.)
+
+### T7 — QA Round 2 follow-up fixes (2026-07-01)
+
+Browser QA of the first T7 build surfaced bugs + a batch of control redesigns. Six items
+were requested; **five shipped, one (#5 tag search) is partially built and parked** — see
+its continuation note below. All changes are `index.html`-only, no scraper/data change.
+
+**#1 — Sticky table header wasn't sticking. FIXED.** Root cause: `.tablecard` had
+`overflow:hidden` (for rounded-corner clipping), which creates a clip context — a
+`position:sticky` descendant sticks *within* that ancestor, so the header scrolled away
+with the card instead of pinning to the viewport. Removed `overflow:hidden` from
+`.tablecard` (rounded corners still render via `border-radius`+`border`; the earlier
+`.tablescroll` overflow fix alone was insufficient because `.tablecard` was the real
+clipper). ⚠ still browser-verify the header pins across Chrome/Firefox/Safari.
+
+**#2 — Min-reviews is now a two-handle RANGE. SHIPPED.** Replaced the single min-value
+buttons with band buttons **0 / 10 / 100 / 1k / 5k+** mapping to lower-bound bands
+`REV_BANDS = [0,10,100,1000,5000]` (indices 0–4). State is `revLow`/`revHigh` (inclusive
+band indices); the effective filter is `count >= REV_BANDS[revLow] && count <= revMax(revHigh)`
+where `revMax` returns `Infinity` for the top band. **Default `revLow=1, revHigh=4` = "10+"**.
+Click behavior: clicking below the low handle extends low down; above the high handle
+extends high up; inside the range moves whichever handle is nearer (ties collapse toward
+that band) — range can never invert or empty. Games with null `review_count` are excluded
+unless the low handle is the 0-band. All 14 filter tests + click-logic tests pass.
+
+**#3 — Rating source toggle (All-time / 30-day) driving the Reviews sort. SHIPPED.** New
+`state.ratingSource` ("all" | "recent", **default "recent"**) + an "All-time / 30-day" seg
+control next to Min Rating. It only affects how the **Reviews column sorts** (and reflects
+in the header hint): sorting by `rating_pct` uses `recent_pct` when source is "recent",
+falling back to `rating_pct` when a game has no recent score. Display of the two review
+rows in the cell is unchanged. Wired through click handler, URL param `ratesrc`, and both
+resets. Sort logic tested.
+
+**#4 — Review-trend is now multi-toggle arrows. SHIPPED.** Replaced the single-select
+`trendFilter` ("any"/"up"/"flat"/"down") with `state.trendSet` (a Set), rendered as three
+toggle buttons **▲ ≈ ▼** (Improving / Stable / Declining), **all on by default** (the "Any"
+button is gone). A game passes if its trend class is enabled; all-on (size 3) or none-on
+(size 0) both mean "no filter". Clicking toggles a class; emptying the set snaps back to
+all-on (never a confusing empty result). URL param `trend` is now a comma list. 6 logic
+tests pass.
+
+**#6 — Default HLTB metric → Main. SHIPPED.** Changed `hltbMetric` default from `avg` to
+`main` in all four locations (state init, button `aria-pressed`, URL-sync default, popstate
+reset).
+
+**Bonus bug caught + fixed:** the `per` URL-param loader still whitelisted the OLD page
+sizes `[50,100,200]` after T7 changed the buttons to `100/500/2000` — so a `?per=500` link
+would have been silently ignored. Corrected to `[100,500,2000]`.
+
+**#5 — Tag search dropdown. PARTIALLY BUILT, PARKED FOR CONTINUATION.** 🔴
+Goal (user spec): after the top-10 foundation row, REPLACE the `+N more` expander with a
+compact **search input** per group; focusing/typing shows the group's overflow tags in a
+**dropdown that must never render off-screen** (viewport-aware positioning); **Esc or any
+click outside closes it**. Overflow tags become discoverable ONLY via this search (not the
+current expand-in-place).
+  - **Progress:** the plan is fully specified; implementation was STARTED then reverted to
+    keep the shipped build runnable. The current live behavior is still the **`+N more`
+    expander** from the first T7 build (working — foundation top-10 + click-to-expand the
+    alphabetical overflow tier). Nothing of #5 is in the shipped file.
+  - **Exact continuation steps (next session):**
+    1. In `buildTagRail`, for groups with overflow, render a `.tagsearch` wrapper after the
+       foundation chips instead of `${chips}${moreBtn}`: an `<input class="tagsearch-input"
+       placeholder="+N more…">` plus an empty `<span class="tagdrop" hidden>`. Render ONLY
+       foundation chips inline (drop the hidden overflow chips).
+    2. Add a module-level `const overflowByGroup = {}` and stash `overflowByGroup[g] =
+       overflow` per group so the dropdown can be built lazily on focus.
+    3. Focus handler: build the dropdown list from `overflowByGroup[g]`, filtered by the
+       input text (case-insensitive substring). Each item is a normal tag chip (reuse
+       `chipHtml`/`cycleTag` so include/exclude still works).
+    4. **Viewport-aware positioning (the hard part / the user's explicit requirement):**
+       position the `.tagdrop` with `position:fixed`, measure `getBoundingClientRect()` of
+       the input, and clamp so the dropdown never exceeds the viewport — flip above the
+       input if it would overflow the bottom, and clamp left/right so it never spills off
+       the sides. Cap its height (e.g. `max-height:min(320px, available)`) with internal
+       scroll.
+    5. Close on **Esc** (keydown) and on **click outside** (document click that isn't
+       inside the open `.tagsearch`). Only one dropdown open at a time.
+    6. Add CSS: `.tagsearch`, `.tagsearch-input`, `.tagdrop` (fixed, bordered, scrollable),
+       dropdown item styles.
+    7. Remove the now-unused `.tagmore` button + its `data-more` click handler + `.tag-extra`
+       overflow CSS (they're the expander being replaced).
+    8. Re-validate JS end-to-end; browser-test that the dropdown never leaves the screen at
+       various scroll positions and group locations (esp. the bottom-most "Other" group).
+  - **Gotcha noted during the abandoned attempt:** don't double-declare `chips`/reuse the
+    old render tail — replace the whole `${chips}${moreBtn}` tail cleanly, and delete the
+    overflow-chip generation so tags aren't rendered twice.
 
 ### T8 — Load-time / scaling ceiling as the dataset grows (§2.2)
 
