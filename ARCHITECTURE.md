@@ -72,7 +72,7 @@ lowest open T-number. Rough priority order within each tier is top-to-bottom.
 
 ### 2.1 Immediate — needed now
 
-- **🟡 T7 — Filter panel / sticky-header / tag rail (build + QA round 2 shipped 2026-07-01; #5 tag-search parked, pending browser check).** Core T7 (points 1–7) implemented; QA round 2 shipped the sticky-header fix + 5 control redesigns (min-reviews range, rating-source sort toggle, trend arrows, default Main metric, per-page loader fix). One item (#5 tag-search dropdown) is specified + partially attempted but parked — the `+N more` expander remains live meanwhile. See §14 → T7 "QA Round 2" for detail and #5 continuation steps.
+- **🟡 T7 — Filter panel / sticky-header / tag rail (build + QA rounds 2–3; #5 tag-search + 2 QA-R3 items pending).** Core T7 (points 1–7) + QA Round 2 shipped (sticky-header fix, min-reviews range, rating-source sort toggle, trend arrows, default Main metric, per-page loader fix). **Still open:** #5 tag-search dropdown (parked mid-build; `+N more` expander live meanwhile) and QA Round 3's two items — **#R3-1** min/max HLTB filter by selected metric, and **#R3-2** make single-select seg toggles un-toggleable (Min Rating has a real "Any" off-state; rating-source/metric/basis need a user decision since "off" isn't meaningful). See §14 → T7 "QA Round 2" and "QA Round 3" for detail + continuation steps.
   On a 1440p screen the filter panel fills the *entire* viewport — the game table is
   pushed fully below the fold and never visible without scrolling; on smaller screens it's
   unusable. Root cause: the tag rail renders **every** tag above `MIN_TAG_COUNT` (≈150
@@ -1397,6 +1397,61 @@ current expand-in-place).
   - **Gotcha noted during the abandoned attempt:** don't double-declare `chips`/reuse the
     old render tail — replace the whole `${chips}${moreBtn}` tail cleanly, and delete the
     overflow-chip generation so tags aren't rendered twice.
+
+### T7 — QA Round 3 requested fixes (2026-07-01) — 🔴 not yet implemented
+
+Two more items from browser QA of the Round-2 build. Both are `index.html`-only. Neither
+is started yet.
+
+**#R3-1 — Min/max HLTB filter (by the selected metric).** 🔴
+Add a numeric min/max range filter on HLTB hours, filtering by **whichever HLTB metric is
+currently selected** (Main / +Extras / 100% / Average — `state.hltbMetric`). So if the
+metric is "Main", the filter bounds the Main-story hours; switch to "Average" and the same
+two inputs bound the average. Mirror the existing **Price Range** control (min $ / max $
+number inputs with steppers) — a parallel "HLTB hours" min/max pair.
+  - **Where:** add a new filter field next to Price Range in the filter panel. Reuse the
+    price-range input pattern (`#minprice`/`#maxprice` handlers are the template).
+  - **State:** `state.hltbMin` / `state.hltbMax` (null = unbounded), plus URL params
+    (e.g. `hmin`/`hmax`) and both resets.
+  - **Filter logic:** in `passNonRange` (or the range filter), compute the game's hours for
+    the *current* metric via the existing `hoursFor(g)` helper (it already returns the
+    selected-metric hours), then bound: `h != null && h >= hltbMin && h <= hltbMax`. Games
+    with no HLTB data for the selected metric: exclude when a bound is set (match how the
+    review-count null case is handled).
+  - **Gotcha:** because the bound is metric-relative, switching the HLTB metric should
+    re-apply the filter against the new metric's hours (it already re-renders on metric
+    change via `setMetric`→`update()`, so this falls out for free — just make sure the
+    min/max inputs' *labels/placeholders* make clear they track the selected metric, e.g.
+    a hint like "HLTB hours (Main)" that updates with the metric).
+  - **Consider:** whether the QHPP log-range slider and this HLTB range should visually
+    group; not required, but they're both "numeric range" controls.
+
+**#R3-2 — Make the single-select seg toggles un-toggleable (like the trend arrows).** 🔴
+Several segmented controls are currently radio-style: clicking a value selects it, but you
+can't click the **active** button again to turn it OFF / return to default. Round 2 fixed
+this for Review Trend (multi-toggle) but NOT for these single-select groups. Requested:
+clicking an already-active button clears it back to the group's default.
+  - **Affected groups + their "off"/default state:**
+    - **Min Rating** (`data-minscore`, Any/60/70/80/90): clicking the active threshold →
+      back to **Any** (`minScore = 0`).
+    - **Rating source** (`data-ratesrc`, All-time/30-day): this one has no "neither" state
+      that makes sense (the Reviews column must sort by *something*) — CONFIRM with user
+      whether it should toggle at all, or stay always-one-selected. Likely leave as-is, or
+      make clicking-active a no-op. **Open question — flag before implementing.**
+    - **HLTB metric** (`data-metric`, Main/+Extras/100%/Average): QHPP must be computed
+      from *some* metric, so "off" isn't meaningful here either. Same open question as
+      rating source — probably stays always-one-selected. **Flag before implementing.**
+    - **QHPP price basis** (`#qb-after`/`#qb-before`, After/Before): also always-one.
+  - **So the ACTUAL actionable fix is Min Rating** (it has a true "Any" off-state). The
+    others are single-select by necessity — need user confirmation on whether they want a
+    forced toggle there anyway (and if so, what "off" means).
+  - **Implementation (Min Rating):** in the `data-minscore` click handler, if the clicked
+    button is already the active one (`state.minScore === parseInt(b.dataset.minscore)`),
+    set `minScore = 0` and press the "Any" button instead; else select as now. Same pattern
+    could apply to any group given a defined default.
+  - **Note (not a bug):** the Round-2 screenshot showed "Average" still highlighted despite
+    the new "Main" default — that's URL-state persistence (`?hltb=avg` from a prior
+    session), NOT a code error. A fresh load with no query string correctly shows Main.
 
 ### T8 — Load-time / scaling ceiling as the dataset grows (§2.2)
 
