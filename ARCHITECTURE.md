@@ -64,12 +64,89 @@ part of any change (see the rule in the intro).
 **Status key:** 🔴 not started · 🟡 in progress · 🟢 done (kept for history) ·
 🔵 deferred by design (no action needed yet).
 
-Rough priority order within each group is top-to-bottom.
+Open tasks are grouped by priority tier (§2.1 Immediate → §2.2 Improvements → §2.3
+Nice-to-haves) and numbered by that priority; **completed work lives in §2.4 (history)
+and keeps its original numbers.** When a new task is added or one is resolved, the OPEN
+task numbers are renumbered by priority so the highest-priority open item is always the
+lowest open T-number. Rough priority order within each tier is top-to-bottom.
 
-### 2.1 Known cleanups — safe, low-risk, do anytime
+### 2.1 Immediate — needed now
 
-These are confirmed dead/misleading artifacts. None affect behavior; all reduce future
-confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
+- **🔴 T7 — Filter panel is too tall and the sticky-header scroll behavior is broken.**
+  On a 1440p screen the filter panel fills the *entire* viewport — the game table is
+  pushed fully below the fold and never visible without scrolling; on smaller screens it's
+  unusable. Root cause: the tag rail renders **every** tag above `MIN_TAG_COUNT` (≈150
+  chips across ~40 rows), and the sticky `.topbar` collapse logic interacts badly with
+  that height. Distinct sub-problems, all around the top nav:
+  - **(1) Unusable at <1440p / panel too tall.** The whole filter block (basis, HLTB,
+    rating, reviews, price, range slider, trend, updated-within, *and* the giant tag rail)
+    is one sticky unit taller than most viewports.
+  - **(2) Scroll skips the unseen filters.** The panel is `position:sticky` and the *first*
+    scroll immediately toggles `.compact` (which `display:none`s all `.bar-filters`), so
+    the middle filters that were below the fold are never seen — scrolling jumps straight
+    from the top to the game table, skipping everything in between.
+  - **(3) Sticky table column/sort header — CONFIRMED WANTED.** Scrolling back up from the
+    table, the moment the viewport touches the sticky topbar it re-expands the full nav —
+    there's no stop at the *end of the table* where the column sort headers are usable
+    without the nav eating the screen. **Fix: give the table's column/sort header its own
+    `position:sticky; top:0`** so the sort controls stick and stay usable on scroll-up.
+    (User confirmed 2026-07-01 this is a definite requirement, not just a proposal.)
+  - **(4) Full-nav reopen must be a deliberate second step.** Only after the table + its
+    sticky column heads are settled should a further, intentional scroll-up (or a button)
+    open the full filter nav — not on first upward contact. Simplest robust option:
+    filters reopen ONLY via the "Show filters" button; scroll only ever collapses.
+  - **(5) Tag groups: top-10 foundation + "+ more" overflow, BOTH alphabetical.** Trim
+    each group (SKIP Players & Mode — already short) to a **foundation row of its 10
+    most-USED tags** (which tags qualify is decided by full-corpus count), but **display
+    those 10 alphabetically among themselves** as a stable row that never reshuffles.
+    A per-group **"+ more"** expander reveals the group's remaining (less-used) tags as a
+    **separate lower tier, sorted alphabetically among themselves.** Two independent
+    alphabetical lists (foundation + overflow) — NOT one big count-ranked list that
+    reshuffles. The count ranking only decides *membership* of the top-10; ordering within
+    each tier stays alphabetical so chips don't jump around.
+  - **(6) Per-page options → 100 / 500 / 2000** (currently 50 / 100 / 200); default stays
+    100. Trivial markup change (existing handler reads `data-size`). Watch: 2000 rows in
+    first paint may be heavy on mobile — test.
+  - **(7) General audit of the sticky-header behavior** — other findings and suggestions
+    (sticky-header/scroll-latch, `scroll-margin-top`, filters-collapsed-by-default, mobile
+    treatment) are in §14 → T7.
+  (Frontend: §5.7; scroll/collapse + `buildTagRail` logic in `index.html`. Detail: §14 → T7.)
+
+### 2.2 Improvements — real engineering effort, not yet urgent
+
+- **🔵 T8 — Load-time / scaling ceiling as the dataset grows.** The frontend fetches the
+  **entire `games.json` (~12 MB at ~23k games) plus four more JSON layers up front**, on
+  every page load, with `cache:"no-store"` — then merges and renders client-side. That's
+  fine now, but it scales linearly: at the full ~90k-game catalog `games.json` alone is
+  headed toward ~45 MB, which is a real mobile-data and parse-time cost, and `no-store`
+  defeats browser caching so it re-downloads every visit. Deferred (not yet a problem),
+  but the eventual fixes, roughly in order of effort: **(1)** drop `no-store` in favor of
+  a cache-busting query param or `ETag`/`Cache-Control` so repeat visits are cheap;
+  **(2)** ship a slimmer pre-merged/precomputed index (server-side merge in a build step
+  so the browser downloads one compact file instead of five and doesn't merge at all);
+  **(3)** gzip/precompress or move large layers to a columnar/binary format; **(4)** the
+  big one — **shard `games.json`** (e.g. by appid range or by a pre-sorted QHPP page) and
+  **load shards on demand / paginate server-side**, so the browser only pulls what it
+  renders. The infinite-scroll UI already only *shows* a page at a time; the data layer
+  just doesn't match that yet. (Frontend: §5.7; caveats: §13. Detail: §14 → T8.)
+
+### 2.3 Nice-to-have — optional, do if convenient
+
+- **🔵 T9 — Factor out the duplicated `get()` and `git_checkpoint` helpers.** Every
+  scraping script reimplements the same HTTP retry/backoff and push-retry logic.
+  This is currently a deliberate "each job is a self-contained single file" trade. Only
+  worth doing if a contract needs to change in lockstep across jobs; weigh against the
+  simplicity the duplication buys. (Resilience: §9. Detail: §14 → T9.)
+
+- **🔵 T10 — Back up / version the Cloudflare Worker in-repo.** The wishlist proxy (§5.9)
+  is the only component whose source isn't in this repo, so if it's lost there's nothing
+  checked in to redeploy from. Consider committing the Worker script + `wrangler.toml`
+  into a `worker/` directory here (even though it deploys separately) so the whole system
+  is reconstructable from one repo. (Worker: §5.9. Detail: §14 → T10.)
+
+### 2.4 Completed — done, kept for history
+
+These keep their original T-numbers (they are NOT renumbered when open tasks shift).
 
 - **🟢 ~~T1 — Remove the dead `cursor` field from `catalog.json`.~~** A relic of the
   pre-`GetAppList` search-pagination scraper. No current code read or wrote it; it
@@ -101,8 +178,6 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
   the workflow was deleted outright (2026-06-30), so there's nothing left to bump.
   (Workflows: §9. Detail: §14 → T4.)
 
-### 2.2 Known problems — real gaps worth engineering effort
-
 - **🟢 ~~T5 — HLTB coverage: re-scrape pass + matching decision.~~** Of
   ~19.5k HLTB entries (2026-06-30: 656 full-real, 1,194 partial, 17,646 blank), most blanks
   are genuine no-matches — HLTB has no page for most of Steam's long tail, so this is largely
@@ -119,7 +194,6 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
   tight match that yields a blank is safer than a loose one that yields a wrong answer — so the
   remaining no-matches are accepted as the correct trade for now. (§5.3 no-match reality; §8 raw
   model. Detail: §14 → T5.)
-  (§5.3 no-match reality; §8 raw model. Detail: §14 → T5.)
 
 - **🟢 ~~T6 — Missing / broken thumbnails, especially for adult-content games.~~**
   Thumbnails are derived 100% client-side from the appid (`capsule_231x87.jpg`, falling
@@ -136,43 +210,14 @@ confusion. Code-level fixes (not yet applied to source as of 2026-06-30).
   Mature, NSFW, Hentai} — 61 in the current `tags.json`) now render the real art under a
   **permanent CSS blur + centered "18+" badge**. Deliberately kept the deterministic
   capsule/header chain (no per-game screenshot URL) to avoid a scraper field + ~2 MB
-  `games.json` growth (T7 tension) — screenshot fallback is parked. Blur is permanent (no
-  click-to-reveal) until a real age-verification gate exists. (Frontend: §5.7. Detail:
-  §14 -> T6.)
-
-- **🔵 T7 — Load-time / scaling ceiling as the dataset grows.** The frontend fetches the
-  **entire `games.json` (~12 MB at ~23k games) plus four more JSON layers up front**, on
-  every page load, with `cache:"no-store"` — then merges and renders client-side. That's
-  fine now, but it scales linearly: at the full ~90k-game catalog `games.json` alone is
-  headed toward ~45 MB, which is a real mobile-data and parse-time cost, and `no-store`
-  defeats browser caching so it re-downloads every visit. Deferred (not yet a problem),
-  but the eventual fixes, roughly in order of effort: **(1)** drop `no-store` in favor of
-  a cache-busting query param or `ETag`/`Cache-Control` so repeat visits are cheap;
-  **(2)** ship a slimmer pre-merged/precomputed index (server-side merge in a build step
-  so the browser downloads one compact file instead of five and doesn't merge at all);
-  **(3)** gzip/precompress or move large layers to a columnar/binary format; **(4)** the
-  big one — **shard `games.json`** (e.g. by appid range or by a pre-sorted QHPP page) and
-  **load shards on demand / paginate server-side**, so the browser only pulls what it
-  renders. The infinite-scroll UI already only *shows* a page at a time; the data layer
-  just doesn't match that yet. (Frontend: §5.7; caveats: §13. Detail: §14 → T7.)
-
-### 2.3 Optional / nice-to-have
-
-- **🔵 T8 — Factor out the duplicated `get()` and `git_checkpoint` helpers.** Every
-  scraping script reimplements the same HTTP retry/backoff and push-retry logic.
-  This is currently a deliberate "each job is a self-contained single file" trade. Only
-  worth doing if a contract needs to change in lockstep across jobs; weigh against the
-  simplicity the duplication buys. (Resilience: §9. Detail: §14 → T8.)
-
-- **🔵 T9 — Back up / version the Cloudflare Worker in-repo.** The wishlist proxy (§5.9)
-  is the only component whose source isn't in this repo, so if it's lost there's nothing
-  checked in to redeploy from. Consider committing the Worker script + `wrangler.toml`
-  into a `worker/` directory here (even though it deploys separately) so the whole system
-  is reconstructable from one repo. (Worker: §5.9. Detail: §14 → T9.)
+  `games.json` growth (the T8 scaling concern) — screenshot fallback is parked. Blur is
+  permanent (no click-to-reveal) until a real age-verification gate exists. (Frontend:
+  §5.7. Detail: §14 → T6.)
 
 > **§14 (Future work — detail)** holds the longer-form rationale for the engineering
-> tasks above. This tracker is the index; §14 is the reference.
-
+> tasks above. This tracker is the index; §14 is the reference. **Numbering note:** §14
+> detail headers are keyed to the CURRENT open-task numbers; when open tasks are
+> renumbered, the §14 headers move with them. Completed-task detail (T1–T6) is stable.
 ---
 
 ## 3. The core architectural principle: ONE WRITER PER FILE
@@ -1085,8 +1130,8 @@ treatment.
 - **No per-game screenshot fallback.** A screenshot would be a nicer terminal fallback
   than a possibly-broken header, but screenshot filenames are opaque hashes — there's no
   appid-derivable URL, so it would require the scraper to record a screenshot URL per game
-  (+~2 MB to `games.json`, which is exactly the pressure T7 is about) plus a slow re-scrape
-  backfill. Parked; revisit only if broken-header cases prove common in practice.
+  (+~2 MB to `games.json`, which is exactly the scaling pressure T8 is about) plus a slow
+  re-scrape backfill. Parked; revisit only if broken-header cases prove common in practice.
 - **No click-to-reveal on the blur.** The blur is permanent for now. Adding a reveal toggle
   would imply an age check we don't actually have. **Future improvement:** once a real 18+
   age-verification gate exists, make the blur a click-to-reveal / per-session toggle.
@@ -1099,7 +1144,122 @@ normal games not), and the full app `<script>` passes `node --check`. Final visu
 confirmation (adult blur renders, broken capsules fall through, normal games unaffected)
 is a **browser-side check after deploy**. (Frontend rendering: §5.7.)
 
-### T7 — Load-time / scaling ceiling as the dataset grows (§2.2)
+### T7 — Top-nav height + sticky-scroll behavior + tag-rail trimming (§2.1) — 🔴 analysis done, not yet implemented
+
+Reported 2026-07-01 from a 1440p screenshot: the filter panel fills the whole viewport,
+the game table is entirely below the fold, and the sticky-header collapse behaves badly
+in both scroll directions. This block records the diagnosis of each reported point and
+the proposed direction, plus a code audit (point 7). **No code written yet — the scroll
+redesign (points 2–4) needs a decision on the intended model before implementing.**
+
+**Current mechanics (as built).** The whole filter UI lives in one `.topbar`
+(`position:sticky; top:0; z-index:40`). A `.compact` class (`.topbar.compact
+.bar-filters{display:none}`) hides all the filter controls, leaving only the logo + search.
+The toggle is driven purely by scroll position: `applyCompact()` sets compact =
+`window.scrollY > 8` unless a manual `headerLock` ("open"/"closed") overrides it (set by
+the "⌃ Hide filters" `#collapseBtn`). The tag rail (`buildTagRail`) renders **every** tag
+whose full-corpus count ≥ `MIN_TAG_COUNT` (=10), grouped into 4 buckets (Players & Mode,
+Genre, Style/Theme/Feel, Other) and sorted **alphabetically** within each — so ~150 chips
+across ~40 rows. Per-page control offers 50 / 100 / 200. Infinite scroll loads more table
+rows via an IntersectionObserver sentinel.
+
+**Point (1) — panel too tall / unusable below 1440p.** The single sticky unit stacks
+basis + HLTB + rating + reviews + price + range slider + trend + updated-within + the
+full tag rail. On 1440p that's ~1 full viewport before the table even starts; on laptops
+it's worse. The tag rail is the dominant contributor (points 5 addresses it). Direction:
+trimming the rail (5) removes most of the height; the remaining filter rows are compact
+enough that the panel should fit within a viewport once the rail is ~3 rows instead of ~40.
+
+**Point (2) — first scroll skips the unseen middle filters.** Because `.compact` triggers
+at `scrollY > 8` and instantly `display:none`s ALL filter controls, any filter that was
+below the fold (e.g. the tag rail, trend, price) is never seen: the user scrolls a pixel,
+the whole panel collapses to the search bar, and the next thing on screen is the game
+table. The middle of the panel is unreachable by scrolling — you can only see it at the
+very top (scrollY ≤ 8) or not at all. Direction options (need decision):
+  (a) Make the panel **internally scrollable** (the filter block scrolls within a
+      max-height container) so the sticky bar is only ever, say, 60vh and the table sits
+      below a real edge — scroll reveals the rest of the filters, THEN the table.
+  (b) Keep the collapse but only compact after the panel has been **fully scrolled past**
+      (trigger at `scrollY > panelHeight`, not `> 8`), so scrolling walks through all
+      filters before the table.
+  (c) Decouple: a short **always-sticky** mini-bar (logo + search + "show filters") and
+      the big filter block becomes normal non-sticky content above the table.
+
+**Point (3) — no resting point at the end of the table for its sort/column headers.**
+Scrolling back UP from deep in the table, the instant the viewport touches the sticky
+topbar it re-expands the full nav (`headerLock` resets to auto at `scrollY ≤ 8`, but the
+sticky bar itself is always present at top). The table's own column headers (the sort
+controls — QHPP, price, rating, etc.) get no stable position where they're usable without
+the nav taking over. Direction: give the **table header its own `position:sticky`** (top:0)
+so that when you scroll up, the column/sort headers stick and stay usable, and the big
+filter nav only comes back as a deliberate further action (point 4). This likely pairs
+with (2c) — a thin persistent bar + sticky table header.
+
+**Point (4) — full-nav reopen should be a deliberate second step.** Today the full nav
+reopens on first upward contact. Desired: scrolling up first settles the **table + its
+sticky column headers**; only a further, intentional scroll-up (or a click on "show
+filters") opens the full filter nav. Direction: a two-stage model — stage 1 = table with
+sticky sort headers; stage 2 = full filters. Could be a scroll-threshold/latch, or make
+the filter reopen click-only (never auto) so it never eats the screen unexpectedly.
+Simplest robust option: **filters reopen ONLY via the "Show filters" button**, never
+auto-expand on scroll; scroll only ever collapses. That removes the surprise entirely.
+
+**Point (5) — two-tier tags: top-10 foundation + "+ more" overflow, BOTH alphabetical.**
+(User-clarified 2026-07-01.) Within each group (SKIP Players & Mode — already short):
+  - **Foundation tier:** pick the **10 most-USED tags** (membership decided by
+    `state.fullCounts` corpus count, descending; name asc as the tiebreak for a stable
+    top-10 set), then **display those 10 sorted ALPHABETICALLY among themselves.** This is
+    a fixed foundation row that never reshuffles as long as the corpus is stable.
+  - **Overflow tier:** the group's remaining eligible tags (still gated by ≥
+    `MIN_TAG_COUNT`), hidden behind a per-group **"+N more"** button. When expanded they
+    render as a SEPARATE lower tier, **sorted alphabetically among themselves** (their own
+    independent A–Z list, appended after the foundation row).
+  Key point: these are **two independent alphabetical lists**, not one count-ranked list.
+  Count only decides *which* tags are in the foundation vs. overflow; ordering *within*
+  each tier is alphabetical, so chips never jump around. This avoids the "chips reorder by
+  count" churn while still surfacing the most-used tags as the always-visible foundation.
+  Self-contained to `buildTagRail` (bucket → split into top-10-by-count vs. rest → sort
+  each alphabetically → render overflow chips with a `hidden` class) + a "+ more" click
+  handler (toggle the group's `expanded` class) + a little CSS. Biggest height win.
+
+**Point (6) — per-page 100 / 500 / 2000.** Change the three `#pagesize` buttons from
+50/100/200 to 100/500/2000 and update the default `.on` (100 stays default). Trivial
+markup + the existing click handler already reads `data-size`. Watch: 2000 rows rendered
+at once is a lot of DOM — but infinite scroll already caps initial render at
+`pageSize × pagesShown`; setting pageSize=2000 means 2000 rows in the first paint, which
+may be heavy on mobile. Consider whether 2000 should still paginate internally or accept
+the render cost. Flag for the user; likely fine on desktop, test on mobile.
+
+**Point (7) — code audit of the sticky-header behavior (other findings):**
+  - **Scroll listener runs `applyCompact` on every scroll event** (passive, but still).
+    Fine, but if we move to a threshold model, debounce/rAF-throttle it.
+  - **`headerLock` is a global reset at `scrollY ≤ 8`** — this fights any "keep filters
+    open while I scroll the rail" intent. If the panel becomes internally scrollable (2a),
+    this auto-reset needs rethinking so scrolling *within* the panel doesn't collapse it.
+  - **No `scroll-margin-top`/anchor handling** — with a sticky header, in-page anchors (and
+    the search-focus jump) can land under the sticky bar. Not reported, but worth a
+    `scroll-margin-top` on the table if we add a sticky table header.
+  - **The collapse is all-or-nothing** — there's no middle state (e.g. keep rating/price
+    but hide the rail). A partial-collapse could be a nicer default than binary.
+  - **`.compact` also shrinks the logo and hides the tagline** — good, keep that.
+  - **Mobile:** the `.pop` hover-enlarge is desktop-only (mouseover); fine. But the whole
+    filter panel has no mobile-specific treatment — at narrow widths the chip rows wrap
+    into a very tall block. The trim (5) helps; a collapsed-by-default filter panel on
+    mobile (starting compact) may be the right call.
+  - **Suggestion:** consider starting the page with filters **collapsed by default** and
+    an obvious "Filters" button, so the table is the first thing every user sees — the
+    filters are power-user tools, the table is the product.
+
+**Proposed sequencing (for user decision):**
+  1. Ship the two cheap, self-contained wins first: **point 6** (per-page numbers) and
+     **point 5** (tag-rail trim + expander). These alone cut the panel height dramatically
+     and are low-risk.
+  2. Then tackle the **scroll-behavior redesign (points 2–4)** as one coherent change once
+     the model is chosen (the (a)/(b)/(c) options above) — this is the involved part and
+     shouldn't be pieced together ad hoc.
+  (Frontend rendering: §5.7; all logic in `index.html`.)
+
+### T8 — Load-time / scaling ceiling as the dataset grows (§2.2)
 
 The frontend fetches the **entire `games.json` (~12 MB at ~23k games, 2026-06-30) plus
 four more JSON layers up front**, on every page load, with `cache:"no-store"` — then
@@ -1120,7 +1280,7 @@ just doesn't match that yet. Deferred (not yet a problem). Fixes, roughly by eff
 
 (Frontend: §5.7; caveats: §13.)
 
-### T8 — Factor out the duplicated `get()` / `git_checkpoint` helpers (§2.3)
+### T9 — Factor out the duplicated `get()` / `git_checkpoint` helpers (§2.3)
 
 Every scraping script reimplements the same HTTP retry/backoff (§9) and push-retry
 logic. (The update-detection heuristic was also duplicated in the now-removed
@@ -1131,7 +1291,7 @@ single file you can read, run, and upload in isolation" trade. A shared `_http.p
 to change in lockstep across jobs — weigh against the simplicity the duplication buys.
 (Resilience patterns: §9.)
 
-### T9 — Back up / version the Cloudflare Worker in-repo (§2.3)
+### T10 — Back up / version the Cloudflare Worker in-repo (§2.3)
 
 The wishlist proxy (§5.9) is the only piece of infrastructure whose source isn't in
 this repo. If the Worker is lost or its Cloudflare account changes, wishlist import
