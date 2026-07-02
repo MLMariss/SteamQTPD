@@ -1,0 +1,38 @@
+name: Summarize playtime ratings -> ratings.json (frontend)
+
+on:
+  workflow_dispatch:        # run manually any time
+  schedule:
+    # Once daily at :55 of hour 5 — right after playtime-summary (:50), both
+    # reading the same playtime_raw.json produced by the overnight raw scrape.
+    # Pure local recompute (no Steam calls), so it doesn't touch any rate budget.
+    - cron: "55 5 * * *"
+
+permissions:
+  contents: write           # commits ratings.json
+
+concurrency:
+  group: steam-playtime-ratings
+  cancel-in-progress: false
+
+jobs:
+  playtime-ratings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15      # trivial: reads one file, computes weighted ratings
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute playtime-weighted ratings
+        run: python ratings_summarize.py
