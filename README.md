@@ -5,9 +5,12 @@ build up a database **over time** (committed to this repo as JSON); a static pag
 (`index.html`) reads it and lets you browse, sort, and filter — with live discount
 countdowns and a gold value-meter on the QHPP column.
 
-Runs entirely on **GitHub Pages + GitHub Actions** (free and unlimited for public
-repos). No backend, no proxy. The frontend never calls Steam — it can't, Steam sends
-no CORS headers — so all scraping happens server-side in the Actions.
+Runs almost entirely on **GitHub Pages + GitHub Actions** (free and unlimited for public
+repos). All scraping happens server-side in the Actions — the frontend can't call Steam
+directly (Steam sends no CORS headers). The one exception is the optional **wishlist import**
+feature, which routes through a tiny **Cloudflare Worker** proxy (source in `worker/`) so the
+browser can read a user's Steam wishlist; everything else needs no backend, and the site works
+fully without the Worker.
 
 **QHPP** = `(avg HLTB hours × rating%) ÷ price`. Higher = more quality-adjusted hours
 per dollar. Null for free games and games HLTB can't match. The header toggles whether
@@ -69,6 +72,13 @@ Title search · on-sale-only · minimum rating (any / 70+ / 80+ / 90+) · maximu
 tags (click any tag) · sort by any column incl. QHPP, rating, price, release date.
 Infinite-scroll pagination; all filter/sort state lives in the URL so views are shareable.
 
+**Wishlist import** — paste your Steam profile in *any* format (profile URL, custom
+`/id/<name>` URL, bare name, SteamID64, `STEAM_0:0:…`, or `[U:1:…]`) to cross-reference the
+catalog against your actual wishlist and optionally filter to wishlist-only. Numeric formats
+convert in the browser; vanity names resolve via the Cloudflare Worker (see below). Requires
+the profile's *game details* to be **public**. If the Worker isn't configured the feature
+self-disables and the rest of the site is unaffected.
+
 ## Setup (~5 min)
 1. Push these files to a **public** repo (keep the structure, incl. `.github/workflows/`).
 2. **Settings → Actions → General →** Workflow permissions: **Read and write**.
@@ -83,6 +93,19 @@ Infinite-scroll pagination; all filter/sort state lives in the URL so views are 
 Run locally instead: `pip install -r requirements.txt && python scraper.py` (set
 `STEAM_API_KEY` and optionally `RUN_MINUTES` as env vars). Git commits are skipped when
 not running in Actions. Open `index.html` to view (shows sample data until real JSON exists).
+
+### Wishlist import (optional)
+The "import my wishlist" feature needs a small Cloudflare Worker (free tier is plenty), since
+the browser can't call Steam directly. Source is in **`worker/`**:
+1. Deploy it — `cd worker && wrangler deploy` (or paste `qhpp-wishlist.js` into the Cloudflare
+   dashboard editor).
+2. Set the API key secret: `wrangler secret put STEAM_API_KEY` (same key as above), or add it
+   in the dashboard under the Worker's Variables → Secrets.
+3. Point `WISHLIST_PROXY` (top of the wishlist code in `index.html`) at your deployed URL.
+
+Skip all of this and the wishlist button simply self-disables — the catalog, filters, and
+sorting work exactly the same. See **[ARCHITECTURE.md](ARCHITECTURE.md) §5.9** for the
+endpoints and error contract.
 
 ## Config
 Each job's knobs are at the top of its own script. The main ones:
