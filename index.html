@@ -170,7 +170,7 @@
      the page's own horizontal scroll, which is acceptable and rare (table fits ≥1442px). */
   .tablescroll{overflow-x:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1500px}
+  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1770px}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
         color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none;
         position:sticky; top:0; z-index:30; background:#141c2c}   /* sticks once the nav scrolls off; opaque bg so rows don't show through */
@@ -182,8 +182,8 @@
      squeezed. Other columns sized so the whole table fits a 1080p viewport (incl.
      scrollbar) without horizontal scroll. Price+Discount render as one tight unit. */
   col.c-game{width:340px}
-  col.c-rev{width:118px} col.c-trend{width:66px} col.c-price{width:76px} col.c-disc{width:64px} col.c-sale{width:90px}
-  col.c-rel{width:120px} col.c-tags{width:280px} col.c-hltb{width:230px} col.c-qhpp{width:172px}
+  col.c-rev{width:118px} col.c-weighted{width:96px} col.c-trend{width:66px} col.c-price{width:76px} col.c-disc{width:64px} col.c-sale{width:90px}
+  col.c-rel{width:120px} col.c-tags{width:280px} col.c-playtime{width:118px} col.c-hltb{width:230px} col.c-qhpp{width:172px}
   .arrow{color:var(--gold); margin-left:5px; font-size:12px}
   tbody td{padding:8px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
   td.pad{padding-left:18px; padding-right:18px}
@@ -521,8 +521,8 @@
     <div class="tablescroll">
       <table>
         <colgroup>
-          <col class="c-game"/><col class="c-rev"/><col class="c-trend"/><col class="c-price"/><col class="c-disc"/>
-          <col class="c-sale"/><col class="c-rel"/><col class="c-tags"/><col class="c-hltb"/><col class="c-qhpp"/>
+          <col class="c-game"/><col class="c-rev"/><col class="c-weighted"/><col class="c-trend"/><col class="c-price"/><col class="c-disc"/>
+          <col class="c-sale"/><col class="c-rel"/><col class="c-tags"/><col class="c-playtime"/><col class="c-hltb"/><col class="c-qhpp"/>
         </colgroup>
         <thead>
           <tr>
