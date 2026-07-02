@@ -370,7 +370,7 @@
         <div class="wishrow">
           <span class="wishlabel">Wishlist</span>
           <div class="wishbox">
-            <input id="steamid" type="text" placeholder="your SteamID64 or steamcommunity.com/profiles/… URL" autocomplete="off" />
+            <input id="steamid" type="text" placeholder="profile URL, name, SteamID64, STEAM_0:… — any format" autocomplete="off" />
             <button id="wishimport" type="button">Import</button>
           </div>
           <button class="toggle wish" id="wishOnly" aria-pressed="false" style="display:none">Wishlist only</button>
@@ -1172,11 +1172,42 @@ function toast(html, type, ms){
 }
 
 // ----- wishlist -----
+// SteamID64 = base + accountID.  These three formats are pure math (no network):
+//   steamID64  76561198019774128
+//   steamID2   STEAM_0:0:29754200   -> accountID = Z*2 + Y
+//   steamID3   [U:1:59508400]       -> accountID = the bracketed number
+const STEAMID64_BASE = 76561197960265728n; // 0x0110000100000000 (individual account, public universe)
+// Resolve an input string to a SteamID64 *without* any network call.
+// Returns { id } when solvable locally, { vanity } when it needs a keyed Steam
+// lookup (a /id/<name> URL or a bare custom name), or null when unrecognisable.
 function parseSteamId(input){
   input = (input||"").trim();
-  let m = input.match(/profiles\/(\d{17})/);
-  if(m) return m[1];
-  if(/^\d{17}$/.test(input)) return input;
+  if(!input) return null;
+
+  // steamID64: 17 digits, bare or inside a /profiles/<id> URL
+  let m = input.match(/(?:profiles\/)?(\d{17})(?:[/?#]|$)/);
+  if(m) return { id: m[1] };
+
+  // steamID2:  STEAM_X:Y:Z  (X universe ignored, accountID = Z*2 + Y)
+  m = input.match(/^STEAM_[0-5]:([01]):(\d+)$/i);
+  if(m){
+    const acct = BigInt(m[2]) * 2n + BigInt(m[1]);
+    return { id: (STEAMID64_BASE + acct).toString() };
+  }
+
+  // steamID3:  [U:1:accountID]  or bare  U:1:accountID
+  m = input.match(/^\[?U:1:(\d+)\]?$/i);
+  if(m) return { id: (STEAMID64_BASE + BigInt(m[1])).toString() };
+
+  // vanity /id/<name> URL  ->  needs the Worker to resolve
+  m = input.match(/steamcommunity\.com\/id\/([^/?#]+)/i);
+  if(m) return { vanity: decodeURIComponent(m[1]) };
+
+  // bare custom name (letters/digits/_-, not all-numeric) -> treat as vanity
+  if(/^[A-Za-z0-9_-]{2,32}$/.test(input) && !/^\d+$/.test(input)){
+    return { vanity: input };
+  }
+
   return null;
 }
 // ===== Wishlist import via the QHPP Cloudflare Worker proxy =====
@@ -1186,14 +1217,34 @@ function parseSteamId(input){
 const WISHLIST_PROXY = "https://qhpp-wishlist.mlmariss.workers.dev";
 
 async function importWishlist(){
-  const id = parseSteamId($("#steamid").value);
-  if(!id){
-    toast(`Enter your 17-digit SteamID64 or a <code>/profiles/&lt;id&gt;</code> URL. Vanity <code>/id/name</code> URLs can't be resolved here — get your number at <a href="https://steamid.io" target="_blank" rel="noopener">steamid.io</a>.`, "err", 10000);
+  const parsed = parseSteamId($("#steamid").value);
+  if(!parsed){
+    toast(`Couldn't read that. Paste your <b>profile URL</b> (<code>/id/name</code> or <code>/profiles/&lt;id&gt;</code>), a 17-digit <b>SteamID64</b>, a <code>STEAM_0:…</code> or <code>[U:1:…]</code> ID, or your custom name. Not sure? Look it up at <a href="https://steamid.io" target="_blank" rel="noopener">steamid.io</a>.`, "err", 11000);
     return;
   }
   if(WISHLIST_PROXY.includes("REPLACE-WITH-YOUR-WORKER")){
     toast(`Wishlist import isn't configured yet (no proxy URL set).`, "err", 8000);
     return;
+  }
+
+  // Vanity name → resolve to SteamID64 via the Worker first.
+  let id = parsed.id;
+  if(!id && parsed.vanity){
+    toast("Resolving profile name…", "", 4000);
+    let vres = null, vnet = false;
+    try {
+      const r = await fetch(`${WISHLIST_PROXY}/?vanity=${encodeURIComponent(parsed.vanity)}`, {cache:"no-store"});
+      vres = await r.json().catch(() => null);
+    } catch(e){ vnet = true; }
+    if(vnet || !vres){
+      toast(`Couldn't reach the lookup service. Check your connection and try again in a moment.`, "err", 9000);
+      return;
+    }
+    if(vres.ok === false || !vres.steamid){
+      toast(`No Steam profile found for <b>${parsed.vanity}</b>. Check the name, or paste your full <code>/profiles/&lt;id&gt;</code> URL or SteamID64 instead.`, "err", 10000);
+      return;
+    }
+    id = vres.steamid;
   }
   toast("Fetching wishlist…", "", 4000);
 
