@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""
+Steam QHPP — playtime-weighted ratings summarizer
+=================================================
+Reads the BIG per-review file (playtime_raw.json, maintained by
+playtime_refresh.py) and writes a SMALL frontend-facing ratings.json: a
+playtime-weighted "quality" rating per game, to sit alongside Steam's flat
+review %.
+
+Why a playtime-weighted rating at all:
+  Steam's rating is one-person-one-vote — a 12-minute refund-window pan counts
+  the same as an 800-hour "I know this game cold and still don't recommend it."
+  Weighting each review by how long that player actually played gives a more
+  credible verdict: it asks "what do the people who *played* this think," not
+  just "who bothered to click a thumb." A long-playtime negative is damning; a
+  30-second negative is mostly noise — and this rating reflects that.
+
+Why a SEPARATE file + step (not folded into playtime.json):
+  Clean separation of concerns — playtime.json is the playtime *medians* the
+  table column shows; ratings.json is the *rating* number shown next to Steam's
+  %. Each has its own summarize step and its own tiny frontend file. One writer
+  per file (playtime_refresh.py -> raw; playtime_summarize.py -> playtime.json;
+  THIS -> ratings.json). The frontend loads both small files, never the raw one.
+
+------------------------------------------------------------------------------
+THE THREE VARIANTS (all stored, so the display choice can change without a
+re-scrape — everything derives from the same raw reviews):
+------------------------------------------------------------------------------
+  raw    — uncapped: recommend_hours / total_hours.
+           Transparent, but DISTORTED by whales: a couple of 500h outliers can
+           swing a game 60+ points off its Steam %. Kept for debugging/analysis,
+           NOT recommended for display (the analysis that motivated the cap).
+
+  capped — each review's playtime is capped at CAP_MULT * that game's median
+           before summing. So one obsessive can't dominate: their weight maxes at
+           2x the typical playtime. This keeps the rating tethered to a sane range
+           (~5pt avg divergence from Steam %) while still letting longer playtime
+           count for more than a quick playthrough. THE INTENDED one.
+
+  bayes  — the capped % pulled toward a global PRIOR with strength
+           PRIOR_STRENGTH_REVIEWS worth of hours. The prior is computed by POOLING
+           every review's capped hours across ALL eligible games into one weighted
+           rating (not by averaging per-game ratings — pooling weights each game by
+           its real playtime volume, so big games count proportionally and small
+           positive indies don't inflate the baseline). Small-sample games are
+           dragged toward the prior (a 10-review 100% can't outrank a 3000-review
+           92%); big-sample games keep their real value. This is the
+           "Steam-like"/IMDb-Top-250 confidence adjustment.
+
+Eligibility: a game needs >= MIN_REVIEWS_FOR_RATING (10) reviews to get ANY
+rating. Below that there isn't enough signal; the game is omitted (frontend shows
+nothing / a thin-data marker).
+
+Two passes are required because `bayes` needs the global mean of `capped` across
+all games BEFORE it can smooth any individual game. Pass 1: compute every game's
+capped %. Pass 2: average them -> prior, then smooth.
+"""
+
+import json
+import os
+import statistics
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+RAW_FILE = HERE / "playtime_raw.json"        # read-only here (owned by playtime_refresh.py)
+OUT_FILE = HERE / "ratings.json"             # THIS file's output (committed; frontend reads it)
+
+MIN_REVIEWS_FOR_RATING = 5                   # hard floor: below this, no rating computed at all
+CONFIDENT_REVIEWS = 10                        # >= this renders full-color; 5-9 renders grayed
+                                             #   (frontend reads this from the meta to style the cue)
+CAP_MULT = 2.0                               # per-review playtime capped at 2x the game's median
+IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+
+
+def log(msg):
+    print(msg, flush=True)
+
+
+def _game_vals(reviews):
+    """[(playtime_minutes, voted_up_bool), ...] for a game's stored reviews."""
+    return [(r["pt"], bool(r.get("up"))) for r in reviews.values()]
+
+
+def raw_weighted(vals):
+    """Uncapped recommend-hours / total-hours -> 0..100 (or None)."""
+    num = den = 0.0
+    for pt, up in vals:
+        den += pt
+        if up:
+            num += pt
+    return 100 * num / den if den else None
+
+
+def capped_weighted(vals):
+    """Recommend-hours / total-hours with each review capped at CAP_MULT * median
+    playtime for THIS game. Returns (pct, median_minutes, avg_review_weight)."""
+    if not vals:
+        return None, None, None
+    allpt = [v[0] for v in vals]
+    med = statistics.median(allpt)
+    cap = CAP_MULT * med
+    num = den = 0.0
+    for pt, up in vals:
+        w = pt if pt < cap else cap
+        den += w
+        if up:
+            num += w
+    if den <= 0:
+        return None, med, None
+    return 100 * num / den, med, den / len(vals)
+
+
+def plain_steam_pct(vals):
+    """One-person-one-vote % for reference/comparison."""
+    if not vals:
+        return None
+    return 100 * sum(1 for _, up in vals if up) / len(vals)
+
+
+def load_raw_games():
+    if not RAW_FILE.exists():
+        return {}, None
+    try:
+        d = json.loads(RAW_FILE.read_text(encoding="utf-8"))
+    except ValueError:
+        return {}, None
+    return d.get("games", {}), d.get("per_game_cap")
+
+
+def save_ratings(ratings, per_game_cap):
+    """Lean compact output. Each game -> positional array:
+
+        "<appid>": [steam, raw, capped, n]
+                     [0]    [1]  [2]     [3]
+        * steam  = plain one-vote %, rounded to 1 decimal (reference / comparison)
+        * raw    = uncapped playtime-weighted % (kept for debug; whale-distorted)
+        * capped = 2x-median-capped playtime-weighted % (the INTENDED display value)
+        * n      = review sample size behind the rating
+
+    All percentages are 0..100 with one decimal. The frontend reads by index (see
+    `_format` in the meta), displays `capped`, and uses `n` vs CONFIDENT_REVIEWS to
+    decide full-color (n >= confident_reviews) vs grayed 'needs more reviews' (n below).
+    No Bayesian smoothing: reliability is conveyed by the gray cue, not by nudging
+    the number toward a prior.
+    """
+    payload = {aid: [r["steam"], r["raw"], r["capped"], r["n"]]
+               for aid, r in ratings.items()}
+    OUT_FILE.write_text(json.dumps(
+        {"generated_at": int(time.time()),
+         "min_reviews": MIN_REVIEWS_FOR_RATING,       # below this: no rating at all
+         "confident_reviews": CONFIDENT_REVIEWS,      # >= this: full color; between: grayed
+         "cap_mult": CAP_MULT,
+         "per_game_cap": per_game_cap,
+         "_format": ["steam_pct", "raw_pct", "capped_pct", "n"],
+         "count": len(payload),
+         "playtime_ratings": payload},
+        ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
+def git_commit():
+    if not IN_ACTIONS:
+        return
+    try:
+        subprocess.run(["git", "add", "ratings.json"], check=False)
+        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
+            subprocess.run(["git", "commit", "-m", "playtime ratings: refreshed ratings.json"], check=False)
+            for _attempt in range(1, 9):
+                subprocess.run(["git", "fetch", "origin", "main"], check=False)
+                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
+                if subprocess.run(["git", "push", "origin", "HEAD:main"],
+                                  capture_output=True, text=True).returncode == 0:
+                    log("  committed ratings.json")
+                    break
+                import random
+                time.sleep(2 * _attempt + random.uniform(0, 2))
+    except Exception as e:
+        log(f"  git commit failed: {e}")
+
+
+def main():
+    raw_games, per_game_cap = load_raw_games()
+    if not raw_games:
+        log("No playtime_raw.json yet (run playtime_refresh.py first); nothing to rate.")
+        return 0
+
+    # Single pass: compute the three rating variants per eligible game. No Bayesian
+    # smoothing / global prior anymore — reliability is conveyed on the frontend by
+    # graying ratings with few reviews (n < CONFIDENT_REVIEWS), not by nudging the
+    # number. Games below MIN_REVIEWS_FOR_RATING get no rating at all.
+    ratings = {}
+    for aid, rec in raw_games.items():
+        reviews = rec.get("reviews") or {}
+        vals = _game_vals(reviews)
+        n = len(vals)
+        if n < MIN_REVIEWS_FOR_RATING:
+            continue
+        capped, med, _avg_w = capped_weighted(vals)
+        if capped is None:
+            continue
+        ratings[aid] = {
+            "steam": round(plain_steam_pct(vals), 1),   # one-vote %, for comparison
+            "raw": round(raw_weighted(vals), 1),        # uncapped (debug)
+            "capped": round(capped, 1),                 # 2x-median-capped (displayed)
+            "n": n,
+        }
+
+    save_ratings(ratings, per_game_cap)
+    git_commit()
+    if ratings:
+        confident = sum(1 for r in ratings.values() if r["n"] >= CONFIDENT_REVIEWS)
+        log(f"Rated {len(ratings)} games (>= {MIN_REVIEWS_FOR_RATING} reviews); "
+            f"{confident} full-confidence (>= {CONFIDENT_REVIEWS}), "
+            f"{len(ratings)-confident} grayed. Wrote ratings.json.")
+    else:
+        log(f"No games met the >= {MIN_REVIEWS_FOR_RATING}-review floor yet. Wrote empty ratings.json.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
