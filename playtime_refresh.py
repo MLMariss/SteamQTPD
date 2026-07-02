@@ -47,9 +47,13 @@ G1 — per-game cap: store at most PER_GAME_CAP (1000) reviews per game. When fu
      and new reviews arrive, drop the OLDEST stored reviews (ring-buffer by
      timestamp) to make room. 1000 reviews is far more than a median needs; the
      cap bounds the file to a known ceiling no matter how popular a game gets.
-G2 — low commit churn: this script commits the big file ONCE at run-end (not on
-     every checkpoint), so history grows slowly. (Progress is still saved to disk
-     mid-run for crash-safety; it just isn't git-committed until the end.)
+G2 — low commit churn: this script commits the big file periodically DURING the
+     run (every ~30 min) plus once at run-end, rather than on every checkpoint.
+     Committing during the run (not only at the end) matters because GitHub runners
+     are ephemeral: a single end-of-run commit means a cancelled / timed-out /
+     evicted 3-hour job loses ALL its work when the runner's disk is destroyed.
+     ~30-min commits bound that loss to ~30 min while keeping history growth modest
+     (a 3h run makes ~6 commits, not ~18 and not 1).
 G3 — history pruning: deferred (add a scheduled squash workflow if/when the repo
      actually grows). Not needed at current scale.
 
@@ -83,7 +87,13 @@ RAW_FILE = HERE / "playtime_raw.json"            # THIS file's output (the big f
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (appreviews is keyless)
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))
-DISK_CHECKPOINT_SECONDS = 600     # save to DISK this often (crash-safety); NOT a git commit
+# G2 (revised): commit the raw file to git every COMMIT_SECONDS *during* the run —
+# not once at the end. A single end-of-run commit is fragile: GitHub runners are
+# ephemeral, so if a 3-hour job is cancelled / times out / gets evicted before the
+# final commit, the runner's disk is destroyed and the ENTIRE run's work is lost.
+# Committing every ~30 min means an interruption loses at most ~30 min, while still
+# keeping history growth modest (a 3h run makes ~6 commits, not ~18 and not 1).
+COMMIT_SECONDS = 1800             # 30 min: git-commit the raw file this often
 TIME_BUFFER = 90
 
 # --- sampling / growth ----------------------------------------------------- #
@@ -415,11 +425,18 @@ def main():
         f"cooldown {COOLDOWN_DAYS}d (dormant {NOUPDATE_COOLDOWN_DAYS}d)")
 
     budget = RUN_MINUTES * 60
-    last_disk = time.time()
+    last_commit = time.time()
     done = tot_added = tot_refreshed = 0
     for _score, aid, _lu in cands:
         if budget - (time.time() - start) < TIME_BUFFER:
-            log("Time budget reached; wrapping up.")
+            # Graceful time-budget stop. Commit what we have before breaking so a
+            # long run always persists its work even if it never exhausts the queue
+            # (belt-and-suspenders alongside the periodic commit below).
+            log("Time budget reached; committing and wrapping up.")
+            save_raw(raw)
+            git_commit_raw(f"playtime raw: budget stop, {done} games this run "
+                           f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; {len(raw)} tracked)")
+            last_commit = time.time()
             break
         aids = str(aid)
         rec = raw.get(aids, {})
@@ -435,12 +452,17 @@ def main():
         log(f"  {aid:>8}: fans {mu_h} (n={summary['n_up']}) · det {md_h} (n={summary['n_down']})"
             f" · +{added} new, ~{refreshed} refreshed, held {summary['n_all']}")
 
-        # G2: save to DISK periodically for crash-safety, but DON'T git-commit yet.
-        if time.time() - last_disk > DISK_CHECKPOINT_SECONDS:
+        # G2 (revised): commit to GIT periodically — not just to ephemeral disk —
+        # so an interrupted run persists its progress to the repo (see COMMIT_SECONDS).
+        if time.time() - last_commit > COMMIT_SECONDS:
             save_raw(raw)
-            last_disk = time.time()
+            git_commit_raw(f"playtime raw: checkpoint, {done} games so far "
+                           f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; {len(raw)} tracked)")
+            last_commit = time.time()
 
-    # Single git commit at the very end (G2: low history churn).
+    # Final commit at run-end (covers the normal case where the loop drains the
+    # queue before the time budget; no-op commit is skipped inside git_commit_raw
+    # when there's nothing new since the last checkpoint).
     save_raw(raw)
     git_commit_raw(f"playtime raw: {done} games this run "
                    f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; {len(raw)} tracked)")
