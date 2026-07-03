@@ -172,7 +172,10 @@
      would trap the sticky <thead> in a scroll box (browsers promote a lone overflow-x:auto to
      overflow:auto on both axes). Below the table's min-width the page scrolls sideways — rare
      now, and the sub-1040px card layout covers the small screens. min-width is the exact sum of
-     the per-column minimums (1444px) so the declared floor matches what the columns truly need. */
+     the per-column minimums (1544px) so the declared floor matches what the columns truly need.
+     Capped at 2600px and centered (margin:0 auto) so it fills normal and 1440p screens edge
+     to edge but stops sprawling on extreme ultrawides; on wide monitors the slack goes to Tags
+     then Game (their fr weights), keeping the numeric columns pinned. */
   /* ── Table sizing: CSS Grid with minmax() per column ──────────────────────────────────
      `<col>` min/max-width is ignored by browsers (col only honors width/border/bg/visibility),
      so real per-column min/max comes from Grid. The grid is applied at the ROW level (each
@@ -185,7 +188,7 @@
      its min-width the page scrolls sideways (rare); <1040px the card layout takes over. */
   :root{
     --grid-cols:
-      minmax(240px, 2.4fr)   /* Game     — primary slack */
+      minmax(320px, 2.2fr)   /* Game     — wide floor (thumb+title) + strong growth */
       minmax(104px, 128px)   /* Reviews  */
       minmax(82px,  104px)   /* Weighted */
       minmax(60px,  76px)    /* Trend    */
@@ -193,14 +196,14 @@
       minmax(62px,  78px)    /* Discount */
       minmax(86px,  108px)   /* Sale ends*/
       minmax(100px, 124px)   /* Released */
-      minmax(180px, 1.6fr)   /* Tags     — secondary slack */
+      minmax(200px, 3fr)     /* Tags     — MOST growth (soaks up the slack, fewest wrap rows) */
       minmax(96px,  120px)   /* Playtime */
       minmax(210px, 244px)   /* HLTB     */
       minmax(150px, 184px);  /* QHPP     */
   }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; max-width:1860px; margin:0 auto; border-collapse:collapse; min-width:1444px}
+  table{width:100%; max-width:2600px; margin:0 auto; border-collapse:collapse; min-width:1544px}
   colgroup{display:none}                     /* grid tracks size the columns now, not <col> */
   thead,tbody{display:block; width:100%}     /* let rows be the grid containers */
   thead tr,tbody tr{display:grid; grid-template-columns:var(--grid-cols); align-items:center}
