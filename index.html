@@ -165,12 +165,17 @@
   /* NOTE: no overflow:hidden here — it would clip the sticky <thead> to the card and stop
      it pinning to the viewport. Rounded corners still render via border-radius + border. */
   .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; margin-top:12px}
-  /* overflow-x:auto would trap the sticky thead in a scroll box; clip:visible keeps the
-     header sticking to the page. Horizontal overflow (narrow desktop widths) falls back to
-     the page's own horizontal scroll, which is acceptable and rare (table fits ≥1442px). */
-  .tablescroll{overflow-x:visible}
+  /* Fluid table (auto layout). Columns size between a per-column min (small-laptop floor,
+     keeps every cell legible) and a per-column max (breathing ceiling). The slack concentrates
+     on Game and Tags (the content-heavy columns); the slim numeric/sort columns stay narrow.
+     Horizontal overflow stays on the PAGE, not this container: putting overflow-x:auto here
+     would trap the sticky <thead> in a scroll box (browsers promote a lone overflow-x:auto to
+     overflow:auto on both axes). Below the table's min-width the page scrolls sideways — rare
+     now, and the sub-1040px card layout covers the small screens. min-width is the exact sum of
+     the per-column minimums (1444px) so the declared floor matches what the columns truly need. */
+  .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; border-collapse:collapse; table-layout:fixed; min-width:1500px}
+  table{width:100%; border-collapse:collapse; table-layout:auto; min-width:1444px}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
         color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none;
         position:sticky; top:0; z-index:30; background:#141c2c}   /* sticks once the nav scrolls off; opaque bg so rows don't show through */
@@ -178,12 +183,24 @@
   thead th.sortable:hover{color:var(--text)}
   thead th.num{text-align:right}
   thead th.center{text-align:center}
-  /* Game column absorbs slack but has a hard minimum so titles stay readable even when
-     squeezed. Other columns sized so the whole table fits a 1080p viewport (incl.
-     scrollbar) without horizontal scroll. Price+Discount render as one tight unit. */
-  col.c-game{width:300px}
-  col.c-rev{width:110px} col.c-weighted{width:84px} col.c-trend{width:66px} col.c-price{width:76px} col.c-disc{width:64px} col.c-sale{width:90px}
-  col.c-rel{width:108px} col.c-tags{width:196px} col.c-playtime{width:104px} col.c-hltb{width:202px} col.c-qhpp{width:156px}
+  /* Per-column fluid sizing: min = readable floor on a small laptop, max = how far the
+     column may stretch on a wide monitor. Slim numeric/sort columns (Trend, Price, Discount,
+     Weighted, Sale) get tight ceilings so they don't bloat — they exist to be scanned and
+     clicked, not to eat width. Game and especially Tags carry the big ceilings and soak up
+     the slack on large screens. HLTB min is raised so "MAIN +EXT 100%" + "avg N h" never
+     collide (fixes the overlap on wide free-game rows). Price+Discount stay a tight pair. */
+  col.c-game{min-width:240px; max-width:460px}
+  col.c-rev{min-width:104px; max-width:140px}
+  col.c-weighted{min-width:82px;  max-width:104px}
+  col.c-trend{min-width:60px;  max-width:78px}
+  col.c-price{min-width:74px;  max-width:96px}
+  col.c-disc{min-width:62px;  max-width:80px}
+  col.c-sale{min-width:86px;  max-width:112px}
+  col.c-rel{min-width:100px; max-width:128px}
+  col.c-tags{min-width:180px; max-width:520px}
+  col.c-playtime{min-width:96px;  max-width:128px}
+  col.c-hltb{min-width:210px; max-width:250px}
+  col.c-qhpp{min-width:150px; max-width:188px}
   /* Sort arrow sits absolutely at the bottom of the sorted header (thead th is sticky =
      a positioning context), so it costs no inline width — previously it overflowed the
      fixed-width cell and got clipped by the next column — and no extra height (it lives in
@@ -295,8 +312,12 @@
   .tag:hover{color:var(--text); border-color:var(--blue)}
   .tag.sel{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
 
-  .hltb-stack{display:inline-block; text-align:center}
-  .hltb{display:flex; gap:10px; justify-content:center}
+  /* Stack fills the cell (block, not inline-block) so its centered content can't spill past
+     the column and read as an overlap with the neighbour. Both lines are nowrap: the three
+     HLTB figures stay on one row and "avg N h" stays on the next, never colliding even when
+     the numbers are large (the wide free-game rows that used to overlap). */
+  .hltb-stack{display:block; text-align:center}
+  .hltb{display:flex; gap:10px; justify-content:center; white-space:nowrap}
   .hcol .v{font-family:var(--mono); font-size:15px}
   .hcol .l{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.04em; text-transform:uppercase}
   .hcol.sel .v{color:var(--gold)} .hcol.sel .l{color:var(--gold)}
@@ -310,7 +331,7 @@
      number (emphasis), but keep the dotted underline so it still reads as estimated. */
   .hcol.est.sel .v{color:var(--gold); border-bottom-color:var(--gold)}
   .hcol.est.sel .l{color:var(--gold)}
-  .havg{font-family:var(--mono); font-size:14px; color:var(--muted); text-align:center; margin-top:4px}
+  .havg{font-family:var(--mono); font-size:14px; color:var(--muted); text-align:center; margin-top:4px; white-space:nowrap}
   .havg b{color:var(--text); font-weight:700; font-size:15px}
   .havg.sel{color:var(--gold)} .havg.sel b{color:var(--gold)}
 
@@ -355,21 +376,25 @@
   .empty b{color:var(--text); font-weight:600}
   .foot{margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--muted-2); line-height:1.9}
 
+  /* ── Narrow screens: table collapses to stacked cards ─────────────────────────────
+     Lighter-touch pass — same card structure as before (thead hidden, each row a block,
+     each cell a label→value flex line), with more generous spacing, clearer separation
+     between rows, and Tags given a full-width left-aligned row so they breathe instead of
+     cramming against the right edge. */
   @media (max-width:1040px){
     table{min-width:0; table-layout:auto}
     colgroup{display:none}
     thead{display:none}
     table,tbody,tr,td{display:block; width:100%}
-    tbody tr{padding:14px 12px; border-bottom:1px solid var(--line)}
+    tbody tr{padding:16px 14px; border-bottom:1px solid var(--line)}
     tbody tr:hover{background:transparent}
-    tbody td{padding:5px 0; border:0; display:flex; justify-content:space-between; align-items:center; gap:16px}
-    td.pad{padding:5px 0}
+    tbody td{padding:6px 0; border:0; display:flex; justify-content:space-between; align-items:center; gap:16px; min-height:26px}
+    td.pad{padding:6px 0}
     tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:12px; letter-spacing:.04em;
         text-transform:uppercase; color:var(--muted-2); flex:none}
     .gtitle{-webkit-line-clamp:3}
     .thumb{width:184px; height:69px}
     .pricebox{align-items:flex-end}
-    .tags{justify-content:flex-end}
     .num,.qtop,.hltb{justify-content:flex-end}
     .center{justify-content:flex-end !important}
     .ratecell{align-items:flex-end}
@@ -378,6 +403,25 @@
     .qbar{flex:1; max-width:180px; margin-top:0}
     .age,.updated{text-align:right}
     .grouplabel{width:auto; text-align:left}
+    /* Tags: full-width row, label on its own line, chips wrap left-aligned with room. */
+    td[data-label="Tags"]{flex-direction:column; align-items:stretch; gap:6px}
+    .tags{justify-content:flex-start; margin-top:2px}
+  }
+
+  /* ── Phones (~≤560px): finer sizing so the tightest rows don't collide ──────────────
+     Smaller thumbnail, roomier tap targets, and the Game header allowed to stack the
+     title under the thumbnail when the row gets truly narrow. */
+  @media (max-width:560px){
+    .tablecard{border-radius:10px; margin-top:8px}
+    tbody tr{padding:14px 12px}
+    tbody td{padding:7px 0; gap:12px}
+    .thumb{width:132px; height:50px}
+    .gamecell{gap:8px}
+    .gtitle{font-size:15px}
+    /* the three HLTB figures + avg can crowd their label on a phone: give the value side
+       priority and let the label sit above it if space is tight. */
+    td[data-label="HLTB M/E/100%"]{align-items:flex-start}
+    .hltb{gap:8px}
   }
   @media (prefers-reduced-motion:reduce){ .qfill{transition:none} }
 </style>
