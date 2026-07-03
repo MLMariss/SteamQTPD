@@ -231,10 +231,11 @@ They run right after the overnight raw scrape and a few minutes apart, so each s
 fresh data. Because they don't call Steam and finish in seconds, their 15-minute timeout is
 generous.
 
-**One-off (deletable) workflows.** `backfill-hltb.yml` runs `hltb_backfill.py` once to apply
-the HLTB estimation model to existing entries; it shares the `steam-hltb` concurrency group
-so it can't clobber an in-progress HLTB scrape. `backfill_updates.py` and `cleanup_shells.py`
-are similar run-once utilities. Once run, these can be removed.
+**One-off (deletable) workflows.** `cleanup_shells.py` is a run-once utility that shares its
+target file's concurrency group so it can't clobber an in-progress scrape. The earlier
+HLTB-estimation backfill (`backfill-hltb.yml` / `hltb_backfill.py`) and `backfill_updates.py`
+were also run-once utilities of this kind; they have since been **run and removed**, which is
+the intended lifecycle for these once their one-time job is done.
 
 ---
 
@@ -362,7 +363,8 @@ tooltip (no `~` prefix — accent color is the cue). `avg` is *not* separately f
 its inputs are estimated. Zeros are normalized to null (treated as missing, not "0 hours").
 
 **Backfill & re-scrape.** `hltb_backfill.py` applied the model to existing entries once
-(via `backfill-hltb.yml`, sharing the `steam-hltb` concurrency group). `fetched_at` on every
+(via `backfill-hltb.yml`, sharing the `steam-hltb` concurrency group); both were run-once
+utilities and have **since been removed** (§4). `fetched_at` on every
 entry is groundwork for a future priority re-scrape whose order is: **partial entries first**
 (≥1 real value), **blank entries second**, **full-real last**.
 
@@ -384,6 +386,14 @@ arrival and playtime drift. It resumes each game by review identity, catching ne
 and walking deeper into unseen ones. Because a single end-of-run commit would make a long
 scrape fragile to runner interruption, it commits **every 30 minutes plus on graceful
 shutdown**.
+
+**Eligibility floor.** A game must have **≥10 all-time reviews** (`MIN_REVIEWS_FLOOR`) to enter
+the scrape queue at all. Below the floor there aren't enough reviews to survive the summarizer's
+≥3-per-side split, so scraping them would spend storefront budget for a median that gets nulled
+out anyway. The gate is applied at candidate selection against the **live `review_count` from
+`games.json`**, so it's "skip for now," not permanent exclusion — a game re-qualifies the moment
+its review count crosses 10. In practice this removes ~41k unusable games from the queue (~44%),
+leaving the full request budget for the ~52k games that can actually yield data.
 
 **Sentiment split.** Data is split by the **thumbs-up/down recommendation** — ▲ recommended
 (green) vs ▼ not-recommended (red) — tied to the rating system itself, not persona labels
@@ -557,6 +567,10 @@ Each job's knobs live at the top of its own script:
 - **`HLTB_MIN_SIMILARITY`** — HLTB title-match threshold.
 - **`PRICE_BATCH`** — appids per batched price call.
 - **`RECENT_COOLDOWN_DAYS`** — staleness before a recent score is re-checked.
+- **`MIN_REVIEWS_FLOOR` (10)** (playtime) — scraper-side eligibility gate: games below this
+  many all-time reviews are skipped (can't clear the summarizer's ≥3-per-side split). Checked
+  against live `review_count`, so it's skip-for-now, not permanent. Distinct from the ratings
+  floors below, which govern rating *compute*, not playtime *scraping*.
 - **`MIN_REVIEWS_FOR_RATING` (5) / `CONFIDENT_REVIEWS` (10) / `CAP_MULT` (2.0)** (ratings) —
   weighted-rating eligibility floor, full-color threshold, and per-review playtime cap.
 - **`STEAM_API_KEY`** (secret) — enables the keyed catalog enumeration + change-detection.
@@ -599,6 +613,13 @@ steady commits are load-bearing for the whole system staying alive.
 
 ## 16. Recent changes
 
+- **Playtime scrape: review-count floor.** `playtime_refresh.py` now gates candidate selection
+  on `MIN_REVIEWS_FLOOR = 10` (§9, §13) — games with fewer all-time reviews can't clear the
+  summarizer's ≥3-per-side split, so they're dropped from the queue instead of consuming
+  storefront budget for a null median. Cuts the eligible queue ~44% (93k → ~52k), directing the
+  full budget at games that can actually produce data. `TARGET_REVIEWS` (200) and the 4-slot
+  cron are unchanged; the gate is re-evaluated against live `review_count`, so it's
+  skip-for-now, not permanent exclusion.
 - **Table layout: fixed → fluid.** The desktop table moved from `table-layout: fixed` with
   summed 1556px `<col>` widths to **`table-layout: auto`** with a **`min-width`/`max-width`
   per column** (§11): hard min floors for small-laptop legibility, best-effort max ceilings so
