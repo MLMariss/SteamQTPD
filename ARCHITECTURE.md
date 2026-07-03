@@ -120,12 +120,16 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
 
 Works off data already collected. Several are cheap and high-impact.
 
-- **Mobile / narrow-screen layout — highest-frequency complaint.** The `table-layout: fixed`
-  grid (§11) overflows small screens, the title truncates, and the sale badge + discount %
-  waste a column. *What to do:* evaluate a responsive mode — collapse Price / Discount /
-  Sale-ends into one stacked cell, set sensible `min-width` on columns so horizontal scroll
-  still works as a fallback, and consider a card layout below a breakpoint. Directly conflicts
-  with the fixed-1556px-width assumption in §11, so treat as a real layout task, not a tweak.
+- **Mobile / narrow-screen layout — highest-frequency complaint. [Partly done.]** The old
+  `table-layout: fixed` grid overflowed small screens, titles truncated, and the sale badge +
+  discount % wasted a column. *Done so far:* the desktop table is now **fluid** (`auto` layout,
+  per-column min/max — §11), and the sub-1040px **card layout was improved** (roomier spacing,
+  a ~560px phone breakpoint, Tags as a full-width left-aligned row). The old fixed-1556px
+  conflict this item called out is **resolved** (that assumption is gone). *Still open:* a
+  richer per-card mobile design — thumbnail+title as a proper card header, and optionally
+  collapsing Price / Discount / Sale-ends into one stacked unit and hiding secondary fields
+  behind a tap. *What to do next:* design the card header + decide which fields are
+  primary-vs-secondary on a phone.
 
 - **Hover tooltips on filter controls.** Top-of-page filters (HLTB especially) are opaque to
   new users. *What to do:* add title/tooltip text explaining each metric and toggle. *Cheap,
@@ -134,6 +138,13 @@ Works off data already collected. Several are cheap and high-impact.
 - **Exclude-genres discoverability.** Genre *exclusion* already exists (double-click a tag in
   the rail → require → exclude), but users don't discover it. *What to do:* add a visible
   affordance / legend for the click-cycle states. *Cheap.*
+
+- **Verify column-add safety under the new fluid layout.** Under the old `table-layout: fixed`
+  model, adding a column without a matching `<col>` collapsed the table — a known trap. The
+  layout is now `table-layout: auto` (§11), which *should* be more forgiving, **but this hasn't
+  been confirmed.** *What to do:* before the next column is added, test whether a new column
+  still requires its `<col>` entry (and whether the min/max sizing still holds); update §11's
+  regression note with the answer.
 
 - **Min-review filter: verify it re-filters on change.** Reported that changing the min-review
   selection may not refresh the list. *What to do:* treat as a **possible bug** — verify the
@@ -430,12 +441,29 @@ and games with no usable HLTB value. The score is recomputed on toggle, never st
 **The table (12 columns).** In order: Game · Reviews · **Weighted** · Trend · Price ·
 Discount · Sale ends · Released · Tags · **Playtime** · HLTB · QHPP.
 
-- The table is **`table-layout: fixed`** with an explicit `<colgroup>` of `<col class="c-*">`
-  — one per column. This is mandatory: with fixed layout the browser sizes columns from the
-  `<col>` widths, so **adding a column without adding its `<col>` collapses the layout**
-  (a real bug when Weighted + Playtime were first added). Column widths sum to **1556px**
-  with `min-width: 1500px`, sized to fit within the ~1660px content frame (targets viewports
-  ≥1442px) without horizontal overflow.
+- The table is **`table-layout: auto`** (fluid) with an explicit `<colgroup>` of
+  `<col class="c-*">` — one per column — carrying a **`min-width` / `max-width` per column**.
+  The `min` is a small-laptop legibility floor; the `max` is a breathing ceiling so the slim
+  numeric/sort columns (Trend, Price, Discount, Weighted, Sale) don't bloat on a wide monitor.
+  On large screens the slack concentrates on the content-heavy columns — **Game and Tags** —
+  which carry the big ceilings; everything else stays near its natural width. The table's
+  `min-width` is the **exact sum of the column minimums (1444px)**, so below that the **page**
+  (not the table card) scrolls horizontally — deliberately *not* `overflow-x:auto` on the
+  scroll container, because a lone `overflow-x:auto` is promoted by browsers to `overflow:auto`
+  on both axes, which would trap the sticky `<thead>` in a scroll box. Below ~1040px the table
+  stops being a table and becomes the stacked **card layout** (see *Responsive* below).
+  - **Caveat — `max-width` is best-effort here.** Under `table-layout: auto` the per-column
+    **`min-width` floors are hard and reliable**, but `max-width` on `<col>` is only a *hint*:
+    the ceilings mostly hold because auto-layout naturally routes extra width to Game/Tags
+    rather than short-content columns, but on an extreme ultrawide a slim column *could* grow
+    past its stated max. The firm fix, if it ever matters, is a CSS-Grid table with
+    `minmax()` tracks (deferred — larger refactor, must re-verify sticky thead + sort arrow).
+  - **Regression watch (unconfirmed under fluid).** Under the *old* `table-layout: fixed`
+    model, adding a column without adding its `<col>` **collapsed the layout** (a real bug when
+    Weighted + Playtime were first added). Fluid `auto` layout is expected to be more forgiving
+    (it sizes from content, not solely from `<col>`), **but this has not been re-verified** —
+    treat "does adding a column still need a matching `<col>`?" as an **open item to confirm**
+    (§3.2) before relying on it.
 - **Reviews** stacks all-time over the 30-day score (recent greyed when stale/absent).
 - **Weighted** shows the capped % next to Steam's, with the Δ badge and low-confidence gray.
 - **Trend** is recent − all-time (improving/stable/declining), gated on staleness.
@@ -446,10 +474,24 @@ Discount · Sale ends · Released · Tags · **Playtime** · HLTB · QHPP.
   data + tooltip but not shown inline.
 - **HLTB** shows main / +extras / 100% with `avg` below; the metric selected for QHPP is
   highlighted, estimates render blue + dotted-underline. Same 2-digit/1-digit number rule.
+  The stack is a **block with both lines `nowrap`** (the three figures on one row, `avg N h`
+  on the next) so large numbers can't wrap into each other — this, plus a raised HLTB column
+  `min-width`, fixes the overlap that showed on wide free-game rows.
 - **QHPP** shows the value plus a **log-scaled gold value-meter** bar. On a discounted game
   it shows both the **Sale** (primary/gold when that basis is active) and **Full** value
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
   neutral color, so a full-price value is never mistaken for a discount deal.
+
+**Responsive / card layout.** The table is for the desktop width range; a **fluid table alone
+cannot fit a phone** (twelve columns at legible minimums sum to ~1444px). So below **1040px**
+the layout switches: `<thead>` hides, each row becomes a **card** (every `<td>` a
+label→value line, the header supplied by the cell's `data-label`). A second **~560px** phone
+breakpoint tightens it further (smaller thumbnail, roomier tap targets, HLTB row given
+priority so its figures don't crowd the label). **Tags** on mobile render as a **full-width,
+left-aligned** row (label on its own line, chips wrapping with room) rather than crammed
+against the right edge. This card mode *is* the mobile-friendly view users keep asking for; a
+richer per-card design (thumbnail+title as a card header, secondary fields behind a tap) is
+still open (§3.2).
 
 **Filters & controls.** Title search · on-sale-only · min rating (any/60+/70+/80+/90+) ·
 min & max price · min-reviews bands (0/10/100/1k/5k+, independent toggles, gaps allowed) ·
@@ -547,11 +589,29 @@ steady commits are load-bearing for the whole system staying alive.
 - **Sandbox limitation** (for maintenance): the dev environment can't reach Steam domains, so
   Steam-dependent code is unit-tested against documented response shapes and verified by
   running it live in Actions.
+- **Table sizing** — column `min-width` floors are reliable, but `max-width` on `<col>` under
+  `table-layout: auto` is best-effort (§11); on an extreme ultrawide a slim column could exceed
+  its ceiling. Firm fix (if ever needed) is a CSS-Grid table with `minmax()` tracks. Whether
+  adding a new column still needs a matching `<col>` under the fluid model is **unconfirmed**
+  and flagged to test (§3.2).
 
 ---
 
 ## 16. Recent changes
 
+- **Table layout: fixed → fluid.** The desktop table moved from `table-layout: fixed` with
+  summed 1556px `<col>` widths to **`table-layout: auto`** with a **`min-width`/`max-width`
+  per column** (§11): hard min floors for small-laptop legibility, best-effort max ceilings so
+  slim sort columns don't bloat while Game and Tags absorb the slack on wide monitors. Table
+  `min-width` is now the exact sum of column minimums (1444px). Fixed four issues at once —
+  value overlap on wide rows, the dead gap between Tags and Playtime, cramped Tags, and poor
+  use of large screens. Horizontal overflow stays on the page (not the scroll container) to
+  keep the sticky `<thead>` from being trapped in a scroll box.
+- **HLTB overlap fixed.** The HLTB cell is now a block with both lines `nowrap`, so the three
+  figures and the `avg N h` line can't wrap into each other on wide free-game rows.
+- **Card (mobile) layout improved.** Roomier spacing, a new ~560px phone breakpoint (smaller
+  thumbnail, larger tap targets, HLTB row prioritized), and Tags rendered full-width and
+  left-aligned instead of crammed against the right edge (§11 *Responsive*).
 - **Weighted + Playtime columns** added to the table (§9, §10), loaded via the existing
   fetch/merge pattern from the new `playtime.json` / `ratings.json`.
 - **Playtime pipeline** (`playtime_refresh.py`, `playtime_summarize.py`, `ratings_summarize.py`
