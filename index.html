@@ -173,46 +173,64 @@
      overflow:auto on both axes). Below the table's min-width the page scrolls sideways — rare
      now, and the sub-1040px card layout covers the small screens. min-width is the exact sum of
      the per-column minimums (1444px) so the declared floor matches what the columns truly need. */
+  /* ── Table sizing: CSS Grid with minmax() per column ──────────────────────────────────
+     `<col>` min/max-width is ignored by browsers (col only honors width/border/bg/visibility),
+     so real per-column min/max comes from Grid. The grid is applied at the ROW level (each
+     <tr> is a grid), NOT the table level — this is what keeps the sticky <thead> working: the
+     thead stays a normal sticky block while each row lays its cells out on the shared track
+     template. `--grid-cols` is defined once and used by both header and body rows so columns
+     line up. Slim numeric/sort columns get tight minmax(); Game and Tags take fr slack so they
+     absorb width on big screens while the rest stay near their floor. The table is capped and
+     centered (max-width + margin:auto) so it breathes but never sprawls on ultrawide. Below
+     its min-width the page scrolls sideways (rare); <1040px the card layout takes over. */
+  :root{
+    --grid-cols:
+      minmax(240px, 2.4fr)   /* Game     — primary slack */
+      minmax(104px, 128px)   /* Reviews  */
+      minmax(82px,  104px)   /* Weighted */
+      minmax(60px,  76px)    /* Trend    */
+      minmax(74px,  92px)    /* Price    */
+      minmax(62px,  78px)    /* Discount */
+      minmax(86px,  108px)   /* Sale ends*/
+      minmax(100px, 124px)   /* Released */
+      minmax(180px, 1.6fr)   /* Tags     — secondary slack */
+      minmax(96px,  120px)   /* Playtime */
+      minmax(210px, 244px)   /* HLTB     */
+      minmax(150px, 184px);  /* QHPP     */
+  }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; border-collapse:collapse; table-layout:auto; min-width:1444px}
+  table{width:100%; max-width:1860px; margin:0 auto; border-collapse:collapse; min-width:1444px}
+  colgroup{display:none}                     /* grid tracks size the columns now, not <col> */
+  thead,tbody{display:block; width:100%}     /* let rows be the grid containers */
+  thead tr,tbody tr{display:grid; grid-template-columns:var(--grid-cols); align-items:center}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
         color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none;
-        position:sticky; top:0; z-index:30; background:#141c2c}   /* sticks once the nav scrolls off; opaque bg so rows don't show through */
+        display:flex; align-items:center; min-width:0}   /* min-width:0 lets cells shrink to their track */
+  thead{position:sticky; top:0; z-index:30; background:#141c2c}   /* whole header sticks; opaque bg so rows don't show through */
   thead th.sortable{cursor:pointer}
   thead th.sortable:hover{color:var(--text)}
-  thead th.num{text-align:right}
-  thead th.center{text-align:center}
-  /* Per-column fluid sizing: min = readable floor on a small laptop, max = how far the
-     column may stretch on a wide monitor. Slim numeric/sort columns (Trend, Price, Discount,
-     Weighted, Sale) get tight ceilings so they don't bloat — they exist to be scanned and
-     clicked, not to eat width. Game and especially Tags carry the big ceilings and soak up
-     the slack on large screens. HLTB min is raised so "MAIN +EXT 100%" + "avg N h" never
-     collide (fixes the overlap on wide free-game rows). Price+Discount stay a tight pair. */
-  col.c-game{min-width:240px; max-width:460px}
-  col.c-rev{min-width:104px; max-width:140px}
-  col.c-weighted{min-width:82px;  max-width:104px}
-  col.c-trend{min-width:60px;  max-width:78px}
-  col.c-price{min-width:74px;  max-width:96px}
-  col.c-disc{min-width:62px;  max-width:80px}
-  col.c-sale{min-width:86px;  max-width:112px}
-  col.c-rel{min-width:100px; max-width:128px}
-  col.c-tags{min-width:180px; max-width:520px}
-  col.c-playtime{min-width:96px;  max-width:128px}
-  col.c-hltb{min-width:210px; max-width:250px}
-  col.c-qhpp{min-width:150px; max-width:188px}
-  /* Sort arrow sits absolutely at the bottom of the sorted header (thead th is sticky =
-     a positioning context), so it costs no inline width — previously it overflowed the
-     fixed-width cell and got clipped by the next column — and no extra height (it lives in
-     the header's existing bottom padding). */
+  thead th.num{justify-content:flex-end; text-align:right}
+  thead th.center{justify-content:center; text-align:center}
+  /* Sort arrow sits absolutely at the bottom of the sorted header (position:relative context
+     below), so it costs no inline width and no extra height (lives in the header's padding). */
+  thead th{position:relative}
   .arrow{position:absolute; left:0; right:0; bottom:1px; text-align:center; margin:0;
         font-size:10px; line-height:1; color:var(--gold); pointer-events:none}
-  tbody td{padding:8px 12px; border-bottom:1px solid #222d45; vertical-align:middle}
+  tbody td{padding:8px 12px; display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden}
+  /* cells stack their content vertically (single-child cells are unaffected; Released and
+     QHPP have multiple direct children that must stack, not sit side by side). Horizontal
+     placement of the stack is set by the alignment classes below via align-items. */
+  tbody td{align-items:flex-start}                 /* default: left */
+  tbody td.num{align-items:flex-end}               /* numeric: right */
+  tbody td.center{align-items:center}              /* centered */
   td.pad{padding-left:18px; padding-right:18px}
-  tbody tr:last-child td{border-bottom:0}
+  tbody tr{border-bottom:1px solid #222d45}
+  tbody tr:last-child{border-bottom:0}
   tbody tr:hover{background:#1b2640}
 
-  .gamecell{display:flex; align-items:center; gap:10px}
+
+  .gamecell{display:flex; align-items:center; gap:10px; align-self:stretch; width:100%}
   .gamecell .hidebtn{margin-right:-2px}   /* sit snug to the thumbnail */
   .thumb{position:relative; flex:none; width:150px; height:57px; border-radius:5px; overflow:hidden; background:#0b0f18; border:1px solid #2a3550}
   .thumb img{width:100%; height:100%; object-fit:cover; display:block}
@@ -367,7 +385,7 @@
   .qtop{display:flex; align-items:baseline; justify-content:flex-end; gap:8px}
   .qval{font-family:var(--mono); font-size:17px; font-weight:600; color:var(--text)}
   .qalt{font-family:var(--mono); font-size:12px; color:var(--muted-2)}
-  .qbar{position:relative; height:6px; background:#2a3550; border-radius:99px; margin-top:7px; overflow:hidden}
+  .qbar{position:relative; height:6px; background:#2a3550; border-radius:99px; margin-top:7px; overflow:hidden; align-self:stretch; width:100%}
   .qfill{position:absolute; left:0; top:0; bottom:0; border-radius:99px;
         background:linear-gradient(90deg,var(--gold-deep),var(--gold)); transition:width .3s ease}
   .qnull{font-family:var(--mono); font-size:13px; color:var(--muted-2); text-align:right}
@@ -382,13 +400,17 @@
      between rows, and Tags given a full-width left-aligned row so they breathe instead of
      cramming against the right edge. */
   @media (max-width:1040px){
-    table{min-width:0; table-layout:auto}
+    table{min-width:0; max-width:none; margin:0}
     colgroup{display:none}
     thead{display:none}
-    table,tbody,tr,td{display:block; width:100%}
+    table,tbody{display:block; width:100%}
+    /* reset the desktop grid: rows/cells go back to block/flex card layout. These selectors
+       match the base grid rules' specificity so they actually win inside the query. */
+    thead tr,tbody tr{display:block; grid-template-columns:none}
     tbody tr{padding:16px 14px; border-bottom:1px solid var(--line)}
     tbody tr:hover{background:transparent}
-    tbody td{padding:6px 0; border:0; display:flex; justify-content:space-between; align-items:center; gap:16px; min-height:26px}
+    tbody td,tbody td.num,tbody td.center{padding:6px 0; border:0; display:flex; flex-direction:row;
+        justify-content:space-between; align-items:center; gap:16px; min-height:26px; overflow:visible}
     td.pad{padding:6px 0}
     tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:12px; letter-spacing:.04em;
         text-transform:uppercase; color:var(--muted-2); flex:none}
