@@ -15,7 +15,7 @@ no application server. Steam sends no CORS headers, so the browser cannot call S
 directly; all scraping runs inside **GitHub Actions** and the results are committed to the
 repo as JSON. The frontend only ever reads static JSON. The single exception is the
 optional wishlist import, which needs a live cross-origin call and therefore routes through
-a small **Cloudflare Worker** proxy (§11).
+a small **Cloudflare Worker** proxy (§12).
 
 **One writer per file.** Every data layer is owned by exactly one job. No two jobs ever
 write the same file. This is the load-bearing decision that makes parallel scheduled
@@ -25,7 +25,7 @@ source means adding a file + a job, never touching another job's file.
 
 **Merge in the browser.** The frontend downloads each file and merges them by `appid` into
 one in-memory object per game, in a single O(n) pass at load. QHPP is computed client-side
-from the merged fields (§10) — never stored server-side — so the score responds instantly
+from the merged fields (§11) — never stored server-side — so the score responds instantly
 to the price-basis and HLTB-metric toggles without re-scraping.
 
 **Time-budgeted, checkpoint-committing jobs.** Actions cap at 6 hours per job. Scrapers run
@@ -59,7 +59,132 @@ All scraping is server-side; the browser only reads JSON and (optionally) calls 
 
 ---
 
-## 3. Jobs & workflows
+## 3. Community feedback & future work
+
+A backlog of ideas raised by users, recorded here as the single resumption point for
+planning. **Nothing in this section is committed or verified** — each item still needs
+feasibility confirmation (is there a real data source?), impact assessment, and a complexity
+estimate before it earns a job, a file, or a frontend control. Items are grouped by the part
+of the system they touch. Comments are captured anonymously; only the substance is kept.
+
+The load-bearing constraints any item must respect: **one writer per file** (§1) — a new
+data source is always a *new* file + a *new* job, never a change to an existing job's file —
+and **static-first** (§1): anything needing a live cross-origin call routes through the
+Cloudflare Worker (§12), it does not become a server.
+
+### 3.1 New data sources / metrics (scraper work)
+
+Each of these implies a new scrape and a new JSON file merged by `appid` in the frontend
+(§11). Listed roughly by value-to-effort.
+
+- **Completion rate (achievement-based).** Weight QHPP by how many players actually *finish*
+  a game, not just its length — a 60-hour game most people drop halfway is a worse "hours you
+  will really get" deal than its HLTB number implies. *What to do:* pull global achievement
+  percentages (Steam `ISteamUserStats/GetGlobalAchievementPercentagesForApp`), pick a
+  per-game "main story complete" achievement (the hard part — needs a heuristic or a curated
+  map, since achievement naming is arbitrary), expose a completion-weighted QHPP mode
+  (`hours × completion_rate × rating ÷ price`). *Highest-value new metric; medium effort,
+  gated on the achievement-selection heuristic.*
+
+- **Region-specific pricing.** Take the price (and therefore QHPP) from a user-chosen Steam
+  region/currency rather than one fixed region — most-requested item by headcount. *What to
+  do:* decide between (a) scraping prices for N regions into `prices.json` (N× the price
+  scrape and storage) vs (b) an on-demand per-region fetch through the Worker at view time.
+  Ties into the "isthereanydeal integration" idea below (cross-store / price-history).
+  *High value, high effort; needs an explicit storage-vs-live design decision first.*
+
+- **Developer update cadence & size.** Beyond the single `last_update_ts` already in
+  `games.json`, surface *how often* and *how substantially* a game is patched — an
+  ongoing-support signal. *What to do:* scrape the Steam news/patchnotes feed
+  (`ISteamNews/GetNewsForApp` or the events endpoint) into a new file; derive update
+  frequency and a rough magnitude (post length / cadence) as a filterable column. *Medium
+  value, medium-high effort (new feed scrape + heuristics for "big" vs "small").*
+
+- **Mod support & mod count.** Flag whether a game is moddable and roughly how large its mod
+  scene is — especially relevant to the survival-craft audience. *What to do:* query the
+  Steam Workshop for published-file counts per app into a new file; expose as a filter/column.
+  *Medium value, medium effort; Workshop count is retrievable, "quality" of mods is not.*
+
+- **Co-op max player count.** For co-op games, show/filter by the maximum supported players.
+  *What to do:* read store-page category flags (co-op / online co-op / shared-screen); note
+  that a concrete max-player *number* is inconsistently exposed, so expect partial coverage.
+  *Medium value, low-medium effort, partial-coverage caveat.*
+
+- **Anti-cheat type (not cheater volume).** Show *which* anti-cheat a multiplayer game uses so
+  users can avoid kernel-level / invasive systems. *What to do:* scrape the store page's tech
+  list / DRM-and-anti-cheat notes into a new file; classify by AC name. *Note:* the related
+  "number of *active cheaters*" request has **no reliable public source** and is not pursued.
+  *Low-medium value, medium effort; "invasive or not" is a judgment call to encode.*
+
+### 3.2 Frontend / UX (no new scraping)
+
+Works off data already collected. Several are cheap and high-impact.
+
+- **Mobile / narrow-screen layout — highest-frequency complaint.** The `table-layout: fixed`
+  grid (§11) overflows small screens, the title truncates, and the sale badge + discount %
+  waste a column. *What to do:* evaluate a responsive mode — collapse Price / Discount /
+  Sale-ends into one stacked cell, set sensible `min-width` on columns so horizontal scroll
+  still works as a fallback, and consider a card layout below a breakpoint. Directly conflicts
+  with the fixed-1556px-width assumption in §11, so treat as a real layout task, not a tweak.
+
+- **Hover tooltips on filter controls.** Top-of-page filters (HLTB especially) are opaque to
+  new users. *What to do:* add title/tooltip text explaining each metric and toggle. *Cheap,
+  high clarity win.*
+
+- **Exclude-genres discoverability.** Genre *exclusion* already exists (double-click a tag in
+  the rail → require → exclude), but users don't discover it. *What to do:* add a visible
+  affordance / legend for the click-cycle states. *Cheap.*
+
+- **Min-review filter: verify it re-filters on change.** Reported that changing the min-review
+  selection may not refresh the list. *What to do:* treat as a **possible bug** — verify the
+  band toggles re-run the filter pass; fix if confirmed.
+
+- **Min-review picker: single-select vs multi-select — open design conflict.** A request to
+  make min-reviews a single choice (can't tick both 1k and 5k+) directly contradicts the
+  current *deliberate* design: independent bands with gaps allowed (§11). *What to do:*
+  **decision required** — keep the intentional multi-band model (and just document why), or
+  switch to single-select. Do not change silently.
+
+- **Sort by review count — verify it already works.** Columns are click-to-sort (§11), so
+  Reviews should already sort. *What to do:* confirm; if the Reviews column doesn't sort by
+  count, wire it up. *Likely already done.*
+
+- **Visual polish.** Recurring "looks like a 2009 admin panel" feedback: one accent color, a
+  real typeface, more padding, alternating row shading. *What to do:* a styling pass; no logic
+  change. *Cheap, improves first impression.*
+
+- **Rename QHPP.** Feedback that "QHPP" is unfriendly to type/say; suggestions like "Bang for
+  Buck" / "WorthIt". *What to do:* branding decision only — could rename the public label while
+  keeping QHPP as the internal metric name. *Zero engineering, pure product call.*
+
+### 3.3 Nice-to-have / still to be evaluated
+
+Lower priority, weaker sourcing, or off the core "value hunter" mission. Recorded so they
+aren't lost, but each needs a source-feasibility check before it's worth scoping.
+
+- **isthereanydeal integration.** Cross-store pricing and price history. *Overlaps with
+  region-pricing (§3.1); evaluate together.* Needs an API/ToS review.
+
+- **Sequel / franchise linkage — "what has a sequel and what it is."** Steam exposes no
+  structured franchise graph; would need an external DB (e.g. IGDB) or heuristics. *Feasibility
+  unclear; scope creep risk.*
+
+- **Correlate dev teams across games.** "Made by the same people who made X." No structured
+  Steam source; would ride on an external DB. *Harder than franchise linkage.*
+
+- **"Talked about vs actually playing" metric.** Buzz-vs-engagement. Needs a social/mentions
+  data source cross-referenced with playtime. *No clear source; vague; park it.*
+
+- **Steam Trading Cards resale helper.** "How many trading cards would I sell to afford this
+  game." Self-contained but niche; needs card market-price data. *Low priority.*
+
+- **Studio-health signals (layoffs / employee turnover %).** Suggested as a publisher-health
+  angle. Only viable source floated was LinkedIn scraping, which is a **ToS problem** and far
+  off-mission. *Recorded but not recommended.*
+
+---
+
+## 4. Jobs & workflows
 
 Each job is a workflow in `.github/workflows/`. All use `actions/checkout@v5` +
 `actions/setup-python@v6` (Node 24). **v5/v6 is deliberate, not the newest** — checkout v5
@@ -102,7 +227,7 @@ are similar run-once utilities. Once run, these can be removed.
 
 ---
 
-## 4. Data files & schemas
+## 5. Data files & schemas
 
 All frontend files are compact JSON (minified, `ensure_ascii=False`). Lean summaries use
 **positional arrays** with a `_format` key in the meta so the frontend can read by index.
@@ -121,7 +246,7 @@ countdown.
 **`hltb.json`** — `{ "<appid>": { hltb_main, hltb_extra, hltb_complete, hltb_avg,
 raw: {…}, hltb_est: ["extra", …], fetched_at } }`. `raw` holds the ground-truth values as
 returned by HLTB; the top-level values may include estimates filled from the genre ratio
-(§7). `hltb_est` lists which of the three were estimated (drives the blue flag). `fetched_at`
+(§8). `hltb_est` lists which of the three were estimated (drives the blue flag). `fetched_at`
 is groundwork for the priority re-scrape.
 
 **`tags.json`** — `{ "tags": { "<appid>": ["Roguelike", …] } }`. SteamSpy user tags; the
@@ -157,11 +282,11 @@ trustworthy median at all are omitted entirely.
   "count",
   "playtime_ratings": { "<appid>": [ steam_pct, raw_pct, capped_pct, n ] } }
 ```
-See §9 for what the three percentages mean and why.
+See §10 for what the three percentages mean and why.
 
 ---
 
-## 5. The main scraper (`scraper.py` → `games.json`)
+## 6. The main scraper (`scraper.py` → `games.json`)
 
 The only job that discovers new games. Each run:
 
@@ -179,13 +304,13 @@ The only job that discovers new games. Each run:
    is therefore never a data-loss risk.
 
 Per-game cost is ~2 storefront calls (appdetails + appreviews), which sets the pace ceiling
-(§13). New games are seeded ahead of the queue via `seeds.txt` — one appid, store URL, or
+(§14). New games are seeded ahead of the queue via `seeds.txt` — one appid, store URL, or
 search term per line, **human-edited only**; the scraper reads it but never writes to it (a
 seeds ledger tracks what's been consumed so a seed isn't re-processed forever).
 
 ---
 
-## 6. Refreshers (price/sale, tags, recent)
+## 7. Refreshers (price/sale, tags, recent)
 
 Independent enrichment jobs, each owning one file and enriching games the scraper already
 found:
@@ -201,7 +326,7 @@ found:
 
 ---
 
-## 7. HLTB subsystem (`hltb_refresh.py` + `hltb_estimate.py` → `hltb.json`)
+## 8. HLTB subsystem (`hltb_refresh.py` + `hltb_estimate.py` → `hltb.json`)
 
 HowLongToBeat completion times are static, so each game is fetched **once** (matched by
 title similarity, threshold `HLTB_MIN_SIMILARITY`; obscure/oddly-named games may not match
@@ -232,7 +357,7 @@ entry is groundwork for a future priority re-scrape whose order is: **partial en
 
 ---
 
-## 8. Playtime pipeline (`playtime_refresh.py` + `playtime_summarize.py`)
+## 9. Playtime pipeline (`playtime_refresh.py` + `playtime_summarize.py`)
 
 Surfaces **how long people actually play**, split by whether they recommended the game.
 
@@ -263,7 +388,7 @@ cases this surfaces are **inversions** — e.g. a game where the ▼ non-recomme
 
 ---
 
-## 9. Weighted rating (`ratings_summarize.py` → `ratings.json`)
+## 10. Weighted rating (`ratings_summarize.py` → `ratings.json`)
 
 A review rating where each vote counts in proportion to how long that player actually
 played — a 300-hour recommendation should outweigh a 20-minute one. It sits **next to**
@@ -291,7 +416,7 @@ Steam).
 
 ---
 
-## 10. Frontend (`index.html`)
+## 11. Frontend (`index.html`)
 
 A single self-contained page. On load it fetches every JSON file, merges them by `appid`
 into one object per game (one O(n) pass — important at ~68k+ games), then renders, filters,
@@ -359,7 +484,7 @@ exists). Each row has a slim `[x]` hide button; hidden games can be un-hidden.
 
 ---
 
-## 11. Wishlist import & the Cloudflare Worker
+## 12. Wishlist import & the Cloudflare Worker
 
 The browser can't read a Steam wishlist cross-origin, so a small Worker (source in
 `worker/`, free tier) proxies it. `parseSteamId` in `index.html` accepts **all five ID
@@ -376,7 +501,7 @@ is unaffected — no backend is required for browsing, filtering, or sorting.
 
 ---
 
-## 12. Configuration reference
+## 13. Configuration reference
 
 Each job's knobs live at the top of its own script:
 
@@ -396,7 +521,7 @@ Each job's knobs live at the top of its own script:
 
 ---
 
-## 13. Pace, limits, cost
+## 14. Pace, limits, cost
 
 The scraper captures ~1,000–1,200 games/hour (storefront limit ÷ ~2 calls/game), so the full
 ~90k catalog is a **multi-week accumulation** that just grows run to run. Faster = raise
@@ -407,10 +532,10 @@ steady commits are load-bearing for the whole system staying alive.
 
 ---
 
-## 14. Operational notes & caveats
+## 15. Operational notes & caveats
 
 - **HLTB** matches by title similarity; misses show `—`. First full pass is still completing;
-  the priority re-scrape (partials → blanks → full-real) comes after (§7).
+  the priority re-scrape (partials → blanks → full-real) comes after (§8).
 - **HLTB estimates** are clearly marked (blue + tooltip) and auto-replaced once real data
   arrives; they never train the ratio.
 - **Weighted rating** needs public playtime and enough reviews: none below 5, grayed 5–9.
@@ -425,9 +550,9 @@ steady commits are load-bearing for the whole system staying alive.
 
 ---
 
-## 15. Recent changes
+## 16. Recent changes
 
-- **Weighted + Playtime columns** added to the table (§8, §9), loaded via the existing
+- **Weighted + Playtime columns** added to the table (§9, §10), loaded via the existing
   fetch/merge pattern from the new `playtime.json` / `ratings.json`.
 - **Playtime pipeline** (`playtime_refresh.py`, `playtime_summarize.py`, `ratings_summarize.py`
   + their workflows) built out: recommendationid-keyed raw scrape, median split by
