@@ -117,6 +117,14 @@ COOLDOWN_DAYS = 7                 # don't re-walk a game's reviews younger than 
 NOUPDATE_COOLDOWN_DAYS = 30       # dormant games: refresh far less often
 UPDATE_ACTIVE_DAYS = 90           # "recently updated" = patched within this many days
 MIN_SEGMENT_FOR_MEDIAN = 3        # below this many samples, a segment median is null
+# Hard eligibility floor: a sentiment-split median needs a usable sample. Games
+# with fewer than this many all-time reviews can't produce one (they'd null out at
+# MIN_SEGMENT_FOR_MEDIAN anyway), so we don't spend request budget on them. This is
+# "skip for now", NOT permanent exclusion: eligibility is re-checked every run
+# against the live review_count from games.json, so a game re-qualifies the moment
+# it crosses the floor. Removes ~41k unusable games from the queue, leaving budget
+# for the ~52k that can actually yield data.
+MIN_REVIEWS_FLOOR = 10
 
 STEAM_DELAY = 2.0                 # storefront limit (~200/5min); a touch slower (we paginate)
 MAX_RETRIES = 4
@@ -364,9 +372,15 @@ def effective_target():
     return min(PER_GAME_CAP, max(TARGET_REVIEWS, DEEPEN_TARGET) if DEEPEN_TARGET else TARGET_REVIEWS)
 
 
-def is_eligible(rec, last_update_ts, now, target):
+def is_eligible(rec, last_update_ts, review_count, now, target):
     """Eligible if never scraped; OR holding fewer than target AND not exhausted
-    (more to gather); OR past cooldown (to catch NEW reviews + refresh drift)."""
+    (more to gather); OR past cooldown (to catch NEW reviews + refresh drift).
+
+    Gated by MIN_REVIEWS_FLOOR: games below the floor can't produce a usable
+    sentiment-split median, so they're skipped regardless of the above until their
+    live review_count crosses the floor (re-checked every run — not permanent)."""
+    if (review_count or 0) < MIN_REVIEWS_FLOOR:
+        return False
     if not rec:
         return True
     held = len((rec.get("reviews") or {}))
@@ -414,7 +428,7 @@ def main():
         aid = str(g["appid"])
         rec = raw.get(aid, {})
         lu = g.get("last_update_ts")
-        if is_eligible(rec, lu, now, target):
+        if is_eligible(rec, lu, g.get("review_count"), now, target):
             cands.append((priority(rec, lu, g.get("review_count"), now, target),
                           int(aid), lu))
     cands.sort(reverse=True)
