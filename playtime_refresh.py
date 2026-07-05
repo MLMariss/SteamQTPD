@@ -126,7 +126,12 @@ MIN_SEGMENT_FOR_MEDIAN = 3        # below this many samples, a segment median is
 # for the ~52k that can actually yield data.
 MIN_REVIEWS_FLOOR = 10
 
-STEAM_DELAY = 2.0                 # storefront limit (~200/5min); a touch slower (we paginate)
+STEAM_DELAY = 1.5                 # storefront limit (~200/5min); at 1.5s this run sits AT the
+                                  # ceiling (no headroom). Matches recent_refresh.py, which
+                                  # already sustains 3h storefront passes at 1.5s — so this is
+                                  # proven viable on a dedicated runner. Was 2.0 (150/5min, 50
+                                  # headroom); dropped for the 8-slot aggressive backfill. If 403
+                                  # log lines spike after deploy, revert to 2.0.
 MAX_RETRIES = 4
 
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
