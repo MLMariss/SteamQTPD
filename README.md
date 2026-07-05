@@ -89,7 +89,9 @@ exclude). Score controls: **QHPP price basis** (Sale / Full), **HLTB metric** (m
 +extras / 100% / avg), **HLTB data** (all incl. estimates / real only — *real* is the
 default). Sort controls: **Reviews sort by** (all-time / 30-day) and **Playtime sort**
 (▲ recommenders / ▼ non-recommenders — this only *selects* which median a click on the
-Playtime column will sort by; it doesn't reorder on its own).
+Playtime column will sort by; it doesn't reorder on its own). Hover any filter toggle for a
+one-line tooltip explaining it; the tag rail shows a visible `✓ require → ✕ exclude → clear`
+legend, and even rows are lightly shaded for readability.
 
 Sort by any column incl. QHPP, Weighted, Playtime, rating, price, release date.
 Infinite-scroll pagination (100 / 500 / 2000 per page); all filter/sort state lives in the
@@ -143,14 +145,21 @@ Each job's knobs are at the top of its own script. The main ones:
   batched price call. **`RECENT_COOLDOWN_DAYS`** — how stale a recent score must be to recheck.
 - **`MIN_REVIEWS_FOR_RATING` / `CONFIDENT_REVIEWS` / `CAP_MULT`** (ratings) — the weighted
   rating's eligibility floor (5), full-color threshold (10), and per-review playtime cap (2×).
+- **`MIN_REVIEWS_FLOOR`** (playtime, 10) — the playtime scraper skips games below this many
+  all-time reviews, since they can't produce a usable sentiment-split median. Re-checked each
+  run against live review counts, so it's skip-for-now, not a permanent exclusion.
 
 ## Pace & limits
 The scraper captures very roughly ~1,000–1,200 games/hour (storefront rate limit ÷ 2
-calls/game), so the full catalog (~90k games) is a multi-week accumulation; coverage just
-grows run to run. To go faster: raise `RUN_MINUTES`, or add more off-peak `cron` times.
-Cost stays $0 — Actions is free and unlimited on public repos; the only ceiling is the
-6-hour per-job limit. (Each daily commit also keeps the repo active, which matters —
-GitHub disables scheduled workflows after 60 days of no commits.)
+calls/game). The catalog has now reached full coverage (~122k games stored against a ~173k
+app universe), so `scraper.py` finishes a run in ~7 minutes and mostly does incremental
+refreshes; new games are added as they release. To go faster on any job: raise `RUN_MINUTES`,
+or add more off-peak `cron` times. The playtime (review-time) pass is the current backfill
+focus and runs on an expanded schedule — 8 slots/day at a 1.5s delay — using the storefront
+headroom the now-quick main scrape leaves free. Cost stays $0 — Actions is free and unlimited
+on public repos; the only ceiling is the 6-hour per-job limit. (Each daily commit also keeps
+the repo active, which matters — GitHub disables scheduled workflows after 60 days of no
+commits.)
 
 ## Known caveats
 - **HLTB** matches by title similarity, so obscure/oddly-named games may not match (shown

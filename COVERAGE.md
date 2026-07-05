@@ -1,59 +1,61 @@
 # SteamQHPP — Data Coverage Snapshot
 
-**Registry date (`games.json` generated_at):** 2026-07-03 15:37 UTC
-**Base universe:** 100,076 games
+**Registry date (`games.json` generated_at):** 2026-07-05 08:55 UTC
+**Base universe:** 122,765 games
 
 Per-file generation timestamps at snapshot time:
 
 | File | Generated (UTC) |
 |---|---|
-| `games.json` | 2026-07-03 15:37 |
-| `tags.json` | 2026-07-03 15:38 |
-| `hltb.json` | 2026-07-03 15:35 |
-| `recent.json` | 2026-07-03 15:30 |
-| `prices.json` | 2026-07-03 15:26 |
-| `playtime_raw.json` | 2026-07-03 14:01 |
-| `playtime.json` | 2026-07-03 08:41 |
-| `ratings.json` | 2026-07-03 08:43 |
+| `games.json` | 2026-07-05 08:55 |
+| `playtime.json` | 2026-07-05 08:33 |
+| `ratings.json` | 2026-07-05 08:37 |
+| `hltb.json` | 2026-07-05 07:51 |
+| `prices.json` | 2026-07-05 07:53 |
+| `recent.json` | 2026-07-05 07:46 |
+| `tags.json` | 2026-07-05 04:38 |
+| `playtime_raw.json` | 2026-07-03 16:32 |
 
 ---
 
 ## Coverage by metric
 
-| Metric | Storage file | Covered | % of catalog | Missing | Freshness (median / oldest) |
+| Metric | Storage file | Covered | % of catalog | Missing | Freshness (newest / oldest) |
 |---|---|---:|---:|---:|---|
-| Review count | `games.json` | 100,076 | 100.0% | 0 | 1.7d / 7.2d |
-| Release date | `games.json` | 99,539 | 99.5% | 537 | — |
-| Tags | `tags.json` | 97,836 | 97.8% | 2,240 | full re-gen today |
-| Recent reviews | `recent.json` | 97,639 | 97.6% | 2,437 | 1.6d / 5.0d |
-| Rating % | `games.json` | 92,598 | 92.5% | 7,478 | 1.7d / 7.2d |
-| HLTB | `hltb.json` | 89,440 | 89.4% | 10,636 | 1.7d / 3.1d |
-| Price / Sales | `prices.json` | 84,148 | 84.1% | 15,928 | 0.05d / 0.0d |
-| Playtime raw | `playtime_raw.json` | 6,710 | 6.7% | 93,366 | re-gen 0.07d ago |
-| Playtime (summarized) | `playtime.json` | 5,493 | 5.5% | 94,583 | re-gen 0.29d ago |
-| Playtime-weighted rating | `ratings.json` | 5,493 | 5.5% | 94,583 | re-gen 0.29d ago |
+| Review count | `games.json` | 122,765 | 100.0% | 0 | 3.4h / 9.0d |
+| Tags | `tags.json` | 122,763 | 100.0% | 2 | re-gen 4h ago |
+| Recent reviews | `recent.json` | 122,764 | 100.0% | 1 | 4.5h / 6.9d |
+| HLTB | `hltb.json` | 122,764 | 100.0% | 1 | 4.4h / 5.0d |
+| Release date | `games.json` | 122,234 | 99.6% | 531 | — |
+| Rating % | `games.json` | 114,987 | 93.7% | 7,778 | 3.4h / 9.0d |
+| Price / Sales | `prices.json` | 104,683 | 85.3% | 18,082 | 5.4h / 0.2d |
+| Playtime raw | `playtime_raw.json` | 6,856 | 5.6% | 115,909 | see note |
+| Playtime (summarized) | `playtime.json` | 6,855 | 5.6% | 115,910 | re-gen ~1h ago |
+| Playtime-weighted rating | `ratings.json` | 6,855 | 5.6% | 115,910 | re-gen ~1h ago |
 
-Integrity: no orphan keys on any file — every storage file is a clean subset of `games.json`.
+Integrity: near-zero orphan keys (1–2 per file, timing artifacts between scraper commits). Every storage file is effectively a clean subset of `games.json`.
 
 ---
 
 ## Notes
 
-**Whole catalog is fresh.** Every dated source re-scrapes on a tight cycle; no entry is older than ~7 days on any metric. Prices are near real-time (median ~1.2h old).
+**Everything except playtime is fresh.** Every dated source was scraped within ~9 days, most within hours. Prices are near real-time (median ~5h). Tags, recent reviews, and HLTB all sit at ~100% coverage.
 
-**Playtime is the coverage gap.** The three playtime-derived metrics sit at ~5–7%. This is the newest pipeline and has not backfilled the catalog. `playtime_raw` (6,710) leads the summarized output (5,493) by ~1,217 games — those have raw reviews scraped but not yet summarized.
+**Playtime is the coverage gap — but the honest denominator is the addressable set.** Raw 5.6% of the full catalog looks low, but a sentiment-split median needs a usable review sample. After the `MIN_REVIEWS_FLOOR = 10` gate, the **addressable universe is 78,460 games (64% of catalog)** — so playtime is **8.7% of addressable**, not 5.6%. The other **44,305 games are below the floor and correctly skipped** (they can't produce a median). The playtime pipeline was just scaled **4 → 8 cron slots + `STEAM_DELAY` 2.0 → 1.5s** (≈2× throughput) to backfill this faster.
 
-**HLTB is 100% real matches, zero estimates.** All 89,440 entries carry a real HLTB match; the `estimated` flag is empty across the board. Flagged for review — the "Real only" toggle implies estimated rows should exist somewhere.
+**Playtime summarizer has caught up.** Raw 6,856 vs summarized 6,855 — a lag of 1 (was ~1,217). `playtime_raw.json` last committed 2026-07-03 16:32; the raw scraper commits only when its held review set changes, so its timestamp trails the others. With the 8-slot scale-up landing, expect more frequent updates.
 
-**Sales heavy at snapshot.** 49,472 of 84,148 priced games (59%) discounted (Steam Summer Sale live).
+**HLTB estimates still absent.** 0 of 122,764 entries carry the `estimated` flag despite the estimator (`hltb_estimate.py`) existing — the "Real only" toggle implies estimated rows should exist. Anomaly persists; flagged below.
 
-**No price on ~15,928 games** — largely the 15,661 `is_free` titles plus delisted/region-locked entries.
+**Sales heavy at snapshot.** 61,052 of 104,683 priced games (58%) discounted (Steam Summer Sale live).
 
-**Discovery backlog:** `catalog.json` holds 49,327 pending appids not yet pulled into `games.json`.
+**No price on 18,082 games** ≈ the 18,080 `is_free` titles plus a couple delisted/region-locked.
+
+**Discovery queue healthy.** 50,425 pending, of which **100.00% are unreleased/TBA** (1 dated, 0 ripe-now) — the waiting room working as designed, not a backlog. 731 permanently skipped (non-games/delisted).
 
 ---
 
 ## Open items
 
-1. **HLTB estimates missing** — 0 estimated entries despite the T11 estimator (`hltb_estimate.py`) existing. Trace whether it writes elsewhere or the flag is dropped.
-2. **Playtime summarize lag** — 1,217 games raw-but-unsummarized. Check whether `playtime_summarize.py` filters them (e.g. min-segment threshold) or just hasn't run against them.
+1. **HLTB estimates missing** — 0 estimated entries despite `hltb_estimate.py` existing. Trace whether it writes elsewhere or the `estimated` flag is dropped.
+2. **Playtime backfill in progress** — the primary coverage gap; the 8-slot / 1.5s scale-up is the active remedy. Re-check this snapshot after a few days of the new cadence.

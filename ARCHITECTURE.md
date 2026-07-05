@@ -116,6 +116,15 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   "number of *active cheaters*" request has **no reliable public source** and is not pursued.
   *Low-medium value, medium effort; "invasive or not" is a judgment call to encode.*
 
+- **Soften the `success:false` permanent-skip (robustness, not a new metric).** `build_record`
+  permanently skips any app whose Steam `appdetails` returns `success:false` (scraper.py lines
+  ~477/480), which lumps genuinely-dead/delisted apps together with **region-locked (cc=us)**
+  titles and transient `success:false` blips — so a handful of legitimate games are dropped
+  forever (≈731 currently on the skip list, an unknown fraction of them recoverable). *What to
+  do:* on `success:false`, retry once (or in an alternate region) before skipping, or file to a
+  "recheck later" list instead of a permanent skip. *Low impact (small count), low effort; safe
+  quick win.*
+
 ### 3.2 Frontend / UX (no new scraping)
 
 Works off data already collected. Several are cheap and high-impact.
@@ -131,13 +140,18 @@ Works off data already collected. Several are cheap and high-impact.
   behind a tap. *What to do next:* design the card header + decide which fields are
   primary-vs-secondary on a phone.
 
-- **Hover tooltips on filter controls.** Top-of-page filters (HLTB especially) are opaque to
-  new users. *What to do:* add title/tooltip text explaining each metric and toggle. *Cheap,
-  high clarity win.*
+- **Hover tooltips on filter controls. [Done.]** Top-of-page filters (HLTB especially) were
+  opaque to new users. *Done:* most filter toggles already carried `title` tooltips; added them
+  to the two that needed them most — the **HLTB metric** toggle (Main / +Extras / 100% / Avg,
+  spelled out as HowLongToBeat categories) and the **Reviews-sort** toggle (matching the adjacent
+  Playtime-sort). *Optional remainder:* Min-rating and Updated-within buttons are self-evident and
+  were left untouched.
 
-- **Exclude-genres discoverability.** Genre *exclusion* already exists (double-click a tag in
-  the rail → require → exclude), but users don't discover it. *What to do:* add a visible
-  affordance / legend for the click-cycle states. *Cheap.*
+- **Exclude-genres discoverability. [Done.]** Genre *exclusion* already existed (click a tag in
+  the rail → require → exclude → clear) but was only explained in the rail's hover `title`, which
+  is itself undiscoverable. *Done:* added a **visible legend** above the rail
+  (`✓ require → ✕ exclude → clear`) that reuses the real `.chip.inc`/`.chip.exc` styles, so the
+  swatches can't drift from the actual state colors.
 
 - **Verify column-add safety under the new fluid layout.** Under the old `table-layout: fixed`
   model, adding a column without a matching `<col>` collapsed the table — a known trap. The
@@ -160,9 +174,15 @@ Works off data already collected. Several are cheap and high-impact.
   Reviews should already sort. *What to do:* confirm; if the Reviews column doesn't sort by
   count, wire it up. *Likely already done.*
 
-- **Visual polish.** Recurring "looks like a 2009 admin panel" feedback: one accent color, a
-  real typeface, more padding, alternating row shading. *What to do:* a styling pass; no logic
-  change. *Cheap, improves first impression.*
+- **Visual polish. [Mostly done — original note is stale.]** The "2009 admin panel" feedback
+  predates the current design, which already has a real type pairing (IBM Plex Sans + Mono, loaded
+  via Google Fonts) and a **semantic** palette (gold = labels, blue = links, coral/red =
+  discount/negative, teal/green = free/positive) — so the note's "one accent color" is actively
+  wrong: those colors carry meaning and must not be flattened. Padding is already reasonable.
+  *Done:* added the one genuinely-missing piece, **subtle alternating row shading** (translucent
+  `rgba(127,160,230,.035)` on even rows so the card gradient shows through; declared before
+  `:hover` so hover wins; reset to transparent in card mode). *Tuning knob:* the zebra alpha is a
+  single value if it needs to be stronger/weaker after eyeballing on a real display.
 
 - **Rename QHPP.** Feedback that "QHPP" is unfriendly to type/say; suggestions like "Bang for
   Buck" / "WorthIt". *What to do:* branding decision only — could rename the public label while
@@ -579,12 +599,22 @@ Each job's knobs live at the top of its own script:
 
 ## 14. Pace, limits, cost
 
-The scraper captures ~1,000–1,200 games/hour (storefront limit ÷ ~2 calls/game), so the full
-~90k catalog is a **multi-week accumulation** that just grows run to run. Faster = raise
-`RUN_MINUTES` or add off-peak `cron` times. Cost is **$0** — Actions is free/unlimited on
-public repos; the only ceiling is the 6-hour per-job limit. Each daily commit also keeps the
-repo active — **GitHub disables scheduled workflows after 60 days of no commits**, so the
-steady commits are load-bearing for the whole system staying alive.
+The scraper captures ~1,000–1,200 games/hour (storefront limit ÷ ~2 calls/game). The catalog
+has since reached full coverage — **~122.7k stored** against a ~173k app universe, with the
+fresh frontier essentially exhausted — so `scrape.py` now finishes a run in **~7 minutes** and
+mostly does `last_modified`-triggered refreshes. Faster = raise `RUN_MINUTES` or add off-peak
+`cron` times. Cost is **$0** — Actions is free/unlimited on public repos; the only ceiling is
+the 6-hour per-job limit. Each daily commit also keeps the repo active — **GitHub disables
+scheduled workflows after 60 days of no commits**, so the steady commits are load-bearing for
+the whole system staying alive.
+
+**Playtime scale-up (storefront budget reallocation).** Because `scrape.py` now uses so little
+of its window, the shared ~200/5min storefront budget has headroom. The playtime raw pass was
+scaled from **4 → 8 cron slots** (`:23` every 3h) and **`STEAM_DELAY` 2.0 → 1.5s**, roughly
+**2× review-time throughput** (~12h/day → ~24h/day, near-continuous). At 1.5s it sits at the
+storefront ceiling with no headroom; `recent_refresh.py` already sustains 3h passes at 1.5s
+(separate runner IPs), so this is expected to hold — but 403 rates are worth watching, and the
+revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ---
 
@@ -613,6 +643,15 @@ steady commits are load-bearing for the whole system staying alive.
 
 ## 16. Recent changes
 
+- **Playtime scale-up: 4 → 8 slots, `STEAM_DELAY` 2.0 → 1.5s.** With `scrape.py` finishing in
+  ~7 min and the frontier exhausted, the shared storefront budget had headroom, so the playtime
+  raw pass now runs `:23` every 3h (near-continuous, ~24h/day vs ~12h/day) at 1.5s — roughly 2×
+  review-time throughput (§14). Leans on the storefront ceiling; `recent_refresh.py` proves
+  3h@1.5s holds, but watch 403 rates. Revert = delay back to 2.0 / fewer slots.
+- **Frontend clarity + polish.** Added `title` tooltips to the HLTB-metric and Reviews-sort
+  filter toggles (§3.2); added a visible `✓ require → ✕ exclude → clear` legend above the tag
+  rail (§3.2); added subtle alternating row shading, scoped out of card mode (§3.2, §11). No
+  logic change — CSS and markup only.
 - **Playtime scrape: review-count floor.** `playtime_refresh.py` now gates candidate selection
   on `MIN_REVIEWS_FLOOR = 10` (§9, §13) — games with fewer all-time reviews can't clear the
   summarizer's ≥3-per-side split, so they're dropped from the queue instead of consuming
