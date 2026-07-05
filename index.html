@@ -160,6 +160,13 @@
         border-radius:99px; padding:3px 10px; font-family:var(--mono); font-size:12px; cursor:pointer; white-space:nowrap}
   .tagmore:hover{border-color:var(--gold); color:var(--gold)}
   .taggroup.expanded .tagmore{border-style:solid}
+  /* Visible key for the tag click-cycle (the rail's behavior was previously only in a hover
+     title). Reuses the real .chip.inc/.chip.exc styles so the swatches can never drift from
+     the actual require/exclude colors; pointer-events off so the demo chips aren't clickable. */
+  .taglegend{flex-basis:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+        font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-bottom:2px}
+  .taglegend .chip{cursor:default; pointer-events:none; font-size:12px; padding:3px 9px}
+  .taglegend .tl-arrow{opacity:.5}
 
   /* ---- table ---- */
   /* NOTE: no overflow:hidden here — it would clip the sticky <thead> to the card and stop
@@ -230,7 +237,8 @@
   td.pad{padding-left:18px; padding-right:18px}
   tbody tr{border-bottom:1px solid #222d45}
   tbody tr:last-child{border-bottom:0}
-  tbody tr:hover{background:#1b2640}
+  tbody tr:nth-child(even){background:rgba(127,160,230,.035)}   /* subtle zebra; translucent so the card gradient still shows through */
+  tbody tr:hover{background:#1b2640}                            /* declared after zebra so hover always wins */
 
 
   .gamecell{display:flex; align-items:center; gap:10px; align-self:stretch; width:100%}
@@ -411,6 +419,7 @@
        match the base grid rules' specificity so they actually win inside the query. */
     thead tr,tbody tr{display:block; grid-template-columns:none}
     tbody tr{padding:16px 14px; border-bottom:1px solid var(--line)}
+    tbody tr:nth-child(even){background:transparent}   /* no zebra in card mode — cards stay uniform */
     tbody tr:hover{background:transparent}
     tbody td,tbody td.num,tbody td.center{padding:6px 0; border:0; display:flex; flex-direction:row;
         justify-content:space-between; align-items:center; gap:16px; min-height:26px; overflow:visible}
@@ -499,10 +508,10 @@
         <div class="field">
           <label>HLTB metric for QHPP</label>
           <div class="seg metric" role="group" aria-label="HLTB metric">
-            <button data-metric="main"     aria-pressed="true">Main</button>
-            <button data-metric="extra"    aria-pressed="false">+Extras</button>
-            <button data-metric="complete" aria-pressed="false">100%</button>
-            <button data-metric="avg"      aria-pressed="false">Avg</button>
+            <button data-metric="main"     aria-pressed="true"  title="Main Story: hours to finish the core game, ignoring side content (HowLongToBeat).">Main</button>
+            <button data-metric="extra"    aria-pressed="false" title="Main + Extras: the main story plus most side quests and optional content (HowLongToBeat).">+Extras</button>
+            <button data-metric="complete" aria-pressed="false" title="Completionist: hours to do everything, 100% completion (HowLongToBeat).">100%</button>
+            <button data-metric="avg"      aria-pressed="false" title="Average of the Main, +Extras, and 100% times.">Avg</button>
           </div>
         </div>
         <div class="field">
@@ -525,8 +534,8 @@
         <div class="field">
           <label>Reviews sort by</label>
           <div class="seg" role="group" aria-label="Rating source for the Reviews column sort">
-            <button data-ratesrc="all"    aria-pressed="false">All-time</button>
-            <button data-ratesrc="recent" aria-pressed="true">30-day</button>
+            <button data-ratesrc="all"    aria-pressed="false" title="Sort the Reviews column by the all-time review score">All-time</button>
+            <button data-ratesrc="recent" aria-pressed="true"  title="Sort the Reviews column by the past-30-day review score">30-day</button>
           </div>
         </div>
         <div class="field">
@@ -592,6 +601,13 @@
       </div>
 
       <div class="ctl-row">
+        <div class="taglegend" aria-hidden="true">
+          <span>Click a tag:</span>
+          <span class="chip inc"><span class="mk">✓</span>require</span>
+          <span class="tl-arrow">→ again:</span>
+          <span class="chip exc"><span class="mk">✕</span>exclude</span>
+          <span class="tl-arrow">→ again: clear</span>
+        </div>
         <div class="tagrail-wrap" id="tagrail" style="flex:1"
              title="Click a tag to require it · click again to exclude it · once more to clear. Counts update to show how many of the current results have each tag."></div>
       </div>
