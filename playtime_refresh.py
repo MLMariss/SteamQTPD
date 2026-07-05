@@ -350,24 +350,47 @@ def save_raw(games):
 
 
 def git_commit_raw(msg):
-    """G2: commit the big file ONCE (at run-end). Rebase first so it never fights
-    other jobs' pushes (different files => clean replay)."""
+    """Commit the big file, re-parenting onto the LATEST main so it never fights other
+    jobs' pushes. Because ONLY this job writes playtime_raw.json, we hard-reset to
+    origin/main and re-apply our copy of the file — this can never conflict or wedge a
+    rebase. (The old code used `git rebase --autostash` with `check=False` and no
+    `--abort`: a single conflicting rebase stuck the repo mid-rebase, every subsequent
+    push failed, and because nothing raised, the run exited 0 — a GREEN run that
+    committed nothing. That's what froze playtime_raw.json.)
+
+    Retries with backoff, logs the real push/rebase error, and — critically — FAILS LOUD
+    (non-zero exit) if it still can't land the commit, so a broken push is a visible RED
+    run instead of a silent green one."""
     if not IN_ACTIONS:
         return
-    try:
-        subprocess.run(["git", "add", "playtime_raw.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git commit failed: {e}")
+    ours = RAW_FILE.read_bytes()                       # snapshot our just-written data
+    last_err = ""
+    for attempt in range(1, 9):
+        try:
+            subprocess.run(["git", "fetch", "origin", "main"],
+                           check=True, capture_output=True, text=True)
+            subprocess.run(["git", "reset", "--hard", "origin/main"],
+                           check=True, capture_output=True, text=True)  # latest remote tree
+            RAW_FILE.write_bytes(ours)                                   # re-apply our file on top
+            subprocess.run(["git", "add", "playtime_raw.json"], check=True)
+            if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
+                log("  (nothing new vs remote; skipping commit)")
+                return
+            subprocess.run(["git", "commit", "-m", msg],
+                           check=True, capture_output=True, text=True)
+            push = subprocess.run(["git", "push", "origin", "HEAD:main"],
+                                  capture_output=True, text=True)
+            if push.returncode == 0:
+                log(f"  committed: {msg}")
+                return
+            last_err = (push.stderr or push.stdout or "").strip()
+            log(f"  push attempt {attempt}/8 rejected: {last_err[:180]}")
+        except subprocess.CalledProcessError as e:
+            last_err = ((e.stderr or "") + (e.stdout or "")).strip() or str(e)
+            log(f"  git attempt {attempt}/8 error: {last_err[:180]}")
+        time.sleep(2 * attempt + random.uniform(0, 2))
+    log(f"  ERROR: playtime_raw commit failed after 8 attempts — {last_err[:200]}")
+    sys.exit(1)                                        # visible RED run, not a silent green one
 
 
 # --------------------------------------------------------------------------- #
