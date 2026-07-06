@@ -1,0 +1,51 @@
+name: Shard health -> SHARDS.md
+
+on:
+  workflow_dispatch:          # run manually anytime
+  schedule:
+    # Once daily. Read-only w.r.t. external services (just scans local shard files), so
+    # there's no storefront-budget concern — pick a quiet minute clear of the data jobs.
+    - cron: "35 6 * * *"
+
+permissions:
+  contents: write             # commits SHARDS.md
+
+concurrency:
+  group: shards-md            # one-writer-per-file (SHARDS.md); can't clobber the data jobs
+  cancel-in-progress: false
+
+jobs:
+  shard-health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Generate SHARDS.md
+        run: python shard_health.py
+
+      - name: Commit SHARDS.md
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add SHARDS.md
+          if git diff --staged --quiet; then
+            echo "SHARDS.md unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "shard health: refresh SHARDS.md"
+          # SHARDS.md is single-writer, so a rebase onto main never conflicts on it; we
+          # still abort any half-finished rebase (never wedge) and FAIL LOUD if the push
+          # can't land after retries — no silent green runs.
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              echo "pushed"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((RANDOM % 5 + 2))
+          done
+          echo "ERROR: could not push SHARDS.md after 5 attempts"; exit 1
