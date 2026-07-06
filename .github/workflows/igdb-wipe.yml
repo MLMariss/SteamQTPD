@@ -1,0 +1,47 @@
+name: DEBUG - IGDB wipe (manual, one-off)
+
+# One-off reset: wipes hltb_igdb.json back to empty so the FIXED external_games query
+# gets a clean baseline (the broken query poisoned ~110k entries with fresh-timestamp
+# blanks that the worklist would otherwise skip for 90 days).
+#
+# Manual trigger ONLY, with a typed confirmation so it can't fire by accident. Run it
+# ONCE after deploying the fixed hltb_igdb.py, then run the normal "Refresh IGDB times"
+# workflow. Safe to delete this file afterwards (or keep for future resets).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type WIPE to confirm resetting hltb_igdb.json to empty'
+        required: true
+        default: ''
+
+permissions:
+  contents: write           # commits the emptied hltb_igdb.json
+
+concurrency:
+  group: steam-igdb         # share the IGDB group so a wipe never races a refresh
+  cancel-in-progress: false
+
+jobs:
+  wipe:
+    if: ${{ github.event.inputs.confirm == 'WIPE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Wipe hltb_igdb.json
+        run: python igdb_wipe.py
