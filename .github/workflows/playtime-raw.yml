@@ -1,4 +1,4 @@
-name: Refresh review playtime -> playtime_raw.json
+name: Refresh review playtime -> playtime_raw/ shards
 
 on:
   workflow_dispatch:        # run manually (also used for deep passes via DEEPEN_TARGET)
@@ -6,18 +6,20 @@ on:
     # AGGRESSIVE 8-slot pass (was 4× at :23 of 2,8,14,20). Now :23 every 3h — hours
     # 1,4,7,10,13,16,19,22 — i.e. near-continuous playtime scraping (~23h/day, up from
     # ~12h/day) to backfill review times faster now that scrape.py finishes in ~7 min.
-    # The :23 offset starts each run AFTER the :07 prices slot (60-min runs) has wound
-    # down. NOTE: the ~200/5min storefront budget is nominally shared with prices
-    # (:07 every 3h, 60min), recent (:41 of 4,10,16,22, 180min) and scrape. With
-    # STEAM_DELAY now 1.5s (200/5min, no headroom) this leans on the budget hard —
-    # but recent already sustains 3h@1.5s successfully (separate runner IPs), so this is
-    # expected to hold. WATCH 403 rates after deploy: if they spike, revert delay to 2.0
-    # and/or drop back to fewer slots. The concurrency group below keeps raw runs from
+    # Each run processes ONE shard bucket, chosen by GITHUB_RUN_NUMBER % 64 (set
+    # automatically by Actions), so it rotates through all 64 buckets over ~64 runs and
+    # commits stay small. The :23 offset starts each run AFTER the :07 prices slot
+    # (60-min runs) has wound down. NOTE: the ~200/5min storefront budget is nominally
+    # shared with prices (:07 every 3h, 60min), recent (:41 of 4,10,16,22, 180min) and
+    # scrape. With STEAM_DELAY now 1.5s (200/5min, no headroom) this leans on the budget
+    # hard — but recent already sustains 3h@1.5s successfully (separate runner IPs), so
+    # this is expected to hold. WATCH 403 rates after deploy: if they spike, revert delay
+    # to 2.0 and/or drop to fewer slots. The concurrency group below keeps raw runs from
     # overlapping each other. (hltb :53 / tags :29 hit different hosts.)
     - cron: "23 1,4,7,10,13,16,19,22 * * *"
 
 permissions:
-  contents: write           # commits playtime_raw.json once at run-end (G2)
+  contents: write           # commits one playtime_raw/NN.json shard per run (auto-migrates the old monolith on first run)
 
 concurrency:
   group: steam-playtime-raw # never overlap raw-scrape runs (own group)
