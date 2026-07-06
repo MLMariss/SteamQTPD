@@ -390,6 +390,54 @@ utilities and have **since been removed** (§4). `fetched_at` on every
 entry is groundwork for a future priority re-scrape whose order is: **partial entries first**
 (≥1 real value), **blank entries second**, **full-real last**.
 
+### 8.1 Coverage-recovery work (Phases A / B / C)
+
+Motivation: a full first pass left **~77% of entries blank** (~94k of 122k). Auditing the
+blanks showed two populations mixed together — genuinely-dead long-tail titles HLTB will
+never have, AND real games lost to title noise or transient first-pass failures (e.g.
+`Far Cry® New Dawn`, `EDENS ZERO` returned zero results under their raw store titles). Three
+independent, sequentially-shipped changes attack this:
+
+**Phase A — title normalization (`hltb_match.py`).** `hltb_for` no longer searches the raw
+store title once; it walks an ordered, de-duplicated list of query variants (raw first, then
+trademark-glyph-stripped, edition/bracket-tail-stripped, ALLCAPS→Title-Case, subtitle-trimmed)
+and stops at the first variant matching at/above `HLTB_MIN_SIMILARITY`. The raw title is always
+variant 0, so this can only **widen** matches, never regress one. Transient-error semantics are
+preserved across variants: if every attempted variant errored (none matched), `hltb_for`
+returns `None` (retry next run) rather than freezing a permanent blank.
+
+**Phase B — eager-but-throttled blank retry + never-idle drain.** The old flat 60-day blank
+window is replaced by an **attempt-scaled** window (`blank_window_days`): eager (3d) for the
+first few attempts, backing off (30d) once a title looks dead, near-freezing (180d) after that.
+Each blank carries an `attempts` counter (`store_entry` increments on a miss, clears on a
+match). Additionally, when the windowed re-scrape queue empties but time-budget remains, a
+**never-idle drain** (`build_idle_drain`) keeps working the least-tried, least-recently-tried
+blanks (skipping the frozen tier) so the job never quits early with budget on the clock —
+converging because each drained blank's `attempts` rises and backs its window off. Net effect:
+real games lost to noise/transients recover within days; genuinely-dead shovelware throttles
+down instead of being re-hit every run.
+
+**Phase C — IGDB secondary source (`hltb_igdb.py` → `hltb_igdb.json`).** HLTB matching is
+title-based and inherently lossy; IGDB is an **independent** completion-time source keyed off
+the **Steam appid** (via `external_games`, category 1 = Steam), so it recovers games HLTB
+structurally can't — raising the coverage *ceiling* rather than cleaning up within it. It is the
+**sole writer** of `hltb_igdb.json` and **never touches `hltb.json`** (one-writer-per-file
+preserved); the frontend merges by appid and prefers real HLTB, falling back to IGDB only where
+HLTB has no usable value. IGDB `game_time_to_beats` returns seconds in `hastily`/`normally`/
+`completely`; mapped `normally`→main (fallback `hastily`), `completely`→complete, with `extra`
+left to the **same** `hltb_estimate` model (so IGDB-sourced rows carry identical `est`/blue-flag
+treatment). Auth is Twitch OAuth client-credentials via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`
+GitHub secrets; the job no-ops cleanly (stays green) if the secrets are absent. Own workflow
+(`igdb.yml`, concurrency group `steam-igdb`, 6-hourly). **Frontend merge (Phase C.5):**
+`index.html` fetches `hltb_igdb.json` alongside the other layers and applies IGDB values only
+where HLTB left `hltb_avg == null`, tagging origin via `game.hltb_source` (`"hltb"` / `"igdb"`);
+IGDB rows reuse the existing `est` blue-flag rendering unchanged.
+
+**Self-checks (`hltb_selfcheck.py`).** All three phases ship with fail-fast, pure-logic
+regression guards run at the top of `hltb_refresh.main()` (and importable by the IGDB job).
+A failed assertion **aborts before any file is written** — a loud red failure rather than
+silent coverage decay (same failure class as the `playtime_raw` silent-green bug).
+
 ---
 
 ## 9. Playtime pipeline (`playtime_refresh.py` + `playtime_summarize.py`)

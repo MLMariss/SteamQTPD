@@ -38,6 +38,7 @@ import time
 from pathlib import Path
 
 import hltb_estimate as HE      # shared fill logic (live median ratio + missing-value fill)
+import hltb_match as HM         # Phase A: title normalization + fallback query variants
 
 try:
     from howlongtobeatpy import HowLongToBeat
@@ -62,36 +63,74 @@ HLTB_DELAY = 0.6                          # pacing between HLTB searches (howlon
 # fields fill in) are high-value and retried often; blanks are mostly irreducible (HLTB has
 # no page) so retried rarely; full triples almost never change, so almost never.
 RESCRAPE_PARTIAL_DAYS = 14               # entries with 1-2 real raw values
-RESCRAPE_BLANK_DAYS = 60                 # no-match entries (0 real raw values)
 RESCRAPE_FULL_DAYS = 365                 # complete triples (3 real raw values)
 DAY = 86400
+
+# --- Phase B: eager-but-throttled blank retry + never-idle drain ------------------- #
+# A blank (no-match) is EITHER a genuinely-dead title (shovelware HLTB will never have)
+# OR a real game we lost to title noise / a transient HLTB hiccup during the first pass.
+# We can't tell which up front, so: retry unproven blanks EAGERLY, then back off as the
+# evidence that a title is really dead accumulates. Each blank carries an `attempts`
+# counter (times we've searched and failed to match). Its staleness window grows with
+# attempts, then freezes:
+#
+#   attempts 0-2  -> BLANK_EAGER_DAYS   (3d)   recover transient/first-pass misses fast
+#   attempts 3-5  -> BLANK_BACKOFF_DAYS (30d)  probably dead, but keep an eye on it
+#   attempts >=6  -> BLANK_FREEZE_DAYS  (180d) treat as dead; near-frozen
+#
+# This directly serves the "never sit idle" goal without burning the whole budget
+# re-confirming 90k dead titles every run: eager on the unproven, throttled on the proven.
+BLANK_EAGER_ATTEMPTS = 3
+BLANK_EAGER_DAYS = 3
+BLANK_BACKOFF_ATTEMPTS = 6
+BLANK_BACKOFF_DAYS = 30
+BLANK_FREEZE_DAYS = 180
+
+# Never-idle drain: once the windowed stale queue is exhausted but budget remains, keep
+# working the least-recently-attempted, least-tried blanks anyway (ignoring their window)
+# so the job always has the next-in-line item instead of quitting early. Bounded per run
+# so a single run can't hammer the same tail forever; the attempts counter + oldest-first
+# ordering spread coverage across runs.
+IDLE_DRAIN_ENABLED = True
+IDLE_DRAIN_MAX = 4000                    # cap drained blanks per run (budget still gates)
+IDLE_DRAIN_SKIP_FROZEN = True            # don't drain entries already at the freeze tier
+
+DAY_ = DAY  # alias kept for readability below
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+
+
+def blank_window_days(attempts):
+    """Staleness window (in days) for a blank entry given how many times we've tried
+    and failed to match it. Eager first, then backs off, then near-freezes. Pure."""
+    a = attempts or 0
+    if a < BLANK_EAGER_ATTEMPTS:
+        return BLANK_EAGER_DAYS
+    if a < BLANK_BACKOFF_ATTEMPTS:
+        return BLANK_BACKOFF_DAYS
+    return BLANK_FREEZE_DAYS
 
 
 def log(msg):
     print(msg, flush=True)
 
 
-def hltb_for(title):
-    """Fetch best-match HLTB times for a title. Returns a dict of RAW values:
-    {"main", "extra", "complete", "match"} — zeros/missing as None, NO estimation
-    and NO avg here (the shared estimator fills + averages at storage time). A
-    genuine no-match returns the raw blank (recorded so we don't re-search it
-    every run during the first pass). A transient error returns None (leave
-    unresolved, retry next run)."""
-    blank = {"main": None, "extra": None, "complete": None, "match": None}
-    if HowLongToBeat is None:
-        return blank
+def _search_one(query):
+    """Search HLTB for a SINGLE query string. Returns a tri-state:
+      - dict of raw values  -> a match at/above the similarity floor
+      - {}                  -> searched cleanly, no acceptable match for THIS query
+      - None                -> transient error (network/parse); caller must NOT
+                               record a blank, should retry next run
+    Pure-ish (one network call); no recording decisions made here."""
     try:
-        results = HowLongToBeat().search(title)
+        results = HowLongToBeat().search(query)
     except Exception as e:
-        log(f"  HLTB error '{title}': {e}")
-        return None                       # transient -> don't record, retry next run
+        log(f"  HLTB error '{query}': {e}")
+        return None                       # transient -> signal retry
     if not results:
-        return blank                      # genuinely no match -> record blank (don't re-search forever)
+        return {}                         # clean miss for this query variant
     best = max(results, key=lambda r: r.similarity or 0)
     if (best.similarity or 0) < HLTB_MIN_SIMILARITY:
-        return blank
+        return {}                         # below floor -> treat as miss for this variant
 
     def hrs(v):
         try:
@@ -102,6 +141,43 @@ def hltb_for(title):
 
     return {"main": hrs(best.main_story), "extra": hrs(best.main_extra),
             "complete": hrs(best.completionist), "match": best.game_name}
+
+
+def hltb_for(title):
+    """Fetch best-match HLTB times for a Steam title. Returns a dict of RAW values
+    {"main", "extra", "complete", "match"} on a match, a raw blank on a genuine
+    no-match, or None on a transient error (leave unresolved, retry next run).
+
+    Phase A: rather than searching the raw store title once, we walk an ordered
+    list of query variants (raw first, then trademark-stripped, edition-stripped,
+    re-cased, subtitle-trimmed — see hltb_match.query_variants). The raw title is
+    always tried first so this can only widen matches, never regress one. We stop
+    at the FIRST variant that matches. Transient-error semantics are preserved: if
+    every attempted variant errored (and none matched), we return None so the game
+    is retried next run rather than frozen as a permanent blank. A clean miss on
+    all variants returns the blank."""
+    blank = {"main": None, "extra": None, "complete": None, "match": None}
+    if HowLongToBeat is None:
+        return blank
+
+    saw_transient = False
+    variants = HM.query_variants(title)
+    for i, q in enumerate(variants):
+        res = _search_one(q)
+        if res is None:
+            saw_transient = True          # remember, but keep trying other variants
+            continue
+        if res:                           # non-empty dict -> a real match
+            if i > 0:
+                log(f"  matched via variant[{i}] '{q}' (raw: '{title[:40]}')")
+            return res
+        # res == {} -> clean miss for this variant; try the next one
+        if i < len(variants) - 1:
+            time.sleep(HLTB_DELAY)        # pace the extra searches politely
+
+    # No variant matched. If ANY attempt was a transient error, don't freeze a
+    # blank — return None so this title is retried next run.
+    return None if saw_transient else blank
 
 
 def rescrape_bucket(entry):
@@ -117,17 +193,28 @@ def rescrape_bucket(entry):
     return "blank"
 
 
+def _blank_attempts(entry):
+    """How many times this blank has been searched-and-missed. Absent on legacy
+    entries -> treated as 0 (they predate the counter and should retry eagerly)."""
+    a = entry.get("attempts")
+    return a if isinstance(a, int) and a >= 0 else 0
+
+
 def build_rescrape_queue(games, hltb, now):
     """Build the ordered re-scrape work list from games that ALREADY have an entry.
-    Priority order (highest expected yield first, matching §2 → T5): partial -> blank
-    -> full. Within each bucket, oldest fetched_at first so retries spread evenly and
-    no entry is re-hit twice before its peers get one pass. An entry is only eligible
-    if it hasn't been refetched within its bucket's staleness window. Games with no
-    title in games.json can't be re-searched, so they're skipped."""
+    Priority order (highest expected yield first, §2 → T5): partial -> blank -> full.
+    Within each bucket, oldest fetched_at first so retries spread evenly and no entry
+    is re-hit twice before its peers get one pass. Eligibility is by staleness window;
+    games with no title in games.json can't be re-searched and are skipped.
+
+    Phase B change: the BLANK window is no longer a single 60d constant. It scales with
+    the entry's `attempts` counter (blank_window_days): eager for unproven blanks, then
+    backoff, then near-freeze — so real games lost to title noise / transient first-pass
+    failures get retried fast, while genuinely-dead shovelware throttles down instead of
+    being re-hit every run."""
     title_by_aid = {aid: title for aid, title in games}
-    windows = {
+    static_windows = {
         "partial": RESCRAPE_PARTIAL_DAYS * DAY,
-        "blank": RESCRAPE_BLANK_DAYS * DAY,
         "full": RESCRAPE_FULL_DAYS * DAY,
     }
     buckets = {"partial": [], "blank": [], "full": []}
@@ -137,7 +224,11 @@ def build_rescrape_queue(games, hltb, now):
             continue                      # no Steam title to search with -> can't re-scrape
         bucket = rescrape_bucket(entry)
         fetched_at = entry.get("fetched_at") or 0
-        if now - fetched_at <= windows[bucket]:
+        if bucket == "blank":
+            window = blank_window_days(_blank_attempts(entry)) * DAY
+        else:
+            window = static_windows[bucket]
+        if now - fetched_at <= window:
             continue                      # refetched recently -> not yet stale enough
         buckets[bucket].append((fetched_at, aid, title))
     queue = []
@@ -145,6 +236,35 @@ def build_rescrape_queue(games, hltb, now):
         buckets[bucket].sort(key=lambda t: t[0])  # oldest fetched_at first
         queue.extend((aid, title, bucket) for _ts, aid, title in buckets[bucket])
     return queue
+
+
+def build_idle_drain(games, hltb, now, exclude_aids):
+    """Never-idle fallback work: when the windowed queue is exhausted but budget
+    remains, keep pulling blanks anyway so the job never quits early with time left.
+    Orders by (attempts asc, fetched_at asc): fewest-tried and least-recently-tried
+    first, so unproven blanks are drained before near-dead ones and coverage spreads
+    across runs. Skips frozen-tier blanks (attempts high) when IDLE_DRAIN_SKIP_FROZEN,
+    and anything already queued this run (exclude_aids). Bounded to IDLE_DRAIN_MAX;
+    the time budget is still the real gate."""
+    if not IDLE_DRAIN_ENABLED:
+        return []
+    title_by_aid = {aid: title for aid, title in games}
+    candidates = []
+    for aid, entry in hltb.items():
+        if aid in exclude_aids:
+            continue
+        if rescrape_bucket(entry) != "blank":
+            continue                      # only blanks are drained (partials/fulls use windows)
+        title = title_by_aid.get(aid)
+        if not title:
+            continue
+        attempts = _blank_attempts(entry)
+        if IDLE_DRAIN_SKIP_FROZEN and attempts >= BLANK_BACKOFF_ATTEMPTS:
+            continue                      # proven-dead tier -> don't drain, let its window ride
+        fetched_at = entry.get("fetched_at") or 0
+        candidates.append((attempts, fetched_at, aid, title))
+    candidates.sort(key=lambda t: (t[0], t[1]))   # fewest attempts, then oldest
+    return [(aid, title, "blank") for _a, _f, aid, title in candidates[:IDLE_DRAIN_MAX]]
 
 
 def load_games():
@@ -195,10 +315,42 @@ def git_checkpoint(msg):
         log(f"  git checkpoint failed: {e}")
 
 
+def store_entry(hltb, aid, res, ratios, now):
+    """Build and store the entry for a fetched result, managing the Phase B
+    `attempts` counter on blanks. Returns True if the stored entry is a real match
+    (has an avg), False if it's a blank.
+
+    - MATCH  -> store the filled entry and drop any `attempts` (it's resolved).
+    - BLANK  -> store the blank and increment `attempts` (carry prior count forward),
+                so build_rescrape_queue can back its retry window off over time.
+    Real values always overwrite; a blank never wipes existing real data because the
+    caller only reaches here with a non-None res, and make_entry preserves raw."""
+    prior = hltb.get(aid) or {}
+    entry = HE.make_entry(res.get("main"), res.get("extra"),
+                          res.get("complete"), res.get("match"), now, ratios)
+    if entry.get("avg") is not None:
+        entry.pop("attempts", None)       # resolved -> counter no longer needed
+        hltb[aid] = entry
+        return True
+    # blank: increment attempts (prior attempts + 1); legacy/absent -> starts at 1
+    entry["attempts"] = _blank_attempts(prior) + 1
+    hltb[aid] = entry
+    return False
+
+
 def main():
     if HowLongToBeat is None:
         log("howlongtobeatpy not installed; nothing to do.")
         return 1
+    # Fail-fast regression guards (Phase A + B). Abort BEFORE touching hltb.json so a
+    # broken normalizer or retry curve produces a loud red failure, not silent decay.
+    try:
+        import hltb_selfcheck
+        hltb_selfcheck.run_all()
+        log("Self-checks passed (title matching + blank retry logic).")
+    except AssertionError as e:
+        log(f"SELF-CHECK FAILED — aborting to avoid degrading data: {e}")
+        return 2
     start = time.time()
     games = load_games()
     if not games:
@@ -245,13 +397,10 @@ def main():
         time.sleep(HLTB_DELAY)
         if res is None:
             continue                      # transient error -> leave unresolved, retry next run
-        # Build the stored entry: normalizes zeros to null in `raw`, fills missing
-        # values from ratios, computes avg over the completed triple, marks `est`,
-        # stamps fetched_at. A genuine no-match yields a fully-blank entry.
-        hltb[aid] = HE.make_entry(res.get("main"), res.get("extra"),
-                                  res.get("complete"), res.get("match"),
-                                  time.time(), ratios)
-        if hltb[aid].get("avg") is not None:
+        # Build + store the entry (normalizes zeros to null in `raw`, fills missing
+        # values from ratios, computes avg, marks `est`, stamps fetched_at, and manages
+        # the Phase B blank `attempts` counter). A genuine no-match yields a blank.
+        if store_entry(hltb, aid, res, ratios, time.time()):
             n_hit += 1
         else:
             n_blank += 1
@@ -268,37 +417,62 @@ def main():
     # error (None) leaves the existing entry untouched — we never overwrite good data with a
     # blank. Each refetch restamps fetched_at, so an entry won't be revisited until it's
     # stale again.
+    def run_rescrape(work, label):
+        """Search + store each (aid, title, bucket) in `work` until budget runs out.
+        Shared by the windowed re-scrape and the never-idle drain. Updates the outer
+        rescraped/newly_filled counters via nonlocal. Returns count actually processed."""
+        nonlocal rescraped, newly_filled
+        processed = 0
+        for j, (aid, title, _bucket) in enumerate(work, 1):
+            if time_left() < TIME_BUFFER:
+                log(f"Time budget reached during {label}; wrapping up.")
+                break
+            res = hltb_for(title)
+            time.sleep(HLTB_DELAY)
+            if res is None:
+                continue                  # transient error -> keep existing entry as-is
+            before_real = sum(1 for x in HE.raw_of(hltb[aid]) if HE.is_real(x))
+            store_entry(hltb, aid, res, ratios, time.time())
+            after_real = sum(1 for x in HE.raw_of(hltb[aid]) if HE.is_real(x))
+            rescraped += 1
+            processed += 1
+            if after_real > before_real:
+                newly_filled += 1
+            if j % 25 == 0 or j == len(work):
+                log(f"  [{label} {j}/{len(work)}] {rescraped} refetched, "
+                    f"{newly_filled} gained data (last: {title[:32]})")
+            maybe_checkpoint(f"hltb: rescraped {rescraped} ({newly_filled} newly filled), "
+                             f"checkpoint")
+        return processed
+
     if first_pass_done:
+        queued_aids = set()
         queue = build_rescrape_queue(games, hltb, int(time.time()))
         if queue:
+            queued_aids = {aid for aid, _t, _b in queue}
             n_part = sum(1 for _a, _t, b in queue if b == "partial")
             n_bl = sum(1 for _a, _t, b in queue if b == "blank")
             n_fu = sum(1 for _a, _t, b in queue if b == "full")
             log(f"First pass complete. Re-scrape queue: {len(queue)} stale "
                 f"({n_part} partial, {n_bl} blank, {n_fu} full); oldest-first within each.")
-            for j, (aid, title, bucket) in enumerate(queue, 1):
-                if time_left() < TIME_BUFFER:
-                    log("Time budget reached during re-scrape; wrapping up.")
-                    break
-                res = hltb_for(title)
-                time.sleep(HLTB_DELAY)
-                if res is None:
-                    continue              # transient error -> keep existing entry as-is
-                before_real = sum(1 for x in HE.raw_of(hltb[aid]) if HE.is_real(x))
-                hltb[aid] = HE.make_entry(res.get("main"), res.get("extra"),
-                                          res.get("complete"), res.get("match"),
-                                          time.time(), ratios)
-                after_real = sum(1 for x in HE.raw_of(hltb[aid]) if HE.is_real(x))
-                rescraped += 1
-                if after_real > before_real:
-                    newly_filled += 1
-                if j % 25 == 0 or j == len(queue):
-                    log(f"  [rescrape {j}/{len(queue)}] {rescraped} refetched, "
-                        f"{newly_filled} gained data (last: {title[:32]})")
-                maybe_checkpoint(f"hltb: rescraped {rescraped} ({newly_filled} newly filled), "
-                                 f"checkpoint")
+            run_rescrape(queue, "rescrape")
         else:
             log("First pass complete. No entries are stale enough to re-scrape yet.")
+
+        # --- Never-idle drain: keep working blanks if budget remains (Phase B) ----- #
+        # Rather than quit with time on the clock, pull the least-tried, least-recently-
+        # tried blanks and keep going. The attempts counter + oldest-first ordering make
+        # this converge (each drained blank's attempts rises, backing off its future
+        # window), so this recovers title-noise / transient-loss blanks fast without
+        # permanently re-hitting genuinely-dead titles.
+        if time_left() >= TIME_BUFFER:
+            drain = build_idle_drain(games, hltb, int(time.time()), queued_aids)
+            if drain:
+                log(f"Budget remains — never-idle drain: working {len(drain)} more "
+                    f"blank(s), fewest-attempts-first.")
+                run_rescrape(drain, "drain")
+            else:
+                log("Budget remains but no drainable blanks (all resolved or frozen).")
     elif not todo:
         # Nothing new AND no budget left after building — shouldn't normally happen, but
         # keep the file written.

@@ -1804,14 +1804,16 @@ Promise.all([
   fetch("games.json",  {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("prices.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("hltb.json",   {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch("hltb_igdb.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("tags.json",   {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("recent.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("playtime.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("ratings.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-]).then(([g, pj, hj, tj, rj, ptj, ratj]) => {
+]).then(([g, pj, hj, ij, tj, rj, ptj, ratj]) => {
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
   const hltbMap   = (hj && hj.hltb)   ? hj.hltb   : null;
+  const igdbMap   = (ij && ij.igdb)   ? ij.igdb   : null;   // Phase C secondary source
   const tagsMap   = (tj && tj.tags)   ? tj.tags   : null;
   const recentMap = (rj && rj.recent) ? rj.recent : null;
   // playtime.json: per-game [median_up_min, median_down_min, n_up, n_down] (positional).
@@ -1841,6 +1843,20 @@ Promise.all([
       // which of main/extra/complete are estimated (filled from the genre-average
       // ratio rather than fetched from HLTB) — drives the distinct rendering.
       game.hltb_est = Array.isArray(h.est) ? h.est : [];
+      game.hltb_source = (h.avg != null) ? "hltb" : null;
+    }
+    // hltb_igdb.json — Phase C secondary source (IGDB, appid-matched). HLTB stays
+    // authoritative: fall back to IGDB ONLY where HLTB produced no usable avg (no
+    // entry, or a recorded blank). IGDB rows carry the same est/blue-flag shape from
+    // the shared estimator, so rendering is identical; hltb_source tags the origin.
+    if(igdbMap && igdbMap[key] && game.hltb_avg == null){
+      const ig = igdbMap[key];
+      if(ig.avg != null){
+        game.hltb_main = ig.main; game.hltb_extra = ig.extra;
+        game.hltb_complete = ig.complete; game.hltb_avg = ig.avg; game.hltb_match = ig.match;
+        game.hltb_est = Array.isArray(ig.est) ? ig.est : [];
+        game.hltb_source = "igdb";
+      }
     }
     // tags.json provides SteamSpy user-tags; they replace the genre fallback in games.json
     // when present (richer/more specific). A non-empty list wins; otherwise keep the fallback.
