@@ -96,9 +96,16 @@ RAW_FILE = HERE / "playtime_raw.json"            # LEGACY monolith — split int
 # small and only a single writer ever touches a given shard.
 NSHARDS = 64
 SHARD_DIR = HERE / "playtime_raw"                # directory of NN.json shards (replaces the monolith)
+# Shard-key version. Bump this whenever shard_of() changes — ensure_sharding() reads the
+# version stamped in the shards and does a one-time reshard when it doesn't match.
+SHARD_KEY_VER = 2
 
 def shard_of(appid):
-    return int(appid) % NSHARDS
+    # Steam appids are ~100% multiples of 10, so `appid % NSHARDS` piles every game into
+    # the even buckets (odd buckets get ~nothing) — half the shards wasted, the rest 2x
+    # size. Dividing by 10 first strips that factor, so the quotient spreads evenly across
+    # all 64 buckets (measured max/mean ~1.05, 0 empty).
+    return (int(appid) // 10) % NSHARDS
 
 def shard_path(bucket):
     return SHARD_DIR / f"{bucket:02d}.json"
@@ -372,32 +379,63 @@ def save_shard(bucket, games):
     SHARD_DIR.mkdir(exist_ok=True)
     shard_path(bucket).write_text(json.dumps(
         {"generated_at": int(time.time()), "per_game_cap": PER_GAME_CAP,
-         "bucket": bucket, "nshards": NSHARDS,
+         "bucket": bucket, "nshards": NSHARDS, "shard_ver": SHARD_KEY_VER,
          "count": len(games), "games": games},
         ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def migrate_monolith_if_needed():
-    """One-time: split the pre-shard playtime_raw.json monolith into per-bucket shards
-    and remove it from the repo. Idempotent — a no-op once the monolith is gone. This is
-    what unblocks pushes: the >100 MB single file is replaced by <20 MB shards."""
-    if not RAW_FILE.exists():
-        return
-    log(f"Migrating {RAW_FILE.name} -> {NSHARDS} shards (one-time)...")
-    try:
-        games = json.loads(RAW_FILE.read_text(encoding="utf-8")).get("games", {})
-    except ValueError:
-        log("  monolith unreadable; leaving it untouched")
-        return
+def _shard_ver_on_disk():
+    """The shard_ver stamped in the existing shards (0 if shards exist but predate the
+    stamp; None if there are no shards yet)."""
+    if not SHARD_DIR.is_dir():
+        return None
+    for p in sorted(SHARD_DIR.glob("*.json")):
+        try:
+            return json.loads(p.read_text(encoding="utf-8")).get("shard_ver", 0)
+        except ValueError:
+            continue
+    return None
+
+
+def ensure_sharding():
+    """Idempotently guarantee the shards exist AND use the current shard key. Handles two
+    one-time events with the same code path: (1) the initial split of the legacy
+    playtime_raw.json monolith, and (2) a RESHARD when shard_of() changes (detected via
+    SHARD_KEY_VER). Fast no-op on the common path once shards are current — so it's safe
+    to call every run. Doing it here (not a separate script) means a plain file upload is
+    all it takes; the next run self-migrates."""
+    monolith = RAW_FILE.exists()
+    ver = _shard_ver_on_disk()
+    if ver == SHARD_KEY_VER and not monolith:
+        return                                   # already current
+
+    # Gather every game from wherever it currently lives (monolith and/or existing shards).
+    allgames = {}
+    if monolith:
+        try:
+            allgames.update(json.loads(RAW_FILE.read_text(encoding="utf-8")).get("games", {}))
+        except ValueError:
+            log("  legacy monolith unreadable; skipping it")
+    if SHARD_DIR.is_dir():
+        for p in sorted(SHARD_DIR.glob("*.json")):
+            try:
+                allgames.update(json.loads(p.read_text(encoding="utf-8")).get("games", {}))
+            except ValueError:
+                continue
+    if not allgames:
+        return                                   # nothing to (re)shard yet — fresh repo
+
+    reason = "monolith split" if monolith else f"reshard to key v{SHARD_KEY_VER}"
+    log(f"(Re)sharding {len(allgames):,} games ({reason}) across {NSHARDS} buckets...")
     buckets = {}
-    for aid, rec in games.items():
+    for aid, rec in allgames.items():
         buckets.setdefault(shard_of(aid), {})[aid] = rec
     for n in range(NSHARDS):
-        save_shard(n, buckets.get(n, {}))
-    RAW_FILE.unlink(missing_ok=True)
-    log(f"  split {len(games):,} games into {NSHARDS} shards; monolith staged for removal")
-    _robust_commit(f"playtime raw: shard migration (monolith -> {NSHARDS} buckets)",
-                   [f"{n:02d}.json" for n in range(NSHARDS)], drop_monolith=True)
+        save_shard(n, buckets.get(n, {}))        # rewrites ALL shards with the current key
+    if monolith:
+        RAW_FILE.unlink(missing_ok=True)
+    _robust_commit(f"playtime raw: {reason} ({len(allgames)} games -> {NSHARDS} buckets, key v{SHARD_KEY_VER})",
+                   [f"{n:02d}.json" for n in range(NSHARDS)], drop_monolith=monolith)
 
 
 def _robust_commit(msg, our_shards, drop_monolith=False):
@@ -508,7 +546,7 @@ def main():
         log("No real games.json yet (run scraper.py first); nothing to refresh.")
         return 0
 
-    migrate_monolith_if_needed()          # one-time: split the legacy monolith; no-op afterwards
+    ensure_sharding()                     # one-time: split monolith and/or reshard on key change; no-op afterwards
 
     bucket = bucket_for_run()             # this run owns exactly ONE shard
     raw = load_shard(bucket)
