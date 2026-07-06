@@ -45,7 +45,7 @@ one checkpoint's worth of work.
    │ hltb_refresh.py ────────► hltb.json            │  read  │  (merges all     │
    │ tags_refresh.py ────────► tags.json            │ ─────► │   JSON by appid, │
    │ recent_refresh.py ──────► recent.json          │        │   computes QHPP) │
-   │ playtime_refresh.py ────► playtime_raw.json    │        │                  │
+   │ playtime_refresh.py ────► playtime_raw/*.json  │        │                  │
    │        │                                        │        └──────────────────┘
    │        ├─ playtime_summarize.py ─► playtime.json│
    │        └─ ratings_summarize.py ──► ratings.json │        ┌──────────────────┐
@@ -230,7 +230,7 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `scraper.py`            | `games.json`, `catalog.json` | long runs, off-peak | The only finder of *new* games. |
 | `price_and_sale.py`     | `prices.json`       | frequent         | Fast-changing layer: price, discount, sale end. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
-| `playtime_refresh.py`   | `playtime_raw.json` | overnight        | Per-review playtime; commits every 30 min + on shutdown. |
+| `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (1 bucket/run); commits every 30 min + on shutdown. |
 
 **Non-Steam scrapers** (hit their own sites, so no Steam-budget contention):
 
@@ -240,7 +240,7 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `tags_refresh.py`   | `tags.json` | SteamSpy  |
 
 **Summarizers** (pure local recompute — read one file, write another; **no Steam calls**,
-so they touch no rate budget). Both read `playtime_raw.json`:
+so they touch no rate budget). Both read the sharded `playtime_raw/` set:
 
 | Workflow file           | Script                  | Writes         | Cron       | Concurrency group |
 |-------------------------|-------------------------|----------------|------------|-------------------|
@@ -287,11 +287,13 @@ frontend falls back to Steam genres when a game is absent, so the column is neve
 **`recent.json`** — `{ "recent": { "<appid>": { recent_pct, recent_count,
 recent_scraped_at } } }`. The 30-day score; staleness gates the trend arrow.
 
-**`playtime_raw.json`** — the big working set, owned by `playtime_refresh.py`:
-`{ "games": { "<appid>": { "reviews": { "<recommendationid>": { playtime, voted_up, … } },
-"summary": {…} } } }`. Reviews are keyed by **`recommendationid`** (identity, not cursor
-position) so re-runs catch new reviews and updated playtimes without duplication. Kept
-in-repo (not gitignored) because it *is* the scraper's resumable state.
+**`playtime_raw/NN.json`** (64 shards) — the big working set, owned by `playtime_refresh.py`.
+Each shard: `{ "bucket": N, "nshards": 64, "shard_ver": V, "games": { "<appid>": { "reviews":
+{ "<recommendationid>": { playtime, voted_up, … } }, "summary": {…} } } }`, holding only games
+where `(appid // 10) % 64 == N`. Reviews are keyed by **`recommendationid`** (identity, not
+cursor position) so re-runs catch new reviews and updated playtimes without duplication. Kept
+in-repo (not gitignored) because it *is* the scraper's resumable state; split across shards
+because one file would blow past GitHub's 100 MB limit (§9).
 
 **`playtime.json`** — lean frontend summary, owned by `playtime_summarize.py`:
 ```
@@ -395,8 +397,8 @@ entry is groundwork for a future priority re-scrape whose order is: **partial en
 Surfaces **how long people actually play**, split by whether they recommended the game.
 
 **Why two files.** The raw per-review data is large and is the scraper's resumable working
-set; the frontend only needs medians. So `playtime_refresh.py` maintains the big
-`playtime_raw.json`, and `playtime_summarize.py` distills it into the lean `playtime.json`.
+set; the frontend only needs medians. So `playtime_refresh.py` maintains the big raw working
+set (sharded — see below) and `playtime_summarize.py` distills it into the lean `playtime.json`.
 
 **Raw scraper.** Pulls reviews via Steam's `appreviews` and stores `playtime_forever` (total
 hours) per review. **`playtime_at_review` is deliberately not used** (decided and re-decided).
@@ -406,6 +408,34 @@ arrival and playtime drift. It resumes each game by review identity, catching ne
 and walking deeper into unseen ones. Because a single end-of-run commit would make a long
 scrape fragile to runner interruption, it commits **every 30 minutes plus on graceful
 shutdown**.
+
+**Sharded storage (the 100 MB wall).** The per-review set is too big for one file: at
+~15 KB/game the full addressable set is ~1.1 GB, and GitHub **hard-rejects any single file
+over 100 MB**. A monolithic `playtime_raw.json` hit that ceiling at ~6,850 games (98 MB) —
+every push was rejected, and because the old commit code swallowed the error the runs went
+*green with nothing committed*, silently freezing the pipeline for ~2 days. So the raw set is
+split into **64 shards under `playtime_raw/NN.json`**, keyed by
+`shard_of(appid) = (appid // 10) % 64`. The `// 10` is load-bearing: Steam appids are ~100%
+multiples of 10, so a plain `appid % 64` piles every game into the *even* buckets (odd buckets
+get ~nothing) — dividing by 10 first strips that factor and spreads them evenly (measured
+max/mean ~1.05 vs ~2.07). Each run processes **one bucket**, chosen by `GITHUB_RUN_NUMBER % 64`,
+so it loads/commits only ~18 MB and rotates through all 64 buckets over ~64 runs.
+`ensure_sharding()` is idempotent and version-gated by `SHARD_KEY_VER`: on the first run it
+splits the legacy monolith and `git rm`s it; if `shard_of()` ever changes it reshards in place
+(a plain file upload is all it takes); otherwise it's a fast no-op.
+
+**Robust commit.** Each shard commit hard-resets to `origin/main` and re-applies only this
+run's shard before pushing — since only this job writes a given shard, that can never conflict
+or wedge a rebase (the old `git rebase --autostash` + `check=False` path could stick mid-rebase
+and then fail every push *silently*). If a push still can't land after retries it **exits
+non-zero (a red run)**, so a broken push is visible rather than a silent freeze. `playtime_raw/`
+is not web-served — the frontend reads only the summarized `playtime.json` — so its size affects
+git, not the browser.
+
+**Health monitor.** `shard_health.py` (daily via `.github/workflows/shard-health.yml`) writes
+**`SHARDS.md`**: per-shard count and size, distribution evenness, staleness, and a
+games-to-100 MB projection at full coverage — flagging any shard approaching the limit *before*
+it becomes a problem.
 
 **Eligibility floor.** A game must have **≥10 all-time reviews** (`MIN_REVIEWS_FLOOR`) to enter
 the scrape queue at all. Below the floor there aren't enough reviews to survive the summarizer's
@@ -435,7 +465,7 @@ A review rating where each vote counts in proportion to how long that player act
 played — a 300-hour recommendation should outweigh a 20-minute one. It sits **next to**
 Steam's flat % (it is a *metric*, not a sort-only concept), in the **Weighted** column.
 
-Reading the same `playtime_raw.json`, per game it stores **three** percentages plus the
+Reading the same sharded `playtime_raw/` set, per game it stores **three** percentages plus the
 sample size, `[steam_pct, raw_pct, capped_pct, n]`:
 
 - **`steam`** — the plain one-vote-per-review % (reference / comparison; matches Steam).
@@ -593,6 +623,11 @@ Each job's knobs live at the top of its own script:
   floors below, which govern rating *compute*, not playtime *scraping*.
 - **`MIN_REVIEWS_FOR_RATING` (5) / `CONFIDENT_REVIEWS` (10) / `CAP_MULT` (2.0)** (ratings) —
   weighted-rating eligibility floor, full-color threshold, and per-review playtime cap.
+- **`NSHARDS` (64) / `SHARD_KEY_VER` (2)** (playtime) — shard count for `playtime_raw/NN.json`
+  and the shard-key version. `shard_of(appid) = (appid // 10) % NSHARDS`; the `// 10` spreads
+  the (near-100%-multiple-of-10) appids evenly instead of piling them into even buckets. Bump
+  `SHARD_KEY_VER` whenever `shard_of()` changes — `ensure_sharding()` reshards in place on the
+  next run when the version stamped in the shards doesn't match.
 - **`STEAM_API_KEY`** (secret) — enables the keyed catalog enumeration + change-detection.
 
 ---
@@ -627,9 +662,11 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 - **Weighted rating** needs public playtime and enough reviews: none below 5, grayed 5–9.
 - **Tags** fall back to Steam genres when SteamSpy lacks a game.
 - **Sale end times** collapse offline when expired, so countdowns stay honest.
-- **Dataset size** — the single-file approach is fine into the tens of thousands; far beyond
-  that, shard and load on demand. `playtime_raw.json` is the largest file and grows with
-  review coverage (adding one weighted-rating number to `playtime.json` is negligible).
+- **Dataset size** — the per-review working set is **sharded** (`playtime_raw/NN.json`, 64
+  buckets) because one file would exceed GitHub's 100 MB limit; shards run ~18 MB at full
+  coverage, and `SHARDS.md` monitors headroom (§9). Every other file is single and comfortably
+  under the limit (`games.json` is next-largest at ~59 MB and grows with the catalog — worth an
+  eye, but far from the wall). Adding one weighted-rating number to `playtime.json` is negligible.
 - **Sandbox limitation** (for maintenance): the dev environment can't reach Steam domains, so
   Steam-dependent code is unit-tested against documented response shapes and verified by
   running it live in Actions.
@@ -643,6 +680,22 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Shard health monitor.** `shard_health.py` (daily via `shard-health.yml`) writes `SHARDS.md`
+  — per-shard count/size, evenness, staleness, and a games-to-100 MB projection — so the file
+  size that once froze the pipeline is now watched pre-emptively (§9).
+- **Shard key fix: `appid % 64` → `(appid // 10) % 64`.** Steam appids are ~100% multiples of
+  10, so the original key piled every game into the even buckets (32 empty, the rest 2× size,
+  half the backfill throughput wasted). Dividing by 10 first spreads them evenly (max/mean
+  2.07 → ~1.05). `ensure_sharding()` reshards in place on the next run via `SHARD_KEY_VER` (§9,
+  §13).
+- **Playtime raw sharded (100 MB fix).** A monolithic `playtime_raw.json` hit GitHub's 100 MB
+  file limit at ~98 MB / 6,850 games; pushes were rejected and the old commit code swallowed the
+  error, so runs went green-with-nothing-committed and the pipeline silently froze for ~2 days.
+  Split into 64 shards under `playtime_raw/NN.json` (one bucket/run, rotated by
+  `GITHUB_RUN_NUMBER`); `ensure_sharding()` auto-migrated the monolith and removed it. The commit
+  path was rewritten to a robust single-writer push that hard-resets to `origin/main`, re-applies
+  its shard, and **fails loud (red run)** instead of silently — and `playtime_summarize.py` now
+  reads all shards (§8, §9).
 - **Playtime scale-up: 4 → 8 slots, `STEAM_DELAY` 2.0 → 1.5s.** With `scrape.py` finishing in
   ~7 min and the frontier exhausted, the shared storefront budget had headroom, so the playtime
   raw pass now runs `:23` every 3h (near-continuous, ~24h/day vs ~12h/day) at 1.5s — roughly 2×
