@@ -61,7 +61,15 @@ CHECKPOINT_SECONDS = 300
 TIME_BUFFER = 45
 IGDB_DELAY = 0.30                         # ~3 req/s, under IGDB's 4 req/s ceiling
 BATCH = 200                               # appids resolved per external_games query
-IGDB_RESCRAPE_DAYS = 90                   # re-check an existing IGDB entry only this often
+IGDB_RESCRAPE_DAYS = 90                   # re-check a MATCHED IGDB entry only this often
+# Blank (no-match) IGDB entries are retried more eagerly than matched ones, then settle
+# into the normal cadence — a real game may simply be missing an IGDB time-to-beat record
+# today that gets added later, and we don't want a transient/first-pass miss frozen for 90
+# days. Two tiers (mirrors Phase B, simpler): blanks with attempts < BLANK_EAGER_ATTEMPTS
+# retry after BLANK_EAGER_DAYS; at/above the cap they fall to the normal IGDB_RESCRAPE_DAYS
+# cadence so genuinely-timeless games aren't re-hit forever.
+IGDB_BLANK_EAGER_ATTEMPTS = 3
+IGDB_BLANK_EAGER_DAYS = 7
 
 TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 API_BASE = "https://api.igdb.com/v4"
@@ -225,30 +233,49 @@ def git_checkpoint(msg):
 # --- Priority: which appids to resolve this run ------------------------------- #
 def build_worklist(games, hltb, igdb, now):
     """Ordered appids to resolve via IGDB this run. Priority:
-      1. Games where HLTB is BLANK/absent and we have no IGDB entry yet — the whole
-         point of Phase C: recover what HLTB can't. Highest value.
-      2. Games with neither HLTB nor IGDB data at all.
-      3. Stale existing IGDB entries (older than IGDB_RESCRAPE_DAYS), oldest first.
-    Games already well-covered by real HLTB are skipped (no need for a second source)."""
+      1. Games with no IGDB entry yet (never-seen) — highest value, incl. HLTB-blank.
+      2. BLANK IGDB entries still in their eager-retry window (attempts under the cap):
+         an unproven miss that may just need another try / a newly-added IGDB record.
+      3. Stale entries past IGDB_RESCRAPE_DAYS (matched entries, or blanks past the eager
+         cap now on normal cadence), oldest first.
+    Games already covered by a real (non-estimated) HLTB match are skipped — no need for
+    a second source there.
+
+    Fix (2026-07): previously ANY existing entry (blank OR matched) only re-ran on the
+    90-day stale timer, so 110k blanks written by a broken run were frozen out of the
+    worklist entirely. Blanks are now distinguished from matches and retried eagerly."""
     def hltb_has_real(aid):
         e = hltb.get(aid)
         if not e:
             return False
         return e.get("avg") is not None and not e.get("est")  # a real (non-estimated) match
 
-    never, stale = [], []
+    def is_blank(entry):
+        return entry.get("avg") is None
+
+    never, eager, stale = [], [], []
     for aid, _title in games:
-        have_igdb = aid in igdb
         if hltb_has_real(aid):
             continue                      # real HLTB already -> secondary not needed
-        if not have_igdb:
-            never.append(aid)             # priority 1/2: no IGDB entry yet
-        else:
-            fetched = igdb[aid].get("fetched_at") or 0
-            if now - fetched > IGDB_RESCRAPE_DAYS * DAY:
-                stale.append((fetched, aid))
+        entry = igdb.get(aid)
+        if entry is None:
+            never.append(aid)             # priority 1: no IGDB entry yet
+            continue
+        fetched = entry.get("fetched_at") or 0
+        age = now - fetched
+        if is_blank(entry):
+            attempts = entry.get("attempts") or 0
+            if attempts < IGDB_BLANK_EAGER_ATTEMPTS:
+                if age > IGDB_BLANK_EAGER_DAYS * DAY:
+                    eager.append((fetched, aid))   # priority 2: unproven blank, eager window
+                # else: retried too recently, skip this run
+            elif age > IGDB_RESCRAPE_DAYS * DAY:
+                stale.append((fetched, aid))       # blank past eager cap -> normal cadence
+        elif age > IGDB_RESCRAPE_DAYS * DAY:
+            stale.append((fetched, aid))           # matched entry, normal re-check cadence
+    eager.sort(key=lambda t: t[0])
     stale.sort(key=lambda t: t[0])
-    return never + [aid for _f, aid in stale]
+    return never + [aid for _f, aid in eager] + [aid for _f, aid in stale]
 
 
 def main():

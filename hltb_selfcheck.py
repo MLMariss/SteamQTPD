@@ -93,6 +93,20 @@ def check_phase_c():
     assert 1 not in work, f"real-HLTB game must be skipped: {work}"
     assert work[0] == 2, f"HLTB-blank game must come first: {work}"
     assert 3 in work, f"stale IGDB entry must be re-checked: {work}"
+
+    # regression guard (2026-07): a BLANK IGDB entry must NOT be treated like a matched
+    # one and frozen on the 90-day cadence. An unproven blank past its short eager window
+    # must be eligible; a matched entry within the long cadence must be skipped.
+    g2 = [(10, "eagerBlank"), (11, "matchedFresh")]
+    ig2 = {
+        10: {"avg": None, "attempts": 1, "fetched_at": now - (G.IGDB_BLANK_EAGER_DAYS + 1) * G.DAY},
+        11: {"avg": 9.0, "fetched_at": now - 5 * G.DAY},
+    }
+    w2 = G.build_worklist(g2, {}, ig2, now)
+    assert 10 in w2, f"unproven blank past eager window must be eligible: {w2}"
+    assert 11 not in w2, f"freshly-matched entry must be skipped: {w2}"
+    # and a wiped (empty) store must make every non-HLTB game eligible immediately.
+    assert set(G.build_worklist(g2, {}, {}, now)) == {10, 11}, "wipe must free all games"
     return True
 
 
