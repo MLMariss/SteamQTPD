@@ -1,10 +1,10 @@
 # Shard health — `playtime_raw/`
 
-_Generated 2026-07-06 06:46 UTC by `shard_health.py`._
+_Generated 2026-07-06 10:28 UTC by `shard_health.py`._
 
 ## Status
 
-- 🟢 OK: all shards well under 100 MB and evenly distributed.
+- 🟡 WARN: distribution skew max/mean=9.4. One actively-scraped bucket can spike this transiently; a sustained skew means the shard key is clustering (check shard_of).
 
 ## Summary
 
@@ -12,14 +12,14 @@ _Generated 2026-07-06 06:46 UTC by `shard_health.py`._
 |---|---|
 | Shards | 64 (non-empty 64) |
 | shard_ver | [2] |
-| Total games | 7,173 |
-| Games/shard | min 80 · median 107 · max 271 (max/mean 2.42) |
-| Size/shard | min 1.10 MB · median 1.54 MB · **max 3.87 MB** |
-| Headroom on biggest | 96.1 MB under the 100 MB limit |
-| Bytes/game | ~14.6 KB |
-| Games-to-100MB (per shard) | ~6,994 |
-| Addressable universe (≥10 reviews) | 78,466 → ~1,226/shard at full coverage |
-| **Projected max shard at full coverage** | **~18 MB** |
+| Total games | 8,273 |
+| Games/shard | min 80 · median 107 · max 1212 (max/mean 9.38) |
+| Size/shard | min 1.10 MB · median 1.54 MB · **max 11.72 MB** |
+| Headroom on biggest | 88.3 MB under the 100 MB limit |
+| Bytes/game | ~9.9 KB |
+| Games-to-100MB (per shard) | ~10,343 |
+| Addressable universe (≥10 reviews) | 78,467 → ~1,226/shard at full coverage |
+| **Projected max shard at full coverage** | **~12 MB** |
 
 ## Per-shard
 
@@ -48,7 +48,7 @@ _Generated 2026-07-06 06:46 UTC by `shard_health.py`._
 | 20 | 103 | 1.60 MB | 1.6% | 2026-07-06 06:27 |
 | 21 | 115 | 1.97 MB | 2.0% | 2026-07-06 06:27 |
 | 22 | 117 | 1.68 MB | 1.7% | 2026-07-06 06:27 |
-| 23 | 112 | 1.46 MB | 1.5% | 2026-07-06 06:27 |
+| 23 | 1,212 | 11.72 MB | 11.7% | 2026-07-06 07:52 |
 | 24 | 105 | 1.44 MB | 1.4% | 2026-07-06 06:27 |
 | 25 | 100 | 1.29 MB | 1.3% | 2026-07-06 06:27 |
 | 26 | 104 | 1.45 MB | 1.5% | 2026-07-06 06:27 |
