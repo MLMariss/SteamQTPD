@@ -1,15 +1,26 @@
 name: DEBUG - IGDB probe (manual only)
 
-# One-off diagnostic: runs igdb_probe.py to find why external_games matches 0 games.
-# Manual trigger ONLY (no schedule) — safe to leave in the repo; it never runs on its
-# own and writes nothing. Delete it once the IGDB query is fixed, or keep it around for
-# future IGDB debugging. Read the "Run IGDB probe" step's log to see the raw responses.
+# One-off diagnostics for the IGDB pipeline. Manual trigger ONLY (no schedule);
+# writes nothing, safe to leave in the repo. Pick which probe to run from the
+# dropdown when you click "Run workflow":
+#   - igdb_probe.py  : step 1 diagnosis (appid -> IGDB id; which Steam filter works)
+#   - igdb_probe2.py : step 2 diagnosis (IGDB id -> time-to-beat; why matches drop)
+# Read the chosen probe's step log for the raw IGDB responses.
 
 on:
-  workflow_dispatch:        # ONLY runs when you click "Run workflow" in the Actions tab
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: 'Which probe to run'
+        required: true
+        default: 'igdb_probe2.py'
+        type: choice
+        options:
+          - igdb_probe.py
+          - igdb_probe2.py
 
 permissions:
-  contents: read            # probe writes nothing; read-only is enough
+  contents: read            # probes write nothing; read-only is enough
 
 jobs:
   probe:
@@ -27,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run IGDB probe
+      - name: Run IGDB probe (${{ github.event.inputs.probe }})
         env:
           IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
           IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
-        run: python igdb_probe.py
+        run: python "${{ github.event.inputs.probe }}"
