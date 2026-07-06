@@ -1,0 +1,47 @@
+name: Refresh IGDB times -> hltb_igdb.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab
+  schedule:
+    # IGDB is the SECONDARY completion-time source (Phase C). It keys off Steam appid
+    # (not title), so it recovers real games HLTB structurally can't match. It hits
+    # api.igdb.com (NOT Steam, NOT howlongtobeat.com), so it competes with neither the
+    # storefront rate budget nor the HLTB job. Offset to :23 to stagger from the other
+    # jobs; its own concurrency group queues rather than overlaps.
+    - cron: "23 */6 * * *"  # every 6 hours (IGDB data is static; no need to run hot)
+
+permissions:
+  contents: write           # commits hltb_igdb.json as it runs
+
+concurrency:
+  group: steam-igdb         # never overlap IGDB runs (separate from HLTB + all others)
+  cancel-in-progress: false
+
+jobs:
+  igdb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120     # RUN_MINUTES=110 leaves ~10 min headroom
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits progress itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh IGDB completion times
+        env:
+          RUN_MINUTES: "110"
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+        run: python hltb_igdb.py
