@@ -1,0 +1,34 @@
+name: DEBUG - IGDB probe (manual only)
+
+# One-off diagnostic: runs igdb_probe.py to find why external_games matches 0 games.
+# Manual trigger ONLY (no schedule) — safe to leave in the repo; it never runs on its
+# own and writes nothing. Delete it once the IGDB query is fixed, or keep it around for
+# future IGDB debugging. Read the "Run IGDB probe" step's log to see the raw responses.
+
+on:
+  workflow_dispatch:        # ONLY runs when you click "Run workflow" in the Actions tab
+
+permissions:
+  contents: read            # probe writes nothing; read-only is enough
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run IGDB probe
+        env:
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+        run: python igdb_probe.py
