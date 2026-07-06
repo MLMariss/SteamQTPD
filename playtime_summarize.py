@@ -31,7 +31,8 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-RAW_FILE = HERE / "playtime_raw.json"        # read-only here (owned by playtime_refresh.py)
+RAW_FILE = HERE / "playtime_raw.json"        # legacy monolith (pre-shard fallback)
+SHARD_DIR = HERE / "playtime_raw"            # dir of NN.json shards (read-only here; owned by playtime_refresh.py)
 OUT_FILE = HERE / "playtime.json"            # THIS file's output (committed; frontend reads it)
 
 MIN_SEGMENT_FOR_MEDIAN = 3                    # keep in lockstep with playtime_refresh.py
@@ -62,14 +63,23 @@ def summarize(reviews):
     }
 
 
-def load_raw_games():
-    if not RAW_FILE.exists():
-        return {}, None
-    try:
-        d = json.loads(RAW_FILE.read_text(encoding="utf-8"))
-    except ValueError:
-        return {}, None
-    return d.get("games", {}), d.get("per_game_cap")
+def iter_raw_shards():
+    """Yield (games_dict, per_game_cap) for each shard, one at a time so peak memory
+    stays at ~one shard instead of the full ~1 GB working set. Falls back to the legacy
+    single playtime_raw.json if sharding hasn't been migrated yet."""
+    if SHARD_DIR.is_dir():
+        for p in sorted(SHARD_DIR.glob("*.json")):
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            yield d.get("games", {}), d.get("per_game_cap")
+    elif RAW_FILE.exists():                         # pre-migration fallback
+        try:
+            d = json.loads(RAW_FILE.read_text(encoding="utf-8"))
+            yield d.get("games", {}), d.get("per_game_cap")
+        except ValueError:
+            pass
 
 
 def save_summary(summary, per_game_cap):
@@ -122,26 +132,30 @@ def git_commit():
 
 
 def main():
-    raw_games, per_game_cap = load_raw_games()
-    if not raw_games:
-        log("No playtime_raw.json yet (run playtime_refresh.py first); nothing to summarize.")
-        return 0
-
     summary = {}
     skipped = 0
-    for aid, rec in raw_games.items():
-        reviews = rec.get("reviews") or {}
-        if not reviews:
-            skipped += 1
-            continue
-        s = summarize(reviews)
-        # Only publish games that have at least one usable segment median. A game
-        # with a handful of reviews (all segments < MIN_SEGMENT) carries no median,
-        # so there's nothing for the frontend to show — omit it to keep the file lean.
-        if s["median_up"] is None and s["median_down"] is None and s["median_all"] is None:
-            skipped += 1
-            continue
-        summary[aid] = s
+    per_game_cap = None
+    any_data = False
+    for raw_games, cap in iter_raw_shards():
+        any_data = True
+        if cap is not None:
+            per_game_cap = cap
+        for aid, rec in raw_games.items():
+            reviews = rec.get("reviews") or {}
+            if not reviews:
+                skipped += 1
+                continue
+            s = summarize(reviews)
+            # Only publish games that have at least one usable segment median. A game
+            # with a handful of reviews (all segments < MIN_SEGMENT) carries no median,
+            # so there's nothing for the frontend to show — omit it to keep the file lean.
+            if s["median_up"] is None and s["median_down"] is None and s["median_all"] is None:
+                skipped += 1
+                continue
+            summary[aid] = s
+    if not any_data:
+        log("No playtime shards yet (run playtime_refresh.py first); nothing to summarize.")
+        return 0
 
     save_summary(summary, per_game_cap)
     git_commit()

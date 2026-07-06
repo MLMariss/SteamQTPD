@@ -83,7 +83,33 @@ import requests
 # --------------------------------------------------------------------------- #
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"                 # read-only here (owned by scraper.py)
-RAW_FILE = HERE / "playtime_raw.json"            # THIS file's output (the big file)
+RAW_FILE = HERE / "playtime_raw.json"            # LEGACY monolith — split into shards on first run
+
+# --- sharding (GitHub's 100 MB/file hard limit) ---------------------------- #
+# A single playtime_raw.json crossed GitHub's 100 MB file-size limit at ~6,850 games
+# (98 MB), which made every push get rejected — and because the commit code swallowed
+# the error, runs went green with nothing committed and the whole pipeline silently
+# froze. The full addressable set (~78k games) would be ~1.1 GB in one file, so the
+# per-review working set is split into shards under playtime_raw/NN.json, keyed by
+# appid % NSHARDS. Each shard tops out ~18 MB at full coverage (raise NSHARDS to shrink
+# further). One run processes ONE bucket (rotated by GITHUB_RUN_NUMBER), so commits stay
+# small and only a single writer ever touches a given shard.
+NSHARDS = 64
+SHARD_DIR = HERE / "playtime_raw"                # directory of NN.json shards (replaces the monolith)
+
+def shard_of(appid):
+    return int(appid) % NSHARDS
+
+def shard_path(bucket):
+    return SHARD_DIR / f"{bucket:02d}.json"
+
+def bucket_for_run():
+    """Rotate through all buckets by CI run number so every shard is revisited in turn.
+    Local / manual runs (no GITHUB_RUN_NUMBER) default to bucket 0."""
+    try:
+        return int(os.environ.get("GITHUB_RUN_NUMBER", "0")) % NSHARDS
+    except ValueError:
+        return 0
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (appreviews is keyless)
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))
@@ -330,49 +356,79 @@ def load_games():
     return d.get("games", [])
 
 
-def load_raw():
-    if RAW_FILE.exists():
+def load_shard(bucket):
+    p = shard_path(bucket)
+    if p.exists():
         try:
-            d = json.loads(RAW_FILE.read_text(encoding="utf-8"))
-            return d.get("games", {})
+            return json.loads(p.read_text(encoding="utf-8")).get("games", {})
         except ValueError:
             pass
     return {}
 
 
-def save_raw(games):
-    """Compact separators — this file is machine-only (the frontend reads the
-    summarized playtime.json, never this)."""
-    RAW_FILE.write_text(json.dumps(
+def save_shard(bucket, games):
+    """Compact separators — machine-only (the frontend reads the summarized
+    playtime.json, never the shards)."""
+    SHARD_DIR.mkdir(exist_ok=True)
+    shard_path(bucket).write_text(json.dumps(
         {"generated_at": int(time.time()), "per_game_cap": PER_GAME_CAP,
+         "bucket": bucket, "nshards": NSHARDS,
          "count": len(games), "games": games},
         ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def git_commit_raw(msg):
-    """Commit the big file, re-parenting onto the LATEST main so it never fights other
-    jobs' pushes. Because ONLY this job writes playtime_raw.json, we hard-reset to
-    origin/main and re-apply our copy of the file — this can never conflict or wedge a
-    rebase. (The old code used `git rebase --autostash` with `check=False` and no
-    `--abort`: a single conflicting rebase stuck the repo mid-rebase, every subsequent
-    push failed, and because nothing raised, the run exited 0 — a GREEN run that
-    committed nothing. That's what froze playtime_raw.json.)
+def migrate_monolith_if_needed():
+    """One-time: split the pre-shard playtime_raw.json monolith into per-bucket shards
+    and remove it from the repo. Idempotent — a no-op once the monolith is gone. This is
+    what unblocks pushes: the >100 MB single file is replaced by <20 MB shards."""
+    if not RAW_FILE.exists():
+        return
+    log(f"Migrating {RAW_FILE.name} -> {NSHARDS} shards (one-time)...")
+    try:
+        games = json.loads(RAW_FILE.read_text(encoding="utf-8")).get("games", {})
+    except ValueError:
+        log("  monolith unreadable; leaving it untouched")
+        return
+    buckets = {}
+    for aid, rec in games.items():
+        buckets.setdefault(shard_of(aid), {})[aid] = rec
+    for n in range(NSHARDS):
+        save_shard(n, buckets.get(n, {}))
+    RAW_FILE.unlink(missing_ok=True)
+    log(f"  split {len(games):,} games into {NSHARDS} shards; monolith staged for removal")
+    _robust_commit(f"playtime raw: shard migration (monolith -> {NSHARDS} buckets)",
+                   [f"{n:02d}.json" for n in range(NSHARDS)], drop_monolith=True)
 
-    Retries with backoff, logs the real push/rebase error, and — critically — FAILS LOUD
-    (non-zero exit) if it still can't land the commit, so a broken push is a visible RED
-    run instead of a silent green one."""
+
+def _robust_commit(msg, our_shards, drop_monolith=False):
+    """Robust single-writer push. `our_shards` are the shard filenames THIS run wrote —
+    only these are re-applied after we hard-reset to origin/main, so concurrent
+    other-bucket shards on main are never clobbered. Because only this job writes each
+    shard, the hard reset can never conflict or wedge a rebase (the old code used
+    `git rebase --autostash` with `check=False` and no `--abort`, which could stick the
+    repo mid-rebase and then fail every push SILENTLY — a green run that committed
+    nothing). Retries with backoff, logs the real error, and FAILS LOUD (non-zero exit)
+    if it still can't land, so a broken push is a visible RED run."""
     if not IN_ACTIONS:
         return
-    ours = RAW_FILE.read_bytes()                       # snapshot our just-written data
+    snaps = {name: (SHARD_DIR / name).read_bytes()
+             for name in our_shards if (SHARD_DIR / name).exists()}
     last_err = ""
     for attempt in range(1, 9):
         try:
             subprocess.run(["git", "fetch", "origin", "main"],
                            check=True, capture_output=True, text=True)
             subprocess.run(["git", "reset", "--hard", "origin/main"],
-                           check=True, capture_output=True, text=True)  # latest remote tree
-            RAW_FILE.write_bytes(ours)                                   # re-apply our file on top
-            subprocess.run(["git", "add", "playtime_raw.json"], check=True)
+                           check=True, capture_output=True, text=True)   # latest remote tree
+            SHARD_DIR.mkdir(exist_ok=True)
+            for name, data in snaps.items():                              # re-apply only our shard(s)
+                (SHARD_DIR / name).write_bytes(data)
+            if drop_monolith:
+                subprocess.run(["git", "rm", "-f", "--ignore-unmatch", "playtime_raw.json"],
+                               check=False, capture_output=True, text=True)
+                RAW_FILE.unlink(missing_ok=True)
+            for name in snaps:
+                subprocess.run(["git", "add", f"playtime_raw/{name}"], check=True)
             if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
                 log("  (nothing new vs remote; skipping commit)")
                 return
@@ -389,8 +445,12 @@ def git_commit_raw(msg):
             last_err = ((e.stderr or "") + (e.stdout or "")).strip() or str(e)
             log(f"  git attempt {attempt}/8 error: {last_err[:180]}")
         time.sleep(2 * attempt + random.uniform(0, 2))
-    log(f"  ERROR: playtime_raw commit failed after 8 attempts — {last_err[:200]}")
-    sys.exit(1)                                        # visible RED run, not a silent green one
+    log(f"  ERROR: playtime raw commit failed after 8 attempts — {last_err[:200]}")
+    sys.exit(1)                                          # visible RED run, not a silent green one
+
+
+def git_commit_shard(bucket, msg):
+    _robust_commit(msg, [f"{bucket:02d}.json"])
 
 
 # --------------------------------------------------------------------------- #
@@ -447,14 +507,21 @@ def main():
     if not games:
         log("No real games.json yet (run scraper.py first); nothing to refresh.")
         return 0
-    raw = load_raw()
+
+    migrate_monolith_if_needed()          # one-time: split the legacy monolith; no-op afterwards
+
+    bucket = bucket_for_run()             # this run owns exactly ONE shard
+    raw = load_shard(bucket)
     now = int(time.time())
     target = effective_target()
 
     cands = []
     for g in games:
-        aid = str(g["appid"])
-        rec = raw.get(aid, {})
+        aid = g["appid"]
+        if shard_of(aid) != bucket:       # only candidates that live in this bucket
+            continue
+        aids = str(aid)
+        rec = raw.get(aids, {})
         lu = g.get("last_update_ts")
         if is_eligible(rec, lu, g.get("review_count"), now, target):
             cands.append((priority(rec, lu, g.get("review_count"), now, target),
@@ -462,7 +529,8 @@ def main():
     cands.sort(reverse=True)
 
     mode = f"DEEPEN to {target}" if DEEPEN_TARGET else f"target {target}"
-    log(f"Catalog {len(games)} | raw has {len(raw)} | eligible now: {len(cands)}")
+    log(f"Bucket {bucket:02d}/{NSHARDS} | catalog {len(games)} | shard has {len(raw)} | "
+        f"eligible now: {len(cands)}")
     log(f"Budget: {RUN_MINUTES} min · {mode}/game · cap {PER_GAME_CAP} · delay {STEAM_DELAY}s · "
         f"cooldown {COOLDOWN_DAYS}d (dormant {NOUPDATE_COOLDOWN_DAYS}d)")
 
@@ -475,9 +543,9 @@ def main():
             # long run always persists its work even if it never exhausts the queue
             # (belt-and-suspenders alongside the periodic commit below).
             log("Time budget reached; committing and wrapping up.")
-            save_raw(raw)
-            git_commit_raw(f"playtime raw: budget stop, {done} games this run "
-                           f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; {len(raw)} tracked)")
+            save_shard(bucket, raw)
+            git_commit_shard(bucket, f"playtime raw b{bucket:02d}: budget stop, {done} games this run "
+                             f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
             last_commit = time.time()
             break
         aids = str(aid)
@@ -497,19 +565,19 @@ def main():
         # G2 (revised): commit to GIT periodically — not just to ephemeral disk —
         # so an interrupted run persists its progress to the repo (see COMMIT_SECONDS).
         if time.time() - last_commit > COMMIT_SECONDS:
-            save_raw(raw)
-            git_commit_raw(f"playtime raw: checkpoint, {done} games so far "
-                           f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; {len(raw)} tracked)")
+            save_shard(bucket, raw)
+            git_commit_shard(bucket, f"playtime raw b{bucket:02d}: checkpoint, {done} games so far "
+                             f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
             last_commit = time.time()
 
     # Final commit at run-end (covers the normal case where the loop drains the
-    # queue before the time budget; no-op commit is skipped inside git_commit_raw
+    # queue before the time budget; a no-op commit is skipped inside git_commit_shard
     # when there's nothing new since the last checkpoint).
-    save_raw(raw)
-    git_commit_raw(f"playtime raw: {done} games this run "
-                   f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; {len(raw)} tracked)")
-    log(f"\nDone. {done} games this run: +{tot_added} new reviews, ~{tot_refreshed} refreshed. "
-        f"{len(raw)} games tracked total.")
+    save_shard(bucket, raw)
+    git_commit_shard(bucket, f"playtime raw b{bucket:02d}: {done} games this run "
+                     f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
+    log(f"\nDone. Bucket {bucket:02d}: {done} games this run: +{tot_added} new reviews, "
+        f"~{tot_refreshed} refreshed. {len(raw)} games in this shard.")
     return 0
 
 
