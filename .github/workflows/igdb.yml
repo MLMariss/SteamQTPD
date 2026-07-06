@@ -1,14 +1,12 @@
 name: Refresh IGDB times -> hltb_igdb.json
 
+# DISABLED 2026-07: IGDB dropped as a source. Its game_time_to_beats table holds only
+# ~8,829 records total, so it matched just 1,471 of 96k resolved games (1,007 net-new) —
+# too small a ceiling to justify a standing scheduled job. The schedule trigger is removed
+# so this never runs on its own; workflow_dispatch is kept so it CAN be run manually if
+# IGDB coverage ever grows and the source is worth reviving. Files left dormant in-repo.
 on:
-  workflow_dispatch:        # run manually from the Actions tab
-  schedule:
-    # IGDB is the SECONDARY completion-time source (Phase C). It keys off Steam appid
-    # (not title), so it recovers real games HLTB structurally can't match. It hits
-    # api.igdb.com (NOT Steam, NOT howlongtobeat.com), so it competes with neither the
-    # storefront rate budget nor the HLTB job. Offset to :23 to stagger from the other
-    # jobs; its own concurrency group queues rather than overlaps.
-    - cron: "23 */6 * * *"  # every 6 hours (IGDB data is static; no need to run hot)
+  workflow_dispatch:        # manual-only; no schedule (job is retired, not deleted)
 
 permissions:
   contents: write           # commits hltb_igdb.json as it runs
