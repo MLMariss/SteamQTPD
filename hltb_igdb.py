@@ -65,7 +65,11 @@ IGDB_RESCRAPE_DAYS = 90                   # re-check an existing IGDB entry only
 
 TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 API_BASE = "https://api.igdb.com/v4"
-STEAM_CATEGORY = 1                        # external_games.category == 1 -> Steam
+STEAM_SOURCE = 1                          # external_games.external_game_source == 1 -> Steam
+# NOTE: IGDB deprecated the old `category` enum in favour of `external_game_source`.
+# The old `where category = 1` filter returns ZERO rows on the current API (the field
+# still appears in responses but is no longer queryable), which silently matched nothing.
+# Probe-confirmed 2026-07: `external_game_source = 1` returns Steam links correctly.
 DAY = 86400
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
@@ -136,7 +140,7 @@ def resolve_external(appids, cid, token):
     Returns {steam_appid(int): igdb_game_id(int)} for those IGDB knows."""
     uids = ",".join(f'"{a}"' for a in appids)
     body = (f'fields uid,game; '
-            f'where category = {STEAM_CATEGORY} & uid = ({uids}); '
+            f'where external_game_source = {STEAM_SOURCE} & uid = ({uids}); '
             f'limit {len(appids)};')
     out = {}
     for row in _post("external_games", body, cid, token):
