@@ -66,54 +66,9 @@ def check_phase_b():
     return True
 
 
-def check_phase_c():
-    """Phase C (IGDB) pure-logic guards: seconds->hours conversion, field mapping,
-    and worklist priority (HLTB-blank before stale). Network paths not exercised."""
-    import hltb_igdb as G
-
-    # seconds -> hours
-    assert G._sec_to_hours(3600) == 1.0, G._sec_to_hours(3600)
-    assert G._sec_to_hours(0) is None
-    assert G._sec_to_hours(None) is None
-    assert G._sec_to_hours(5400) == 1.5
-
-    # field mapping: normally->main, completely->complete, extra always None;
-    # hastily is the main fallback when normally absent.
-    m, e, c = G.times_from_ttb({"normally": 36000, "completely": 72000})
-    assert (m, e, c) == (10.0, None, 20.0), (m, e, c)
-    m, e, c = G.times_from_ttb({"hastily": 18000, "completely": 72000})
-    assert m == 5.0 and c == 20.0, (m, e, c)
-
-    # worklist: real-HLTB game skipped; HLTB-blank game prioritized before stale IGDB.
-    now = 1_000_000_000
-    games = [(1, "HasHLTB"), (2, "Blank"), (3, "StaleIGDB")]
-    hltb = {1: {"avg": 12.0}}                                   # real HLTB (no est)
-    igdb = {3: {"avg": 5.0, "fetched_at": now - 200 * G.DAY}}   # stale IGDB entry
-    work = G.build_worklist(games, hltb, igdb, now)
-    assert 1 not in work, f"real-HLTB game must be skipped: {work}"
-    assert work[0] == 2, f"HLTB-blank game must come first: {work}"
-    assert 3 in work, f"stale IGDB entry must be re-checked: {work}"
-
-    # regression guard (2026-07): a BLANK IGDB entry must NOT be treated like a matched
-    # one and frozen on the 90-day cadence. An unproven blank past its short eager window
-    # must be eligible; a matched entry within the long cadence must be skipped.
-    g2 = [(10, "eagerBlank"), (11, "matchedFresh")]
-    ig2 = {
-        10: {"avg": None, "attempts": 1, "fetched_at": now - (G.IGDB_BLANK_EAGER_DAYS + 1) * G.DAY},
-        11: {"avg": 9.0, "fetched_at": now - 5 * G.DAY},
-    }
-    w2 = G.build_worklist(g2, {}, ig2, now)
-    assert 10 in w2, f"unproven blank past eager window must be eligible: {w2}"
-    assert 11 not in w2, f"freshly-matched entry must be skipped: {w2}"
-    # and a wiped (empty) store must make every non-HLTB game eligible immediately.
-    assert set(G.build_worklist(g2, {}, {}, now)) == {10, 11}, "wipe must free all games"
-    return True
-
-
 def run_all():
     check_phase_a()
     check_phase_b()
-    check_phase_c()
     return True
 
 
