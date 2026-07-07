@@ -57,3 +57,19 @@ jobs:
           # review identity, catching new reviews AND walking deeper into unseen ones.
           # DEEPEN_TARGET: "1000"
         run: python playtime_refresh.py
+
+      # After the raw shards are refreshed and committed above, recompute the small
+      # frontend-facing files from the just-updated shards. Each summarizer reads the
+      # shard dir directly, self-commits its ONE file (playtime.json / ratings.json)
+      # and rebases onto main — one-writer-per-file holds (raw job never writes those
+      # two files itself; only these steps do). This closes the raw-vs-summarized lag:
+      # previously the summarizers had no cron and only ran by hand, so playtime.json /
+      # ratings.json drifted behind the shards. `if: always()` so a soft-failing raw
+      # pass (e.g. 403 budget) still publishes summaries from whatever shards exist.
+      - name: Summarize playtime medians -> playtime.json
+        if: always()
+        run: python playtime_summarize.py
+
+      - name: Summarize playtime-weighted ratings -> ratings.json
+        if: always()
+        run: python ratings_summarize.py

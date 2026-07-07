@@ -1,0 +1,46 @@
+name: Coverage snapshot -> COVERAGE.md
+
+on:
+  workflow_dispatch:          # run manually any time
+  workflow_run:
+    # Fire right after the main scrape finishes, so COVERAGE.md reflects the freshest
+    # games.json (the base universe everything else is measured against). scrape.yml
+    # runs 4×/day at 0/6/12/18 UTC; this trails each of those completions.
+    workflows: ["Scrape Steam -> games.json"]
+    types: [completed]
+
+permissions:
+  contents: write             # commits COVERAGE.md
+
+concurrency:
+  group: coverage-md          # one-writer-per-file (COVERAGE.md); never overlaps itself
+  cancel-in-progress: false
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    # Only run if the scrape actually succeeded (skip on cancelled/failed scrapes so we
+    # don't snapshot a half-written games.json). Manual dispatch always runs.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # coverage.py uses only the standard library — no pip install needed.
+
+      - name: Configure git (coverage.py commits COVERAGE.md itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate COVERAGE.md
+        run: python coverage.py
