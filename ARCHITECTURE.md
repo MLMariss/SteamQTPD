@@ -131,8 +131,11 @@ Works off data already collected. Several are cheap and high-impact.
 
 - **Mobile / narrow-screen layout — highest-frequency complaint. [Partly done.]** The old
   `table-layout: fixed` grid overflowed small screens, titles truncated, and the sale badge +
-  discount % wasted a column. *Done so far:* the desktop table is now **fluid** (`auto` layout,
-  per-column min/max — §11), and the sub-1040px **card layout was improved** (roomier spacing,
+  discount % wasted a column. *Done so far:* the desktop table is now a **CSS Grid** with
+  per-column `minmax()` tracks (§11), the ultrawide wasted-margin and small-laptop overflow
+  issues are **resolved** (table fills to the 2400px `.wrap` cap on wide screens, and the card
+  layout now takes over at 1290px — just above the table's 1266px floor — so there is no
+  sideways-scroll dead zone), and the sub-1290px **card layout** covers phones (roomier spacing,
   a ~560px phone breakpoint, Tags as a full-width left-aligned row). The old fixed-1556px
   conflict this item called out is **resolved** (that assumption is gone). *Still open:* a
   richer per-card mobile design — thumbnail+title as a proper card header, and optionally
@@ -153,12 +156,13 @@ Works off data already collected. Several are cheap and high-impact.
   (`✓ require → ✕ exclude → clear`) that reuses the real `.chip.inc`/`.chip.exc` styles, so the
   swatches can't drift from the actual state colors.
 
-- **Verify column-add safety under the new fluid layout.** Under the old `table-layout: fixed`
+- **Column-add safety under the grid layout. [Resolved.]** Under the old `table-layout: fixed`
   model, adding a column without a matching `<col>` collapsed the table — a known trap. The
-  layout is now `table-layout: auto` (§11), which *should* be more forgiving, **but this hasn't
-  been confirmed.** *What to do:* before the next column is added, test whether a new column
-  still requires its `<col>` entry (and whether the min/max sizing still holds); update §11's
-  regression note with the answer.
+  layout is now **CSS Grid** (§11): columns are sized by the `--grid-cols` track list, and the
+  `<colgroup>` is inert (`display:none`). Adding a column now means adding a `<th>`, a `<td>`
+  per row, and **one `minmax()` track to `--grid-cols`** — no `<col>` needed. Because header and
+  body share the single track list, they can't drift out of alignment. Keep the track count equal
+  to the column count.
 
 - **Min-review filter: verify it re-filters on change.** Reported that changing the min-review
   selection may not refresh the list. *What to do:* treat as a **possible bug** — verify the
@@ -567,29 +571,30 @@ and games with no usable HLTB value. The score is recomputed on toggle, never st
 **The table (12 columns).** In order: Game · Reviews · **Weighted** · Trend · Price ·
 Discount · Sale ends · Released · Tags · **Playtime** · HLTB · QHPP.
 
-- The table is **`table-layout: auto`** (fluid) with an explicit `<colgroup>` of
-  `<col class="c-*">` — one per column — carrying a **`min-width` / `max-width` per column**.
-  The `min` is a small-laptop legibility floor; the `max` is a breathing ceiling so the slim
-  numeric/sort columns (Trend, Price, Discount, Weighted, Sale) don't bloat on a wide monitor.
-  On large screens the slack concentrates on the content-heavy columns — **Game and Tags** —
-  which carry the big ceilings; everything else stays near its natural width. The table's
-  `min-width` is the **exact sum of the column minimums (1444px)**, so below that the **page**
-  (not the table card) scrolls horizontally — deliberately *not* `overflow-x:auto` on the
-  scroll container, because a lone `overflow-x:auto` is promoted by browsers to `overflow:auto`
-  on both axes, which would trap the sticky `<thead>` in a scroll box. Below ~1040px the table
-  stops being a table and becomes the stacked **card layout** (see *Responsive* below).
-  - **Caveat — `max-width` is best-effort here.** Under `table-layout: auto` the per-column
-    **`min-width` floors are hard and reliable**, but `max-width` on `<col>` is only a *hint*:
-    the ceilings mostly hold because auto-layout naturally routes extra width to Game/Tags
-    rather than short-content columns, but on an extreme ultrawide a slim column *could* grow
-    past its stated max. The firm fix, if it ever matters, is a CSS-Grid table with
-    `minmax()` tracks (deferred — larger refactor, must re-verify sticky thead + sort arrow).
-  - **Regression watch (unconfirmed under fluid).** Under the *old* `table-layout: fixed`
-    model, adding a column without adding its `<col>` **collapsed the layout** (a real bug when
-    Weighted + Playtime were first added). Fluid `auto` layout is expected to be more forgiving
-    (it sizes from content, not solely from `<col>`), **but this has not been re-verified** —
-    treat "does adding a column still need a matching `<col>`?" as an **open item to confirm**
-    (§3.2) before relying on it.
+- The table is a **CSS Grid** layout: `thead tr` and every `tbody tr` are `display:grid` sharing
+  one **`--grid-cols`** track list, so the header and body columns are guaranteed to line up from a
+  single source of truth. Each track is a **`minmax(floor, ceiling)`** — the `floor` is a
+  small-laptop legibility minimum, the `ceiling` bounds the slim numeric/sort columns (Trend, Price,
+  Discount, Weighted, Sale) so they don't bloat on a wide monitor. Two columns carry **`fr`
+  ceilings** instead of pixel caps — **Game (`2.2fr`) and Tags (`3fr`)** — so on wide screens all
+  the slack routes to those two content-heavy columns while everything else stays near its floor.
+  Unlike the old `table-layout:auto` approach, **`minmax()` ceilings are hard**, not hints: a slim
+  column can no longer creep past its stated max on an extreme ultrawide. The `<colgroup>`/`<col>`
+  markup is retained but **`colgroup{display:none}`** — grid tracks size the columns now, so a new
+  column needs a `--grid-cols` entry, not a `<col>`.
+  - **Width envelope.** The table's `min-width` is the **exact sum of the column floors (1266px)**;
+    below that the **page** (not the table card) would scroll horizontally — but the card breakpoint
+    (below) takes over first, at **1290px**, so in practice the table never overflows. The ceiling is
+    governed by the page wrapper **`.wrap` (`max-width:2400px`)**, not by the table itself (the old
+    redundant table `max-width` was removed): the table fills the wrapper, so on an ultrawide it
+    grows edge-to-edge to ~2338px instead of stranding ~800px of empty margin. Overflow, if it ever
+    occurred, stays on the **page** rather than a `overflow-x:auto` scroll container — a lone
+    `overflow-x:auto` gets promoted by browsers to `overflow:auto` on both axes, which would trap the
+    sticky `<thead>` in a scroll box.
+  - **Column floors are measured, not guessed.** Each floor was set against the widest real content
+    for that column (e.g. HLTB `1281 1464 1670`, Reviews `ALL 85% 1.5M`, Released `15.2 yrs old`),
+    so nothing clips at the 1266px minimum. Verified with headless renders at every width from 375px
+    to 2545px: zero horizontal overflow, clean table↔card handoff at the 1290/1291 boundary.
 - **Reviews** stacks all-time over the 30-day score (recent greyed when stale/absent).
 - **Weighted** shows the capped % next to Steam's, with the Δ badge and low-confidence gray.
 - **Trend** is recent − all-time (improving/stable/declining), gated on staleness.
@@ -606,18 +611,25 @@ Discount · Sale ends · Released · Tags · **Playtime** · HLTB · QHPP.
 - **QHPP** shows the value plus a **log-scaled gold value-meter** bar. On a discounted game
   it shows both the **Sale** (primary/gold when that basis is active) and **Full** value
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
-  neutral color, so a full-price value is never mistaken for a discount deal.
+  neutral color, so a full-price value is never mistaken for a discount deal. All QHPP figures
+  (primary and the smaller `full` value) run through a shared **`fmtQ`** helper that sets
+  decimal precision by magnitude: **≥100 → 0 decimals, ≥10 → 1 decimal, <10 → 2 decimals**
+  (e.g. `156`, `31.1`, `5.82`). The tier is chosen by the raw value's magnitude, then rounded —
+  so a value like `99.99` sits in the ≥10 tier and renders `100.0`. The QHPP-range slider labels
+  use the same rule, so precision is consistent across the page.
 
-**Responsive / card layout.** The table is for the desktop width range; a **fluid table alone
-cannot fit a phone** (twelve columns at legible minimums sum to ~1444px). So below **1040px**
+**Responsive / card layout.** The table is for the desktop width range; a **table alone
+cannot fit a phone** (twelve columns at legible minimums sum to 1266px). So below **1290px**
 the layout switches: `<thead>` hides, each row becomes a **card** (every `<td>` a
-label→value line, the header supplied by the cell's `data-label`). A second **~560px** phone
-breakpoint tightens it further (smaller thumbnail, roomier tap targets, HLTB row given
-priority so its figures don't crowd the label). **Tags** on mobile render as a **full-width,
-left-aligned** row (label on its own line, chips wrapping with room) rather than crammed
-against the right edge. This card mode *is* the mobile-friendly view users keep asking for; a
-richer per-card design (thumbnail+title as a card header, secondary fields behind a tap) is
-still open (§3.2).
+label→value line, the header supplied by the cell's `data-label`). The breakpoint sits just
+above the table's 1266px floor, so the table view is used as far down as it stays legible and
+there is **no overflow band** between the two modes — the moment the table would need to
+scroll sideways, cards take over instead. A second **~560px** phone breakpoint tightens it
+further (smaller thumbnail, roomier tap targets, HLTB row given priority so its figures don't
+crowd the label). **Tags** on mobile render as a **full-width, left-aligned** row (label on
+its own line, chips wrapping with room) rather than crammed against the right edge. This card
+mode *is* the mobile-friendly view users keep asking for; a richer per-card design
+(thumbnail+title as a card header, secondary fields behind a tap) is still open (§3.2).
 
 **Filters & controls.** Title search · on-sale-only · min rating (any/60+/70+/80+/90+) ·
 min & max price · min-reviews bands (0/10/100/1k/5k+, independent toggles, gaps allowed) ·
@@ -736,15 +748,35 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 - **Sandbox limitation** (for maintenance): the dev environment can't reach Steam domains, so
   Steam-dependent code is unit-tested against documented response shapes and verified by
   running it live in Actions.
-- **Table sizing** — column `min-width` floors are reliable, but `max-width` on `<col>` under
-  `table-layout: auto` is best-effort (§11); on an extreme ultrawide a slim column could exceed
-  its ceiling. Firm fix (if ever needed) is a CSS-Grid table with `minmax()` tracks. Whether
-  adding a new column still needs a matching `<col>` under the fluid model is **unconfirmed**
-  and flagged to test (§3.2).
+- **Table sizing** — resolved by the move to **CSS Grid** with `minmax()` tracks (§11): both the
+  column floors and the ceilings are now hard, so no slim column can exceed its max even on an
+  extreme ultrawide, and there is no horizontal overflow at any width (card layout takes over at
+  1290px, just above the 1266px floor). Adding a column requires a `--grid-cols` track (not a
+  `<col>`); keep the track count equal to the column count.
 
 ---
 
 ## 16. Recent changes
+
+- **Table layout: fluid `auto` → CSS Grid, and responsive width fixed.** The desktop table moved
+  from `table-layout:auto` + `<col>` min/max hints to a **CSS Grid** where `thead`/`tbody` rows
+  share one **`--grid-cols`** `minmax()` track list (§11) — the previously-deferred grid refactor.
+  This fixed three real problems the old model left: (1) on ultrawide the content capped at 1720px
+  and stranded ~800px of margin — the redundant table `max-width` was removed and the ceiling is now
+  the page wrapper **`.wrap` at 2400px**, so the table fills to ~2338px on a 2545px screen; (2) the
+  table's 1544px floor forced **sideways page scroll** on small laptops / half-width windows (data
+  bled off the right, the top complaint) — floors were re-measured against real worst-case cell
+  content and lowered so the table `min-width` is now **1266px**; (3) the card fallback started too
+  late (1040px), leaving a ~500px overflow dead zone — the **card breakpoint moved to 1290px**, just
+  above the new floor, so table↔card handoff is seamless with **zero horizontal overflow at any
+  width** (verified with headless renders 375–2545px). `minmax()` ceilings are also *hard* now, so
+  slim columns can't creep past their max on extreme ultrawides (the old best-effort caveat is gone),
+  and adding a column no longer needs a `<col>` — just a track in `--grid-cols` (§3.2, §11).
+- **QHPP decimal precision unified (`fmtQ`).** The QHPP value on the meter bar (and the smaller
+  `full` value beside it) previously always showed 2 decimals. A shared **`fmtQ`** helper now sets
+  precision by magnitude — **≥100 → 0 dp, ≥10 → 1 dp, <10 → 2 dp** (`156` / `31.1` / `5.82`) —
+  applied across all three render paths (not-on-sale single value, sale, full). Matches the rule the
+  QHPP-range slider labels already used, so precision is consistent page-wide (§11).
 
 - **IGDB secondary source (Phase C) — built, evaluated, RETIRED.** Added an appid-keyed IGDB
   completion-time source to backfill games HLTB can't title-match. Two bugs fixed during
