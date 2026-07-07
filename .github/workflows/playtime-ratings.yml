@@ -3,10 +3,12 @@ name: Summarize playtime ratings -> ratings.json (frontend)
 on:
   workflow_dispatch:        # run manually any time
   schedule:
-    # Once daily at :55 of hour 5 — right after playtime-summary (:50), both
-    # reading the same playtime_raw.json produced by the overnight raw scrape.
-    # Pure local recompute (no Steam calls), so it doesn't touch any rate budget.
-    - cron: "55 5 * * *"
+    # Every 4h at :51 (was once-daily at 05:55), right after playtime-summary at :47 —
+    # both read the same playtime_raw/ shards. Raw scrapes ~8x/day, so once-daily left
+    # ratings.json lagging raw by up to a day. Pure local recompute (~5s, no Steam calls),
+    # so the higher cadence costs no storefront budget. Separate concurrency group means
+    # it never collides with the summary job even though they run a few minutes apart.
+    - cron: "51 */4 * * *"
 
 permissions:
   contents: write           # commits ratings.json

@@ -19,7 +19,7 @@ concurrency:
 jobs:
   prices:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 135     # RUN_MINUTES=120 + headroom; still ~45min clear of the 3h cron
     steps:
       - uses: actions/checkout@v5
         with:
@@ -42,5 +42,10 @@ jobs:
         env:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           QHPP_CC: "US"
-          RUN_MINUTES: "60"
+          # 120min budget: a full pass over ~105k non-free games (price pass) plus the
+          # on-sale subset's end-date pass needs ~75-90min WALL (delay + HTTP latency)
+          # during a big sale (Summer Sale = ~61k on sale). At 60 the run wrapped mid-pass
+          # at TIME_BUFFER every time, which is what made prices look stale. 120 finishes
+          # even the worst-case sale pass with margin; the 3h cron leaves ~60min headroom.
+          RUN_MINUTES: "120"
         run: python price_and_sale.py

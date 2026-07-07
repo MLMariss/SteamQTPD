@@ -3,11 +3,13 @@ name: Summarize playtime -> playtime.json (frontend)
 on:
   workflow_dispatch:        # run manually any time
   schedule:
-    # Once daily, at :50 of hour 5 — AFTER the 02:23 and (likely-finished) overnight
-    # raw scrape, so it summarizes fresh data. Reads playtime_raw.json, writes the
-    # small playtime.json the frontend downloads. This is a pure local recompute
-    # (no Steam calls), so it doesn't touch the storefront budget at all.
-    - cron: "50 5 * * *"
+    # Every 4h at :47 (was once-daily at 05:50). Raw scrapes ~8x/day and surges ahead,
+    # so a once-daily summarize guaranteed up to a full day of lag. This is a pure local
+    # recompute (~5s, reads the shards, writes the small playtime.json the frontend
+    # downloads) with NO Steam calls, so bumping cadence costs no storefront budget. The
+    # :47 slot sits clear of scrape :00 / prices :07 / raw :23 / tags :29 / recent :41 /
+    # hltb :53, and just ahead of playtime-ratings at :51 (which reads the same shards).
+    - cron: "47 */4 * * *"
 
 permissions:
   contents: write           # commits playtime.json
