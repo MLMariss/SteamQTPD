@@ -1,8 +1,9 @@
-# QHPP — Architecture
+# QTPD — Architecture
 
-The engineering deep-dive for **QHPP** (Quality Hours Per Price), a static Steam
-value-hunter that ranks games by quality-adjusted playtime per dollar. For the quick
-overview and setup, see **[README.md](README.md)**; this document explains *why* the
+The engineering deep-dive for **QTPD** (Quality Time Per Dollar — *formerly QHPP, "Quality
+Hours Per Price"; the repo, GitHub project, and wishlist worker keep the legacy `qhpp`/`SteamQHPP`
+names*), a static Steam value-hunter that ranks games by quality-adjusted playtime per dollar.
+For the quick overview and setup, see **[README.md](README.md)**; this document explains *why* the
 system is shaped the way it is, every job and data file, and how the frontend turns raw
 JSON into the table.
 
@@ -24,7 +25,7 @@ can run and push concurrently without lock-step coordination or lost work. Addin
 source means adding a file + a job, never touching another job's file.
 
 **Merge in the browser.** The frontend downloads each file and merges them by `appid` into
-one in-memory object per game, in a single O(n) pass at load. QHPP is computed client-side
+one in-memory object per game, in a single O(n) pass at load. QTPD is computed client-side
 from the merged fields (§11) — never stored server-side — so the score responds instantly
 to the price-basis and HLTB-metric toggles without re-scraping.
 
@@ -44,7 +45,7 @@ one checkpoint's worth of work.
    │ price_and_sale.py ──────► prices.json          │        │   index.html     │
    │ hltb_refresh.py ────────► hltb.json            │  read  │  (merges all     │
    │ tags_refresh.py ────────► tags.json            │ ─────► │   JSON by appid, │
-   │ recent_refresh.py ──────► recent.json          │        │   computes QHPP) │
+   │ recent_refresh.py ──────► recent.json          │        │   computes QTPD) │
    │ playtime_refresh.py ────► playtime_raw/*.json  │        │                  │
    │        │                                        │        └──────────────────┘
    │        ├─ playtime_summarize.py ─► playtime.json│
@@ -77,16 +78,16 @@ Cloudflare Worker (§12), it does not become a server.
 Each of these implies a new scrape and a new JSON file merged by `appid` in the frontend
 (§11). Listed roughly by value-to-effort.
 
-- **Completion rate (achievement-based).** Weight QHPP by how many players actually *finish*
+- **Completion rate (achievement-based).** Weight QTPD by how many players actually *finish*
   a game, not just its length — a 60-hour game most people drop halfway is a worse "hours you
   will really get" deal than its HLTB number implies. *What to do:* pull global achievement
   percentages (Steam `ISteamUserStats/GetGlobalAchievementPercentagesForApp`), pick a
   per-game "main story complete" achievement (the hard part — needs a heuristic or a curated
-  map, since achievement naming is arbitrary), expose a completion-weighted QHPP mode
+  map, since achievement naming is arbitrary), expose a completion-weighted QTPD mode
   (`hours × completion_rate × rating ÷ price`). *Highest-value new metric; medium effort,
   gated on the achievement-selection heuristic.*
 
-- **Region-specific pricing.** Take the price (and therefore QHPP) from a user-chosen Steam
+- **Region-specific pricing.** Take the price (and therefore QTPD) from a user-chosen Steam
   region/currency rather than one fixed region — most-requested item by headcount. *What to
   do:* decide between (a) scraping prices for N regions into `prices.json` (N× the price
   scrape and storage) vs (b) an on-demand per-region fetch through the Worker at view time.
@@ -131,17 +132,17 @@ Works off data already collected. Several are cheap and high-impact.
 
 - **Mobile / narrow-screen layout — highest-frequency complaint. [Partly done.]** The old
   `table-layout: fixed` grid overflowed small screens, titles truncated, and the sale badge +
-  discount % wasted a column. *Done so far:* the desktop table is now a **CSS Grid** with
-  per-column `minmax()` tracks (§11), the ultrawide wasted-margin and small-laptop overflow
-  issues are **resolved** (table fills to the 2400px `.wrap` cap on wide screens, and the card
-  layout now takes over at 1290px — just above the table's 1266px floor — so there is no
-  sideways-scroll dead zone), and the sub-1290px **card layout** covers phones (roomier spacing,
+  discount % wasted a column. *Done so far:* the desktop table is now **fluid** (`auto` layout,
+  per-column min/max — §11), and the sub-1040px **card layout was improved** (roomier spacing,
   a ~560px phone breakpoint, Tags as a full-width left-aligned row). The old fixed-1556px
-  conflict this item called out is **resolved** (that assumption is gone). *Still open:* a
-  richer per-card mobile design — thumbnail+title as a proper card header, and optionally
-  collapsing Price / Discount / Sale-ends into one stacked unit and hiding secondary fields
-  behind a tap. *What to do next:* design the card header + decide which fields are
-  primary-vs-secondary on a phone.
+  conflict this item called out is **resolved** (that assumption is gone). *Also shipped since:*
+  **Price and Discount are now a single merged `Price / Sale` column** (struck full price on top,
+  sale price + discount badge below) with a **split header** whose two halves sort independently
+  (Price by current price, Sale by discount depth) — this reclaims the column the discount % used
+  to waste, on desktop as well as mobile. *Still open:* a richer per-card mobile design —
+  thumbnail+title as a proper card header, and optionally folding Sale-ends into the merged price
+  unit and hiding secondary fields behind a tap. *What to do next:* design the card header +
+  decide which fields are primary-vs-secondary on a phone.
 
 - **Hover tooltips on filter controls. [Done.]** Top-of-page filters (HLTB especially) were
   opaque to new users. *Done:* most filter toggles already carried `title` tooltips; added them
@@ -156,13 +157,12 @@ Works off data already collected. Several are cheap and high-impact.
   (`✓ require → ✕ exclude → clear`) that reuses the real `.chip.inc`/`.chip.exc` styles, so the
   swatches can't drift from the actual state colors.
 
-- **Column-add safety under the grid layout. [Resolved.]** Under the old `table-layout: fixed`
+- **Verify column-add safety under the new fluid layout.** Under the old `table-layout: fixed`
   model, adding a column without a matching `<col>` collapsed the table — a known trap. The
-  layout is now **CSS Grid** (§11): columns are sized by the `--grid-cols` track list, and the
-  `<colgroup>` is inert (`display:none`). Adding a column now means adding a `<th>`, a `<td>`
-  per row, and **one `minmax()` track to `--grid-cols`** — no `<col>` needed. Because header and
-  body share the single track list, they can't drift out of alignment. Keep the track count equal
-  to the column count.
+  layout is now `table-layout: auto` (§11), which *should* be more forgiving, **but this hasn't
+  been confirmed.** *What to do:* before the next column is added, test whether a new column
+  still requires its `<col>` entry (and whether the min/max sizing still holds); update §11's
+  regression note with the answer.
 
 - **Min-review filter: verify it re-filters on change.** Reported that changing the min-review
   selection may not refresh the list. *What to do:* treat as a **possible bug** — verify the
@@ -188,9 +188,14 @@ Works off data already collected. Several are cheap and high-impact.
   `:hover` so hover wins; reset to transparent in card mode). *Tuning knob:* the zebra alpha is a
   single value if it needs to be stronger/weaker after eyeballing on a real display.
 
-- **Rename QHPP.** Feedback that "QHPP" is unfriendly to type/say; suggestions like "Bang for
-  Buck" / "WorthIt". *What to do:* branding decision only — could rename the public label while
-  keeping QHPP as the internal metric name. *Zero engineering, pure product call.*
+- **Rename QHPP → QTPD. [Done.]** "QHPP" was unfriendly to type/say. *Done:* the public
+  metric is now **QTPD (Quality Time Per Dollar)** — clearer and rolls off the tongue better.
+  Renamed across the frontend end-to-end: page title, logo wordmark, tagline, column header,
+  every tooltip, the filter labels (QTPD price basis / HLTB metric for QTPD / QTPD range), the
+  formula help text, the internal sort key + CSS classes, and the URL `sort` param value. Left
+  intentionally as legacy identifiers: the repo/GitHub name **SteamQHPP** and the wishlist
+  worker subdomain **qhpp-wishlist** (renaming those would break the deploy + the live proxy).
+  Old shared `?sort=qhpp` links fall back to the default sort. *Pure product call, minimal risk.*
 
 ### 3.3 Nice-to-have / still to be evaluated
 
@@ -368,7 +373,7 @@ found:
 
 HowLongToBeat completion times are static, so each game is fetched **once** (matched by
 title similarity, threshold `HLTB_MIN_SIMILARITY`; obscure/oddly-named games may not match
-and show `—`). QHPP is driven by the **average** of main / main+extras / completionist, so
+and show `—`). QTPD is driven by the **average** of main / main+extras / completionist, so
 partial data used to distort the score badly — a main-only game got `avg == main`
 (understated), a completionist-only game got `avg ==` that large number (overstated).
 
@@ -563,87 +568,94 @@ A single self-contained page. On load it fetches every JSON file, merges them by
 into one object per game (one O(n) pass — important at ~68k+ games), then renders, filters,
 and sorts entirely client-side. Until real JSON exists it renders bundled `SAMPLE` data.
 
-**QHPP computation.** `computeQ(game, basis)` = `(selected HLTB hours × rating%) ÷ price`,
+**QTPD computation.** `computeQ(game, basis)` = `(selected HLTB hours × rating%) ÷ price`,
 where *basis* picks the **Sale** (after-discount) or **Full** price, and the selected HLTB
 hours follow the **HLTB metric** toggle (main / +extras / 100% / avg). Null for free games
 and games with no usable HLTB value. The score is recomputed on toggle, never stored.
+(Internal sort key: `qtpd`.)
 
-**The table (12 columns).** In order: Game · Reviews · **Weighted** · Trend · Price ·
-Discount · Sale ends · Released · Tags · **Playtime** · HLTB · QHPP.
+**The table (11 columns).** In order: Game · Reviews · Trend · **Weighted** · Price / Sale ·
+Sale ends · Released · Tags · **Playtime** · HLTB · QTPD. (**Trend** now sits directly after
+Reviews — it's derived from them — and **Price + Discount are merged** into one `Price / Sale`
+column, dropping the old standalone Discount column: 12 columns → 11.)
 
-- The table is a **CSS Grid** layout: `thead tr` and every `tbody tr` are `display:grid` sharing
-  one **`--grid-cols`** track list, so the header and body columns are guaranteed to line up from a
-  single source of truth. Each track is a **`minmax(floor, ceiling)`** — the `floor` is a
-  small-laptop legibility minimum, the `ceiling` bounds the slim numeric/sort columns (Trend, Price,
-  Discount, Weighted, Sale) so they don't bloat on a wide monitor. Two columns carry **`fr`
-  ceilings** instead of pixel caps — **Game (`2.2fr`) and Tags (`3fr`)** — so on wide screens all
-  the slack routes to those two content-heavy columns while everything else stays near its floor.
-  Unlike the old `table-layout:auto` approach, **`minmax()` ceilings are hard**, not hints: a slim
-  column can no longer creep past its stated max on an extreme ultrawide. The `<colgroup>`/`<col>`
-  markup is retained but **`colgroup{display:none}`** — grid tracks size the columns now, so a new
-  column needs a `--grid-cols` entry, not a `<col>`.
-  - **Width envelope.** The table's `min-width` is the **exact sum of the column floors (1266px)**;
-    below that the **page** (not the table card) would scroll horizontally — but the card breakpoint
-    (below) takes over first, at **1290px**, so in practice the table never overflows. The ceiling is
-    governed by the page wrapper **`.wrap` (`max-width:2400px`)**, not by the table itself (the old
-    redundant table `max-width` was removed): the table fills the wrapper, so on an ultrawide it
-    grows edge-to-edge to ~2338px instead of stranding ~800px of empty margin. Overflow, if it ever
-    occurred, stays on the **page** rather than a `overflow-x:auto` scroll container — a lone
-    `overflow-x:auto` gets promoted by browsers to `overflow:auto` on both axes, which would trap the
-    sticky `<thead>` in a scroll box.
-  - **Column floors are measured, not guessed.** Each floor was set against the widest real content
-    for that column (e.g. HLTB `1281 1464 1670`, Reviews `ALL 85% 1.5M`, Released `15.2 yrs old`),
-    so nothing clips at the 1266px minimum. Verified with headless renders at every width from 375px
-    to 2545px: zero horizontal overflow, clean table↔card handoff at the 1290/1291 boundary.
+- The table is laid out with **CSS Grid** — a shared `--grid-cols` template of `minmax()`
+  tracks (one per column) applied at the **row** level, so the sticky `<thead>` stays a normal
+  sticky block while each `<tr>` lays its cells on the same track template. (The `<colgroup>` is
+  `display:none`; `<col>` min/max is ignored by browsers, so Grid, not `<col>`, sizes the
+  columns.) Each track's `min` is a small-laptop legibility floor; the `max` is a breathing
+  ceiling so the slim numeric/sort columns (Trend, Price / Sale, Weighted, Sale ends) don't bloat
+  on a wide monitor. On large screens the slack concentrates on the content-heavy columns —
+  **Game and Tags** — which carry `fr` ceilings; everything else stays near its natural width.
+  The table's `min-width` is the **exact sum of the column minimums (1240px)** — down from 1266px
+  after the Price/Discount merge — so below that the **page** (not the table card) scrolls
+  horizontally — deliberately *not* `overflow-x:auto` on the scroll container, because a lone
+  `overflow-x:auto` is promoted by browsers to `overflow:auto` on both axes, which would trap the
+  sticky `<thead>` in a scroll box. Below ~1290px the table stops being a table and becomes the
+  stacked **card layout** (see *Responsive* below).
+  - **`minmax()` tracks make max-width reliable.** Unlike the old `table-layout:auto` + `<col>`
+    approach (where `max-width` was only a hint), Grid `minmax()` enforces both floor and ceiling,
+    so a slim column can't grow past its stated max even on an extreme ultrawide.
+  - **Regression watch (unconfirmed under fluid).** Under the *old* `table-layout: fixed`
+    model, adding a column without adding its `<col>` **collapsed the layout** (a real bug when
+    Weighted + Playtime were first added). Fluid `auto` layout is expected to be more forgiving
+    (it sizes from content, not solely from `<col>`), **but this has not been re-verified** —
+    treat "does adding a column still need a matching `<col>`?" as an **open item to confirm**
+    (§3.2) before relying on it.
 - **Reviews** stacks all-time over the 30-day score (recent greyed when stale/absent).
 - **Weighted** shows the capped % next to Steam's, with the Δ badge and low-confidence gray.
 - **Trend** is recent − all-time (improving/stable/declining), gated on staleness.
-- **Price/Discount** render as one tight unit; **Sale ends** is a live countdown that
+- **Price / Sale** is one merged column: struck full price on top, sale price below with the
+  discount badge inline to its right. Its **header is split** into two independently-clickable
+  sort targets — "Price" (sorts by current price) and "Sale" (sorts by discount depth) — and the
+  sort arrow hops to whichever half is active. **Sale ends** is a live countdown that
   collapses offline when a sale has expired (honest between price refreshes).
 - **Playtime** stacks ▲ recommenders over ▼ non-recommenders' median hours. Hours display
   **whole for ≥10h, one decimal under 10h**; the review-count sample size is kept in the
-  data + tooltip but not shown inline.
-- **HLTB** shows main / +extras / 100% with `avg` below; the metric selected for QHPP is
+  data + tooltip but not shown inline. When a game has **no playtime data the cell renders
+  completely empty** (no `—` dash) so it adds **zero height** to the row — previously the dash
+  forced a line-height floor that inflated data-sparse rows.
+- **HLTB** shows main / +extras / 100% with `avg` below; the metric selected for QTPD is
   highlighted, estimates render blue + dotted-underline. Same 2-digit/1-digit number rule.
   The stack is a **block with both lines `nowrap`** (the three figures on one row, `avg N h`
   on the next) so large numbers can't wrap into each other — this, plus a raised HLTB column
   `min-width`, fixes the overlap that showed on wide free-game rows.
-- **QHPP** shows the value plus a **log-scaled gold value-meter** bar. On a discounted game
+- **QTPD** shows the value plus a **log-scaled gold value-meter** bar. On a discounted game
   it shows both the **Sale** (primary/gold when that basis is active) and **Full** value
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
-  neutral color, so a full-price value is never mistaken for a discount deal. All QHPP figures
-  (primary and the smaller `full` value) run through a shared **`fmtQ`** helper that sets
-  decimal precision by magnitude: **≥100 → 0 decimals, ≥10 → 1 decimal, <10 → 2 decimals**
-  (e.g. `156`, `31.1`, `5.82`). The tier is chosen by the raw value's magnitude, then rounded —
-  so a value like `99.99` sits in the ≥10 tier and renders `100.0`. The QHPP-range slider labels
-  use the same rule, so precision is consistent across the page.
+  neutral color, so a full-price value is never mistaken for a discount deal.
 
-**Responsive / card layout.** The table is for the desktop width range; a **table alone
-cannot fit a phone** (twelve columns at legible minimums sum to 1266px). So below **1290px**
+**Responsive / card layout.** The table is for the desktop width range; a **fluid table alone
+cannot fit a phone** (eleven columns at legible minimums sum to ~1240px). So below **1290px**
 the layout switches: `<thead>` hides, each row becomes a **card** (every `<td>` a
-label→value line, the header supplied by the cell's `data-label`). The breakpoint sits just
-above the table's 1266px floor, so the table view is used as far down as it stays legible and
-there is **no overflow band** between the two modes — the moment the table would need to
-scroll sideways, cards take over instead. A second **~560px** phone breakpoint tightens it
-further (smaller thumbnail, roomier tap targets, HLTB row given priority so its figures don't
-crowd the label). **Tags** on mobile render as a **full-width, left-aligned** row (label on
-its own line, chips wrapping with room) rather than crammed against the right edge. This card
-mode *is* the mobile-friendly view users keep asking for; a richer per-card design
-(thumbnail+title as a card header, secondary fields behind a tap) is still open (§3.2).
+label→value line, the header supplied by the cell's `data-label`). A second **~560px** phone
+breakpoint tightens it further (smaller thumbnail, roomier tap targets, HLTB row given
+priority so its figures don't crowd the label). **Tags** on mobile render as a **full-width,
+left-aligned** row (label on its own line, chips wrapping with room) rather than crammed
+against the right edge. This card mode *is* the mobile-friendly view users keep asking for; a
+richer per-card design (thumbnail+title as a card header, secondary fields behind a tap) is
+still open (§3.2).
 
 **Filters & controls.** Title search · on-sale-only · min rating (any/60+/70+/80+/90+) ·
 min & max price · min-reviews bands (0/10/100/1k/5k+, independent toggles, gaps allowed) ·
-review-trend multi-toggle · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **QHPP range**
+review-trend multi-toggle · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **QTPD range**
 log-slider that fits current results · **tag rail** (click to require → exclude → clear,
-with live per-tag counts, two-tier with a "+N more" expander). Score controls: **QHPP price
+with live per-tag counts, two-tier with a "+N more" expander). Score controls: **QTPD price
 basis** (Sale/Full) and **HLTB metric** (main/+extras/100%/avg) both feed `computeQ`;
 **HLTB data** (all incl. estimates / real only) — **real is the default** (estimates hidden
 and not used for the selected metric).
 
+The **QTPD logo wordmark doubles as a filter toggle** — clicking it opens/closes the whole
+filter nav (identical to the "Show / Hide filters" collapse handle, which stays). The logo is a
+real `<button>` (keyboard-focusable, `title`/`aria-label` set) rather than a decorative `<div>`.
+
 **Sort.** Click any header to sort (`setSort`); the active header shows a gold arrow
 **absolutely positioned at its bottom-center**, so it costs no column width or row height
-(it previously overflowed and got clipped by the neighbor). Two selector toggles live in the
-filter bar and do **not** sort on their own:
+(it previously overflowed and got clipped by the neighbor). The **Price / Sale** header is a
+special case: it holds **two** sort targets (`<button>`s for `price_final` and `discount_pct`)
+inside one cell, and the arrow anchors under whichever half is active — so the sort machinery
+selects on `.sortable` (matching both the `<th>`s and the inner split buttons), not `th.sortable`.
+Two selector toggles live in the filter bar and do **not** sort on their own:
 
 - **Reviews sort by** (all-time / 30-day) — which score the Reviews column sorts on.
 - **Playtime sort** (▲ recommenders / ▼ non-recommenders) — which median a click on the
@@ -748,36 +760,29 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 - **Sandbox limitation** (for maintenance): the dev environment can't reach Steam domains, so
   Steam-dependent code is unit-tested against documented response shapes and verified by
   running it live in Actions.
-- **Table sizing** — resolved by the move to **CSS Grid** with `minmax()` tracks (§11): both the
-  column floors and the ceilings are now hard, so no slim column can exceed its max even on an
-  extreme ultrawide, and there is no horizontal overflow at any width (card layout takes over at
-  1290px, just above the 1266px floor). Adding a column requires a `--grid-cols` track (not a
-  `<col>`); keep the track count equal to the column count.
+- **Table sizing** — column `min-width` floors are reliable, but `max-width` on `<col>` under
+  `table-layout: auto` is best-effort (§11); on an extreme ultrawide a slim column could exceed
+  its ceiling. Firm fix (if ever needed) is a CSS-Grid table with `minmax()` tracks. Whether
+  adding a new column still needs a matching `<col>` under the fluid model is **unconfirmed**
+  and flagged to test (§3.2).
 
 ---
 
 ## 16. Recent changes
 
-- **Table layout: fluid `auto` → CSS Grid, and responsive width fixed.** The desktop table moved
-  from `table-layout:auto` + `<col>` min/max hints to a **CSS Grid** where `thead`/`tbody` rows
-  share one **`--grid-cols`** `minmax()` track list (§11) — the previously-deferred grid refactor.
-  This fixed three real problems the old model left: (1) on ultrawide the content capped at 1720px
-  and stranded ~800px of margin — the redundant table `max-width` was removed and the ceiling is now
-  the page wrapper **`.wrap` at 2400px**, so the table fills to ~2338px on a 2545px screen; (2) the
-  table's 1544px floor forced **sideways page scroll** on small laptops / half-width windows (data
-  bled off the right, the top complaint) — floors were re-measured against real worst-case cell
-  content and lowered so the table `min-width` is now **1266px**; (3) the card fallback started too
-  late (1040px), leaving a ~500px overflow dead zone — the **card breakpoint moved to 1290px**, just
-  above the new floor, so table↔card handoff is seamless with **zero horizontal overflow at any
-  width** (verified with headless renders 375–2545px). `minmax()` ceilings are also *hard* now, so
-  slim columns can't creep past their max on extreme ultrawides (the old best-effort caveat is gone),
-  and adding a column no longer needs a `<col>` — just a track in `--grid-cols` (§3.2, §11).
-- **QHPP decimal precision unified (`fmtQ`).** The QHPP value on the meter bar (and the smaller
-  `full` value beside it) previously always showed 2 decimals. A shared **`fmtQ`** helper now sets
-  precision by magnitude — **≥100 → 0 dp, ≥10 → 1 dp, <10 → 2 dp** (`156` / `31.1` / `5.82`) —
-  applied across all three render paths (not-on-sale single value, sale, full). Matches the rule the
-  QHPP-range slider labels already used, so precision is consistent page-wide (§11).
-
+- **QHPP → QTPD rename + table restructure (Jul 2026).** Five frontend changes shipped together:
+  (1) the metric was renamed **QHPP → QTPD (Quality Time Per Dollar)** end-to-end — title, logo,
+  tagline, column header, tooltips, filter labels, formula text, internal sort key, CSS classes,
+  and URL `sort` param (repo/GitHub `SteamQHPP` + `qhpp-wishlist` worker kept as legacy names;
+  §3.2). (2) **Price + Discount merged** into one `Price / Sale` column with a **split header**
+  whose two halves sort independently (Price by current price, Sale by discount depth); the sort
+  machinery now selects on `.sortable` to include the inner split buttons (12 cols → 11, table
+  `min-width` 1266 → 1240px; §11). (3) **Trend moved** to sit directly after Reviews (it's derived
+  from them), before Weighted. (4) **Empty playtime cells render truly empty** (no `—` dash) so
+  they add zero height instead of inflating data-sparse rows (§10, §11). (5) The **logo wordmark is
+  now a filter toggle** — a real focusable `<button>` that opens/closes the filter nav like the
+  collapse handle (§11). Layout mechanism note updated: the table is **CSS Grid** (`--grid-cols`
+  `minmax()` tracks), not `table-layout:auto` + `<col>` as older entries below describe.
 - **IGDB secondary source (Phase C) — built, evaluated, RETIRED.** Added an appid-keyed IGDB
   completion-time source to backfill games HLTB can't title-match. Two bugs fixed during
   bring-up (deprecated `category`→`external_game_source` filter; blank-entry worklist freeze),

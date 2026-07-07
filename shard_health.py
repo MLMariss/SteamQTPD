@@ -36,7 +36,7 @@ def main():
     now = time.time()
     shards = sorted(SHARD_DIR.glob("*.json"))
     if not shards:
-        OUT.write_text("# Shard health — `playtime_raw/`\n\nNo shards found yet "
+        OUT.write_text("# Shard health — `playtime_raw/` · QTPD (SteamQHPP)\n\nNo shards found yet "
                        "(the pipeline migrates/creates them on first run).\n", encoding="utf-8")
         print("no shards found")
         return 0
@@ -99,7 +99,7 @@ def main():
 
     # --- render SHARDS.md ---
     L = [
-        "# Shard health — `playtime_raw/`",
+        "# Shard health — `playtime_raw/` · QTPD (SteamQHPP)",
         "",
         f"_Generated {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime(now))} by `shard_health.py`._",
         "",

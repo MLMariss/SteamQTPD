@@ -1,9 +1,13 @@
-# QHPP — Steam value hunter
+# QTPD — Steam value hunter
 
-Finds the best **quality hours per price** across Steam games. A set of scrapers
+Finds the best **quality time per dollar** across Steam games. A set of scrapers
 build up a database **over time** (committed to this repo as JSON); a static page
 (`index.html`) reads it and lets you browse, sort, and filter — with live discount
-countdowns and a gold value-meter on the QHPP column.
+countdowns and a gold value-meter on the QTPD column.
+
+*(QTPD was formerly called **QHPP**, "Quality Hours Per Price". The metric is unchanged; only
+the name is friendlier. The repo, GitHub project, and wishlist worker keep their legacy
+`SteamQHPP` / `qhpp-wishlist` names.)*
 
 Runs almost entirely on **GitHub Pages + GitHub Actions** (free and unlimited for public
 repos). All scraping happens server-side in the Actions — the frontend can't call Steam
@@ -12,7 +16,7 @@ feature, which routes through a tiny **Cloudflare Worker** proxy (source in `wor
 browser can read a user's Steam wishlist; everything else needs no backend, and the site works
 fully without the Worker.
 
-**QHPP** = `(avg HLTB hours × rating%) ÷ price`. Higher = more quality-adjusted hours
+**QTPD** = `(avg HLTB hours × rating%) ÷ price`. Higher = more quality time
 per dollar. Null for free games and games HLTB can't match. Filter-bar toggles pick whether
 the score uses the **Sale** (discounted) or **Full** price, and which HLTB metric (main /
 extras / completionist / avg) feeds the formula.
@@ -26,7 +30,7 @@ extras / completionist / avg) feeds the formula.
 The work is split across **separate scheduled jobs that each own one file** — this
 "one writer per file" design is what lets them all commit to the repo in parallel
 without collisions (jobs writing *different* files always rebase cleanly). The
-frontend merges every file by appid in the browser and computes QHPP client-side.
+frontend merges every file by appid in the browser and computes QTPD client-side.
 
 | Job (Action)            | Writes               | Contents                                            |
 |-------------------------|----------------------|-----------------------------------------------------|
@@ -67,11 +71,12 @@ change-detection.
 
 ## Each game shows
 Title · Steam rating (% positive) + reviews · **playtime-weighted rating** (Weighted
-column) · recent-review trend · store link · price before discount (USD) · discounted
-price · **live** time left on the sale · release date · tags · **median playtime** split
-by recommendation (Playtime column) · How Long To Beat (main / main+extras / completionist
-+ avg) · QHPP at the sale & full price. HLTB values **estimated** from the genre-average
-ratio (when HLTB only reports 1–2 of the 3 times) are shown in blue with a hover tooltip.
+column) · recent-review trend · store link · **Price / Sale** (full price struck through,
+discounted price below, discount badge inline) · **live** time left on the sale · release
+date · tags · **median playtime** split by recommendation (Playtime column; empty when a game
+has no playtime data) · How Long To Beat (main / main+extras / completionist + avg) · QTPD at
+the sale & full price. HLTB values **estimated** from the genre-average ratio (when HLTB only
+reports 1–2 of the 3 times) are shown in blue with a hover tooltip.
 
 - **Weighted** — a review rating where each vote is weighted by how long that player
   actually played (capped at 2× the game's median so no single obsessive dominates), shown
@@ -83,17 +88,20 @@ ratio (when HLTB only reports 1–2 of the 3 times) are shown in blue with a hov
 ## Frontend filters
 Title search · on-sale-only · minimum rating (any / 60+ / 70+ / 80+ / 90+) · min & max
 price · minimum reviews (0 / 10 / 100 / 1k / 5k+ bands) · review trend (improving /
-stable / declining) · updated-within (any / 1mo / 3mo / 6mo / 1yr / 1yr+) · QHPP range
+stable / declining) · updated-within (any / 1mo / 3mo / 6mo / 1yr / 1yr+) · QTPD range
 (log-scale slider that fits the current results) · tags (click to require, again to
-exclude). Score controls: **QHPP price basis** (Sale / Full), **HLTB metric** (main /
+exclude). Score controls: **QTPD price basis** (Sale / Full), **HLTB metric** (main /
 +extras / 100% / avg), **HLTB data** (all incl. estimates / real only — *real* is the
 default). Sort controls: **Reviews sort by** (all-time / 30-day) and **Playtime sort**
 (▲ recommenders / ▼ non-recommenders — this only *selects* which median a click on the
 Playtime column will sort by; it doesn't reorder on its own). Hover any filter toggle for a
 one-line tooltip explaining it; the tag rail shows a visible `✓ require → ✕ exclude → clear`
-legend, and even rows are lightly shaded for readability.
+legend, and even rows are lightly shaded for readability. Click the **QTPD logo** to show/hide
+the whole filter bar.
 
-Sort by any column incl. QHPP, Weighted, Playtime, rating, price, release date.
+Sort by any column incl. QTPD, Weighted, Playtime, rating, price, release date. The **Price /
+Sale** column's header splits into two sort targets — click **Price** to sort by current price,
+**Sale** to sort by discount depth.
 Infinite-scroll pagination (100 / 500 / 2000 per page); all filter/sort state lives in the
 URL so views are shareable.
 
@@ -166,7 +174,7 @@ commits.)
   as `—`). Each game is fetched once; the job is still completing its first full pass, and
   re-scraping (to retry no-matches and update partials) comes after — see ARCHITECTURE.md.
 - **HLTB estimates** fill missing main/extras/completionist times from the typical ratio
-  so the QHPP-driving `avg` isn't skewed; they're clearly marked (blue + tooltip) and
+  so the QTPD-driving `avg` isn't skewed; they're clearly marked (blue + tooltip) and
   replaced automatically once real HLTB data is found.
 - **Weighted rating** needs playtime data (public profiles only) and enough reviews; below
   5 it isn't computed, and 5–9 renders grayed as low-confidence.
