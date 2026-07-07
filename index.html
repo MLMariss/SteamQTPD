@@ -207,8 +207,8 @@
       minmax(96px,  132px)   /* Price/Sale — merged: struck+final price with discount badge */
       minmax(80px,  108px)   /* Sale ends  */
       minmax(96px,  124px)   /* Released   — floor fits "15.2 yrs old" */
-      minmax(130px, 3fr)     /* Tags       — MOST growth (soaks up the slack, fewest wrap rows) */
-      minmax(92px,  120px)   /* Playtime   — floor fits "avg 1472 h" */
+      minmax(140px, 3fr)     /* Tags       — MOST growth (soaks up the slack, fewest wrap rows) */
+      minmax(82px,  82px)    /* Playtime   — fixed: fits "▲ 9999h" (ptval min-width 44 + arrow + trimmed pad) */
       minmax(132px, 164px)   /* HLTB       — floor fits "1281 1464 1670" */
       minmax(132px, 144px);  /* QTPD       — floor fits wrapped value+full */
   }
@@ -240,6 +240,7 @@
   tbody td.center{align-items:center}              /* centered */
   td.pad{padding-left:18px; padding-right:18px}
   td.tdqtpd{padding-left:6px}   /* QTPD block: trim left gutter so the value/bar breathe */
+  tbody td[data-label="Playtime"]{padding-left:6px}   /* Playtime: trim left gutter, value sits closer to Tags */
   tbody tr{border-bottom:1px solid #222d45}
   tbody tr:last-child{border-bottom:0}
   tbody tr:nth-child(even){background:rgba(127,160,230,.035)}   /* subtle zebra; translucent so the card gradient still shows through */
