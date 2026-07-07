@@ -157,16 +157,24 @@ Works off data already collected. Several are cheap and high-impact.
   (`✓ require → ✕ exclude → clear`) that reuses the real `.chip.inc`/`.chip.exc` styles, so the
   swatches can't drift from the actual state colors.
 
-- **Verify column-add safety under the new fluid layout.** Under the old `table-layout: fixed`
-  model, adding a column without a matching `<col>` collapsed the table — a known trap. The
-  layout is now `table-layout: auto` (§11), which *should* be more forgiving, **but this hasn't
-  been confirmed.** *What to do:* before the next column is added, test whether a new column
-  still requires its `<col>` entry (and whether the min/max sizing still holds); update §11's
-  regression note with the answer.
+- **Column-add safety. [Done — premise was stale; verified empirically.]** The note assumed a
+  `table-layout: auto` table, but the layout actually moved further: it's now **CSS Grid applied
+  at the row level** (`thead tr` / `tbody tr` are each `display:grid` sharing one `--grid-cols`
+  track template — §11, ~line 202), and the `<colgroup>` is inert (`colgroup{display:none}` — it
+  only documents column order; adding or omitting a `<col>` has **zero** layout effect). *Tested
+  (Playwright, 1700px): forcing a 12th cell into both header and body **without** a matching 12th
+  track keeps header and body perfectly aligned (identical cell right-edges) — grid auto-places
+  the extra cell into the same implicit track for both rows.* So the old failure mode (table
+  collapses / header drifts from body) **can no longer happen**; the worst case is a
+  cosmetically-mis-sized new column, not a broken layout. *To add a column now:* (1) add a
+  `minmax()` track to `--grid-cols` at the right index, (2) add the `<th>` and the matching
+  `<td>` (and the card-layout row) at the same index. The `<col>` is optional and inert. §11's
+  regression note updated to match.
 
-- **Min-review filter: verify it re-filters on change.** Reported that changing the min-review
-  selection may not refresh the list. *What to do:* treat as a **possible bug** — verify the
-  band toggles re-run the filter pass; fix if confirmed.
+- **Min-review filter: re-filters on change. [Done — verified, not a bug.]** The reported
+  "changing the selection doesn't refresh the list" could not be reproduced: the band toggles
+  flip `state.revBands` and re-run the filter pass on every click, and the list updates. No fix
+  needed.
 
 - **Min-review picker: single-select vs multi-select — open design conflict.** A request to
   make min-reviews a single choice (can't tick both 1k and 5k+) directly contradicts the
@@ -174,9 +182,18 @@ Works off data already collected. Several are cheap and high-impact.
   **decision required** — keep the intentional multi-band model (and just document why), or
   switch to single-select. Do not change silently.
 
-- **Sort by review count — verify it already works.** Columns are click-to-sort (§11), so
-  Reviews should already sort. *What to do:* confirm; if the Reviews column doesn't sort by
-  count, wire it up. *Likely already done.*
+- **Sort by review count. [Done — implemented.]** The Reviews column only sorted by *score*
+  (the top All-time/30-day toggle chose which score); review *count* wasn't sortable. *Done:* the
+  Reviews header is now a **split header** (`.th-split`, reusing the Price/Sale pattern) with two
+  independent sort buttons — **Score** (`data-sort="rating_pct"`) and **Count**
+  (`data-sort="review_count"`). The two controls are **orthogonal**: the top All-time/30-day
+  toggle picks the *period*, the header picks the *dimension*, together covering all four values
+  (all-time score/count, 30-day score/count). Count sorting mirrors the score's period logic via
+  a new `countVal()` comparator — `recent_count` when 30-day is active, `review_count` when
+  all-time — and the period toggle now re-renders when either `rating_pct` **or** `review_count`
+  is the active sort. Unlike the score fall-back, a 0/absent `recent_count` is treated as a real
+  0 (no recent reviews), not borrowed from the all-time total. Verified with Playwright: DESC/ASC
+  ordering, direction flip, and period switch all correct; no JS errors.
 
 - **Visual polish. [Mostly done — original note is stale.]** The "2009 admin panel" feedback
   predates the current design, which already has a real type pairing (IBM Plex Sans + Mono, loaded
@@ -624,13 +641,24 @@ column, dropping the old standalone Discount column: 12 columns → 11.)
   - **`minmax()` tracks make max-width reliable.** Unlike the old `table-layout:auto` + `<col>`
     approach (where `max-width` was only a hint), Grid `minmax()` enforces both floor and ceiling,
     so a slim column can't grow past its stated max even on an extreme ultrawide.
-  - **Regression watch (unconfirmed under fluid).** Under the *old* `table-layout: fixed`
-    model, adding a column without adding its `<col>` **collapsed the layout** (a real bug when
-    Weighted + Playtime were first added). Fluid `auto` layout is expected to be more forgiving
-    (it sizes from content, not solely from `<col>`), **but this has not been re-verified** —
-    treat "does adding a column still need a matching `<col>`?" as an **open item to confirm**
-    (§3.2) before relying on it.
-- **Reviews** stacks all-time over the 30-day score (recent greyed when stale/absent).
+  - **Adding a column (verified for CSS Grid).** The old `table-layout: fixed` trap — adding a
+    cell without its `<col>` **collapsed the layout** (the real bug when Weighted + Playtime were
+    first added) — **no longer applies.** Under row-level Grid the `<col>`/`<colgroup>` is inert
+    (`display:none`), and header and body share the one `--grid-cols` template, so a
+    forgotten-track cell is auto-placed into the *same* implicit track for both rows: they stay
+    aligned (Playwright-verified at 1700px — identical cell right-edges). **The layout can't
+    collapse from a missing `<col>` anymore.** The real recipe to add a column: (1) insert a
+    `minmax()` track into `--grid-cols` at the correct index; (2) insert the `<th>` and matching
+    `<td>` (plus the card-layout row) at that same index; (3) `min-width` on `table` is the sum of
+    the track minimums — bump it by the new track's `min`. The `<col>` is optional documentation
+    of column order and has no layout effect.
+- **Reviews** stacks all-time over the 30-day score (recent greyed when stale/absent). Its header
+  is a **split sort** (`.th-split`): **Score** (`rating_pct`) / **Count** (`review_count`). This
+  is orthogonal to the top All-time/30-day toggle — the toggle picks the *period*, the header
+  picks the *dimension*, covering all four values. Count sorting follows the period via
+  `countVal()` (`recent_count` on 30-day, `review_count` on all-time; a 0/absent recent count is a
+  real 0, not borrowed from all-time), and the period toggle re-renders when either `rating_pct`
+  or `review_count` is active.
 - **Weighted** shows the capped % next to Steam's, with the Δ badge and low-confidence gray.
 - **Trend** is recent − all-time (improving/stable/declining), gated on staleness.
 - **Price / Sale** is one merged column: struck full price on top, sale price below with the

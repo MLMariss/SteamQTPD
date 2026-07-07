@@ -635,7 +635,7 @@
         <thead>
           <tr>
             <th class="sortable" data-sort="title">Game</th>
-            <th class="sortable" data-sort="rating_pct" title="All-time over recent (past 30 days) review score">Reviews</th>
+            <th class="th-split" title="Review score and count. Click 'Score' to sort by the review percentage; click 'Count' to sort by number of reviews. The All-time / 30-day toggle above chooses which period both halves use."><button class="splitsort sortable" data-sort="rating_pct">Score</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="review_count">Count</button></th>
             <th class="sortable center" data-sort="trend" title="Recent minus all-time — improving, stable, or declining">Trend</th>
             <th class="sortable num" data-sort="wr" title="Playtime-weighted rating: each review counted by how long that player actually played (capped at 2× the game's median so no single obsessive dominates). A recommendation from someone with 300 hours counts more than a 20-minute one. Compare against Steam's flat % in the tooltip. Grayed when too few reviews to be reliable.">Weighted</th>
             <th class="th-split" title="Price and discount, combined. Click 'Price' to sort by the current price; click 'Sale' to sort by discount depth."><button class="splitsort sortable" data-sort="price_final">Price</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="discount_pct">Sale</button></th>
@@ -888,8 +888,15 @@ function visibleGames(){
   const ratingVal = x => (state.ratingSource === "recent")
     ? (x.recent_pct != null ? x.recent_pct : x.rating_pct)
     : x.rating_pct;
+  // Count half of the Reviews split header. Same period toggle as the Score half: 30-day
+  // uses recent_count, all-time uses review_count. Unlike the score fall-back above, a 0/absent
+  // recent_count is a real value (no recent reviews), so we don't borrow the all-time total.
+  const countVal = x => (state.ratingSource === "recent")
+    ? (x.recent_count != null ? x.recent_count : 0)
+    : x.review_count;
   const val = x => k === "qtpd" ? activeQ(x) : k === "trend" ? gTrend(x) : k === "hltb" ? hoursFor(x)
                  : k === "rating_pct" ? ratingVal(x)
+                 : k === "review_count" ? countVal(x)
                  : k === "wr" ? x.wr
                  : k === "playtime" ? (state.ptMetric === "down" ? x.pt_down : x.pt_up)
                  : x[k];
@@ -1700,7 +1707,8 @@ function init(data){
       state.ratingSource = b.dataset.ratesrc;
       document.querySelectorAll("[data-ratesrc]").forEach(o => o.setAttribute("aria-pressed", o === b));
       syncSortArrows();     // header hint reflects which score drives the Reviews sort
-      if(state.sortKey === "rating_pct"){ render(); }
+      // Both halves of the Reviews column follow the period toggle, so re-sort for either.
+      if(state.sortKey === "rating_pct" || state.sortKey === "review_count"){ render(); }
       syncURL();
     }));
   document.querySelectorAll("[data-rev]").forEach(b =>
