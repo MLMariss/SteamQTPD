@@ -200,7 +200,7 @@
      view is used as far down as it stays legible and there is no overflow gap between the two. */
   :root{
     --grid-cols:
-      minmax(268px, 2.2fr)   /* Game       — floor = thumb + 2-line title; strong growth */
+      minmax(308px, 2.2fr)   /* Game       — floor = thumb + 2-line title; strong growth */
       minmax(100px, 128px)   /* Reviews    — floor fits "ALL 85% 1.5M" */
       minmax(48px,  76px)    /* Trend      — sits right after Reviews (it's derived from them) */
       minmax(66px,  104px)   /* Weighted   */
@@ -210,7 +210,7 @@
       minmax(130px, 3fr)     /* Tags       — MOST growth (soaks up the slack, fewest wrap rows) */
       minmax(92px,  120px)   /* Playtime   — floor fits "avg 1472 h" */
       minmax(132px, 244px)   /* HLTB       — floor fits "1281 1464 1670" */
-      minmax(132px, 184px);  /* QTPD       — floor fits wrapped value+full */
+      minmax(132px, 144px);  /* QTPD       — floor fits wrapped value+full */
   }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
@@ -239,6 +239,7 @@
   tbody td.num{align-items:flex-end}               /* numeric: right */
   tbody td.center{align-items:center}              /* centered */
   td.pad{padding-left:18px; padding-right:18px}
+  td.tdqtpd{padding-left:6px}   /* QTPD block: trim left gutter so the value/bar breathe */
   tbody tr{border-bottom:1px solid #222d45}
   tbody tr:last-child{border-bottom:0}
   tbody tr:nth-child(even){background:rgba(127,160,230,.035)}   /* subtle zebra; translucent so the card gradient still shows through */
@@ -261,7 +262,7 @@
         font:700 13px/1 system-ui,sans-serif; letter-spacing:.5px; color:#fff;
         text-shadow:0 1px 3px #000c; pointer-events:none;
         background:radial-gradient(circle at center, #0006, #0002)}
-  .gmeta{min-width:96px; flex:1}     /* title never collapses below readable width */
+  .gmeta{min-width:136px; flex:1}     /* title never collapses below readable width */
   .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gtitle:hover{text-decoration:underline}
