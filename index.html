@@ -25,7 +25,7 @@
   }
   a{color:var(--blue); text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{width:100%; max-width:1720px; margin:0 auto; padding:0 clamp(12px,2vw,30px)}
+  .wrap{width:100%; max-width:2400px; margin:0 auto; padding:0 clamp(8px,1.4vw,30px)}
   .wrap.body{padding-bottom:70px}
 
   /* ---- header (scrolls away; table header takes over as sticky, see thead below) ---- */
@@ -178,10 +178,11 @@
      Horizontal overflow stays on the PAGE, not this container: putting overflow-x:auto here
      would trap the sticky <thead> in a scroll box (browsers promote a lone overflow-x:auto to
      overflow:auto on both axes). Below the table's min-width the page scrolls sideways — rare
-     now, and the sub-1040px card layout covers the small screens. min-width is the exact sum of
-     the per-column minimums (1544px) so the declared floor matches what the columns truly need.
-     Capped at 2600px and centered (margin:0 auto) so it fills normal and 1440p screens edge
-     to edge but stops sprawling on extreme ultrawides; on wide monitors the slack goes to Tags
+     now, and the sub-1290px card layout covers the small screens. min-width is the exact sum of
+     the per-column minimums (1266px) so the declared floor matches what the columns truly need —
+     each floor is measured against its widest real content (e.g. HLTB "1281 1464 1670", Reviews
+     "ALL 85% 1.5M") so nothing clips. The ceiling is governed by .wrap (max-width:2400px), which
+     lets the table fill ultrawide screens edge to edge; on wide monitors the slack goes to Tags
      then Game (their fr weights), keeping the numeric columns pinned. */
   /* ── Table sizing: CSS Grid with minmax() per column ──────────────────────────────────
      `<col>` min/max-width is ignored by browsers (col only honors width/border/bg/visibility),
@@ -190,27 +191,28 @@
      thead stays a normal sticky block while each row lays its cells out on the shared track
      template. `--grid-cols` is defined once and used by both header and body rows so columns
      line up. Slim numeric/sort columns get tight minmax(); Game and Tags take fr slack so they
-     absorb width on big screens while the rest stay near their floor. The table is capped and
-     centered (max-width + margin:auto) so it breathes but never sprawls on ultrawide. Below
-     its min-width the page scrolls sideways (rare); <1040px the card layout takes over. */
+     absorb width on big screens while the rest stay near their floor. The ceiling comes from
+     .wrap (max-width:2400px), so the table breathes on ultrawide without a redundant table cap.
+     The card layout takes over at <=1290px — just below the table's real floor — so the table
+     view is used as far down as it stays legible and there is no overflow gap between the two. */
   :root{
     --grid-cols:
-      minmax(320px, 2.2fr)   /* Game     — wide floor (thumb+title) + strong growth */
-      minmax(104px, 128px)   /* Reviews  */
-      minmax(82px,  104px)   /* Weighted */
-      minmax(60px,  76px)    /* Trend    */
-      minmax(74px,  92px)    /* Price    */
-      minmax(62px,  78px)    /* Discount */
-      minmax(86px,  108px)   /* Sale ends*/
-      minmax(100px, 124px)   /* Released */
-      minmax(200px, 3fr)     /* Tags     — MOST growth (soaks up the slack, fewest wrap rows) */
-      minmax(96px,  120px)   /* Playtime */
-      minmax(210px, 244px)   /* HLTB     */
-      minmax(150px, 184px);  /* QHPP     */
+      minmax(268px, 2.2fr)   /* Game     — floor = thumb + 2-line title; strong growth */
+      minmax(100px, 128px)   /* Reviews  — floor fits "ALL 85% 1.5M" */
+      minmax(66px,  104px)   /* Weighted */
+      minmax(48px,  76px)    /* Trend    */
+      minmax(68px,  92px)    /* Price    — floor fits "$19.99" */
+      minmax(54px,  78px)    /* Discount */
+      minmax(80px,  108px)   /* Sale ends*/
+      minmax(96px,  124px)   /* Released — floor fits "15.2 yrs old" */
+      minmax(130px, 3fr)     /* Tags     — MOST growth (soaks up the slack, fewest wrap rows) */
+      minmax(92px,  120px)   /* Playtime — floor fits "avg 1472 h" */
+      minmax(132px, 244px)   /* HLTB     — floor fits "1281 1464 1670" */
+      minmax(132px, 184px);  /* QHPP     — floor fits wrapped value+full */
   }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; max-width:2600px; margin:0 auto; border-collapse:collapse; min-width:1544px}
+  table{width:100%; margin:0 auto; border-collapse:collapse; min-width:1266px}
   colgroup{display:none}                     /* grid tracks size the columns now, not <col> */
   thead,tbody{display:block; width:100%}     /* let rows be the grid containers */
   thead tr,tbody tr{display:grid; grid-template-columns:var(--grid-cols); align-items:center}
@@ -410,7 +412,7 @@
      each cell a label→value flex line), with more generous spacing, clearer separation
      between rows, and Tags given a full-width left-aligned row so they breathe instead of
      cramming against the right edge. */
-  @media (max-width:1040px){
+  @media (max-width:1290px){
     table{min-width:0; max-width:none; margin:0}
     colgroup{display:none}
     thead{display:none}
@@ -1029,6 +1031,8 @@ function render(){
     const qAfter = computeQ(g, "after");     // sale-price QHPP
     const qFull  = computeQ(g, "before");    // full-price QHPP
     const onSale = g.discount_pct > 0 && qAfter != null && qFull != null && qAfter !== qFull;
+    // QHPP display precision: 3-digit values → 0 decimals, 2-digit → 1, 1-digit → 2.
+    const fmtQ = v => v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
     let qhpp;
     if(qAfter == null && qFull == null){
       qhpp = `<div class="qnull">—</div>`;
@@ -1036,12 +1040,12 @@ function render(){
       // single number (not discounted, or one side missing); highlight if its basis is active
       const v = qAfter != null ? qAfter : qFull;
       const barV = activeQ(g);
-      qhpp = `<div class="qtop"><span class="qval qfull" title="Not on sale — quality-adjusted hours per price at the full price">${v.toFixed(2)}</span><span class="qtag full" title="This game isn't discounted, so its QHPP is based on the full price">full</span></div>`
+      qhpp = `<div class="qtop"><span class="qval qfull" title="Not on sale — quality-adjusted hours per price at the full price">${fmtQ(v)}</span><span class="qtag full" title="This game isn't discounted, so its QHPP is based on the full price">full</span></div>`
            + `<div class="qbar"><div class="qfill" style="width:${fillPct(barV).toFixed(1)}%"></div></div>`;
     } else {
       const aSel = state.qBasis === "after", bSel = state.qBasis === "before";
-      const left  = `<span class="qval${aSel?' qsel':' qdim'}" title="QHPP at the discounted (sale) price — quality-adjusted hours per dollar right now">${qAfter.toFixed(2)}</span>`;
-      const right = `<span class="qalt${bSel?' qsel':''}" title="QHPP at the full (non-sale) price — what the value is once the discount ends">${qFull.toFixed(2)} full</span>`;
+      const left  = `<span class="qval${aSel?' qsel':' qdim'}" title="QHPP at the discounted (sale) price — quality-adjusted hours per dollar right now">${fmtQ(qAfter)}</span>`;
+      const right = `<span class="qalt${bSel?' qsel':''}" title="QHPP at the full (non-sale) price — what the value is once the discount ends">${fmtQ(qFull)} full</span>`;
       const barV = activeQ(g);
       qhpp = `<div class="qtop">${left}${right}</div>`
            + `<div class="qbar"><div class="qfill" style="width:${fillPct(barV).toFixed(1)}%"></div></div>`;
