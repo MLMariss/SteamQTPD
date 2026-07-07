@@ -390,13 +390,15 @@ utilities and have **since been removed** (§4). `fetched_at` on every
 entry is groundwork for a future priority re-scrape whose order is: **partial entries first**
 (≥1 real value), **blank entries second**, **full-real last**.
 
-### 8.1 Coverage-recovery work (Phases A / B / C)
+### 8.1 Coverage-recovery work (Phases A / B live; C built then retired)
 
 Motivation: a full first pass left **~77% of entries blank** (~94k of 122k). Auditing the
 blanks showed two populations mixed together — genuinely-dead long-tail titles HLTB will
 never have, AND real games lost to title noise or transient first-pass failures (e.g.
 `Far Cry® New Dawn`, `EDENS ZERO` returned zero results under their raw store titles). Three
-independent, sequentially-shipped changes attack this:
+independent changes were built to attack this. **Phases A and B are live** (HLTB-only, no
+external dependency). **Phase C (IGDB) was built, debugged, evaluated, and deliberately
+retired** — see the Phase C note below for why and its current dormant state.
 
 **Phase A — title normalization (`hltb_match.py`).** `hltb_for` no longer searches the raw
 store title once; it walks an ordered, de-duplicated list of query variants (raw first, then
@@ -417,26 +419,42 @@ converging because each drained blank's `attempts` rises and backs its window of
 real games lost to noise/transients recover within days; genuinely-dead shovelware throttles
 down instead of being re-hit every run.
 
-**Phase C — IGDB secondary source (`hltb_igdb.py` → `hltb_igdb.json`).** HLTB matching is
-title-based and inherently lossy; IGDB is an **independent** completion-time source keyed off
-the **Steam appid** (via `external_games`, category 1 = Steam), so it recovers games HLTB
-structurally can't — raising the coverage *ceiling* rather than cleaning up within it. It is the
-**sole writer** of `hltb_igdb.json` and **never touches `hltb.json`** (one-writer-per-file
-preserved); the frontend merges by appid and prefers real HLTB, falling back to IGDB only where
-HLTB has no usable value. IGDB `game_time_to_beats` returns seconds in `hastily`/`normally`/
-`completely`; mapped `normally`→main (fallback `hastily`), `completely`→complete, with `extra`
-left to the **same** `hltb_estimate` model (so IGDB-sourced rows carry identical `est`/blue-flag
-treatment). Auth is Twitch OAuth client-credentials via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`
-GitHub secrets; the job no-ops cleanly (stays green) if the secrets are absent. Own workflow
-(`igdb.yml`, concurrency group `steam-igdb`, 6-hourly). **Frontend merge (Phase C.5):**
-`index.html` fetches `hltb_igdb.json` alongside the other layers and applies IGDB values only
-where HLTB left `hltb_avg == null`, tagging origin via `game.hltb_source` (`"hltb"` / `"igdb"`);
-IGDB rows reuse the existing `est` blue-flag rendering unchanged.
+**Phase C — IGDB secondary source (`hltb_igdb.py` → `hltb_igdb.json`). RETIRED 2026-07 —
+dormant in-repo, not wired to anything.** The idea: HLTB matching is title-based and lossy, so
+a second source keyed off the **Steam appid** could recover games HLTB structurally can't. IGDB
+was chosen (independent completion-time data, appid-linkable). It was implemented as the sole
+writer of `hltb_igdb.json` (never touching `hltb.json` — one-writer-per-file preserved), reusing
+the **same** `hltb_estimate` model so IGDB rows would carry identical `est`/blue-flag treatment.
+Auth is Twitch OAuth client-credentials (`IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` secrets).
 
-**Self-checks (`hltb_selfcheck.py`).** All three phases ship with fail-fast, pure-logic
-regression guards run at the top of `hltb_refresh.main()` (and importable by the IGDB job).
-A failed assertion **aborts before any file is written** — a loud red failure rather than
-silent coverage decay (same failure class as the `playtime_raw` silent-green bug).
+Two real bugs were found and fixed during bring-up, both worth remembering if this is ever
+revived: (1) the Steam-platform filter used the **deprecated** `category = 1` field, which
+silently returns zero rows on the current API — the correct filter is
+`external_game_source = 1` (probe-confirmed; the code now uses this). (2) `build_worklist`
+treated blank IGDB entries like matched ones, freezing ~110k first-pass blanks out of the queue
+for 90 days; fixed with an eager blank-retry tier (`IGDB_BLANK_EAGER_ATTEMPTS` / `_DAYS`).
+
+**Why retired:** with both bugs fixed, IGDB resolved ~96k of 110k appids to game ids, but its
+`game_time_to_beats` table holds only **~8,829 records total** across all of IGDB — a hard,
+small ceiling. The full run matched **1,471 games (1,007 net-new vs HLTB)**. Useful, but too
+small to justify a standing scheduled job and its maintenance surface (an overlap spot-check
+also showed IGDB and HLTB disagree per-game, sometimes >10×, often because one source has junk
+data — e.g. HLTB had RAGE at 0.6h, The Walking Dead at 0.5h). Decision: drop it.
+
+**Current dormant state:** `igdb.yml` has its `schedule:` trigger removed (`workflow_dispatch`
+only — it will not run on its own; a manual dispatch is the only way to fire it). The frontend
+merge was **reverted** — `index.html` no longer fetches `hltb_igdb.json` and is clean HLTB-only.
+The Phase C self-check (`check_phase_c`) was **removed** from `hltb_selfcheck.py`. Left in-repo
+but unreferenced: `hltb_igdb.py`, `hltb_igdb.json` (stale blank-heavy data), `igdb_wipe.py` +
+`igdb-wipe.yml`, and the diagnostics `igdb_probe.py` / `igdb_probe2.py` + `igdb-probe.yml` (a
+manual dropdown workflow; probe2's TEST 5 is what measured the 8,829-record ceiling). Nothing
+reads any of these. To fully revive: restore the `external_game_source` query (already correct
+in the file), re-add the schedule, re-add the frontend merge, and re-add the self-check.
+
+**Self-checks (`hltb_selfcheck.py`).** Phases A and B ship with fail-fast, pure-logic regression
+guards run at the top of `hltb_refresh.main()`. A failed assertion **aborts before any file is
+written** — a loud red failure rather than silent coverage decay (same failure class as the
+`playtime_raw` silent-green bug). (The Phase C guard was removed when IGDB was retired.)
 
 ---
 
@@ -728,6 +746,19 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **IGDB secondary source (Phase C) — built, evaluated, RETIRED.** Added an appid-keyed IGDB
+  completion-time source to backfill games HLTB can't title-match. Two bugs fixed during
+  bring-up (deprecated `category`→`external_game_source` filter; blank-entry worklist freeze),
+  then dropped: IGDB's `game_time_to_beats` table is only ~8,829 records total, yielding just
+  1,471 matches (1,007 net-new) — too small a ceiling to run continuously. Now dormant:
+  `igdb.yml` schedule removed (dispatch-only), frontend merge reverted, `check_phase_c` removed.
+  Files left in-repo but unreferenced (§8.1 has the full record + revival steps).
+- **HLTB coverage recovery — Phases A & B (live).** `hltb_match.py` normalizes store titles
+  (strips `®™`, edition/bracket tails, ALLCAPS, subtitles) and tries variants in order, recovering
+  real games lost to title noise; the raw title is always tried first so matches can only widen.
+  Blank re-scrape moved from a flat 60-day window to an attempt-scaled eager→backoff→freeze
+  curve plus a never-idle drain so the job stops quitting early with budget left. Fail-fast
+  self-checks (`hltb_selfcheck.py`) guard both at startup (§8.1).
 - **Shard health monitor.** `shard_health.py` (daily via `shard-health.yml`) writes `SHARDS.md`
   — per-shard count/size, evenness, staleness, and a games-to-100 MB projection — so the file
   size that once froze the pipeline is now watched pre-emptively (§9).
