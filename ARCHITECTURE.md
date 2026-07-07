@@ -399,6 +399,15 @@ utilities and have **since been removed** (§4). `fetched_at` on every
 entry is groundwork for a future priority re-scrape whose order is: **partial entries first**
 (≥1 real value), **blank entries second**, **full-real last**.
 
+**Estimator wiring status (open).** As of Jul 2026, `hltb.json` carries ~16,600 entries with
+the `est` flag, so the model has clearly run and populated estimates. But `hltb_estimate.py` is
+**not referenced by any scheduled workflow** — those estimates came from a manual/one-off run
+and are **not refreshed** as new HLTB reals land (a new real value should shift the ratio and
+re-estimate dependent legs, but nothing triggers it). Open item: add a scheduled job (or fold an
+estimate pass into `hltb_refresh.py`'s tail) so the `est` set stays current. Note: an earlier
+COVERAGE.md snapshot claimed "0 estimated" — that was a reading error (the flag is `est`, not
+`estimated`); estimates do exist.
+
 ### 8.1 Coverage-recovery work (Phases A / B live; C built then retired)
 
 Motivation: a full first pass left **~77% of entries blank** (~94k of 122k). Auditing the
@@ -559,6 +568,25 @@ to 5 is what makes the gray state actually render for the shakiest games. The fr
 `confident_reviews` from the meta and colors accordingly, and shows a **delta badge** vs
 Steam's flat % (e.g. `Δ-5` when long-playtime detractors drag the weighted rating below
 Steam).
+
+**Shard read + fail-loud (Jul 2026 fix).** This summarizer originally read the monolithic
+`playtime_raw.json`. When the raw store was split into 64 `playtime_raw/NN.json` shards (§9),
+`playtime_summarize.py` was updated to read the shards but **this script was missed** — it kept
+reading the now-deleted monolith, hit `RAW_FILE.exists() == False` every run, logged "nothing
+to rate" and **exited 0 without writing**. `ratings.json` silently froze at its last
+pre-migration output (6,855 games, 07-05) while `playtime.json` advanced normally — a coverage
+gap with no red run to signal it. Fixed by porting `iter_raw_shards()` from
+`playtime_summarize.py` (both now read the identical source; the legacy monolith remains a
+fallback if sharding is ever un-migrated). Two **fail-loud guards** were added so this class of
+silent freeze can't recur:
+- **No raw source at all** (neither shard dir nor monolith) → exit 0. Legitimate empty state.
+- **Source present but iteration yields 0 games** (shards unreadable / wrong shape) → **exit 1
+  and preserve the existing `ratings.json`** rather than overwriting it with an empty file. The
+  run goes red; the good data survives.
+
+The two summarizers were also moved from **once-daily to every 4h** (`playtime-summary` :47,
+`playtime-ratings` :51) — both are ~5s pure-local recomputes with no storefront cost, so daily
+cadence was needlessly lagging the ~8×/day raw scraper (§4).
 
 ---
 
@@ -770,6 +798,23 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Ratings summarizer un-frozen + fail-loud (Jul 2026).** `ratings_summarize.py` was still
+  reading the retired `playtime_raw.json` monolith after the shard migration, so every run hit
+  `RAW_FILE.exists() == False`, logged "nothing to rate" and **exited 0 without writing** —
+  silently freezing `ratings.json` at 6,855 games (07-05) while `playtime.json` advanced. Ported
+  `iter_raw_shards()` from `playtime_summarize.py` so both read the same 64 shards (monolith kept
+  as fallback), and added two fail-loud guards: no source → exit 0; **source present but 0 games
+  → exit 1 and preserve the existing file** (never overwrite good data with empty, run goes red).
+  On first run ratings jumped 6,855 → ~17,200, matching raw coverage (§10).
+- **Summarizer cadence daily → every 4h.** `playtime-summary` (:47) and `playtime-ratings` (:51)
+  were running once daily while raw scrapes ~8×/day, so summarized playtime and the weighted
+  rating lagged raw by up to a day. Both are ~5s pure-local recomputes with **no** storefront
+  budget cost, so the higher cadence is free; the lag is now hours, not a day (§4, §10).
+- **Price budget 60 → 120 min.** `price_and_sale.py` rebuilds the full ~104k non-free price set
+  each run; a full pass (price pass + on-sale end-date pass) needs ~75–90 min wall-clock during a
+  Steam sale, so at `RUN_MINUTES=60` it wrapped mid-pass at `TIME_BUFFER` every run — which is
+  what made prices look laggy. Bumped to 120 (`timeout-minutes` 75 → 135); the 3h cron still
+  leaves ~60 min headroom (§4, §7, §14).
 - **QHPP → QTPD rename + table restructure (Jul 2026).** Five frontend changes shipped together:
   (1) the metric was renamed **QHPP → QTPD (Quality Time Per Dollar)** end-to-end — title, logo,
   tagline, column header, tooltips, filter labels, formula text, internal sort key, CSS classes,
