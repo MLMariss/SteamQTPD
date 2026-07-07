@@ -266,16 +266,43 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `tags_refresh.py`   | `tags.json` | SteamSpy  |
 
 **Summarizers** (pure local recompute — read one file, write another; **no Steam calls**,
-so they touch no rate budget). Both read the sharded `playtime_raw/` set:
+so they touch no rate budget). Both read the sharded `playtime_raw/` set and each writes its
+own file, so one-writer-per-file holds:
 
-| Workflow file           | Script                  | Writes         | Cron       | Concurrency group |
-|-------------------------|-------------------------|----------------|------------|-------------------|
-| `playtime-summary.yml`  | `playtime_summarize.py` | `playtime.json`| `50 5 * * *` | `steam-playtime-summary` |
-| `playtime-ratings.yml`  | `ratings_summarize.py`  | `ratings.json` | `55 5 * * *` | `steam-playtime-ratings` |
+| Script                  | Writes         | Trigger                              | Concurrency group |
+|-------------------------|----------------|--------------------------------------|-------------------|
+| `playtime_summarize.py` | `playtime.json`| chained step in `playtime-raw.yml`   | (inherits `steam-playtime-raw`) |
+| `ratings_summarize.py`  | `ratings.json` | chained step in `playtime-raw.yml`   | (inherits `steam-playtime-raw`) |
 
-They run right after the overnight raw scrape and a few minutes apart, so each summarizes
-fresh data. Because they don't call Steam and finish in seconds, their 15-minute timeout is
-generous.
+**They run as chained steps at the end of `playtime-raw.yml`**, right after `playtime_refresh.py`
+commits the freshly-updated shards — so the lean frontend files refresh on *every* raw pass
+(`23 1,4,7,10,13,16,19,22 * * *`, ~8×/day), immediately tracking the shards instead of lagging
+them. Both steps use `if: always()`, so a soft-failing raw pass (e.g. a 403 storefront-budget
+wrap-up) still publishes summaries from whatever shards exist. Each summarizer still self-commits
+its one file with the standard `fetch → rebase → push` pattern.
+
+*History:* these were previously two standalone workflows (`playtime-summary.yml` :47, and
+`playtime-ratings.yml` :51, both `*/4`), which ran the summarizers every 4h independent of the
+raw scrape. Folding them into `playtime-raw.yml` made those two workflows redundant, so **both
+were retired** — the chained steps supersede them and guarantee the summarize-right-after-scrape
+ordering the split schedule couldn't.
+
+**Generated-doc workflows** (recompute a Markdown file from the live data; no Steam calls,
+each single-writes its `.md`):
+
+| Workflow file       | Script            | Writes        | Trigger                                          | Concurrency group |
+|---------------------|-------------------|---------------|--------------------------------------------------|-------------------|
+| `shard-health.yml`  | `shard_health.py` | `SHARDS.md`   | `35 6 * * *` (daily)                             | `shards-md`       |
+| `coverage.yml`      | `coverage.py`     | `COVERAGE.md` | `workflow_run` after **scrape** succeeds (~4×/day) | `coverage-md`     |
+
+`coverage.py` recomputes every coverage figure from the live files + shards (base universe,
+per-metric covered/%/missing sorted by % descending, the on-sale count, and the
+addressable-set framing) and self-commits `COVERAGE.md`. It uses only the standard library —
+no `pip install` step. It's triggered off the **scrape** completion (via `workflow_run` keyed
+to that workflow's exact name) so the snapshot always reflects the freshest `games.json`, the
+base everything is measured against; it also has `workflow_dispatch` for manual runs.
+`COVERAGE.md` is now a generated artifact — previously it was hand-authored and silently drifted
+as the data jobs kept running.
 
 **One-off (deletable) workflows.** `cleanup_shells.py` is a run-once utility that shares its
 target file's concurrency group so it can't clobber an in-progress scrape. The earlier
@@ -416,14 +443,17 @@ utilities and have **since been removed** (§4). `fetched_at` on every
 entry is groundwork for a future priority re-scrape whose order is: **partial entries first**
 (≥1 real value), **blank entries second**, **full-real last**.
 
-**Estimator wiring status (open).** As of Jul 2026, `hltb.json` carries ~16,600 entries with
-the `est` flag, so the model has clearly run and populated estimates. But `hltb_estimate.py` is
-**not referenced by any scheduled workflow** — those estimates came from a manual/one-off run
-and are **not refreshed** as new HLTB reals land (a new real value should shift the ratio and
-re-estimate dependent legs, but nothing triggers it). Open item: add a scheduled job (or fold an
-estimate pass into `hltb_refresh.py`'s tail) so the `est` set stays current. Note: an earlier
-COVERAGE.md snapshot claimed "0 estimated" — that was a reading error (the flag is `est`, not
-`estimated`); estimates do exist.
+**Estimator wiring status (live — resolved).** `hltb_estimate.py` is **not** a standalone job;
+it's a shared helper module that `hltb_refresh.py` imports as `HE` and calls in its fill loop
+(`HE.compute_ratios` once per run over the current corpus's real triples, then `HE.make_entry`
+/ `HE.raw_of` per game). So estimates are recomputed **on the live path every 2h** (`hltb.yml`,
+`53 */2 * * *`): as new real HLTB values land they shift the live median ratios and re-estimate
+the dependent legs. The `est` count therefore tracks the corpus rather than being frozen — a
+snapshot-to-snapshot diff shows it moving with the reals. This supersedes the earlier "open item:
+wire the estimator into a workflow" — that was written against the removed one-off
+`hltb_backfill.py` sweep; the live refresh path took over the job. (An even-earlier COVERAGE.md
+snapshot claimed "0 estimated"; that was a flag-name reading error — the field is `est`, not
+`estimated`.)
 
 ### 8.1 Coverage-recovery work (Phases A / B live; C built then retired)
 
@@ -601,9 +631,13 @@ silent freeze can't recur:
   and preserve the existing `ratings.json`** rather than overwriting it with an empty file. The
   run goes red; the good data survives.
 
-The two summarizers were also moved from **once-daily to every 4h** (`playtime-summary` :47,
-`playtime-ratings` :51) — both are ~5s pure-local recomputes with no storefront cost, so daily
-cadence was needlessly lagging the ~8×/day raw scraper (§4).
+Summarizer cadence evolved in two steps. They first moved from once-daily to every 4h as two
+standalone workflows (`playtime-summary` :47, `playtime-ratings` :51) — both are ~5s pure-local
+recomputes with no storefront cost, so daily cadence was needlessly lagging the ~8×/day raw
+scraper. They were then **folded into `playtime-raw.yml` as chained steps** (§4) that run right
+after `playtime_refresh.py` commits its shards, so summaries now refresh on *every* raw pass
+(~8×/day) and always track the shards they were computed from; the two standalone `*/4`
+workflows were retired as redundant.
 
 ---
 
@@ -826,6 +860,26 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **COVERAGE.md automated + summarizers folded into the raw job + doc reconciled (Jul 2026).**
+  Three related workflow changes. (1) **New `coverage.py` + `coverage.yml`.** `COVERAGE.md` was
+  hand-authored and silently drifted (a snapshot from that morning already trailed the live data
+  by a full base-universe count and ~3.5k playtime rows). `coverage.py` (stdlib-only) now
+  recomputes every figure from the live files + shards — base universe, per-metric
+  covered/%/missing **sorted by % descending**, the on-sale count, and the addressable-set
+  framing — and self-commits `COVERAGE.md`. `coverage.yml` triggers via `workflow_run` after the
+  **scrape** completes (~4×/day) so the snapshot always reflects the freshest `games.json`, plus
+  `workflow_dispatch` for manual runs; concurrency group `coverage-md` (§4). (2) **Summarizers
+  chained into `playtime-raw.yml`.** `playtime_summarize.py` and `ratings_summarize.py` now run
+  as `if: always()` steps at the tail of the raw job, right after `playtime_refresh.py` commits
+  its shards — so `playtime.json` / `ratings.json` refresh on every raw pass (~8×/day) and always
+  track the shards they were computed from. The two standalone `*/4` workflows
+  (`playtime-summary.yml` :47, `playtime-ratings.yml` :51) that this supersedes were **retired**
+  as redundant (§4, §10). (3) **Two stale doc claims corrected.** The §4 summarizer table had
+  ossified at the old `50 5`/`55 5` daily crons (superseded by the retirement above), and §8
+  listed HLTB estimation as an unwired "open item." In fact `hltb_estimate.py` is a shared helper
+  imported by `hltb_refresh.py` (as `HE`) and called live in the fill loop, so estimates already
+  recompute every 2h as new reals land — the "open item" was written against the removed one-off
+  `hltb_backfill.py` and is now closed (§8).
 - **Ratings summarizer un-frozen + fail-loud (Jul 2026).** `ratings_summarize.py` was still
   reading the retired `playtime_raw.json` monolith after the shard migration, so every run hit
   `RAW_FILE.exists() == False`, logged "nothing to rate" and **exited 0 without writing** —
