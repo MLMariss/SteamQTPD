@@ -130,19 +130,60 @@ def fetch_prices(appids):
 # --------------------------------------------------------------------------- #
 # 2. Batched sale end-dates via GetItems
 # --------------------------------------------------------------------------- #
+# Every key Steam has been observed to return a sale-end unix timestamp under, across
+# the various GetItems schema revisions. We check all of them so a schema tweak on
+# Valve's side can't silently null us out again.
+_END_KEYS = ("discount_end_date", "discount_end", "end_date", "ends_at", "expiry_time")
+
+
+def _coerce_ts(v):
+    """Return a plausible future-ish unix timestamp int, or None. Accepts ints, numeric
+    strings, and {'seconds': ...} / {'value': ...} wrapper objects Steam sometimes uses."""
+    if isinstance(v, dict):
+        v = v.get("seconds") or v.get("value") or v.get("time")
+    if v in (None, "", 0, "0"):
+        return None
+    try:
+        ts = int(v)
+    except (TypeError, ValueError):
+        return None
+    # sanity window: after 2017-07 and before 2100. Rejects millisecond values,
+    # release years, and other garbage.
+    return ts if 1_500_000_000 < ts < 4_100_000_000 else None
+
+
+def _iter_purchase_options(item):
+    """Yield every purchase-option dict, regardless of which container Steam used.
+    Different GetItems responses put discounts under best_purchase_option,
+    purchase_options[], or (rarely) a bare active_discounts[] at the item root."""
+    bpo = item.get("best_purchase_option")
+    if isinstance(bpo, dict):
+        yield bpo
+    for po in (item.get("purchase_options") or []):
+        if isinstance(po, dict):
+            yield po
+    # some responses omit the wrapper and hang active_discounts off the item itself
+    if isinstance(item.get("active_discounts"), list):
+        yield item
+
+
 def _extract_end_date(item):
-    bpo = item.get("best_purchase_option") or {}
+    """Robustly pull the earliest sale-end timestamp from any purchase-option shape.
+    Returns None if the item carries no dated discount (permanent price cut, or Steam
+    simply didn't send an end date)."""
     ends = []
-    for d in (bpo.get("active_discounts") or []):
-        v = d.get("discount_end_date")
-        if v in (None, "", 0, "0"):
+    for po in _iter_purchase_options(item):
+        discounts = po.get("active_discounts")
+        if not isinstance(discounts, list):
             continue
-        try:
-            ts = int(v)
-        except (TypeError, ValueError):
-            continue
-        if ts > 1_500_000_000:
-            ends.append(ts)
+        for d in discounts:
+            if not isinstance(d, dict):
+                continue
+            for k in _END_KEYS:
+                ts = _coerce_ts(d.get(k))
+                if ts is not None:
+                    ends.append(ts)
+                    break  # one hit per discount is enough
     return min(ends) if ends else None
 
 
@@ -151,10 +192,15 @@ def fetch_end_dates(appids):
     payload = {
         "ids": [{"appid": int(a)} for a in appids],
         "context": {"country_code": COUNTRY, "language": "english"},
-        "data_request": {"include_basic_info": False, "include_assets": False,
+        # include_basic_info + include_all_purchase_options are what actually populate the
+        # purchase-option / active_discounts blocks that carry the sale end date. With both
+        # off (the previous state) the response came back with no discount info at all, so
+        # every end date resolved to null — the silent bug that made every row show a flat
+        # "on sale". Keep the rest off to stay lean.
+        "data_request": {"include_basic_info": True, "include_assets": False,
                          "include_release": False, "include_tag_count": 0,
                          "include_reviews": False, "include_platforms": False,
-                         "include_all_purchase_options": False},
+                         "include_all_purchase_options": True},
     }
     params = {"input_json": json.dumps(payload, separators=(",", ":"))}
     if STEAM_API_KEY:
@@ -163,6 +209,17 @@ def fetch_end_dates(appids):
     if not isinstance(data, dict):
         return out
     items = ((data.get("response") or {}).get("store_items")) or []
+    # Diagnostic: set QHPP_DUMP_GETITEMS=1 to print the raw JSON of the first batch's
+    # first few items, then exit. Run this once via the workflow's manual dispatch to see
+    # the exact field Steam uses, from a runner that can actually reach the API.
+    if os.environ.get("QHPP_DUMP_GETITEMS") == "1":
+        log("=== RAW GetItems DUMP (first 3 items) ===")
+        for item in items[:3]:
+            log(json.dumps(item, indent=2)[:4000])
+            log("---")
+        log(f"=== _extract_end_date results: "
+            f"{[(it.get('appid') or it.get('id'), _extract_end_date(it)) for it in items[:10]]}")
+        sys.exit(0)
     for item in items:
         aid = item.get("appid") or item.get("id")
         if aid is None:

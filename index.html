@@ -229,7 +229,7 @@
   thead th{position:relative}
   .arrow{position:absolute; left:0; right:0; bottom:1px; text-align:center; margin:0;
         font-size:10px; line-height:1; color:var(--gold); pointer-events:none}
-  tbody td{padding:8px 12px; display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden}
+  tbody td{padding:5px 12px; display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden}
   /* cells stack their content vertically (single-child cells are unaffected; Released and
      QHPP have multiple direct children that must stack, not sit side by side). Horizontal
      placement of the stack is set by the alignment classes below via align-items. */
@@ -377,12 +377,12 @@
   .wrcell.lowconf .wrval{color:var(--muted-2); border-bottom:1px dotted var(--muted-2); padding-bottom:1px}
 
   /* Playtime cell — stacked recommend (▲) over not-recommend (▼) medians. */
-  .ptcell{display:flex; flex-direction:column; gap:3px; align-items:flex-end}
+  .ptcell{display:flex; flex-direction:column; gap:1px; align-items:flex-end; line-height:1.15}
   .ptcell.empty{color:var(--muted-2); font-family:var(--mono); text-align:right}
-  .ptrow{display:flex; align-items:baseline; gap:6px; cursor:help; white-space:nowrap}
+  .ptrow{display:flex; align-items:baseline; gap:6px; cursor:help; white-space:nowrap; line-height:1.15}
   .ptrow .ptup{color:var(--teal); font-size:12px}
   .ptrow .ptdown{color:var(--coral); font-size:12px}
-  .ptval{font-family:var(--mono); font-size:15px; color:var(--text); min-width:44px; text-align:right}
+  .ptval{font-family:var(--mono); font-size:14px; color:var(--text); min-width:44px; text-align:right; line-height:1.15}
   .ptval.na{color:var(--muted-2)}
   .ptval .pth{font-size:11px; color:var(--muted-2); margin-left:1px}
   .ptn{font-family:var(--mono); font-size:11px; color:var(--muted-2); min-width:30px; text-align:right}
