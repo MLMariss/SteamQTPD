@@ -2,8 +2,9 @@
 """
 Steam QHPP — playtime-weighted ratings summarizer
 =================================================
-Reads the BIG per-review file (playtime_raw.json, maintained by
-playtime_refresh.py) and writes a SMALL frontend-facing ratings.json: a
+Reads the BIG per-review raw data (the playtime_raw/ NN.json shards, maintained
+by playtime_refresh.py; falls back to the legacy playtime_raw.json monolith if
+sharding hasn't been migrated) and writes a SMALL frontend-facing ratings.json: a
 playtime-weighted "quality" rating per game, to sit alongside Steam's flat
 review %.
 
@@ -65,7 +66,8 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-RAW_FILE = HERE / "playtime_raw.json"        # read-only here (owned by playtime_refresh.py)
+RAW_FILE = HERE / "playtime_raw.json"        # legacy monolith (pre-shard fallback), read-only here
+SHARD_DIR = HERE / "playtime_raw"            # dir of NN.json shards (read-only here; owned by playtime_refresh.py)
 OUT_FILE = HERE / "ratings.json"             # THIS file's output (committed; frontend reads it)
 
 MIN_REVIEWS_FOR_RATING = 5                   # hard floor: below this, no rating computed at all
@@ -120,14 +122,35 @@ def plain_steam_pct(vals):
     return 100 * sum(1 for _, up in vals if up) / len(vals)
 
 
-def load_raw_games():
-    if not RAW_FILE.exists():
-        return {}, None
-    try:
-        d = json.loads(RAW_FILE.read_text(encoding="utf-8"))
-    except ValueError:
-        return {}, None
-    return d.get("games", {}), d.get("per_game_cap")
+def iter_raw_shards():
+    """Yield (games_dict, per_game_cap) for each shard, one at a time so peak memory
+    stays at ~one shard instead of the full ~1 GB working set. Falls back to the legacy
+    single playtime_raw.json if sharding hasn't been migrated yet. Mirrors
+    playtime_summarize.py so raw -> ratings and raw -> playtime read the same source.
+    """
+    if SHARD_DIR.is_dir():
+        for p in sorted(SHARD_DIR.glob("*.json")):
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            yield d.get("games", {}), d.get("per_game_cap")
+    elif RAW_FILE.exists():                         # pre-migration fallback
+        try:
+            d = json.loads(RAW_FILE.read_text(encoding="utf-8"))
+            yield d.get("games", {}), d.get("per_game_cap")
+        except ValueError:
+            pass
+
+
+def raw_source_present():
+    """True if there is *any* readable raw source (a non-empty shard dir or the legacy
+    monolith). Distinguishes 'no data yet' from 'summarizer is looking in the wrong
+    place' — the failure mode that silently froze ratings.json after the shard migration.
+    """
+    if SHARD_DIR.is_dir() and any(SHARD_DIR.glob("*.json")):
+        return True
+    return RAW_FILE.exists()
 
 
 def save_ratings(ratings, per_game_cap):
@@ -181,41 +204,66 @@ def git_commit():
 
 
 def main():
-    raw_games, per_game_cap = load_raw_games()
-    if not raw_games:
-        log("No playtime_raw.json yet (run playtime_refresh.py first); nothing to rate.")
+    # FAIL LOUD: distinguish "no raw data exists yet" (legitimate empty state, exit 0)
+    # from "raw data exists but this summarizer can't see it" (a wiring bug — e.g. the
+    # shard migration that silently froze ratings.json when this script still read only
+    # the deleted monolith). The latter must NOT pass green: it exits non-zero so the
+    # Action goes red instead of quietly writing nothing.
+    if not raw_source_present():
+        log(f"No raw playtime source found — neither {SHARD_DIR.name}/ shards nor "
+            f"{RAW_FILE.name}. Run playtime_refresh.py first; nothing to rate.")
         return 0
 
-    # Single pass: compute the three rating variants per eligible game. No Bayesian
-    # smoothing / global prior anymore — reliability is conveyed on the frontend by
-    # graying ratings with few reviews (n < CONFIDENT_REVIEWS), not by nudging the
-    # number. Games below MIN_REVIEWS_FOR_RATING get no rating at all.
+    # Single pass over every shard: compute the rating variants per eligible game.
+    # Games are partitioned across shards by appid, so a plain dict-update across shards
+    # can't collide. No Bayesian smoothing / global prior — reliability is conveyed on
+    # the frontend by graying ratings with few reviews (n < CONFIDENT_REVIEWS), not by
+    # nudging the number. Games below MIN_REVIEWS_FOR_RATING get no rating at all.
     ratings = {}
-    for aid, rec in raw_games.items():
-        reviews = rec.get("reviews") or {}
-        vals = _game_vals(reviews)
-        n = len(vals)
-        if n < MIN_REVIEWS_FOR_RATING:
-            continue
-        capped, med, _avg_w = capped_weighted(vals)
-        if capped is None:
-            continue
-        ratings[aid] = {
-            "steam": round(plain_steam_pct(vals), 1),   # one-vote %, for comparison
-            "raw": round(raw_weighted(vals), 1),        # uncapped (debug)
-            "capped": round(capped, 1),                 # 2x-median-capped (displayed)
-            "n": n,
-        }
+    per_game_cap = None
+    shards_read = 0
+    total_games_seen = 0
+    for raw_games, cap in iter_raw_shards():
+        shards_read += 1
+        if cap is not None:
+            per_game_cap = cap
+        for aid, rec in raw_games.items():
+            total_games_seen += 1
+            reviews = rec.get("reviews") or {}
+            vals = _game_vals(reviews)
+            n = len(vals)
+            if n < MIN_REVIEWS_FOR_RATING:
+                continue
+            capped, med, _avg_w = capped_weighted(vals)
+            if capped is None:
+                continue
+            ratings[aid] = {
+                "steam": round(plain_steam_pct(vals), 1),   # one-vote %, for comparison
+                "raw": round(raw_weighted(vals), 1),        # uncapped (debug)
+                "capped": round(capped, 1),                 # 2x-median-capped (displayed)
+                "n": n,
+            }
+
+    # FAIL LOUD guard #2: the source is present (shards on disk) but iteration yielded
+    # zero games. That's not a normal empty state — it means the shards are unreadable
+    # or shaped differently than expected. Refuse to overwrite a good ratings.json with
+    # an empty one; exit non-zero so the run goes red and the stale file is preserved.
+    if shards_read > 0 and total_games_seen == 0:
+        log(f"ERROR: read {shards_read} shard(s) but found 0 games inside. Refusing to "
+            f"overwrite ratings.json with an empty file. Leaving the existing file intact.")
+        return 1
 
     save_ratings(ratings, per_game_cap)
     git_commit()
     if ratings:
         confident = sum(1 for r in ratings.values() if r["n"] >= CONFIDENT_REVIEWS)
-        log(f"Rated {len(ratings)} games (>= {MIN_REVIEWS_FOR_RATING} reviews); "
+        log(f"Rated {len(ratings)} games (>= {MIN_REVIEWS_FOR_RATING} reviews) "
+            f"across {shards_read} shard(s) / {total_games_seen} raw games; "
             f"{confident} full-confidence (>= {CONFIDENT_REVIEWS}), "
             f"{len(ratings)-confident} grayed. Wrote ratings.json.")
     else:
-        log(f"No games met the >= {MIN_REVIEWS_FOR_RATING}-review floor yet. Wrote empty ratings.json.")
+        log(f"No games met the >= {MIN_REVIEWS_FOR_RATING}-review floor yet "
+            f"({total_games_seen} raw games across {shards_read} shard(s)). Wrote empty ratings.json.")
     return 0
 
 
