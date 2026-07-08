@@ -1,0 +1,53 @@
+name: "[ONE-OFF] Queue null-update games for forced re-scrape"
+
+# Manual-only. Runs queue_null_updates.py, which drops every stored game with a null
+# last_update_ts into catalog["force_refresh"] so the main scraper (1.) re-scrapes them
+# with the fixed News-API logic. This is a ONE-SHOT housekeeping trigger, not a scheduled
+# job — run it once, let the scraper drain the queue, then it's done.
+#
+# Safe by default: with no input it DRY-RUNS (prints the count, writes nothing). To
+# actually queue them you must type COMMIT in the confirm box, which guards against an
+# accidental 52k dump onto the shared storefront budget.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type COMMIT to write the queue. Anything else = dry-run (count only, no changes).'
+        required: false
+        default: 'dry-run'
+
+permissions:
+  contents: write             # commits catalog.json (only when confirmed)
+
+concurrency:
+  group: queue-null-updates
+  cancel-in-progress: false
+
+jobs:
+  queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # queue_null_updates.py uses only the standard library — no pip install needed.
+
+      - name: Configure git (script commits catalog.json itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Dry-run (count only) — always runs so the log shows the number first
+        run: python queue_null_updates.py
+
+      - name: Commit the queue (only when confirm == COMMIT)
+        if: ${{ github.event.inputs.confirm == 'COMMIT' }}
+        run: python queue_null_updates.py --commit
