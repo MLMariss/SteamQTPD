@@ -94,12 +94,22 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   Ties into the "isthereanydeal integration" idea below (cross-store / price-history).
   *High value, high effort; needs an explicit storage-vs-live design decision first.*
 
-- **Developer update cadence & size.** Beyond the single `last_update_ts` already in
-  `games.json`, surface *how often* and *how substantially* a game is patched — an
-  ongoing-support signal. *What to do:* scrape the Steam news/patchnotes feed
-  (`ISteamNews/GetNewsForApp` or the events endpoint) into a new file; derive update
-  frequency and a rough magnitude (post length / cadence) as a filterable column. *Medium
-  value, medium-high effort (new feed scrape + heuristics for "big" vs "small").*
+- **Developer update cadence & size. [Done — pipeline built; frontend backfill live.]**
+  Beyond the single `last_update_ts` already in `games.json`, surface *how often* and *how
+  substantially* a game is patched. *Done:* built as its own sharded pipeline (§9.5) rather
+  than a News-API heuristic — `updates_refresh.py` → `updates_raw/NN.json` (64 shards) →
+  `updates_summarize.py` → `updates.json`, keyed off Steam's native `event_type` (13/14/12 =
+  major/regular/minor) so "big vs small" is Valve's own taxonomy, not a post-length guess.
+  `updates.json` ships per-tier `last_*_ts`, windowed `counts` (30/90/180/365d), and capped
+  `dates` arrays for client-side window recompute. The frontend already loads `updates.json`
+  and uses `last_any_ts` to backfill null `last_update_ts` (News-API stays primary for now).
+  *Still open (tracked in §9.5): (1) the dedicated sortable/filterable **updates column** off
+  the `dates` arrays — currently only the backfill is wired, not a standalone column; (2) the
+  **precedence switch** — flip the event-based layer from fallback to primary once shard
+  coverage is broad enough to beat the News-API's ~42% null `last_update_ts`. Trigger: today
+  only 1/64 shards are populated (rotation just started; all 64 fill every ~16 days at 4×/day),
+  so leave News-API primary until the shards cover materially more games than News-API does,
+  then invert the precedence in `index.html`.*
 
 - **Mod support & mod count.** Flag whether a game is moddable and roughly how large its mod
   scene is — especially relevant to the survival-craft audience. *What to do:* query the
@@ -656,9 +666,16 @@ timestamp lists for client-side window recompute. One writer per file holds:
 `updates_refresh.py` owns `updates_raw/NN.json`; `updates_summarize.py` owns `updates.json`;
 the raw job never writes the summary.
 
-**Frontend integration is not yet wired** — this section covers the backend pipeline only.
-Surfacing it (a sortable/filterable "updates" column keyed off `updates.json`, using the shipped
-`dates` arrays to compute live window counts) is the next step.
+**Frontend integration — partially wired.** `index.html` already loads `updates.json` and uses
+it as a **fallback**: where games.json's News-API `last_update_ts` is null, it backfills from
+`last_any_ts` (max of the tier timestamps). Old News-API layer stays primary; this only fills
+nulls. Two steps remain: **(1) a dedicated sortable/filterable "updates" column** keyed off
+`updates.json`, using the shipped `dates` arrays to recompute live window counts against the
+clock; **(2) the precedence flip** — make the event-based layer primary and News-API the
+fallback. Both are **gated on shard coverage**, not on code: today only 1/64 `updates_raw/`
+shards are populated (rotation just started; full sweep every ~16 days at 4×/day), so `updates.json`
+covers far fewer games than the News-API's ~58% non-null `last_update_ts`. Keep News-API primary
+until the shards cover materially more games, then flip precedence and surface the column. See §3.1.
 
 ---
 
