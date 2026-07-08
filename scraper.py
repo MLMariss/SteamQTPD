@@ -84,11 +84,25 @@ MAX_RETRIES = 4
 # ?updates=true filter is driven by Steam update events; the public news feed doesn't
 # always tag them cleanly, so this is a good-enough heuristic: the patchnotes tag is
 # the strong signal, keywords are the fallback, and obvious sale posts are excluded.
-_UPDATE_TAGS = {"patchnotes"}
-_UPDATE_WORDS = ("update", "patch", "hotfix", "changelog", "release notes",
-                 "version", "build ", "bug fix", "bugfix", "fixes", "balance")
-_NOT_UPDATE = ("sale", "discount", "% off", "wishlist", "now available", "out now",
-               "launch", "release date", "pre-order", "preorder", "trailer", "soundtrack")
+#
+# NOTE (quick-fix layer): this is the cheap News-API fallback for last_update_ts only.
+# True major/minor magnitude comes from updates_refresh.py -> updates.json, which reads
+# the store events endpoint's structured event_type (12=minor, 13=major). This heuristic
+# stays as the broad, budget-free coverage floor for games that job hasn't reached yet.
+_UPDATE_TAGS = {"patchnotes", "mod_reviewed"}
+# Matched against title + feedlabel + the (now non-empty) body blurb, word-ish substrings.
+_UPDATE_WORDS = ("update", "patch", "hotfix", "changelog", "change log", "release notes",
+                 "patch notes", "patchnotes", "version", "build ", "rev ", "bug fix",
+                 "bugfix", "fixes", "fixed", "balance", "rebalance", "content update",
+                 "season", "new content", "improvements", "optimization", "optimisation")
+# Only strong sale/marketing signals — kept tight so a patch post that merely *mentions*
+# a sale in its body isn't wrongly excluded (body is now scanned, so this must not over-fire).
+_NOT_UPDATE = ("% off", "weekend deal", "midweek madness", "daily deal", "wishlist now",
+               "add to your wishlist", "pre-order", "preorder", "coming soon",
+               "release date trailer", "announcement trailer", "soundtrack",
+               "now available on", "out now on", "cross promotion")
+# Feedlabels that are pure marketing channels — never updates regardless of wording.
+_NOT_UPDATE_FEEDS = {"steam_updates_sale", "steam_community_announcements_sale"}
 
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 SEARCH_URL = "https://store.steampowered.com/search/results/"
@@ -417,10 +431,23 @@ def rating_from_reviews(appid):
 
 
 def _is_update_item(item):
-    """True if a news item looks like a game update/patch rather than a sale post."""
-    if any(t in _UPDATE_TAGS for t in (item.get("tags") or [])):
+    """True if a news item looks like a game update/patch rather than a sale post.
+
+    Quick-fix improvements over the old title-only check:
+      * the `patchnotes` tag is still the strong positive signal (short-circuits),
+      * the body blurb (`contents`) is now scanned too — previously discarded because
+        the fetch used maxlength=1, so any patch whose *title* dodged the keyword list
+        was invisible (this is what made e.g. Cyberpunk read as "no updates"),
+      * exclusions are tightened to strong sale/marketing phrases + marketing feeds only,
+        so a patch post that merely mentions a sale in its body isn't dropped.
+    """
+    tags = item.get("tags") or []
+    if any(t in _UPDATE_TAGS for t in tags):
         return True
-    text = (str(item.get("title", "")) + " " + str(item.get("feedlabel", ""))).lower()
+    feed = str(item.get("feedname", "")).lower()
+    if feed in _NOT_UPDATE_FEEDS:
+        return False
+    text = " ".join(str(item.get(k, "")) for k in ("title", "feedlabel", "contents")).lower()
     if any(bad in text for bad in _NOT_UPDATE):
         return False
     return any(w in text for w in _UPDATE_WORDS)
@@ -429,8 +456,13 @@ def _is_update_item(item):
 def last_update_from_news(appid):
     """Most recent *update* post timestamp via the News API. Lives on
     api.steampowered.com (huge budget, separate from the storefront limit), so this is
-    cheap to refresh broadly. Returns a unix ts or None (no update posts found)."""
-    params = {"appid": appid, "count": 20, "maxlength": 1, "format": "json"}
+    cheap to refresh broadly. Returns a unix ts or None (no update posts found).
+
+    maxlength=300 (was 1): the body blurb is now needed so _is_update_item() can match
+    on content, not just the title — the maxlength=1 truncation was the main reason real
+    patches were missed. 300 chars is enough for the keyword scan while keeping payloads
+    small; count=30 (was 20) gives a little more history headroom for chatty feeds."""
+    params = {"appid": appid, "count": 30, "maxlength": 300, "format": "json"}
     if STEAM_API_KEY:
         params["key"] = STEAM_API_KEY
     data = get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/",
