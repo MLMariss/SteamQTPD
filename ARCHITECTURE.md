@@ -128,8 +128,8 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   *Low-medium value, medium effort; "invasive or not" is a judgment call to encode.*
 
 - **Soften the `success:false` permanent-skip (robustness, not a new metric).** `build_record`
-  permanently skips any app whose Steam `appdetails` returns `success:false` (scraper.py lines
-  ~477/480), which lumps genuinely-dead/delisted apps together with **region-locked (cc=us)**
+  permanently skips any app whose Steam `appdetails` returns `success:false` (scraper.py
+  ~508–509), which lumps genuinely-dead/delisted apps together with **region-locked (cc=us)**
   titles and transient `success:false` blips — so a handful of legitimate games are dropped
   forever (≈731 currently on the skip list, an unknown fraction of them recoverable). *What to
   do:* on `success:false`, retry once (or in an alternate region) before skipping, or file to a
@@ -311,6 +311,14 @@ addressable-set framing) and self-commits `COVERAGE.md`. It uses only the standa
 no `pip install` step. It's triggered off the **scrape** completion (via `workflow_run` keyed
 to that workflow's exact name) so the snapshot always reflects the freshest `games.json`, the
 base everything is measured against; it also has `workflow_dispatch` for manual runs.
+
+> **Fixed (was silently broken since the workflow rename).** `coverage.yml`'s `workflow_run`
+> trigger named the workflow `"Scrape Steam -> games.json"`, but the "Workflow renumbering"
+> change below renamed `scrape.yml` to `"1. Steam game catalog -> games.json"`. GitHub's
+> `workflow_run` trigger matches on the upstream workflow's exact current `name:` string, so
+> that link was severed — `coverage.yml` stopped firing automatically after a scrape (manual
+> `workflow_dispatch` still worked, masking the gap). Caught during a documentation audit and
+> fixed by updating the `workflows:` array to the new name (2026-07).
 `COVERAGE.md` is now a generated artifact — previously it was hand-authored and silently drifted
 as the data jobs kept running.
 
@@ -342,8 +350,10 @@ countdown.
 
 **`hltb.json`** — `{ "<appid>": { hltb_main, hltb_extra, hltb_complete, hltb_avg,
 raw: {…}, hltb_est: ["extra", …], fetched_at } }`. `raw` holds the ground-truth values as
-returned by HLTB; the top-level values may include estimates filled from the genre ratio
-(§8). `hltb_est` lists which of the three were estimated (drives the blue flag). `fetched_at`
+returned by HLTB; the top-level values may include estimates filled from the typical
+main/extras/completionist ratio (§8 — corpus-wide, magnitude-bucketed, not genre-based despite
+the name this feature used to go by). `hltb_est` lists which of the three were estimated
+(drives the blue flag). `fetched_at`
 is groundwork for the priority re-scrape.
 
 **`tags.json`** — `{ "tags": { "<appid>": ["Roguelike", …] } }`. SteamSpy user tags; the
@@ -403,9 +413,39 @@ The only job that discovers new games. Each run:
    is therefore never a data-loss risk.
 
 Per-game cost is ~2 storefront calls (appdetails + appreviews), which sets the pace ceiling
-(§14). New games are seeded ahead of the queue via `seeds.txt` — one appid, store URL, or
-search term per line, **human-edited only**; the scraper reads it but never writes to it (a
-seeds ledger tracks what's been consumed so a seed isn't re-processed forever).
+(§14). New games are seeded ahead of the queue via `seeds.txt` — human-edited only, the
+scraper never writes to that file — but the reconciliation against it (`reconcile_seeds` in
+scraper.py) is a **live, declarative diff**, not a one-shot consume:
+
+- **Three seed kinds**, one per line: a bare numeric **appid**, a Steam store **URL**
+  (`search_params` parses its query string into SteamSpy/store search params), or a plain
+  **search term**. Lines starting with `#` are comments.
+- **`!` prefix = force.** `!2495100` or `!survival craft` forces a one-shot re-scrape of that
+  seed's already-**stored** matches (bypasses the normal `last_modified` change-detection).
+  It fires once per edit, then latches so it doesn't loop — remove and re-add the `!` to force
+  again. Under the hood this pushes appids into `catalog["force_refresh"]`, the **same** queue
+  `queue_null_updates.py` (§16) uses; `select_work()` drains it ahead of the normal refresh
+  queue every run.
+- **Every run reconciles the full seed list from scratch** against `catalog["seeds_ledger"]`
+  (`{seed_key: {kind, resolved_ts, ids, forced_applied}}`), rather than a one-time consume:
+  removing a line **"forgets"** it (the ledger entry is dropped so `catalog.json` stays clean;
+  already-scraped games are **never** deleted from `games.json`), and `catalog["priority"]` is
+  fully **rebuilt** each run as the union of every currently-active seed's resolved ids — a
+  stale `priority` value left over from a since-removed seed can never linger.
+  Bare-appid seeds cost zero network to resolve; term/URL seeds are **live-re-resolved** at
+  most once per `SEED_RESOLVE_TTL` (24h), so a search term keeps catching newly-released
+  matching games over time instead of freezing at its first-seen result set.
+- **Picked up mid-run, not just at start.** A running scrape re-fetches `origin/main`'s
+  `seeds.txt` (`fetch_origin_seeds`, via `git show origin/main:seeds.txt` — it never reads the
+  local working copy for this) and re-reconciles at every checkpoint (~`CHECKPOINT_SECONDS`,
+  ~10 min), so an edit lands within the *current* run rather than waiting up to ~6h for the
+  next one. Manually dispatching the scrape workflow is only needed for instant pickup.
+- **The release gate is absolute.** Seed priority only changes *order* — an unreleased /
+  coming-soon match is never stored early; it still waits in `catalog["pending"]` (§6 step 3)
+  and is scraped the moment its release date passes. Seeds cannot pull shell entries forward.
+- **`seeds_log.txt`** (git-committed, scraper-owned, append-only) logs every add / remove /
+  re-resolve / force event in human-readable form (`seed_log()`), giving an audit trail of
+  what the seed list has done over time independent of `git log` on `seeds.txt` itself.
 
 ---
 
@@ -433,11 +473,34 @@ and show `—`). QTPD is driven by the **average** of main / main+extras / compl
 partial data used to distort the score badly — a main-only game got `avg == main`
 (understated), a completionist-only game got `avg ==` that large number (overstated).
 
-**The estimation model.** `hltb_estimate.py` fills the missing legs from the **genre-average
-ratio** between the three times. Across all games with a full real triple, the **median**
+**The estimation model.** `hltb_estimate.py` fills the missing legs from the **typical ratio**
+between the three times — computed **corpus-wide across every game with real data, not
+per-genre** (an earlier informal name for this, "genre-average ratio," still surfaces
+elsewhere in older prose/comments; there is no genre grouping anywhere in the code). Across
+all games with a full real triple, the **median**
 ratio is ~`1 : 1.39 : 2.19` (the **mean**, ~`1 : 1.86 : 4.21`, is skewed by grind-heavy
-outliers — median is the right central tendency here). The ratio is computed **live** from
-the current data with a frozen fallback, and estimates anchor on whatever real value exists.
+outliers — median is the right central tendency here; the mean figure is a one-off historical
+observation, not a value stored anywhere in code). The ratio is computed **live** from the
+current data (needs `MIN_TRIPLES_FOR_LIVE = 30` real triples before it's trusted; below that
+it uses the frozen `FALLBACK` constants — the median over the 327 real triples on hand when
+the model was written), and estimates anchor on whatever real value exists, routing through
+the *nearest* real neighbor first (main↔extra and extra↔complete are adjacent and more
+reliable than jumping straight from main to completionist).
+
+**Magnitude-bucketed ratios (refinement on top of the flat model).** A single flat ratio
+applied linearly over-inflates the extremes — e.g. `main/complete` is empirically ~0.60 for
+short games but ~0.12 for grind/idle games, so a flat ~0.46 would turn a 1200h completionist
+entry into a ~549h estimated main-story time against an empirical ~142h. To fix this, each of
+the six ratio directions is **bucketed by the anchor value's own magnitude** (`C_EDGES = [10,
+30, 80, 200]` for a real-`complete` anchor, `M_EDGES = [5, 15, 40, 100]` for real-`main`,
+`E_EDGES = [8, 20, 50, 150]` for real-`extra` — 5 buckets each) and the **per-bucket live
+median** is used instead of the flat one. A bucket needs `MIN_PER_BUCKET = 15` live samples to
+be trusted; thinner buckets fall back to a frozen per-bucket constant (`FALLBACK_BUCKETS`,
+same cold-start philosophy as `FALLBACK`), then to the flat ratio as a last resort. Validated
+on held-out data, this cuts median estimate error on grind games (`complete > 200h`) from
+**~320% (flat) to ~58% (bucketed)**. `_ratio()` always prefers the bucketed value when present;
+the flat model remains as the fallback chain's base case, so the two are not competing
+implementations — the bucketed model is strictly additive precision on top of it.
 
 **Anti-pollution guard.** Estimates must never train the ratio, or the model would drift
 toward its own guesses. `compute_ratios` reads from the `raw` sub-object **only** — this is
@@ -451,9 +514,22 @@ its inputs are estimated. Zeros are normalized to null (treated as missing, not 
 
 **Backfill & re-scrape.** `hltb_backfill.py` applied the model to existing entries once
 (via `backfill-hltb.yml`, sharing the `steam-hltb` concurrency group); both were run-once
-utilities and have **since been removed** (§4). `fetched_at` on every
-entry is groundwork for a future priority re-scrape whose order is: **partial entries first**
-(≥1 real value), **blank entries second**, **full-real last**.
+utilities and have **since been removed** (§4). `fetched_at` on every entry drives a live
+priority re-scrape whose order is **partial entries first** (≥1 real value, re-checked every
+`RESCRAPE_PARTIAL_DAYS = 14`), **blank entries second** (governed by the attempt-scaled window
+below), **full-real last** (re-checked only every `RESCRAPE_FULL_DAYS = 365`, since a complete
+real triple is the least likely to have changed).
+
+**Fixed data-loss edge case (2026-07).** Re-scraping a partial or full entry used to carry a
+sharp edge: `store_entry` built each entry fresh from the current fetch via
+`HE.make_entry(...)` with **no merge** against the prior entry's `raw`. `hltb_for` can
+legitimately return an all-blank (no-match) result on a re-scrape — not just on a first
+attempt — if every title-variant query comes back a clean miss that run. That used to let a
+blank result **overwrite** a previously partial-or-full entry's real `raw` data, contradicting
+the function's own inline comment ("a blank never wipes existing real data"). `store_entry` now
+guards this explicitly: a fully-blank fetch result over an entry with any existing real `raw`
+value is discarded (only `fetched_at` is restamped, so the entry isn't immediately re-queued as
+stale) rather than replacing the entry. Covered by a new `hltb_selfcheck.py` regression case.
 
 **Estimator wiring status (live — resolved).** `hltb_estimate.py` is **not** a standalone job;
 it's a shared helper module that `hltb_refresh.py` imports as `HE` and calls in its fill loop
@@ -491,8 +567,10 @@ first few attempts, backing off (30d) once a title looks dead, near-freezing (18
 Each blank carries an `attempts` counter (`store_entry` increments on a miss, clears on a
 match). Additionally, when the windowed re-scrape queue empties but time-budget remains, a
 **never-idle drain** (`build_idle_drain`) keeps working the least-tried, least-recently-tried
-blanks (skipping the frozen tier) so the job never quits early with budget on the clock —
-converging because each drained blank's `attempts` rises and backs its window off. Net effect:
+blanks — skipping the frozen tier when `IDLE_DRAIN_SKIP_FROZEN = True`, capped at
+`IDLE_DRAIN_MAX = 4000` drained blanks per run — so the job never quits early with budget on
+the clock, converging because each drained blank's `attempts` rises and backs its window off.
+Net effect:
 real games lost to noise/transients recover within days; genuinely-dead shovelware throttles
 down instead of being re-hit every run.
 
@@ -528,6 +606,20 @@ manual dropdown workflow; probe2's TEST 5 is what measured the 8,829-record ceil
 reads any of these. To fully revive: restore the `external_game_source` query (already correct
 in the file), re-add the schedule, re-add the frontend merge, and re-add the self-check.
 
+**IGDB implementation notes (for a future revival).** `hltb_igdb.py` batches appid lookups at
+`BATCH = 200` per `external_games` query, paced at `IGDB_DELAY = 0.30`s. It reuses
+`hltb_estimate`'s bucketed model for `est`/blue-flag treatment, but only ever populates `main`
+and `complete` from IGDB's `game_time_to_beats` table — `extra` (main+extras) has no IGDB
+equivalent, so it's **always** left for the shared estimator to fill, never sourced directly.
+`main` itself has a quiet fallback: `times_from_ttb` uses IGDB's "normally" completion time
+when present, but silently substitutes the much-shorter "hastily" (speed-run) time when
+"normally" is absent — worth knowing before trusting an IGDB-sourced `main` figure at face
+value. `igdb_wipe.py` (manual-dispatch-only, typed-confirmation-gated `igdb-wipe.yml`) resets
+`hltb_igdb.json` to an empty `{"igdb": {}}`; it exists because the original deprecated-filter
+bug (`category = 1`) poisoned ~110k entries with fresh-timestamp blanks the worklist would
+otherwise have skipped for 90 days, and a clean wipe was the only way to give the fixed query a
+fair baseline.
+
 **Self-checks (`hltb_selfcheck.py`).** Phases A and B ship with fail-fast, pure-logic regression
 guards run at the top of `hltb_refresh.main()`. A failed assertion **aborts before any file is
 written** — a loud red failure rather than silent coverage decay (same failure class as the
@@ -543,8 +635,9 @@ Surfaces **how long people actually play**, split by whether they recommended th
 set; the frontend only needs medians. So `playtime_refresh.py` maintains the big raw working
 set (sharded — see below) and `playtime_summarize.py` distills it into the lean `playtime.json`.
 
-**Raw scraper.** Pulls reviews via Steam's `appreviews` and stores `playtime_forever` (total
-hours) per review. **`playtime_at_review` is deliberately not used** (decided and re-decided).
+**Raw scraper.** Pulls reviews via Steam's `appreviews` and stores `playtime_forever`
+(**minutes**, Steam's native unit — converted to hours only at display time) per review.
+**`playtime_at_review` is deliberately not used** (decided and re-decided).
 Reviews are keyed by **`recommendationid`**, not cursor offset — cursor positions shift as
 new reviews arrive, so identity keying is what makes resume correct under both new-review
 arrival and playtime drift. It resumes each game by review identity, catching new reviews
@@ -648,6 +741,22 @@ that blew past the 100 MB wall for playtime, so `updates_raw/NN.json` is sharded
 future key change. (It's far lighter than playtime — timestamps, not review objects — so the
 100 MB ceiling is distant. NOTE: `shard_health.py` currently monitors only `playtime_raw/`;
 pointing it at `updates_raw/` too is a cheap future add if these shards ever grow.)
+
+**Fixed: the reshard path didn't used to commit (2026-07).** `updates_refresh.py`'s
+`ensure_sharding()` → `reshard_all()` (triggered whenever the stamped `shard_ver` doesn't match
+`SHARD_KEY_VER`, currently `1`) rewrote all 64 shard files **locally on the runner** but never
+pushed them — unlike `playtime_refresh.py`'s equivalent path, which does push right after
+resharding. Since `SHARD_KEY_VER` had never changed since ship, this had never fired in
+practice, so there was no live impact — but if it were ever bumped, a full reshard would have
+happened on an ephemeral GitHub Actions runner and then been **silently discarded** except for
+whichever single bucket that run's normal end-of-run commit happened to cover. Fixed by
+extracting `_robust_commit_shards(msg, names)` (a multi-shard-capable generalization of the
+existing single-shard push, mirroring `playtime_refresh.py`'s `_robust_commit`) and having
+`reshard_all()` call it with all 64 shard filenames right after rewriting them; `git_commit_shard`
+is now a one-line wrapper over the same helper. Verified locally against a scratch shard set
+(pre-fix: reshard produced 64 files with no push call at all; post-fix: the commit path is
+correctly reached and would push all 64 — it no-ops only because local runs outside Actions
+skip git by design, same as every other writer in this codebase).
 
 **Resumability / safety** mirror the playtime writer exactly: identity-keyed by event `gid`
 (re-runs never double-count; a known gid is already held), **refresh-on-revisit** (a post's
@@ -784,6 +893,10 @@ column, dropping the old standalone Discount column: 12 columns → 11.)
   or `review_count` is active.
 - **Weighted** shows the capped % next to Steam's, with the Δ badge and low-confidence gray.
 - **Trend** is recent − all-time (improving/stable/declining), gated on staleness.
+- **Released** shows more than the raw date: a computed **age string** (`ageStr()`, e.g.
+  "15.2 yrs old" / "N mo old") stacked with a **last-content-update recency badge**
+  (`updatedStr()`, e.g. "upd 3mo" / "no upd", full date on hover) — both derived client-side
+  from `release_ts` / `last_update_ts`, not separate stored fields.
 - **Price / Sale** is one merged column: struck full price on top, sale price below with the
   discount badge inline to its right. Its **header is split** into two independently-clickable
   sort targets — "Price" (sorts by current price) and "Sale" (sorts by discount depth) — and the
@@ -819,7 +932,11 @@ still open (§3.2).
 min & max price · min-reviews bands (0/10/100/1k/5k+, independent toggles, gaps allowed) ·
 review-trend multi-toggle · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **QTPD range**
 log-slider that fits current results · **tag rail** (click to require → exclude → clear,
-with live per-tag counts, two-tier with a "+N more" expander). Score controls: **QTPD price
+with live per-tag counts, two-tier with a "+N more" expander). The rail groups tags into three
+fixed categories — **Players & Mode / Genre / Style, Theme & Feel** — via a hardcoded
+`TAG_GROUPS`/`TAG_CAT` taxonomy, plus a `CANON_GROUPS` synonym map that canonicalizes
+near-duplicate tags (e.g. different "co-op" spellings collapse to one chip) before counting
+and display. Score controls: **QTPD price
 basis** (Sale/Full) and **HLTB metric** (main/+extras/100%/avg) both feed `computeQ`;
 **HLTB data** (all incl. estimates / real only) — **real is the default** (estimates hidden
 and not used for the selected metric).
@@ -851,24 +968,40 @@ when not `up`). Pagination is infinite-scroll at 100 / 500 / 2000 per page.
 
 **Thumbnails & hiding.** Capsule art with a hover-enlarge popover; a broken-image fallback
 chain; adult-tagged art is **blurred with an 18+ badge** (permanent until a real age gate
-exists). Each row has a slim `[x]` hide button; hidden games can be un-hidden.
+exists). The 18+ flag is a **client-side heuristic** — a game's tag list is matched against a
+hardcoded `ADULT_TAGS` set — not a Steam-provided age-rating field, so coverage is only as
+good as SteamSpy's tagging. Each row has a slim `[x]` hide button; hidden games can be
+un-hidden, but the hide list is **session-only and deliberately excluded from URL
+serialization** (unlike every other filter/sort choice, §11 *State in the URL* below) — a
+reload or a shared link does not carry hidden games with it.
 
 ---
 
 ## 12. Wishlist import & the Cloudflare Worker
 
-The browser can't read a Steam wishlist cross-origin, so a small Worker (source in
-`worker/`, free tier) proxies it. `parseSteamId` in `index.html` accepts **all five ID
-formats** — profile URL, custom `/id/<name>` URL, bare vanity name, SteamID64, `STEAM_0:0:…`
-(SteamID2), and `[U:1:…]` (SteamID3). Numeric formats convert **client-side** via BigInt
-math; vanity names resolve through the Worker's `/?vanity=` endpoint
-(`ISteamUser/ResolveVanityURL`). The Worker's `/?steamid=` endpoint returns the wishlist for
-cross-referencing the catalog (and optional wishlist-only filtering). It requires the
-profile's **game details to be public**.
+The browser can't read a Steam wishlist cross-origin, so a small Cloudflare Worker (free tier)
+proxies it. **This repo does not contain the Worker's source** — there is no `worker/`
+directory in git history; this deployment's `WISHLIST_PROXY` constant points at an
+already-deployed Worker (`https://qhpp-wishlist.mlmariss.workers.dev`) that lives outside the
+repo. Reviving/replacing it means writing a Worker that implements the two endpoints below
+from scratch (see README's "Wishlist import (optional)" section for the shape).
 
-Point `WISHLIST_PROXY` (top of the wishlist code in `index.html`) at the deployed Worker
-URL. If the Worker isn't configured, the feature **self-disables** and the rest of the site
-is unaffected — no backend is required for browsing, filtering, or sorting.
+`parseSteamId` in `index.html` recognizes **six named ID formats** across 5 regex branches
+(one branch handles both the profile-URL and bare-SteamID64 cases) — profile URL, custom
+`/id/<name>` URL, bare vanity name, SteamID64, `STEAM_0:0:…` (SteamID2), and `[U:1:…]`
+(SteamID3). Numeric formats convert **client-side** via BigInt math; vanity names resolve
+through the Worker's `/?vanity=` endpoint (`ISteamUser/ResolveVanityURL`). The Worker's
+`/?steamid=` endpoint returns the wishlist for cross-referencing the catalog (and optional
+wishlist-only filtering). It requires the profile's **game details to be public**.
+
+Point `WISHLIST_PROXY` (top of the wishlist code in `index.html`) at the deployed Worker URL.
+"Self-disables" is a simplification: there's no code that hides or disables the wishlist UI on
+load. The only literal self-disable check is `WISHLIST_PROXY.includes("REPLACE-WITH-YOUR-WORKER")`
+— if the constant still holds that placeholder string, the import action is blocked with a
+toast before it tries to fetch anything. If instead the constant points at a real but
+unreachable/misconfigured URL, the **Import** button stays fully visible and clickable; each
+attempt just fails with a "Couldn't reach the wishlist service" toast. Either way the rest of
+the site (browsing, filtering, sorting) is unaffected — no backend is required for that.
 
 ---
 
@@ -896,7 +1029,14 @@ Each job's knobs live at the top of its own script:
   and the shard-key version. `shard_of(appid) = (appid // 10) % NSHARDS`; the `// 10` spreads
   the (near-100%-multiple-of-10) appids evenly instead of piling them into even buckets. Bump
   `SHARD_KEY_VER` whenever `shard_of()` changes — `ensure_sharding()` reshards in place on the
-  next run when the version stamped in the shards doesn't match.
+  next run when the version stamped in the shards doesn't match. `updates_raw/` uses the same
+  key/count but its own `SHARD_KEY_VER` (currently `1`, versioned independently of playtime's).
+- **`WARN_MB` (50) / `CRIT_MB` (80)** (`shard_health.py`) — per-shard size thresholds for the
+  🟡/🔴 status flags in `SHARDS.md`, against the 100 MB hard GitHub limit.
+- **`MIN_TRIPLES_FOR_LIVE` (30) / `MIN_PER_BUCKET` (15)** (`hltb_estimate.py`) — cold-start
+  gates for the live ratio model (§8): below 30 real triples overall, the flat ratio falls back
+  to frozen constants; below 15 samples in a given magnitude bucket, that bucket falls back to
+  its own frozen value before the flat ratio.
 - **`STEAM_API_KEY`** (secret) — enables the keyed catalog enumeration + change-detection.
 
 ---
@@ -905,14 +1045,14 @@ Each job's knobs live at the top of its own script:
 
 The scraper captures ~1,000–1,200 games/hour (storefront limit ÷ ~2 calls/game). The catalog
 has since reached full coverage — **~122.7k stored** against a ~173k app universe, with the
-fresh frontier essentially exhausted — so `scrape.py` now finishes a run in **~7 minutes** and
+fresh frontier essentially exhausted — so `scraper.py` now finishes a run in **~7 minutes** and
 mostly does `last_modified`-triggered refreshes. Faster = raise `RUN_MINUTES` or add off-peak
 `cron` times. Cost is **$0** — Actions is free/unlimited on public repos; the only ceiling is
 the 6-hour per-job limit. Each daily commit also keeps the repo active — **GitHub disables
 scheduled workflows after 60 days of no commits**, so the steady commits are load-bearing for
 the whole system staying alive.
 
-**Playtime scale-up (storefront budget reallocation).** Because `scrape.py` now uses so little
+**Playtime scale-up (storefront budget reallocation).** Because `scraper.py` now uses so little
 of its window, the shared ~200/5min storefront budget has headroom. The playtime raw pass was
 scaled from **4 → 8 cron slots** (`:23` every 3h) and **`STEAM_DELAY` 2.0 → 1.5s**, roughly
 **2× review-time throughput** (~12h/day → ~24h/day, near-continuous). At 1.5s it sits at the
@@ -930,7 +1070,10 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   arrives; they never train the ratio.
 - **Weighted rating** needs public playtime and enough reviews: none below 5, grayed 5–9.
 - **Tags** fall back to Steam genres when SteamSpy lacks a game.
-- **Sale end times** collapse offline when expired, so countdowns stay honest.
+- **Sale end times** collapse offline when expired — `expireSaleIfEnded()` (§11) actively
+  zeroes `discount_pct` and resets `price_final` to `price_initial` in the merged in-memory
+  record once `discount_end` has passed, not just the countdown UI, so the displayed price
+  stays honest between price refreshes.
 - **Dataset size** — the per-review working set is **sharded** (`playtime_raw/NN.json`, 64
   buckets) because one file would exceed GitHub's 100 MB limit; shards run ~18 MB at full
   coverage, and `SHARDS.md` monitors headroom (§9). Every other file is single and comfortably
@@ -1053,7 +1196,7 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   path was rewritten to a robust single-writer push that hard-resets to `origin/main`, re-applies
   its shard, and **fails loud (red run)** instead of silently — and `playtime_summarize.py` now
   reads all shards (§8, §9).
-- **Playtime scale-up: 4 → 8 slots, `STEAM_DELAY` 2.0 → 1.5s.** With `scrape.py` finishing in
+- **Playtime scale-up: 4 → 8 slots, `STEAM_DELAY` 2.0 → 1.5s.** With `scraper.py` finishing in
   ~7 min and the frontier exhausted, the shared storefront budget had headroom, so the playtime
   raw pass now runs `:23` every 3h (near-continuous, ~24h/day vs ~12h/day) at 1.5s — roughly 2×
   review-time throughput (§14). Leans on the storefront ceiling; `recent_refresh.py` proves

@@ -323,9 +323,27 @@ def store_entry(hltb, aid, res, ratios, now):
     - MATCH  -> store the filled entry and drop any `attempts` (it's resolved).
     - BLANK  -> store the blank and increment `attempts` (carry prior count forward),
                 so build_rescrape_queue can back its retry window off over time.
-    Real values always overwrite; a blank never wipes existing real data because the
-    caller only reaches here with a non-None res, and make_entry preserves raw."""
+    - BLANK over a PRIOR real entry -> guarded below: `make_entry` always builds `raw`
+      fresh from `res` alone (it does not merge with the entry already in `hltb`), so
+      without this guard a re-scrape (run_rescrape also calls store_entry) that comes
+      back a clean, all-None miss for a title that previously had real data would
+      silently erase it. `hltb_for` can legitimately return that all-None "blank" dict
+      on a re-scrape, not just on a first attempt, whenever every query variant is a
+      clean miss (as opposed to a transient error, which surfaces as `None` and is
+      filtered out by the caller before `store_entry` is ever invoked). Real values
+      always overwrite; a blank must never wipe existing real data — that's the
+      invariant this guard restores."""
     prior = hltb.get(aid) or {}
+    is_blank_result = not any(res.get(k) is not None for k in ("main", "extra", "complete"))
+    if is_blank_result:
+        prior_m, prior_e, prior_c = HE.raw_of(prior)
+        if HE.is_real(prior_m) or HE.is_real(prior_e) or HE.is_real(prior_c):
+            # Keep the prior real entry untouched; just restamp fetched_at so it isn't
+            # immediately re-queued as stale under the "full"/"partial" staleness window.
+            log(f"  hltb {aid}: re-scrape came back blank, keeping prior real data")
+            prior["fetched_at"] = int(now)
+            hltb[aid] = prior
+            return True
     entry = HE.make_entry(res.get("main"), res.get("extra"),
                           res.get("complete"), res.get("match"), now, ratios)
     if entry.get("avg") is not None:

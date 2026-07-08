@@ -201,7 +201,15 @@ def ensure_sharding():
 def reshard_all():
     """Re-bucket every stored game under the current shard_of(). Reads all shards into
     memory (bounded by PER_GAME_CAP), re-distributes, rewrites all. Rare (only on key
-    change) so simplicity beats cleverness."""
+    change) so simplicity beats cleverness.
+
+    Commits + pushes all NSHARDS shards afterward (mirrors playtime_refresh.py's
+    ensure_sharding -> _robust_commit path). Without this, a resharded set only ever
+    existed on the ephemeral runner's local disk: whatever single bucket this run's
+    normal end-of-run commit happened to cover would land, and the other NSHARDS-1
+    resharded files would be silently discarded when the runner is torn down — a latent
+    gap caught during a documentation audit, fixed here before SHARD_KEY_VER is ever
+    bumped for real."""
     everything = {}
     for p in sorted(SHARD_DIR.glob("*.json")):
         try:
@@ -215,6 +223,10 @@ def reshard_all():
     for b in range(NSHARDS):
         save_shard(b, buckets.get(b, {}))
     log(f"resharded {len(everything)} games into {NSHARDS} buckets")
+    _robust_commit_shards(
+        f"updates raw: reshard to key v{SHARD_KEY_VER} "
+        f"({len(everything)} games -> {NSHARDS} buckets)",
+        [f"{n:02d}.json" for n in range(NSHARDS)])
 
 
 # --------------------------------------------------------------------------- #
@@ -320,17 +332,17 @@ def priority(rec, last_update_ts, review_count, now):
 # --------------------------------------------------------------------------- #
 # Git (single-writer hard-reset push — identical strategy to playtime_refresh.py)
 # --------------------------------------------------------------------------- #
-def git_commit_shard(bucket, msg):
-    """Robust single-writer push of exactly this run's one shard. Hard-resets to
-    origin/main and re-applies only OUR shard, so concurrent other-bucket writers are
+def _robust_commit_shards(msg, names):
+    """Robust single-writer push of exactly the given shard filenames. Hard-resets to
+    origin/main and re-applies only OUR shards, so concurrent other-bucket writers are
     never clobbered and a rebase can never wedge. Fails LOUD (non-zero exit) if it can't
-    land, so a broken push is a visible RED run — never a silent green one."""
+    land, so a broken push is a visible RED run — never a silent green one. Shared by the
+    routine one-shard-per-run commit and reshard_all()'s all-NSHARDS commit."""
     if not IN_ACTIONS:
         log(f"  (local run — skipping git commit: {msg})")
         return
-    name = f"{bucket:02d}.json"
-    src = SHARD_DIR / name
-    snap = src.read_bytes() if src.exists() else None
+    snaps = {name: (SHARD_DIR / name).read_bytes()
+             for name in names if (SHARD_DIR / name).exists()}
     last_err = ""
     for attempt in range(1, 9):
         try:
@@ -339,9 +351,10 @@ def git_commit_shard(bucket, msg):
             subprocess.run(["git", "reset", "--hard", "origin/main"],
                            check=True, capture_output=True, text=True)
             SHARD_DIR.mkdir(exist_ok=True)
-            if snap is not None:
-                (SHARD_DIR / name).write_bytes(snap)        # re-apply only our shard
-            subprocess.run(["git", "add", f"updates_raw/{name}"], check=True)
+            for name, data in snaps.items():                # re-apply only our shard(s)
+                (SHARD_DIR / name).write_bytes(data)
+            for name in snaps:
+                subprocess.run(["git", "add", f"updates_raw/{name}"], check=True)
             if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
                 log("  (nothing new vs remote; skipping commit)")
                 return
@@ -360,6 +373,10 @@ def git_commit_shard(bucket, msg):
         time.sleep(2 * attempt + random.uniform(0, 2))
     log(f"  ERROR: updates shard commit failed after 8 attempts — {last_err[:200]}")
     sys.exit(1)
+
+
+def git_commit_shard(bucket, msg):
+    _robust_commit_shards(msg, [f"{bucket:02d}.json"])
 
 
 # --------------------------------------------------------------------------- #

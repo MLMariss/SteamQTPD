@@ -359,7 +359,7 @@
   .hcol .v{font-family:var(--mono); font-size:15px}
   .hcol .l{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.04em; text-transform:uppercase}
   .hcol.sel .v{color:var(--gold)} .hcol.sel .l{color:var(--gold)}
-  /* estimated value (filled from the genre-average ratio, not from HLTB):
+  /* estimated value (filled from the typical main/extras/completionist ratio, not from HLTB):
      distinct blue accent + a dotted underline as a second, color-independent cue.
      help-cursor signals the explanatory tooltip on hover. */
   .hcol.est{cursor:help}
@@ -525,7 +525,7 @@
         <div class="field">
           <label>HLTB data</label>
           <div class="seg" role="group" aria-label="HLTB data quality">
-            <button data-hquality="loose" aria-pressed="false" title="Use estimated HLTB values (filled from genre-average ratios) when HowLongToBeat is missing a time.">All</button>
+            <button data-hquality="loose" aria-pressed="false" title="Use estimated HLTB values (filled from the typical main/extras/completionist ratio) when HowLongToBeat is missing a time.">All</button>
             <button data-hquality="real" aria-pressed="true" title="Only use real HowLongToBeat values. Estimated times are hidden and not used, so games without a real value for the selected metric show no HLTB/QTPD.">Real</button>
           </div>
         </div>
@@ -1020,7 +1020,7 @@ function render(){
 
     const estSet = g.hltb_est || [];
     const realMode = state.hltbQuality === "real";
-    const ESTTIP = "Estimated from the genre-average ratio between main / extras / completionist times — not reported by HowLongToBeat. Replaced automatically if HLTB data is found later.";
+    const ESTTIP = "Estimated from the typical ratio between main / extras / completionist times — not reported by HowLongToBeat. Replaced automatically if HLTB data is found later.";
     // HLTB display: 2+ digit hours read fine as whole numbers (the decimal is just noise);
     // only sub-10h values keep one decimal, where the fraction actually matters.
     const fmtHLTB = h => h==null ? '—' : (h >= 10 ? String(Math.round(h)) : (Math.round(h*10)/10).toFixed(1));
@@ -1867,7 +1867,7 @@ Promise.all([
       const h = hltbMap[key];
       game.hltb_main = h.main; game.hltb_extra = h.extra;
       game.hltb_complete = h.complete; game.hltb_avg = h.avg; game.hltb_match = h.match;
-      // which of main/extra/complete are estimated (filled from the genre-average
+      // which of main/extra/complete are estimated (filled from the typical
       // ratio rather than fetched from HLTB) — drives the distinct rendering.
       game.hltb_est = Array.isArray(h.est) ? h.est : [];
     }
