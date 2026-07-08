@@ -1,4 +1,4 @@
-name: Refresh IGDB times -> hltb_igdb.json
+name: "[DELETE] IGDB times -> hltb_igdb.json (dormant)"
 
 # DISABLED 2026-07: IGDB dropped as a source. Its game_time_to_beats table holds only
 # ~8,829 records total, so it matched just 1,471 of 96k resolved games (1,007 net-new) —

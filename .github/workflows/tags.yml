@@ -1,4 +1,4 @@
-name: Refresh SteamSpy tags -> tags.json
+name: 2.6 SteamSpy tags -> tags.json
 
 on:
   workflow_dispatch:        # run manually from the Actions tab

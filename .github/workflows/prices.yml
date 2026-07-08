@@ -1,4 +1,4 @@
-name: Refresh prices + sale dates -> prices.json
+name: 2.1 Prices + sale dates -> prices.json
 
 on:
   workflow_dispatch:        # run manually from the Actions tab

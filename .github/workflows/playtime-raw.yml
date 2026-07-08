@@ -1,4 +1,4 @@
-name: Refresh review playtime -> playtime_raw/ shards
+name: 2.3 Game playtime raw -> playtime_raw/ shards
 
 on:
   workflow_dispatch:        # run manually (also used for deep passes via DEEPEN_TARGET)

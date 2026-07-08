@@ -1,4 +1,4 @@
-name: DEBUG - IGDB wipe (manual, one-off)
+name: "[DELETE] IGDB wipe (manual one-off)"
 
 # One-off reset: wipes hltb_igdb.json back to empty so the FIXED external_games query
 # gets a clean baseline (the broken query poisoned ~110k entries with fresh-timestamp

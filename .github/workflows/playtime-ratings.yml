@@ -1,14 +1,14 @@
-name: Summarize playtime ratings -> ratings.json (frontend)
+name: 3.2 Playtime-weighted ratings [2.3 / manual] -> ratings.json
 
 on:
   workflow_dispatch:        # run manually any time
-  schedule:
-    # Every 4h at :51 (was once-daily at 05:55), right after playtime-summary at :47 —
-    # both read the same playtime_raw/ shards. Raw scrapes ~8x/day, so once-daily left
-    # ratings.json lagging raw by up to a day. Pure local recompute (~5s, no Steam calls),
-    # so the higher cadence costs no storefront budget. Separate concurrency group means
-    # it never collides with the summary job even though they run a few minutes apart.
-    - cron: "51 */4 * * *"
+  # NO schedule: like 3.1, this recompute is triggered as a CHAINED STEP at the end of
+  # workflow 2.3 (Game playtime raw), right after the playtime_raw/ shards it reads are
+  # committed. It previously ALSO had its own 4-hourly cron (:51 */4), double-writing
+  # ratings.json each cycle (once chained, once standalone) off the same shards. The
+  # standalone cron is removed; 2.3 is the sole scheduled trigger, one writer per cycle.
+  # workflow_dispatch stays for manual recomputes. (Pure local recompute, ~5s, no Steam
+  # calls / no storefront budget.)
 
 permissions:
   contents: write           # commits ratings.json

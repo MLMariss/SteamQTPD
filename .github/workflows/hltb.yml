@@ -1,4 +1,4 @@
-name: Refresh HLTB times -> hltb.json
+name: 2.5 HLTB completion times -> hltb.json
 
 on:
   workflow_dispatch:        # run manually from the Actions tab

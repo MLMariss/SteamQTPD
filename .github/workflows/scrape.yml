@@ -1,4 +1,4 @@
-name: Scrape Steam -> games.json
+name: 1. Steam game catalog -> games.json
 
 on:
   workflow_dispatch:        # run manually from the Actions tab

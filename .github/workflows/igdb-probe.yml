@@ -1,4 +1,4 @@
-name: DEBUG - IGDB probe (manual only)
+name: "[DELETE] IGDB probe (manual debug)"
 
 # One-off diagnostics for the IGDB pipeline. Manual trigger ONLY (no schedule);
 # writes nothing, safe to leave in the repo. Pick which probe to run from the

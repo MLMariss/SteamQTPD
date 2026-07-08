@@ -1,4 +1,4 @@
-name: Refresh update events -> updates_raw/ shards + updates.json
+name: 2.4 Game update events raw -> updates_raw/ shards
 
 on:
   workflow_dispatch:        # run manually

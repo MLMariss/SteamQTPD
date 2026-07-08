@@ -1,4 +1,4 @@
-name: Refresh recent reviews -> recent.json
+name: 2.2 30-day review scores -> recent.json
 
 on:
   workflow_dispatch:        # run manually from the Actions tab
