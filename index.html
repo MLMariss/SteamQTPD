@@ -1829,7 +1829,8 @@ Promise.all([
   fetch("recent.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("playtime.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("ratings.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-]).then(([g, pj, hj, tj, rj, ptj, ratj]) => {
+  fetch("updates.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+]).then(([g, pj, hj, tj, rj, ptj, ratj, uj]) => {
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
   const hltbMap   = (hj && hj.hltb)   ? hj.hltb   : null;
@@ -1839,6 +1840,13 @@ Promise.all([
   // ratings.json:  per-game [steam_pct, raw_pct, capped_pct, n] (positional).
   const playtimeMap = (ptj && ptj.playtime) ? ptj.playtime : null;
   const ratingsMap  = (ratj && ratj.playtime_ratings) ? ratj.playtime_ratings : null;
+  // updates.json: authoritative event_type-based update history (the new sharded layer).
+  // Used ONLY as a FALLBACK for now: games.json's last_update_ts (News-API, primary) wins
+  // where present; where it's null we backfill from updates last_any_ts (max of the
+  // major/regular/minor tiers = "any update"). As the update shards populate over the
+  // coming rotations this fills the old system's gaps; later the precedence flips (new
+  // becomes primary, old the fallback) once coverage is broad. See ARCHITECTURE §9.5.
+  const updatesMap  = (uj && uj.games) ? uj.games : null;
   // gray threshold: below this many reviews the weighted rating renders low-confidence.
   window.PT_CONFIDENT = (ratj && ratj.confident_reviews) ? ratj.confident_reviews : 10;
   const now = NOW();
@@ -1883,6 +1891,13 @@ Promise.all([
     if(ratingsMap && ratingsMap[key]){
       const a = ratingsMap[key];
       game.wr_steam = a[0]; game.wr_raw = a[1]; game.wr = a[2]; game.wr_n = a[3];
+    }
+    // updates.json backfill: ONLY when the old News-API last_update_ts is missing. The
+    // new event-based layer then supplies "last update of ANY type" (last_any_ts) so a
+    // game the old system saw as blank but that DID get patched stops showing "no upd".
+    // Old system stays primary; this only fills nulls. (Precedence flips later.)
+    if((game.last_update_ts == null) && updatesMap && updatesMap[key] && updatesMap[key].last_any_ts != null){
+      game.last_update_ts = updatesMap[key].last_any_ts;
     }
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
   });
