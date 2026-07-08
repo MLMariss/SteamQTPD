@@ -1113,9 +1113,10 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   job — double-writing `playtime.json`/`ratings.json` each cycle. Their standalone crons were
   removed (kept `workflow_dispatch`), so the raw job is the sole scheduled trigger, names tagged
   `[2.3 / manual]`. NOTE: this corrects the prior §16 entry below, which claimed these two were
-  already "retired" — they were renamed/cron-stripped now, not then. Two known follow-ups remain:
-  `shard_health.py` still monitors only `playtime_raw/` (not `updates_raw/`), and renaming broke
-  the `workflow_run` links that keyed off old workflow names (e.g. `4.2 Coverage`).
+  already "retired" — they were renamed/cron-stripped now, not then. One known follow-up remains:
+  `shard_health.py` still monitors only `playtime_raw/` (not `updates_raw/`). The renaming also
+  broke the single `workflow_run` link that keyed off the old scrape name (`4.2 Coverage` — the
+  only such trigger in the repo); that has since been fixed (see §4's Coverage callout).
 
 - **COVERAGE.md automated + summarizers folded into the raw job + doc reconciled (Jul 2026).**
   Three related workflow changes. (1) **New `coverage.py` + `coverage.yml`.** `COVERAGE.md` was
