@@ -1,0 +1,19 @@
+# Python bytecode cache (auto-generated, not source)
+__pycache__/
+*.pyc
+*.pyo
+# --- Claude Code / editor local state (per-machine, do NOT commit) ---
+.claude/
+.claude-*
+*.local
+
+# --- OS / editor cruft ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+
+# --- Accidental junk from shell mishaps ---
+# (files created by stray redirects, pager fragments, etc.)
+h origin*
+t --oneline*
