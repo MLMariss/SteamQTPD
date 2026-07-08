@@ -1,0 +1,64 @@
+name: Refresh update events -> updates_raw/ shards + updates.json
+
+on:
+  workflow_dispatch:        # run manually
+  schedule:
+    # ONE shard bucket per run (GITHUB_RUN_NUMBER % 64), rotating through all 64 over
+    # ~64 runs so commits stay small and only one writer ever touches a given shard.
+    #
+    # STOREFRONT BUDGET NOTE: this endpoint (store.steampowered.com/events/…) draws on
+    # the SAME ~200/5min storefront budget as scrape / prices / recent. Those slots are
+    # already dense (prices :07 of 1,4,7,…; playtime-raw :23 of 1,4,7,…; recent :41 of
+    # 4,10,16,22). To avoid piling on, updates runs on the QUIET slots only: :53 of
+    # 2,8,14,20 — four times a day, well clear of the others, and STORE_DELAY is a
+    # conservative 1.6s. update history changes slowly, so 4×/day rotation (all 64
+    # buckets every ~16 days) is plenty. WATCH 403 rates after deploy: if they climb,
+    # drop to :53 of 2,14 (2×/day) or raise STORE_DELAY to 2.0. (hltb :53 hits a
+    # different host, tags :29 another — no contention there; only the 4 storefront jobs
+    # share the budget, and this one is deliberately the lightest.)
+    - cron: "53 2,8,14,20 * * *"
+
+permissions:
+  contents: write           # commits one updates_raw/NN.json shard per run + updates.json
+
+concurrency:
+  group: steam-updates      # never overlap updates runs (own group)
+  cancel-in-progress: false
+
+jobs:
+  updates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330     # under the 6h cap; RUN_MINUTES stays well inside
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits during the run, hard-reset onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh update events (event_type-classified, sharded)
+        env:
+          RUN_MINUTES: "180"
+          STORE_DELAY: "1.6"      # conservative storefront pacing; raise to 2.0 if 403s spike
+        run: python updates_refresh.py
+
+      # After the raw shard is refreshed and committed above, recompute the small
+      # frontend-facing updates.json from ALL shards. Self-commits its one file and
+      # rebases onto main — one-writer-per-file holds (the raw job never writes
+      # updates.json; only this step does). `if: always()` so a soft-failing raw pass
+      # (e.g. a 403 storefront-budget wrap-up) still republishes the summary from
+      # whatever shards exist on disk.
+      - name: Summarize update events -> updates.json
+        if: always()
+        run: python updates_summarize.py
