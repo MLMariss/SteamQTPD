@@ -590,6 +590,76 @@ cases this surfaces are **inversions** — e.g. a game where the ▼ non-recomme
 
 ---
 
+## 9.5 Update-events pipeline (`updates_refresh.py` + `updates_summarize.py` → `updates.json`)
+
+Surfaces **how often and how substantially a game is patched** — an ongoing-support signal
+for the value hunter (a game still getting major updates is a different buy than an abandoned
+one). Answers "how many big vs small updates in the last month / 3mo / 6mo / year / over a
+year", per game.
+
+**Why this is separate from `last_update_ts`.** `scraper.py` already fills a single
+`last_update_ts` in `games.json` from the **News API** (`ISteamNews/GetNewsForApp`). That is
+cheap (huge `api.steampowered.com` budget, no storefront contention) but it is ONE timestamp
+with **no magnitude** — the News feed doesn't expose an update's size. The **store events**
+endpoint does, via a native `event_type`, so the big/small split lives here, in its own job.
+
+**The magnitude signal (`event_type`).** `store.steampowered.com/events/ajaxgetpartnereventspageable/`
+(`clan_accountid=0&appid=N&offset=0&count=50&l=english`) returns `events[]`, each carrying an
+integer `event_type`. Steam defines **three** update categories and we keep all three distinct:
+`13` = Major Update → **major** ("biggest moments of the year"); `14` = Regular Update →
+**regular** (a normal meaningful update — the middle tier, bigger than a patch note but not a
+tentpole event); `12` = Small Update / Patch Notes → **minor** (smallest, routine). Everything
+else (sales `20/21/23`, streams, cross-promo, announcements) is discarded. This is Valve's own
+taxonomy, not a keyword guess. We store the true tier rather than collapse 14 into 13, so the
+frontend can group major+regular into a single "big" bucket vs minor if it wants — that's a
+display choice, not baked into the data, and it never requires a re-scrape to change.
+
+**The budget trade-off.** This endpoint is on the **storefront budget** (~200/5min) shared with
+scrape/prices/recent — unlike the News-API `last_update_ts`. So it is deliberately its own
+**out-of-band, time-boxed, one-bucket-per-run** job (like playtime), never folded into the main
+scraper, and it runs only on the **quiet cron slots** (`:53` of 2,8,14,20) at a conservative
+`STORE_DELAY=1.6s` so it can't starve prices/catalog. Update history changes slowly, so 4×/day
+rotation (all 64 buckets every ~16 days) is ample.
+
+**Why raw dated events, not stored counts (the staleness fix).** "Updates in the last 30 days"
+rots every single day. Storing pre-computed counts would mean a game scraped today shows stale
+counts a week later, forcing constant re-scrapes to stay honest. Instead the raw `(gid → {ts,
+type})` events are stored **once**; `updates_summarize.py` rolls them into windowed counts AND
+ships the per-window timestamp lists (`dates`), so the **frontend recomputes the same windows
+against the live clock** — counts never drift regardless of scrape age. Re-scrape is then only
+ever needed to catch NEW posts, not to keep old counts current.
+
+**Sharded from day one.** A per-game dated event list across ~120k games is exactly the shape
+that blew past the 100 MB wall for playtime, so `updates_raw/NN.json` is sharded identically:
+64 buckets, key `(appid // 10) % 64` (divide-by-10 first because appids are ~all multiples of
+10), one bucket per run rotated by `GITHUB_RUN_NUMBER`, `shard_ver`-gated reshard hook for any
+future key change. (It's far lighter than playtime — timestamps, not review objects — so the
+100 MB ceiling is distant. NOTE: `shard_health.py` currently monitors only `playtime_raw/`;
+pointing it at `updates_raw/` too is a cheap future add if these shards ever grow.)
+
+**Resumability / safety** mirror the playtime writer exactly: identity-keyed by event `gid`
+(re-runs never double-count; a known gid is already held), **refresh-on-revisit** (a post's
+type/time is updated in place if Steam changed it), a `PER_GAME_CAP=200` ring-buffer (oldest
+events dropped first) bounding growth, commits **every 30 min during the run** via the same
+hard-reset-to-`origin/main` single-writer push (a failed push is a **loud red run**, never a
+silent green one), and a transient endpoint failure (403/blip) **skips that game and leaves its
+prior record untouched** — nothing is ever blanked by an error. Eligibility is gated by
+`MIN_REVIEWS_FLOOR=10` and cadence is shorter for actively-updated games (`COOLDOWN_DAYS=7` vs
+`NOUPDATE_COOLDOWN_DAYS=45`), so budget flows to games whose history actually moves.
+
+**`updates.json` shape** (small; frontend reads it): per appid `last_major_ts`,
+`last_regular_ts`, `last_minor_ts`, `last_any_ts`, a `counts` snapshot (`30d`/`90d`/`180d`/
+`365d`/`over365`, each `{major, regular, minor}`), and capped `dates.{major,regular,minor}`
+timestamp lists for client-side window recompute. One writer per file holds:
+`updates_refresh.py` owns `updates_raw/NN.json`; `updates_summarize.py` owns `updates.json`;
+the raw job never writes the summary.
+
+**Frontend integration is not yet wired** — this section covers the backend pipeline only.
+Surfacing it (a sortable/filterable "updates" column keyed off `updates.json`, using the shipped
+`dates` arrays to compute live window counts) is the next step.
+
+---
+
 ## 10. Weighted rating (`ratings_summarize.py` → `ratings.json`)
 
 A review rating where each vote counts in proportion to how long that player actually
