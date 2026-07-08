@@ -13,7 +13,7 @@ REM  It will NOT push, merge, or delete anything. Safe to run
 REM  any time, on any machine, before you start work.
 REM ============================================================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo.
 echo   Syncing this machine with GitHub...

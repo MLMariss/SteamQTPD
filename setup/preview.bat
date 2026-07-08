@@ -1,17 +1,18 @@
 @echo off
 REM ============================================================
 REM  preview.bat - view the QTPD site locally before deploying
-REM  Serves the current folder at http://localhost:8000
+REM  Lives in setup\ but serves the PROJECT ROOT (one level up)
+REM  at http://localhost:8000
 REM  Close this window (or press Ctrl+C) to stop the server.
 REM  This does NOT touch git or production in any way.
 REM ============================================================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo.
 echo   QTPD local preview
 echo   ------------------
-echo   Opening http://localhost:8000 in your browser.
+echo   Serving project root at http://localhost:8000
 echo   Close this window to stop the server.
 echo.
 
