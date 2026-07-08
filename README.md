@@ -34,14 +34,16 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 
 | Job (Action)            | Writes               | Contents                                            |
 |-------------------------|----------------------|-----------------------------------------------------|
-| `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts`. + `catalog.json` (scraper state). |
+| `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state). |
 | `price_and_sale.py`     | `prices.json`        | Live price, discount %, sale end-date (the fast-changing layer). |
 | `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times (static; fetched once per game). Fills partial times from the genre ratio — see ARCHITECTURE.md. |
 | `tags_refresh.py`       | `tags.json`          | SteamSpy user tags.                                 |
 | `recent_refresh.py`     | `recent.json`        | 30-day rolling review score (recent-vs-all-time trend). |
-| `playtime_refresh.py`   | `playtime_raw.json`  | Per-review playtime + recommendation, keyed by `recommendationid` (the big working set). |
-| `playtime_summarize.py` | `playtime.json`      | Lean summary: median hours split by ▲ recommend / ▼ not. Pure local recompute, no Steam calls. |
-| `ratings_summarize.py`  | `ratings.json`       | Playtime-weighted review rating (2×-median-capped). Pure local recompute, no Steam calls. |
+| `playtime_refresh.py`   | `playtime_raw/NN.json` | Per-review playtime + recommendation, keyed by `recommendationid` (the big working set). **Sharded** into 64 files (`(appid//10)%64`) after the monolith hit GitHub's 100 MB wall. |
+| `playtime_summarize.py` | `playtime.json`      | Lean summary: median hours split by ▲ recommend / ▼ not. Chained step of the playtime job; pure local recompute, no Steam calls. |
+| `ratings_summarize.py`  | `ratings.json`       | Playtime-weighted review rating (2×-median-capped). Chained step of the playtime job; pure local recompute, no Steam calls. |
+| `updates_refresh.py`    | `updates_raw/NN.json` | Per-game update-event history (major/regular/minor via Steam `event_type`), keyed by event `gid`. **Sharded** like playtime. On the storefront budget, so its own out-of-band job. |
+| `updates_summarize.py`  | `updates.json`       | Lean summary: last major/regular/minor timestamps + windowed big/small counts (month/3mo/6mo/year/over-year). Chained step of the updates job; pure local recompute. |
 
 The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Each run:
 1. **Enumerates the catalog** via Steam's `IStoreService/GetAppList` — games-only,
@@ -183,11 +185,13 @@ commits.)
 - **Sale end times** come from Steam's `GetItems`; the frontend collapses any expired sale
   offline (no scraping), so countdowns are always honest between price refreshes.
 - **Dataset size**: the single-`games.json` approach is fine into the tens of thousands of
-  games; far beyond that, consider sharding and loading shards on demand. `playtime_raw.json`
-  is the largest file and grows with review coverage.
+  games; far beyond that, consider sharding and loading shards on demand. The `playtime_raw/`
+  and `updates_raw/` shard sets are the largest, and grow with review/update coverage —
+  both are already sharded into 64 files to stay under GitHub's 100 MB per-file limit.
 
 ## One-off scripts
-`backfill_updates.py` (fill `last_update_ts` for old games) and `hltb_backfill.py` (apply
-the HLTB estimation model to existing entries) are idempotent run-once utilities, triggered
-by their own manual workflows. Once run, they can be deleted. `cleanup_shells.py` removes
-unreleased "empty shell" entries, filing them back into the waiting room.
+`queue_null_updates.py` (queues every game with a null `last_update_ts` into
+`catalog["force_refresh"]` so the fixed scraper re-checks them) is an idempotent run-once
+utility, triggered by its own manual workflow. `cleanup_shells.py` removes unreleased
+"empty shell" entries, filing them back into the waiting room. Run-once utilities can be
+deleted once drained.

@@ -305,10 +305,12 @@ base everything is measured against; it also has `workflow_dispatch` for manual 
 as the data jobs kept running.
 
 **One-off (deletable) workflows.** `cleanup_shells.py` is a run-once utility that shares its
-target file's concurrency group so it can't clobber an in-progress scrape. The earlier
-HLTB-estimation backfill (`backfill-hltb.yml` / `hltb_backfill.py`) and `backfill_updates.py`
-were also run-once utilities of this kind; they have since been **run and removed**, which is
-the intended lifecycle for these once their one-time job is done.
+target file's concurrency group so it can't clobber an in-progress scrape. `queue_null_updates.py`
+is the current live one-off — it force-queues every null-`last_update_ts` game for re-scrape after
+the News-API fix (§16); deletable once the queue drains. The earlier HLTB-estimation backfill
+(`backfill-hltb.yml` / `hltb_backfill.py`) and `backfill_updates.py` were also run-once utilities
+of this kind; they have since been **run and removed**, which is the intended lifecycle for these
+once their one-time job is done.
 
 ---
 
@@ -929,6 +931,31 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Update-events layer + last_update_ts fix + workflow renumbering (Jul 2026).** A multi-part
+  overhaul of update tracking. (1) **`last_update_ts` bug fixed.** `scraper.py`'s News-API fetch
+  used `maxlength=1`, so `_is_update_item()` only ever saw post *titles* — any patch whose title
+  dodged the keyword list read as "no update", leaving ~42.6% of the catalog (52,371 games,
+  Cyberpunk 2077 among them) with a null `last_update_ts`. Now fetches `maxlength=300`, scans the
+  body, widens keywords, tightens sale exclusions. Self-heals via `last_modified` churn; a one-off
+  `queue_null_updates.py` force-queues the existing nulls for immediate re-scrape. (2) **New
+  event-typed update pipeline** (§9.5): `updates_refresh.py` → `updates_raw/NN.json` (sharded,
+  keyed by event `gid`) reads the store events endpoint's `event_type` for a true three-tier
+  major(13)/regular(14)/minor(12) classification the News API can't give; `updates_summarize.py` →
+  `updates.json` rolls it into windowed big/small counts + client-recomputable date arrays. Own
+  out-of-band job on the storefront budget (quiet `:53` slots), never folded into the scraper.
+  Frontend merges `updates.json` as a **fallback** — `games.json`'s `last_update_ts` stays primary,
+  `updates.last_any_ts` fills its nulls, precedence to flip once shard coverage is broad. (3)
+  **Workflow renumbering.** All 14 workflow `name:` fields renamed to a tiered scheme
+  (`1.` scraper · `2.x` refreshers · `3.x` summarizers · `4.x` monitors · `[DELETE]` dormant IGDB)
+  so the Actions sidebar sorts by pipeline hierarchy. (4) **Double-run fixed.** `playtime-summary`
+  / `playtime-ratings` still had live `*/4` crons *and* ran as chained steps in the playtime raw
+  job — double-writing `playtime.json`/`ratings.json` each cycle. Their standalone crons were
+  removed (kept `workflow_dispatch`), so the raw job is the sole scheduled trigger, names tagged
+  `[2.3 / manual]`. NOTE: this corrects the prior §16 entry below, which claimed these two were
+  already "retired" — they were renamed/cron-stripped now, not then. Two known follow-ups remain:
+  `shard_health.py` still monitors only `playtime_raw/` (not `updates_raw/`), and renaming broke
+  the `workflow_run` links that keyed off old workflow names (e.g. `4.2 Coverage`).
 
 - **COVERAGE.md automated + summarizers folded into the raw job + doc reconciled (Jul 2026).**
   Three related workflow changes. (1) **New `coverage.py` + `coverage.yml`.** `COVERAGE.md` was
