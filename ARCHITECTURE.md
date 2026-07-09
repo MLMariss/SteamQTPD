@@ -1092,6 +1092,36 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Null-`last_update_ts` drain speedup (Jul 2026).** The one-off News-API fix (below) left a
+  backlog of **52,371 false-null `last_update_ts` games** queued via `queue_null_updates.py`. The
+  drain crawled — after the first window only ~3,900 had cleared (48,461 still null). Root cause
+  was NOT Steam's rate limit but our own pacing: (a) `build_record` made **two** storefront calls
+  per game — `appdetails` (serially paced by `time.sleep(STEAM_DELAY=1.5)`) and `appreviews`
+  (fired **unpaced** inside the ThreadPool) — so bursts of 2 calls/1.5s tripped the ~200/5min
+  soft-limit, and **each 403 cost a 5-minute `time.sleep(300)` stall**; and (b) the ~52k sweep
+  included **25k+ games with <10 reviews** that re-scrape null→null (genuinely un-patched), clogging
+  the front of the queue with dead work. Three fixes:
+  1. **Shared storefront limiter.** New `storefront_pace()` + `STOREFRONT_MIN_INTERVAL` (env,
+     default **0.9s**) gate **every** storefront call (appdetails + reviews + search pages) through
+     one thread-safe budget. Ends the unpaced-reviews burst → far fewer 403 cooldowns → smooth
+     ~1.8s/game (~2000/hr) vs the old ~3s-effective/game-plus-403-penalties. `STEAM_DELAY` is now
+     deprecated (kept only as a doc comment; no longer referenced).
+  2. **Reserved forced-drain budget.** `FORCE_RESERVE_FRAC` (env, default **0.5**) guarantees the
+     forced queue gets at least that share of each run's pops via a dedicated `forced_q` +
+     `next_work()` interleave, so a big-sale flood of `last_modified` refreshes can't starve the
+     null drain run after run.
+  3. **Tiered re-queue.** `queue_null_updates.py` now splits by `review_count`: the **high tier
+     (>= `QNU_MIN_REVIEWS`=10 reviews, ~23.7k games)** is queued in full and first; the **low tier
+     (<10, ~24.8k)** trickles in at `QNU_LOW_TRICKLE`=3000/run so it's still swept exhaustively
+     without blocking the recoverable games. High tier drains in ~12 scraper-hours (~half a day).
+
+  **REVERT PLAN (do after the backlog closes).** These knobs are tuned aggressively for the drain.
+  Once null `last_update_ts` is down to steady-state churn: in `scrape.yml` raise
+  `STOREFRONT_MIN_INTERVAL` back toward **~1.4–1.5** and drop `FORCE_RESERVE_FRAC` to **~0.2**;
+  `queue_null_updates.py` is deletable once the queue drains (it's the current live one-off, §4).
+  Watch 403 rates in the first run or two at 0.9s — if they spike, nudge `STOREFRONT_MIN_INTERVAL`
+  up (it's env-overridable, no code change needed).
+
 - **Update-events layer + last_update_ts fix + workflow renumbering (Jul 2026).** A multi-part
   overhaul of update tracking. (1) **`last_update_ts` bug fixed.** `scraper.py`'s News-API fetch
   used `maxlength=1`, so `_is_update_item()` only ever saw post *titles* — any patch whose title

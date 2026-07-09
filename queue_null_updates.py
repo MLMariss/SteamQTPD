@@ -51,16 +51,46 @@ def main():
     games = games.get("games") if isinstance(games, dict) else games
     catalog = json.loads(CATALOG_FILE.read_text(encoding="utf-8"))
 
+    # --- Tiered queueing (added Jul 2026) -----------------------------------------
+    # The original sweep queued ALL ~52k nulls at once. Per this script's own warning,
+    # 25k+ of them have <10 reviews and re-scrape from null straight back to null —
+    # they're genuinely un-patched and clog the front of the drain with dead work.
+    #
+    # So we now split by review_count:
+    #   * HIGH tier (review_count >= MIN_REVIEWS): games likely to actually have patch
+    #     history the fixed News-API fetch can now recover. Queued IN FULL, first.
+    #   * LOW tier (< MIN_REVIEWS): still swept eventually (exhaustive by request), but
+    #     only LOW_TRICKLE of them are added per run so they never starve the high tier.
+    #     Re-run this script across days to drain the low tier gradually.
+    # Set MIN_REVIEWS=0 to restore the old exhaustive-all-at-once behaviour.
+    MIN_REVIEWS = int(os.environ.get("QNU_MIN_REVIEWS", "10"))
+    LOW_TRICKLE = int(os.environ.get("QNU_LOW_TRICKLE", "3000"))
+
+    def rc(r):
+        try:
+            return int(r.get("review_count") or 0)
+        except (TypeError, ValueError):
+            return 0
+
     # Every stored game with a null/absent last_update_ts. (select_work filters the queue
     # to `str(a) in processed`, i.e. stored games only, so pending/unreleased appids can't
     # sneak in even if listed — but we key off games.json records, so they won't be.)
-    null_ids = sorted(int(r["appid"]) for r in games
-                      if r.get("appid") is not None and not r.get("last_update_ts"))
+    null_recs = [r for r in games
+                 if r.get("appid") is not None and not r.get("last_update_ts")]
+
+    high = sorted(int(r["appid"]) for r in null_recs if rc(r) >= MIN_REVIEWS)
+    low_all = sorted(int(r["appid"]) for r in null_recs if rc(r) < MIN_REVIEWS)
 
     existing = set(int(a) for a in (catalog.get("force_refresh") or []))
-    merged = sorted(existing | set(null_ids))
+    # Low tier: only add up to LOW_TRICKLE that aren't already queued this run.
+    low_new = [a for a in low_all if a not in existing][:LOW_TRICKLE]
+    to_add = set(high) | set(low_new)
+    merged = sorted(existing | to_add)
 
-    print(f"stored games with null last_update_ts : {len(null_ids)}")
+    print(f"stored games with null last_update_ts : {len(null_recs)}")
+    print(f"  high tier (>= {MIN_REVIEWS} reviews)      : {len(high)} (queued in full)")
+    print(f"  low tier  (<  {MIN_REVIEWS} reviews)      : {len(low_all)} "
+          f"(trickling {len(low_new)} this run, cap {LOW_TRICKLE})")
     print(f"force_refresh already queued          : {len(existing)}")
     print(f"force_refresh after union             : {len(merged)}")
     print(f"newly added this run                  : {len(merged) - len(existing)}")
@@ -80,7 +110,8 @@ def main():
             if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
                 subprocess.run(
                     ["git", "commit", "-m",
-                     f"one-shot: queue {len(null_ids)} null-update games for forced re-scrape"],
+                     f"queue null-update re-scrape: +{len(merged) - len(existing)} "
+                     f"(high {len(high)}, low +{len(low_new)}/{len(low_all)})"],
                     check=True)
                 import random, time
                 for attempt in range(1, 9):

@@ -75,10 +75,46 @@ SEED_RESOLVE_TTL = 24 * 3600    # live term/URL seeds: re-resolve at most once p
 # TOP_TAGS / SteamSpy tags moved to tags_refresh.py (it was the slowest per-game call).
 COUNTRY = "us"                  # cc=us => USD prices
 
-STEAM_DELAY = 1.5               # seconds between storefront calls (~200/5min limit)
+STEAM_DELAY = 1.5               # DEPRECATED: replaced by STOREFRONT_MIN_INTERVAL /
+                                # storefront_pace() below. Kept only as documentation of
+                                # the old ~200/5min-derived spacing; no longer referenced.
 WEBAPI_DELAY = 1.0             # between GetAppList pages
 NEWS_DELAY = 0.3               # between News API calls (api.steampowered.com; huge budget)
 MAX_RETRIES = 4
+
+# --- Shared storefront rate limiter -----------------------------------------
+# WHY: build_record makes TWO storefront calls per game — appdetails (paced by a
+# serial time.sleep(STEAM_DELAY)) AND appreviews (fired UNPACED inside the thread
+# pool). The reviews call therefore ignored the budget entirely, so bursts of
+# 2 calls per 1.5s tripped the ~200/5min soft-limit and each 403 cost a 5-minute
+# time.sleep(300) stall — the real reason the null-update drain crawled.
+#
+# This limiter paces EVERY storefront call (appdetails + reviews) through one
+# shared gate at STOREFRONT_MIN_INTERVAL, so calls go out smoothly instead of
+# bursting into 403 walls. With 2 calls/game at 0.9s spacing => ~1.8s/game
+# (~2000 games/hr) with far fewer cooldown stalls — a real net speedup vs the
+# old ~3s-effective/game-plus-403-penalties path.
+#
+# NOTE (revert plan): STOREFRONT_MIN_INTERVAL=0.9 is tuned aggressively to drain
+# the ~48k null-update backlog fast. Once the backlog is closed, raise it back
+# toward ~1.4-1.5 (steady state) — see ARCHITECTURE.md §16 revert note.
+STOREFRONT_MIN_INTERVAL = float(os.environ.get("STOREFRONT_MIN_INTERVAL", "0.9"))
+_sf_lock = threading.Lock()
+_sf_next_ok = 0.0
+
+def storefront_pace():
+    """Block until the shared storefront budget allows the next call. Thread-safe:
+    appdetails (main thread) and appreviews (pool thread) both call this, so the
+    two per-game storefront calls share one rate budget instead of double-paying
+    or bursting unpaced."""
+    global _sf_next_ok
+    with _sf_lock:
+        now = time.monotonic()
+        wait = _sf_next_ok - now
+        if wait > 0:
+            time.sleep(wait)
+            now = time.monotonic()
+        _sf_next_ok = now + STOREFRONT_MIN_INTERVAL
 
 # News items counted as "updates" (vs sale posts / announcements). The store page's
 # ?updates=true filter is driven by Steam update events; the public news feed doesn't
@@ -218,7 +254,8 @@ def search_params(seed: str) -> dict:
 
 def fetch_search_page(params, start):
     p = dict(params); p["start"] = start
-    data = get(SEARCH_URL, params=p, expect_json=True); time.sleep(STEAM_DELAY)
+    storefront_pace()               # shared storefront budget (was serial STEAM_DELAY)
+    data = get(SEARCH_URL, params=p, expect_json=True)
     if not data:
         return [], 0
     html = data.get("results_html", "")
@@ -418,6 +455,7 @@ def reconcile_seeds(catalog, processed, seeds_text=None):
 
 
 def rating_from_reviews(appid):
+    storefront_pace()               # was UNPACED — the burst source that tripped 403s
     data = get(f"https://store.steampowered.com/appreviews/{appid}",
                params={"json": 1, "language": "all", "purchase_type": "all",
                        "num_per_page": 0}, expect_json=True)
@@ -498,10 +536,10 @@ def parse_release(d):
 # waiting room) | "skip" (non-game/delisted -> permanent) | None (transient error)
 # --------------------------------------------------------------------------- #
 def build_record(appid, prev=None):
+    storefront_pace()               # shared budget (see STOREFRONT_MIN_INTERVAL)
     detail = get("https://store.steampowered.com/api/appdetails",
                  params={"appids": appid, "cc": COUNTRY, "l": "english"},
                  expect_json=True)
-    time.sleep(STEAM_DELAY)
     if detail is None:
         return None
     node = detail.get(str(appid), {})
@@ -764,7 +802,9 @@ def main():
     log(f"Universe {len(master)} | stored {len(processed)} | skipped "
         f"{len(catalog['skipped'])} | pending {len(catalog.get('pending') or {})} | "
         f"to-do: {len(new_ids)} new, {len(refresh_ids)} refresh")
-    log(f"Budget: {RUN_MINUTES} min (refresh changed games first, then new coverage)")
+    log(f"Budget: {RUN_MINUTES} min | storefront pace {STOREFRONT_MIN_INTERVAL}s/call | "
+        f"force-reserve {float(os.environ.get('FORCE_RESERVE_FRAC', '0.5')):.0%} "
+        f"(forced re-scrape drains first, interleaved with changed + new coverage)")
 
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})
@@ -776,9 +816,43 @@ def main():
     last_commit = time.time()
     n_new = n_ref = n_pend = 0
 
-    work = deque([(a, "refresh") for a in refresh_ids] + [(a, "new") for a in new_ids])
-    queued = {a for a, _ in work}          # every appid ever placed in the queue
+    # Reserve a guaranteed share of each run for forced re-scrapes (the null-update
+    # drain). select_work already front-loads `forced` ahead of last_modified refreshes,
+    # but during a big sale the `changed` queue can balloon to 1k+ and, combined with the
+    # new-game frontier, push the tail of a large forced backlog past the time budget for
+    # run after run. FORCE_RESERVE_FRAC guarantees at least this fraction of processed
+    # games are drawn from the forced queue: we interleave 1 forced item every Nth pop so
+    # the backlog drains steadily regardless of how much other work is pending.
+    # Set to 0 to disable (pure priority order). Env-overridable for tuning.
+    FORCE_RESERVE_FRAC = float(os.environ.get("FORCE_RESERVE_FRAC", "0.5"))
+    forced_ids = [a for a in refresh_ids if a in force_set]
+    other_refresh = [a for a in refresh_ids if a not in force_set]
+    forced_q = deque(forced_ids)           # dedicated drain queue
+    # `work` holds everything NON-forced, in the old order (other refresh, then new).
+    work = deque([(a, "refresh") for a in other_refresh] + [(a, "new") for a in new_ids])
+    queued = {a for a, _ in work} | set(forced_q)   # every appid ever placed in a queue
     handled = set()                        # every appid already popped + processed
+    _pop_counter = 0                       # drives the forced-interleave cadence
+
+    def next_work():
+        """Pop the next (appid, kind), interleaving the forced drain queue so it gets at
+        least FORCE_RESERVE_FRAC of pops. Falls back to whichever queue is non-empty."""
+        nonlocal _pop_counter
+        take_forced = False
+        if forced_q and FORCE_RESERVE_FRAC > 0:
+            # every ~1/frac pops, take a forced item (e.g. frac=0.5 -> every 2nd pop)
+            cadence = max(1, round(1 / FORCE_RESERVE_FRAC))
+            take_forced = (_pop_counter % cadence == 0) or not work
+        elif forced_q and not work:
+            take_forced = True
+        _pop_counter += 1
+        if take_forced and forced_q:
+            return forced_q.popleft(), "refresh"
+        if work:
+            return work.popleft()
+        if forced_q:                       # work drained, forced remain
+            return forced_q.popleft(), "refresh"
+        return None
 
     def inject_new_seeds():
         """Mid-run pickup: re-read seeds.txt from origin/main and splice any newly-added
@@ -796,17 +870,20 @@ def main():
                         if a not in queued and a not in handled and str(a) in processed]
         for a in reversed(added_new):              # newest priority appids first
             work.appendleft((a, "new")); queued.add(a)
-        for a in reversed(added_forced):
-            work.appendleft((a, "refresh")); queued.add(a)
+        for a in added_forced:                     # into the reserved drain queue
+            forced_q.append(a); queued.add(a)
         if added_new or added_forced:
             log(f"  mid-run seed pickup: +{len(added_new)} new, "
                 f"+{len(added_forced)} forced re-scrape queued to front")
 
-    while work:
+    while work or forced_q:
         if budget - (time.time() - start) < TIME_BUFFER:
             log("Time budget reached; wrapping up.")
             break
-        aid, kind = work.popleft()
+        nxt = next_work()
+        if nxt is None:
+            break
+        aid, kind = nxt
         if aid in handled:                 # dedup (e.g. re-injected after already done)
             continue
         handled.add(aid)
