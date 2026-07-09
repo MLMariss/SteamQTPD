@@ -41,4 +41,10 @@ jobs:
         env:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional; enables clean full-catalog + smart refresh
           RUN_MINUTES: "330"                            # 5.5h budget per run (near-continuous with 6h cron)
+          # --- null-update backlog drain tuning (Jul 2026) ---
+          # Aggressive while we close the ~48k null last_update_ts gap. REVERT after:
+          # raise STOREFRONT_MIN_INTERVAL back toward ~1.4-1.5 for steady state, and
+          # FORCE_RESERVE_FRAC can drop to ~0.2. See ARCHITECTURE.md §16 revert note.
+          STOREFRONT_MIN_INTERVAL: "0.9"                # shared storefront pace (was effective ~3s/game)
+          FORCE_RESERVE_FRAC: "0.5"                     # min share of each run for the forced drain
         run: python scraper.py
