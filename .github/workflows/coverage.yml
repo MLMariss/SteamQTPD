@@ -6,7 +6,10 @@ on:
     # Fire right after the main scrape finishes, so COVERAGE.md reflects the freshest
     # games.json (the base universe everything else is measured against). scrape.yml
     # runs 4×/day at 0/6/12/18 UTC; this trails each of those completions.
-    workflows: ["Scrape Steam -> games.json"]
+    # NOTE: workflow_run matches on the upstream workflow's exact current `name:` — when
+    # scrape.yml was renamed (the "Workflow renumbering", ARCHITECTURE.md §16) this string
+    # went stale and the trigger silently stopped firing (caught during a doc audit, 2026-07).
+    workflows: ["1. Steam game catalog -> games.json"]
     types: [completed]
 
 permissions:

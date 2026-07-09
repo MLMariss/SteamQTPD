@@ -12,9 +12,11 @@ the name is friendlier. The repo, GitHub project, and wishlist worker keep their
 Runs almost entirely on **GitHub Pages + GitHub Actions** (free and unlimited for public
 repos). All scraping happens server-side in the Actions — the frontend can't call Steam
 directly (Steam sends no CORS headers). The one exception is the optional **wishlist import**
-feature, which routes through a tiny **Cloudflare Worker** proxy (source in `worker/`) so the
-browser can read a user's Steam wishlist; everything else needs no backend, and the site works
-fully without the Worker.
+feature, which routes through a tiny **Cloudflare Worker** proxy so the browser can read a
+user's Steam wishlist; everything else needs no backend, and the site works fully without the
+Worker. *(The live Worker this deployment points at is `qhpp-wishlist.mlmariss.workers.dev` —
+its source is **not** checked into this repo; see "Wishlist import" below for what deploying
+your own would take.)*
 
 **QTPD** = `(avg HLTB hours × rating%) ÷ price`. Higher = more quality time
 per dollar. Null for free games and games HLTB can't match. Filter-bar toggles pick whether
@@ -36,7 +38,7 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 |-------------------------|----------------------|-----------------------------------------------------|
 | `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state). |
 | `price_and_sale.py`     | `prices.json`        | Live price, discount %, sale end-date (the fast-changing layer). |
-| `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times (static; fetched once per game). Fills partial times from the genre ratio — see ARCHITECTURE.md. |
+| `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times (static; fetched once per game). Fills partial times from the typical main/extras/completionist ratio (not genre-based — see ARCHITECTURE.md). |
 | `tags_refresh.py`       | `tags.json`          | SteamSpy user tags.                                 |
 | `recent_refresh.py`     | `recent.json`        | 30-day rolling review score (recent-vs-all-time trend). |
 | `playtime_refresh.py`   | `playtime_raw/NN.json` | Per-review playtime + recommendation, keyed by `recommendationid` (the big working set). **Sharded** into 64 files (`(appid//10)%64`) after the monolith hit GitHub's 100 MB wall. |
@@ -77,8 +79,9 @@ column) · recent-review trend · store link · **Price / Sale** (full price str
 discounted price below, discount badge inline) · **live** time left on the sale · release
 date · tags · **median playtime** split by recommendation (Playtime column; empty when a game
 has no playtime data) · How Long To Beat (main / main+extras / completionist + avg) · QTPD at
-the sale & full price. HLTB values **estimated** from the genre-average ratio (when HLTB only
-reports 1–2 of the 3 times) are shown in blue with a hover tooltip.
+the sale & full price. HLTB values **estimated** from the typical main/extras/completionist
+ratio (when HLTB only reports 1–2 of the 3 times — computed corpus-wide, not per-genre despite
+the name this used to go by) are shown in blue with a hover tooltip.
 
 - **Weighted** — a review rating where each vote is weighted by how long that player
   actually played (capped at 2× the game's median so no single obsessive dominates), shown
@@ -111,8 +114,9 @@ URL so views are shareable.
 `/id/<n>` URL, bare name, SteamID64, `STEAM_0:0:…`, or `[U:1:…]`) to cross-reference the
 catalog against your actual wishlist and optionally filter to wishlist-only. Numeric formats
 convert in the browser; vanity names resolve via the Cloudflare Worker (see below). Requires
-the profile's *game details* to be **public**. If the Worker isn't configured the feature
-self-disables and the rest of the site is unaffected.
+the profile's *game details* to be **public**. If the Worker isn't reachable or configured,
+the Import button stays visible but each attempt just fails with an on-screen error toast —
+the rest of the site is unaffected either way.
 
 ## Setup (~5 min)
 1. Push these files to a **public** repo (keep the structure, incl. `.github/workflows/`).
@@ -121,7 +125,13 @@ self-disables and the rest of the site is unaffected.
 4. **Settings → Pages →** deploy from branch `main`, folder `/root`. Site:
    `https://<you>.github.io/<repo>/`.
 5. *(optional)* Put games to scrape **first** in `seeds.txt` (one appid, store URL, or
-   search term per line — human-edited only; the scraper never writes to it).
+   search term per line — human-edited only; the scraper never writes to it, but it
+   **reads it live**: edits are picked up at the start of every run *and* mid-run, from
+   `origin/main`, at every checkpoint (~10 min). Prefix a line with `!` to force a
+   one-shot re-scrape of that seed's already-stored matches. Removing a line "forgets"
+   it — already-scraped games stay in `games.json`, only the priority ordering is
+   dropped. See **[ARCHITECTURE.md](ARCHITECTURE.md)** §6 for the full reconciliation model;
+   every change is logged to `seeds_log.txt`).
 6. **Actions tab →** run each workflow once to start; they then run on schedule and the
    page updates as data accrues.
 
@@ -129,18 +139,36 @@ Run locally instead: `pip install -r requirements.txt && python scraper.py` (set
 `STEAM_API_KEY` and optionally `RUN_MINUTES` as env vars). Git commits are skipped when
 not running in Actions. Open `index.html` to view (shows sample data until real JSON exists).
 
+### Local dev helpers (`setup/`)
+Two Windows `.bat` helpers for working on this repo from a local machine (not used by CI,
+not served by Pages — safe to ignore if you only deploy via Actions):
+- **`setup/preview.bat`** — serves the project root at `http://localhost:8000` via
+  `py -m http.server` (falls back to `python` if the `py` launcher isn't found) and opens it
+  in the browser. Read-only toward git; just a local static-file server for previewing
+  `index.html` against whatever JSON is currently checked out.
+- **`setup/sync.bat`** — brings a local checkout up to date when switching machines: refuses
+  to run if there are uncommitted changes, then `git fetch --all --prune`, checks out `main`,
+  fast-forward-pulls it, and prints the branch list + status. Never pushes, merges, or deletes
+  anything.
+
 ### Wishlist import (optional)
 The "import my wishlist" feature needs a small Cloudflare Worker (free tier is plenty), since
-the browser can't call Steam directly. Source is in **`worker/`**:
-1. Deploy it — `cd worker && wrangler deploy` (or paste the Worker source into the Cloudflare
-   dashboard editor).
-2. Set the API key secret: `wrangler secret put STEAM_API_KEY` (same key as above), or add it
+the browser can't call Steam directly. **This repo does not include the Worker's source** —
+this deployment's `WISHLIST_PROXY` (top of the wishlist code in `index.html`) points at an
+already-deployed Worker (`qhpp-wishlist.mlmariss.workers.dev`) that lives outside this repo. To
+run your own:
+1. Write a Worker that exposes two GET endpoints: `/?vanity=<name>` (proxies Steam's
+   `ISteamUser/ResolveVanityURL` to resolve a vanity name to a SteamID64) and
+   `/?steamid=<id64>` (returns that profile's wishlist appids for cross-referencing).
+2. Deploy it (`wrangler deploy`, or paste the source into the Cloudflare dashboard editor) and
+   set the API key secret: `wrangler secret put STEAM_API_KEY` (same key as above), or add it
    in the dashboard under the Worker's Variables → Secrets.
 3. Point `WISHLIST_PROXY` (top of the wishlist code in `index.html`) at your deployed URL.
 
-Skip all of this and the wishlist button simply self-disables — the catalog, filters, and
-sorting work exactly the same. See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the endpoints
-and error contract.
+Skip all of this and the wishlist **Import** button still shows — it just fails per-click with
+a "Couldn't reach the wishlist service" toast (it does not hide or disable itself); the
+catalog, filters, and sorting work exactly the same regardless. See
+**[ARCHITECTURE.md](ARCHITECTURE.md)** for the endpoints and error contract.
 
 ## Config
 Each job's knobs are at the top of its own script. The main ones:
@@ -182,8 +210,10 @@ commits.)
   5 it isn't computed, and 5–9 renders grayed as low-confidence.
 - **Tags** come from SteamSpy; if unavailable for a game, Steam genres are used, so the
   tag column is never blank.
-- **Sale end times** come from Steam's `GetItems`; the frontend collapses any expired sale
-  offline (no scraping), so countdowns are always honest between price refreshes.
+- **Sale end times** come from Steam's `GetItems`; the frontend detects any expired sale
+  offline (no scraping) and actively reverts it — `expireSaleIfEnded()` zeroes `discount_pct`
+  and resets `price_final` to `price_initial` in the in-memory record, not just the countdown
+  display — so both the price shown and the countdown stay honest between price refreshes.
 - **Dataset size**: the single-`games.json` approach is fine into the tens of thousands of
   games; far beyond that, consider sharding and loading shards on demand. The `playtime_raw/`
   and `updates_raw/` shard sets are the largest, and grow with review/update coverage —

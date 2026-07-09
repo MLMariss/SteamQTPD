@@ -11,7 +11,8 @@ Covers:
   - Phase A: title normalizer produces the expected recovery variants and never
     regresses a clean title or reorders the raw-first invariant.
   - Phase B: blank retry window backs off monotonically with attempts, the
-    attempts counter lifecycle is correct, and the idle-drain ordering/freeze
+    attempts counter lifecycle is correct, a blank re-scrape result can never
+    erase a prior entry's real raw data, and the idle-drain ordering/freeze
     rules hold.
 """
 
@@ -52,7 +53,18 @@ def check_phase_b():
     R.store_entry(h, 1, {"main": 5, "extra": 8, "complete": 12, "match": "X"}, ratios, now)
     assert "attempts" not in h[1] and h[1]["avg"] is not None, h[1]
 
-    # 3) idle drain skips frozen tier and orders fewest-attempts-first.
+    # 3) a blank re-scrape result must NEVER wipe a prior entry's real raw data
+    #    (the bug: make_entry builds `raw` fresh from the fetch alone, so a clean
+    #    all-None miss on a re-scrape used to silently erase existing real values).
+    h2 = {}
+    R.store_entry(h2, 2, {"main": 5, "extra": 8, "complete": 12, "match": "X"}, ratios, now)
+    prior_raw = dict(h2[2]["raw"])
+    R.store_entry(h2, 2, {"main": None, "extra": None, "complete": None, "match": None},
+                  ratios, now + 1)
+    assert h2[2]["raw"] == prior_raw, f"blank re-scrape must not erase real raw data: {h2[2]}"
+    assert h2[2]["avg"] is not None, h2[2]
+
+    # 4) idle drain skips frozen tier and orders fewest-attempts-first.
     def blank(a, age_d):
         return {"main": None, "extra": None, "complete": None, "avg": None,
                 "raw": {"main": None, "extra": None, "complete": None},

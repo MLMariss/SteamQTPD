@@ -3,7 +3,7 @@
 Steam QHPP — recent-review refresher
 ====================================
 A SEPARATE, independent job from scraper.py. It keeps each game's *recent*
-(last-28-day) Steam review score fresh, so the frontend can show a recent-vs-all-time
+(last-30-day) Steam review score fresh, so the frontend can show a recent-vs-all-time
 trend (improving / stable / declining).
 
 Why it's its own script + its own file:
@@ -13,12 +13,12 @@ Why it's its own script + its own file:
     Actions writing *different* files never do (a git pull --rebase before push always
     applies cleanly).
 
-The recent score is a 28-day rolling window, so it drifts daily even with no new
+The recent score is a 30-day rolling window, so it drifts daily even with no new
 reviews. We can't keep all ~90k games perfectly fresh within the storefront rate
 limit, so we spend calls where reviews are actually likely to be moving:
 
   * Cooldown (RECENT_COOLDOWN_DAYS): never re-check a score younger than this — a day
-    of new reviews barely moves a 28-day window, so re-checking is wasted budget.
+    of new reviews barely moves a 30-day window, so re-checking is wasted budget.
   * Update-priority: recently *updated* games (from last_update_ts in games.json) jump
     the queue — a patch is exactly when reviews swing. Games with no/old updates get a
     much longer cooldown (checked rarely, never skipped forever).

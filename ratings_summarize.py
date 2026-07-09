@@ -24,9 +24,12 @@ Why a SEPARATE file + step (not folded into playtime.json):
   THIS -> ratings.json). The frontend loads both small files, never the raw one.
 
 ------------------------------------------------------------------------------
-THE THREE VARIANTS (all stored, so the display choice can change without a
-re-scrape — everything derives from the same raw reviews):
+THE THREE STORED VARIANTS (all three kept, so the display choice can change
+without a re-scrape — everything derives from the same raw reviews):
 ------------------------------------------------------------------------------
+  steam  — the plain one-vote-per-review %, matching Steam's own number.
+           Reference/comparison value.
+
   raw    — uncapped: recommend_hours / total_hours.
            Transparent, but DISTORTED by whales: a couple of 500h outliers can
            swing a game 60+ points off its Steam %. Kept for debugging/analysis,
@@ -36,25 +39,17 @@ re-scrape — everything derives from the same raw reviews):
            before summing. So one obsessive can't dominate: their weight maxes at
            2x the typical playtime. This keeps the rating tethered to a sane range
            (~5pt avg divergence from Steam %) while still letting longer playtime
-           count for more than a quick playthrough. THE INTENDED one.
+           count for more than a quick playthrough. THE INTENDED display value.
 
-  bayes  — the capped % pulled toward a global PRIOR with strength
-           PRIOR_STRENGTH_REVIEWS worth of hours. The prior is computed by POOLING
-           every review's capped hours across ALL eligible games into one weighted
-           rating (not by averaging per-game ratings — pooling weights each game by
-           its real playtime volume, so big games count proportionally and small
-           positive indies don't inflate the baseline). Small-sample games are
-           dragged toward the prior (a 10-review 100% can't outrank a 3000-review
-           92%); big-sample games keep their real value. This is the
-           "Steam-like"/IMDb-Top-250 confidence adjustment.
+A fourth "bayes" variant (pulling small-sample games toward a pooled global
+prior, IMDb-Top-250-style) was prototyped but deliberately dropped in favor of a
+gray-out confidence cue instead of nudging the number itself — see
+CONFIDENT_REVIEWS below. There is no bayes field or pass in this script.
 
-Eligibility: a game needs >= MIN_REVIEWS_FOR_RATING (10) reviews to get ANY
-rating. Below that there isn't enough signal; the game is omitted (frontend shows
-nothing / a thin-data marker).
-
-Two passes are required because `bayes` needs the global mean of `capped` across
-all games BEFORE it can smooth any individual game. Pass 1: compute every game's
-capped %. Pass 2: average them -> prior, then smooth.
+Eligibility: a game needs >= MIN_REVIEWS_FOR_RATING (5) reviews to get ANY
+rating; below that it's omitted entirely. >= CONFIDENT_REVIEWS (10) renders
+full-color; 5-9 renders grayed as low-confidence (a frontend concern — this
+script just ships both thresholds in the meta for the frontend to apply).
 """
 
 import json
