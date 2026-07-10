@@ -262,6 +262,86 @@ aren't lost, but each needs a source-feasibility check before it's worth scoping
   angle. Only viable source floated was LinkedIn scraping, which is a **ToS problem** and far
   off-mission. *Recorded but not recommended.*
 
+### 3.4 Lorenzo list — filter/view patterns to adopt (comparison-sourced, 2026-07)
+
+Ideas lifted from a **side-by-side with Lorenzo Stanco's Steam Wishlist Filters tool**
+(<https://www.lorenzostanco.com/lab/steam/wishlist/>), reviewed from its two view modes
+(**Detailed list** and **Cool grid**). Context: his tool is a **wishlist organizer** — filters
+by tags / features / platforms / languages, light on metrics; QTPD is a **value-analysis
+engine** over the whole catalog (QTPD, ratings, HLTB, playtime, price/discount, trend). So we
+borrow his **filter *organization* and view modes**, not his features. All five are **frontend /
+UX only** (no new scraping), so they also belong to §3.2. **Status (2026-07): agreed direction;
+L1 and L5 to prototype first next session.** Each item records what he does, the QTPD plan, the
+owner's refinements, and the open questions.
+
+- **L1. Accordion filter sections — [agreed; build first].** *His pattern:* filters are collapsed
+  behind a row of expandable category headers (`ORDER BY ▸`, `FILTER BY PLATFORMS ▸`, `… FEATURES`,
+  `… ACCESSIBILITY`, `… LANGUAGES`, `… TAGS`) — you expand only the one you need, so the default
+  screen stays calm and the complexity is opt-in. *QTPD plan:* break the single **flat
+  `bar-filters` wall (~15 control groups)** into ~4 **independently collapsible sections** matched
+  to our domain — **Value** (QTPD basis, HLTB metric/data, QTPD range, price range, on-sale),
+  **Quality** (min rating, reviews-sort, trend, min reviews, weighted), **Activity** (updated-within,
+  playtime-sort), **Tags**. Each section folds on its own, so a user can e.g. **collapse the big
+  Tags rail** and keep the main switches visible while working (owner's framing — confirmed correct).
+  *Open:* final grouping; whether open/closed state persists (localStorage or URL); desktop vs.
+  mobile default states. Pairs with the mobile progressive-disclosure item (§3.2 / §11).
+
+- **L2. Collapsed-bar summary sentence with inline-edit filters — [refined; mobile-first].**
+  *His pattern:* a permanent natural-language sentence with inline dropdowns — *"Show only
+  \[Free or paid] games released in \[any year] with \[0]+ \[overall] user reviews."* *Owner's
+  refinement (deliberately better than his):* **do not show the sentence permanently** (it wastes
+  space). Render it **only when the nav bar is fully collapsed**, as a **one-line summary of the
+  currently-picked filters** where each highlighted term is **clickable → opens a small inline
+  dropdown / popover** to change just that filter **without expanding the whole bar**. This doubles
+  as the "active-filter summary" (see the active-filter-chips idea — L2 supersedes it with an
+  editable version) *and* an edit affordance, and is flagged **mega-useful on mobile**. *Open:*
+  how to render the sentence from filter state; which filters get an inline editor vs. deep-link
+  into a section; popover positioning / tap targets on mobile.
+
+- **L3. View-mode switcher + "Cool grid" (box-art) view — [agreed; prototype].** *His pattern:* a
+  `Display: [Detailed list | Cool grid]` toggle; the grid is **pure Steam capsule art** (~6 cols,
+  coloured borders to flag status). *QTPD plan:* add a **view switcher (Table · Card · Grid)** on
+  the **right side of the nav bar**; the Grid is capsule art (we already hold the capsule URLs)
+  with a **small QTPD badge overlay** so it stays *ours*, not just a pretty wall. *Owner's mobile
+  refinement:* the **image-only grid may itself be the better mobile layout** — on **tap**, a card
+  **expands to show basic info** (QTPD, price, rating…) with actions to **close** or **open the
+  Steam page**. I.e. progressive disclosure via the grid (ties directly into the §3.2 mobile
+  progressive-disclosure item). *Open:* which KPIs appear in the tap-expand; grid columns per
+  breakpoint; badge design.
+
+- **L4. Utility actions — random / export / share — [agreed, with design notes].**
+  - **Pick random game** — must pick **from the current *filtered* list**, not the whole catalog.
+    *Open problem:* his tool links straight to Steam; **QTPD has no game-detail card**, so a random
+    pick has nowhere native to land. Options: **(a)** open the game's **Steam page** in a new tab,
+    or **(b)** drop the picked title into the **search box** (or scroll to + highlight its row) so
+    it surfaces **within QTPD**. *Decision pending* (b feels more on-brand).
+  - **Export to CSV** — opens a **column-picker popup**: the user chooses what to export (e.g. just
+    **game names + Steam links**, or a **selection of KPIs**). Not a blind dump of every field.
+  - **Share / copy link** — add an explicit **"copy link to clipboard"** button (QTPD already
+    encodes all filter/sort state in the URL, so the state is shareable today; this just makes it
+    one click).
+
+- **L5. Cool-grid prototype — [agreed; try it].** Same as L3's grid mode — the owner wants to
+  **see how the box-art grid looks** against real data before committing. Low effort (capsule URLs
+  exist); first thing to mock alongside L1.
+
+**Separate item (NOT part of the Lorenzo list) — short-link encoder for filter URLs — [new;
+needs design].** *Problem:* QTPD packs the full filter/sort state into the querystring, so shared
+links are **long and ugly**. *Want:* encode a long filter URL into a **short code** that expands
+back to the full URL when opened. *Architecture tension (important — see §1 static-first, §12
+Worker):* a **true** shortener (random code → stored full URL) needs **persistent storage**, which
+a static site can't provide on its own. Two routes:
+  1. **Client-side reversible compression** — pack the filter state into a **compact/compressed
+     hash** (e.g. LZ-string, or a bespoke bitfield over the known filter set) carried in the URL
+     fragment. Shorter, **still 100% static**, no storage, no lookup, no abuse surface. *Downside:*
+     shorter but not "a few random digits" short.
+  2. **Worker + KV store** — the existing Cloudflare Worker (§12) stores `{shortcode → state}` in
+     Workers KV, yielding **truly short random codes**. *Cost:* adds a **stateful component + a
+     write path** (needs abuse/rate limits, code collisions, expiry policy) — a real departure
+     from static-first.
+  *Recommendation:* evaluate **(1)** first (fits the architecture); only reach for **(2)** if
+  genuinely-short random codes are a hard requirement.
+
 ---
 
 ## 4. Jobs & workflows
