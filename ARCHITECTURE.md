@@ -103,13 +103,16 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   `updates.json` ships per-tier `last_*_ts`, windowed `counts` (30/90/180/365d), and capped
   `dates` arrays for client-side window recompute. The frontend already loads `updates.json`
   and uses `last_any_ts` to backfill null `last_update_ts` (News-API stays primary for now).
-  *Still open (tracked in §9.5): (1) the dedicated sortable/filterable **updates column** off
-  the `dates` arrays — currently only the backfill is wired, not a standalone column; (2) the
-  **precedence switch** — flip the event-based layer from fallback to primary once shard
-  coverage is broad enough to beat the News-API's ~42% null `last_update_ts`. Trigger: today
-  only 1/64 shards are populated (rotation just started; all 64 fill every ~16 days at 4×/day),
-  so leave News-API primary until the shards cover materially more games than News-API does,
-  then invert the precedence in `index.html`.*
+  *Update (2026-07): the dedicated **Updated column** is now shipped — a standalone
+  sortable column (between Released and Tags) showing last-update recency plus a
+  patch-cadence badge (`N · 90d` / `N · 1y`, summed across tiers from `updates.json` counts),
+  degrading to nothing where updates.json has no coverage yet. Sort is by update recency.*
+  *Still open (tracked in §9.5): the **precedence switch** — flip the event-based layer from
+  fallback to primary once shard coverage is broad enough to beat the News-API's ~42% null
+  `last_update_ts`. Trigger: today only 1/64 shards are populated (rotation just started; all
+  64 fill every ~16 days at 4×/day), so leave News-API primary (the column still sorts by it)
+  until the shards cover materially more games than News-API does, then invert the precedence
+  in `index.html`.*
 
 - **Mod support & mod count.** Flag whether a game is moddable and roughly how large its mod
   scene is — especially relevant to the survival-craft audience. *What to do:* query the
@@ -127,14 +130,19 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   "number of *active cheaters*" request has **no reliable public source** and is not pursued.
   *Low-medium value, medium effort; "invasive or not" is a judgment call to encode.*
 
-- **Soften the `success:false` permanent-skip (robustness, not a new metric).** `build_record`
-  permanently skips any app whose Steam `appdetails` returns `success:false` (scraper.py
-  ~508–509), which lumps genuinely-dead/delisted apps together with **region-locked (cc=us)**
-  titles and transient `success:false` blips — so a handful of legitimate games are dropped
-  forever (≈731 currently on the skip list, an unknown fraction of them recoverable). *What to
-  do:* on `success:false`, retry once (or in an alternate region) before skipping, or file to a
-  "recheck later" list instead of a permanent skip. *Low impact (small count), low effort; safe
-  quick win.*
+- **Soften the `success:false` permanent-skip (robustness, not a new metric). [Done —
+  2026-07.]** `build_record` used to permanently skip any app whose Steam `appdetails`
+  returned `success:false`, which lumped genuinely-dead/delisted apps together with
+  **region-locked (cc=us)** titles and transient `success:false` blips — so a handful of
+  legitimate games were dropped forever (≈731 were on the skip list, an unknown fraction
+  recoverable). *Done:* `success:false` now returns a new **`"recheck"`** sentinel instead of
+  `"skip"` (the confirmed-non-game `type != "game"` path keeps its permanent `"skip"`). A
+  bounded `catalog["recheck"]` map (`{appid: strikes}`) retries the app across runs —
+  `select_work` re-queues it as fresh work because it's neither stored nor skipped — and only
+  after **`MAX_RECHECK` (=4, env-overridable)** strikes is it promoted to a permanent skip. A
+  success or pending result clears its strikes; each run also prunes entries no longer in
+  Steam's app list (delisted-and-removed apps), so nothing lingers in limbo. See §5. *Low
+  impact (small count), low effort; safe quick win.*
 
 ### 3.2 Frontend / UX (no new scraping)
 
@@ -342,7 +350,10 @@ tags/genres, last_update_ts, … } ] }`. The catalog the frontend iterates.
 
 **`catalog.json`** — the scraper's own state: what's been seen, the `pending` room of
 unreleased games waiting on their release date, cursor/enumeration bookkeeping. Not read by
-the frontend.
+the frontend. Notable keys: `skipped` (permanent — confirmed non-games), `pending` (`{appid:
+release_ts|null}`), `force_refresh`, `seeds_ledger`, and **`recheck`** (`{appid: strikes}` —
+apps whose `appdetails` returned `success:false`, retried across runs until they resolve or
+hit `MAX_RECHECK`, then moved to `skipped`; §3.1). Ints in memory, string keys on disk.
 
 **`prices.json`** — `{ "prices": { "<appid>": { price_initial, price_final, discount_pct,
 discount_end, is_free } } }`. The fast-changing layer; `discount_end` drives the live
@@ -775,16 +786,18 @@ timestamp lists for client-side window recompute. One writer per file holds:
 `updates_refresh.py` owns `updates_raw/NN.json`; `updates_summarize.py` owns `updates.json`;
 the raw job never writes the summary.
 
-**Frontend integration — partially wired.** `index.html` already loads `updates.json` and uses
-it as a **fallback**: where games.json's News-API `last_update_ts` is null, it backfills from
-`last_any_ts` (max of the tier timestamps). Old News-API layer stays primary; this only fills
-nulls. Two steps remain: **(1) a dedicated sortable/filterable "updates" column** keyed off
-`updates.json`, using the shipped `dates` arrays to recompute live window counts against the
-clock; **(2) the precedence flip** — make the event-based layer primary and News-API the
-fallback. Both are **gated on shard coverage**, not on code: today only 1/64 `updates_raw/`
-shards are populated (rotation just started; full sweep every ~16 days at 4×/day), so `updates.json`
-covers far fewer games than the News-API's ~58% non-null `last_update_ts`. Keep News-API primary
-until the shards cover materially more games, then flip precedence and surface the column. See §3.1.
+**Frontend integration — column shipped; precedence flip still pending.** `index.html` loads
+`updates.json` and uses it two ways: (a) as a **fallback** for recency — where games.json's
+News-API `last_update_ts` is null, it backfills from `last_any_ts` (max of the tier
+timestamps); and (b) as the source for the **Updated column's cadence badge** — `upd_c90` /
+`upd_c365` summed across tiers from the `counts` windows (§11). The standalone **sortable
+Updated column** (between Released and Tags) is now shipped, sorting by update recency and
+showing the cadence badge where covered. One step remains: **the precedence flip** — make the
+event-based layer primary and News-API the fallback. It is **gated on shard coverage**, not on
+code: today only 1/64 `updates_raw/` shards are populated (rotation just started; full sweep
+every ~16 days at 4×/day), so `updates.json` covers far fewer games than the News-API's ~58%
+non-null `last_update_ts`. Keep News-API primary (the column sorts by it for now) until the
+shards cover materially more games, then flip precedence. See §3.1.
 
 ---
 
@@ -851,10 +864,11 @@ hours follow the **HLTB metric** toggle (main / +extras / 100% / avg). Null for 
 and games with no usable HLTB value. The score is recomputed on toggle, never stored.
 (Internal sort key: `qtpd`.)
 
-**The table (11 columns).** In order: Game · Reviews · Trend · **Weighted** · Price / Sale ·
-Sale ends · Released · Tags · **Playtime** · HLTB · QTPD. (**Trend** now sits directly after
-Reviews — it's derived from them — and **Price + Discount are merged** into one `Price / Sale`
-column, dropping the old standalone Discount column: 12 columns → 11.)
+**The table (12 columns).** In order: Game · Reviews · Trend · **Weighted** · Price / Sale ·
+Sale ends · Released · **Updated** · Tags · **Playtime** · HLTB · QTPD. (**Trend** sits directly
+after Reviews — it's derived from them — and **Price + Discount are merged** into one
+`Price / Sale` column. The **Updated** column (2026-07) sits after Released: last-update recency
++ a patch-cadence badge, sortable by recency — see §9.5 / §3.1.)
 
 - The table is laid out with **CSS Grid** — a shared `--grid-cols` template of `minmax()`
   tracks (one per column) applied at the **row** level, so the sticky `<thead>` stays a normal
@@ -864,12 +878,14 @@ column, dropping the old standalone Discount column: 12 columns → 11.)
   ceiling so the slim numeric/sort columns (Trend, Price / Sale, Weighted, Sale ends) don't bloat
   on a wide monitor. On large screens the slack concentrates on the content-heavy columns —
   **Game and Tags** — which carry `fr` ceilings; everything else stays near its natural width.
-  The table's `min-width` is the **exact sum of the column minimums (1240px)** — down from 1266px
-  after the Price/Discount merge — so below that the **page** (not the table card) scrolls
-  horizontally — deliberately *not* `overflow-x:auto` on the scroll container, because a lone
-  `overflow-x:auto` is promoted by browsers to `overflow:auto` on both axes, which would trap the
-  sticky `<thead>` in a scroll box. Below ~1290px the table stops being a table and becomes the
-  stacked **card layout** (see *Responsive* below).
+  The table's `min-width` is the **exact sum of the column minimums (1324px)** — 1240px before
+  the Updated column added its 84px track (2026-07) — so below that the **page** (not the table
+  card) scrolls horizontally — deliberately *not* `overflow-x:auto` on the scroll container,
+  because a lone `overflow-x:auto` is promoted by browsers to `overflow:auto` on both axes, which
+  would trap the sticky `<thead>` in a scroll box. Below ~1374px the table stops being a table and
+  becomes the stacked **card layout** (see *Responsive* below). *(Both numbers moved by exactly
+  the new column's 84px min: min-width 1240→1324, breakpoint 1290→1374, preserving the ~50px
+  comfort gap between them.)*
   - **`minmax()` tracks make max-width reliable.** Unlike the old `table-layout:auto` + `<col>`
     approach (where `max-width` was only a hint), Grid `minmax()` enforces both floor and ceiling,
     so a slim column can't grow past its stated max even on an extreme ultrawide.
@@ -918,7 +934,7 @@ column, dropping the old standalone Discount column: 12 columns → 11.)
   neutral color, so a full-price value is never mistaken for a discount deal.
 
 **Responsive / card layout.** The table is for the desktop width range; a **fluid table alone
-cannot fit a phone** (eleven columns at legible minimums sum to ~1240px). So below **1290px**
+cannot fit a phone** (twelve columns at legible minimums sum to ~1324px). So below **1374px**
 the layout switches: `<thead>` hides, each row becomes a **card** (every `<td>` a
 label→value line, the header supplied by the cell's `data-label`). A second **~560px** phone
 breakpoint tightens it further (smaller thumbnail, roomier tap targets, HLTB row given

@@ -71,6 +71,10 @@ TIME_BUFFER = 120               # stop scraping this long before the budget, to 
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
 SEED_RESOLVE_TTL = 24 * 3600    # live term/URL seeds: re-resolve at most once per this interval
+MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:false retries
+                                # before a game is treated as a permanent skip. success:false
+                                # lumps region-locked (cc=us) + transient blips with dead apps,
+                                # so we retry across this many runs before giving up (§3.1).
 
 # TOP_TAGS / SteamSpy tags moved to tags_refresh.py (it was the slowest per-game call).
 COUNTRY = "us"                  # cc=us => USD prices
@@ -532,8 +536,9 @@ def parse_release(d):
 
 # --------------------------------------------------------------------------- #
 # Build one game record. Returns dict (released, scraped) | ("pending", date, ts)
-# (not yet released ->
-# waiting room) | "skip" (non-game/delisted -> permanent) | None (transient error)
+# (not yet released -> waiting room) | "skip" (confirmed non-game -> permanent)
+# | "recheck" (appdetails success:false -> soft, bounded retry, §3.1)
+# | None (transient error)
 # --------------------------------------------------------------------------- #
 def build_record(appid, prev=None):
     storefront_pace()               # shared budget (see STOREFRONT_MIN_INTERVAL)
@@ -544,10 +549,14 @@ def build_record(appid, prev=None):
         return None
     node = detail.get(str(appid), {})
     if not node.get("success"):
-        return "skip"
+        # success:false is ambiguous: region-locked (cc=us), a transient blip, OR a
+        # genuinely dead/delisted app. Don't permanently skip on the first sighting —
+        # hand back "recheck" so the caller retries across MAX_RECHECK runs before
+        # giving up (a hard "skip" here dropped recoverable games forever). §3.1.
+        return "recheck"
     d = node.get("data", {})
     if d.get("type") != "game":
-        return "skip"
+        return "skip"                # confirmed non-game (soundtrack/DLC/video) -> permanent
 
     # Release gate: only store games actually out as of now. parse_release() yields
     # a release_ts ONLY for a concrete past/real date; coming_soon and vague future
@@ -641,6 +650,10 @@ def load_catalog():
             c.setdefault("priority", [])
             c.setdefault("seeds_ledger", {})     # {seed_key: {kind, resolved_ts, ids, forced_applied}}
             c.setdefault("force_refresh", [])    # appids queued for a one-shot forced re-scrape
+            # recheck = {appid: attempts} for apps whose appdetails returned success:false;
+            # retried until they resolve or hit MAX_RECHECK, then promoted to skipped. §3.1.
+            rec = c.get("recheck")
+            c["recheck"] = {int(k): int(v) for k, v in rec.items()} if isinstance(rec, dict) else {}
             # pending = unreleased games seen but not yet out: {appid: release_ts|null}.
             # Normalize from any legacy list form to the dict form we use now.
             pend = c.get("pending")
@@ -654,13 +667,14 @@ def load_catalog():
         except (ValueError, TypeError):
             pass
     return {"last_sync": 0, "skipped": [], "priority": [], "pending": {},
-            "seeds_ledger": {}, "force_refresh": []}
+            "seeds_ledger": {}, "force_refresh": [], "recheck": {}}
 
 
 def save_catalog(c):
     # Serialize pending with string keys (JSON object keys are strings anyway).
     out = dict(c)
     out["pending"] = {str(k): v for k, v in (c.get("pending") or {}).items()}
+    out["recheck"] = {str(k): v for k, v in (c.get("recheck") or {}).items()}
     CATALOG_FILE.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
 
 
@@ -801,6 +815,7 @@ def main():
     new_ids, refresh_ids = select_work(master, has_lm, processed, catalog)
     log(f"Universe {len(master)} | stored {len(processed)} | skipped "
         f"{len(catalog['skipped'])} | pending {len(catalog.get('pending') or {})} | "
+        f"recheck {len(catalog.get('recheck') or {})} | "
         f"to-do: {len(new_ids)} new, {len(refresh_ids)} refresh")
     log(f"Budget: {RUN_MINUTES} min | storefront pace {STOREFRONT_MIN_INTERVAL}s/call | "
         f"force-reserve {float(os.environ.get('FORCE_RESERVE_FRAC', '0.5')):.0%} "
@@ -808,6 +823,11 @@ def main():
 
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})
+    recheck = dict(catalog.get("recheck") or {})   # {appid: attempts} soft-skip retries (§3.1)
+    # Drop recheck entries no longer in Steam's app list (delisted + removed): they can't be
+    # re-scraped, so they'd otherwise linger forever without ever reaching the strike cap.
+    # If such an app is relisted later it re-enters as fresh work with a clean slate.
+    recheck = {aid: n for aid, n in recheck.items() if aid in master}
     # Durable forced-refresh queue: an '!'-seed's stored matches stay queued across runs
     # until actually re-scraped, so a budget-limited run doesn't drop them. The
     # forced_applied latch in the ledger stops them being re-added (no loop).
@@ -893,6 +913,7 @@ def main():
             res["scraped_at"] = int(time.time())
             processed[str(aid)] = res
             pending.pop(aid, None)          # graduated from waiting room (if it was there)
+            recheck.pop(aid, None)          # resolved -> clear any soft-skip strikes
             force_set.discard(aid)          # forced re-scrape satisfied (if it was queued)
             n_ref += kind == "refresh"; n_new += kind == "new"
         elif isinstance(res, tuple) and res and res[0] == "pending":
@@ -900,15 +921,28 @@ def main():
             # select_work can promote it the moment its date passes. Never skipped.
             _, _pdate, pts = res
             pending[aid] = pts
+            recheck.pop(aid, None)          # it responded -> not a dead app after all
             n_pend += 1
+        elif res == "recheck":
+            # appdetails success:false: retry across runs (region-lock / transient blip)
+            # rather than dropping forever. Only after MAX_RECHECK strikes is it a hard skip.
+            strikes = recheck.get(aid, 0) + 1
+            if strikes >= MAX_RECHECK:
+                skipped.add(aid)
+                recheck.pop(aid, None)
+            else:
+                recheck[aid] = strikes
+            pending.pop(aid, None)
         elif res == "skip":
             skipped.add(aid)
+            recheck.pop(aid, None)
             pending.pop(aid, None)
 
         if time.time() - last_commit > CHECKPOINT_SECONDS:
             catalog["skipped"] = sorted(skipped)
             catalog["pending"] = pending
             catalog["force_refresh"] = sorted(force_set)
+            catalog["recheck"] = recheck
             save_games(processed); save_catalog(catalog)
             git_checkpoint(f"checkpoint: {len(processed)} games stored")
             inject_new_seeds()              # after the push, pull any seeds.txt edit into this run
@@ -917,12 +951,14 @@ def main():
     catalog["skipped"] = sorted(skipped)
     catalog["pending"] = pending
     catalog["force_refresh"] = sorted(force_set)
+    catalog["recheck"] = recheck
     catalog["last_sync"] = int(start)
     save_games(processed); save_catalog(catalog)
     git_checkpoint(f"scrape: {len(processed)} games (+{n_new} new, {n_ref} refreshed, "
                    f"{n_pend} pending)")
     log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending. "
-        f"Stored {len(processed)}, skipped {len(skipped)}, waiting {len(pending)}.")
+        f"Stored {len(processed)}, skipped {len(skipped)}, waiting {len(pending)}, "
+        f"rechecking {len(recheck)}.")
     return 0
 
 

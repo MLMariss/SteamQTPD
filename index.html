@@ -207,6 +207,7 @@
       minmax(96px,  132px)   /* Price/Sale — merged: struck+final price with discount badge */
       minmax(80px,  108px)   /* Sale ends  */
       minmax(96px,  124px)   /* Released   — floor fits "15.2 yrs old" */
+      minmax(84px,  108px)   /* Updated    — last-update recency + patch-cadence badge */
       minmax(140px, 3fr)     /* Tags       — MOST growth (soaks up the slack, fewest wrap rows) */
       minmax(82px,  82px)    /* Playtime   — fixed: fits "▲ 9999h" (ptval min-width 44 + arrow + trimmed pad) */
       minmax(132px, 164px)   /* HLTB       — floor fits "1281 1464 1670" */
@@ -214,7 +215,7 @@
   }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
-  table{width:100%; margin:0 auto; border-collapse:collapse; min-width:1240px}
+  table{width:100%; margin:0 auto; border-collapse:collapse; min-width:1324px}
   colgroup{display:none}                     /* grid tracks size the columns now, not <col> */
   thead,tbody{display:block; width:100%}     /* let rows be the grid containers */
   thead tr,tbody tr{display:grid; grid-template-columns:var(--grid-cols); align-items:center}
@@ -313,6 +314,8 @@
   .age{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px}
   .updated{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px; white-space:nowrap}
   .updated.none{color:#c98a8a}
+  .updcad{font-family:var(--mono); font-size:11px; color:var(--muted-2); margin-top:2px; white-space:nowrap; opacity:.85}
+  .updcad.hot{color:var(--teal)}
 
   /* QTPD dual value: after-discount (left, primary) + full price (right). Active
      basis is highlighted (qsel), the inactive one dimmed (qdim). Positions fixed. */
@@ -418,7 +421,7 @@
      each cell a label→value flex line), with more generous spacing, clearer separation
      between rows, and Tags given a full-width left-aligned row so they breathe instead of
      cramming against the right edge. */
-  @media (max-width:1290px){
+  @media (max-width:1374px){
     table{min-width:0; max-width:none; margin:0}
     colgroup{display:none}
     thead{display:none}
@@ -443,7 +446,7 @@
     .hltb-stack{text-align:right}
     td.tdqtpd{flex-wrap:wrap}
     .qbar{flex:1; max-width:180px; margin-top:0}
-    .age,.updated{text-align:right}
+    .age,.updated,.updcad{text-align:right}
     .grouplabel{width:auto; text-align:left}
     /* Tags: full-width row, label on its own line, chips wrap left-aligned with room. */
     td[data-label="Tags"]{flex-direction:column; align-items:stretch; gap:6px}
@@ -643,6 +646,7 @@
             <th class="th-split" title="Price and discount, combined. Click 'Price' to sort by the current price; click 'Sale' to sort by discount depth."><button class="splitsort sortable" data-sort="price_final">Price</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="discount_pct">Sale</button></th>
             <th class="sortable center" data-sort="discount_end">Sale ends</th>
             <th class="sortable center" data-sort="release_ts">Released</th>
+            <th class="sortable center" data-sort="updated" title="How recently the game was last patched, and how often. The top line is time since the last update; the badge below is the number of updates in the last 90 days (all sizes), with the 365-day count on hover. Sorts by update recency — most recently updated first.">Updated</th>
             <th>Tags</th>
             <th class="sortable num pad" data-sort="playtime" title="Median hours played, split by review recommendation. Green ▲ = players who recommended it; red ▼ = players who did not. A long playtime on a 'not recommended' is a credible signal (someone knows the game well and still says skip it). Hover a value for mean, sample size, and spread. Click to sort; choose which side drives the sort with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
             <th class="sortable num pad" data-sort="hltb" title="Main / Main+Extras / Completionist (hours), with average below. Sorts by whichever HLTB metric is selected above.">HLTB · M / E / 100%</th>
@@ -842,6 +846,17 @@ function relTime(ts){
   if(s < 86400) return Math.floor(s/3600) + "h ago";
   return Math.floor(s/86400) + "d ago";
 }
+// Patch-cadence badge for the Updated column: how many updates (any size) landed in the
+// last 90 days, from updates.json counts. Recent activity is highlighted; a game with
+// updates only in the older part of the year shows the softer yearly count. Nothing when
+// updates.json has no data for the game (coverage is still filling — see ARCHITECTURE §9.5).
+function updCad(g){
+  const c90 = g.upd_c90, c365 = g.upd_c365;
+  if(c90 == null && c365 == null) return "";
+  if(c90 > 0)  return `<div class="updcad hot" title="${c90} update${c90===1?'':'s'} in the last 90 days · ${c365} in the last year">${c90} · 90d</div>`;
+  if(c365 > 0) return `<div class="updcad" title="${c365} update${c365===1?'':'s'} in the last year · none in the last 90 days">${c365} · 1y</div>`;
+  return "";
+}
 
 // ----- filters (all except QTPD range) -----
 function passNonRange(x){
@@ -901,6 +916,7 @@ function visibleGames(){
                  : k === "review_count" ? countVal(x)
                  : k === "wr" ? x.wr
                  : k === "playtime" ? (state.ptMetric === "down" ? x.pt_down : x.pt_up)
+                 : k === "updated" ? x.last_update_ts
                  : x[k];
   g.sort((a,b)=>{
     if(k === "title") return dir * a.title.localeCompare(b.title);
@@ -1160,7 +1176,8 @@ function render(){
       <td data-label="Weighted" class="num">${wrCell}</td>
       <td data-label="Price / Sale">${price}</td>
       <td data-label="Sale ends" class="center">${sale}</td>
-      <td data-label="Released" class="center"><span class="rel">${fmtRelease(g)}</span>${age?`<div class="age">${age}</div>`:""}<div class="updated${!g.last_update_ts?' none':''}" title="${g.last_update_ts?'Last content update: '+new Date(g.last_update_ts*1000).toISOString().slice(0,10):'No update posts found on Steam'}">${updatedStr(g.last_update_ts)}</div></td>
+      <td data-label="Released" class="center"><span class="rel">${fmtRelease(g)}</span>${age?`<div class="age">${age}</div>`:""}</td>
+      <td data-label="Updated" class="center"><div class="updated${!g.last_update_ts?' none':''}" title="${g.last_update_ts?'Last content update: '+new Date(g.last_update_ts*1000).toISOString().slice(0,10):'No update posts found on Steam'}">${updatedStr(g.last_update_ts)}</div>${updCad(g)}</td>
       <td data-label="Tags"><div class="tags">${tagHtml}</div></td>
       <td data-label="Playtime" class="num pad">${ptCell}</td>
       <td data-label="HLTB M/E/100%" class="num pad">${hltb}</td>
@@ -1898,6 +1915,16 @@ Promise.all([
     // Old system stays primary; this only fills nulls. (Precedence flips later.)
     if((game.last_update_ts == null) && updatesMap && updatesMap[key] && updatesMap[key].last_any_ts != null){
       game.last_update_ts = updatesMap[key].last_any_ts;
+    }
+    // updates.json cadence -> the Updated column's patch-frequency badge. Summed across
+    // all sizes (major+regular+minor) for the 90d and 365d windows (both cumulative in
+    // the source). Independent of the null-backfill above: attached for every game
+    // updates.json covers, whether or not News-API already supplied a last_update_ts.
+    if(updatesMap && updatesMap[key] && updatesMap[key].counts){
+      const c = updatesMap[key].counts;
+      const sum = w => c[w] ? (c[w].major||0)+(c[w].regular||0)+(c[w].minor||0) : 0;
+      game.upd_c90  = sum("90d");
+      game.upd_c365 = sum("365d");
     }
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
   });
