@@ -83,6 +83,21 @@
   /* infinite-scroll sentinel / "loading more" row */
   .loadmore{text-align:center; padding:18px; font-family:var(--mono); font-size:12px; color:var(--muted)}
 
+  /* Mobile sort control — hidden on desktop (the table headers sort there). Shown in the bar
+     in card mode, where the <thead> is display:none and would otherwise leave no way to sort. */
+  .mobile-sort{display:none; align-items:center; gap:7px; flex:none}
+  .ms-lbl{font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
+  .mobile-sort select{appearance:none; -webkit-appearance:none; -moz-appearance:none; background:var(--panel);
+        border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:13px;
+        padding:8px 28px 8px 10px; border-radius:8px; cursor:pointer;
+        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%2394a0c0' stroke-width='1.6'><path d='M1 1l4 4 4-4'/></svg>");
+        background-repeat:no-repeat; background-position:right 10px center}
+  .mobile-sort select:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33; outline:none}
+  .mobile-sort #msortdir{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--gold);
+        font-family:var(--mono); font-size:14px; line-height:1; padding:8px 11px; border-radius:8px; cursor:pointer}
+  .mobile-sort #msortdir:hover{border-color:var(--gold-deep)}
+  .mobile-sort #msortdir:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33; outline:none}
+
   .toggle{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
         font-family:var(--mono); font-size:13px; padding:9px 14px; border-radius:9px; cursor:pointer; letter-spacing:.01em}
   .toggle[aria-pressed="true"]{border-color:var(--coral); color:var(--coral)}
@@ -416,57 +431,113 @@
   .empty b{color:var(--text); font-weight:600}
   .foot{margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--muted-2); line-height:1.9}
 
-  /* ── Narrow screens: table collapses to stacked cards ─────────────────────────────
-     Lighter-touch pass — same card structure as before (thead hidden, each row a block,
-     each cell a label→value flex line), with more generous spacing, clearer separation
-     between rows, and Tags given a full-width left-aligned row so they breathe instead of
-     cramming against the right edge. */
+  /* ── Narrow screens: table → compact spec-sheet card ──────────────────────────────────
+     Redesign (2026 responsive-table best practice). Below the table's real floor the 12
+     columns can't be compared row-to-row on a phone, so each row becomes a self-contained
+     card. Two earlier passes (12 stacked label:value rows, then a 2-column grid) both read as
+     "spread out": the grid left ragged heights and the label-above-value form doubled the line
+     count. This version is a single-column SPEC SHEET — one metric per line, a fixed muted
+     label gutter on the left and its value flush beside it, so labels and values form two clean
+     aligned columns the eye scans straight down. Fields run in a logical top-to-bottom order:
+     name → QTPD verdict → price → ratings (score/weighted/trend) → length (HLTB/playtime) →
+     release → updates → tags, with `order` decoupling this from the table's column order.
+     Long/technical column names are relabeled to plain words (Reviews→Rating, HLTB→Length,
+     Price / Sale→Price). Cells whose value is just "no data" (no active sale, no weighted
+     rating, no trend) are dropped via :has() so the card carries no dead "—" lines. Sorting —
+     which on desktop lives only in the now-hidden <thead> — is exposed through the .mobile-sort
+     control in the bar (see #mobileSort). */
   @media (max-width:1374px){
     table{min-width:0; max-width:none; margin:0}
     colgroup{display:none}
     thead{display:none}
     table,tbody{display:block; width:100%}
-    /* reset the desktop grid: rows/cells go back to block/flex card layout. These selectors
-       match the base grid rules' specificity so they actually win inside the query. */
-    thead tr,tbody tr{display:block; grid-template-columns:none}
-    tbody tr{padding:16px 14px; border-bottom:1px solid var(--line)}
-    tbody tr:nth-child(even){background:transparent}   /* no zebra in card mode — cards stay uniform */
-    tbody tr:hover{background:transparent}
-    tbody td,tbody td.num,tbody td.center{padding:6px 0; border:0; display:flex; flex-direction:row;
-        justify-content:space-between; align-items:center; gap:16px; min-height:26px; overflow:visible}
-    td.pad{padding:6px 0}
-    tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:12px; letter-spacing:.04em;
-        text-transform:uppercase; color:var(--muted-2); flex:none}
-    .gtitle{-webkit-line-clamp:3}
-    .thumb{width:184px; height:69px}
-    .pricebox{align-items:flex-end}
-    .num,.qtop,.hltb{justify-content:flex-end}
-    .center{justify-content:flex-end !important}
-    .ratecell{align-items:flex-end}
-    .hltb-stack{text-align:right}
-    td.tdqtpd{flex-wrap:wrap}
-    .qbar{flex:1; max-width:180px; margin-top:0}
-    .age,.updated,.updcad{text-align:right}
-    .grouplabel{width:auto; text-align:left}
-    /* Tags: full-width row, label on its own line, chips wrap left-aligned with room. */
-    td[data-label="Tags"]{flex-direction:column; align-items:stretch; gap:6px}
-    .tags{justify-content:flex-start; margin-top:2px}
-  }
+    thead tr{display:none}
+    .mobile-sort{display:inline-flex}
 
-  /* ── Phones (~≤560px): finer sizing so the tightest rows don't collide ──────────────
-     Smaller thumbnail, roomier tap targets, and the Game header allowed to stack the
-     title under the thumbnail when the row gets truly narrow. */
+    /* row → card: single-column stack, no zebra/hover fills */
+    tbody tr{display:flex; flex-direction:column; padding:14px 15px 15px; border-bottom:1px solid var(--line)}
+    tbody tr:nth-child(even){background:transparent}
+    tbody tr:hover{background:transparent}
+
+    /* metric cell: [ LABEL gutter ][ value ] on one baseline row; multi-part values (release
+       date+age, updated recency+cadence) sit inline and wrap under the value column if needed. */
+    tbody td,tbody td.num,tbody td.center{padding:4px 0; border:0; display:flex; flex-flow:row wrap;
+        align-items:baseline; justify-content:flex-start; gap:2px 9px; min-width:0; min-height:0; overflow:hidden}
+    td.pad{padding:4px 0}
+    tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:10px; letter-spacing:.03em;
+        text-transform:uppercase; color:var(--muted-2); flex:none; width:72px; line-height:1.5}
+    tbody td:empty{display:none}
+    /* plain-language relabels for the mobile card */
+    td[data-label="Reviews"]::before{content:"Rating"}
+    td[data-label="HLTB M/E/100%"]::before{content:"Length"}
+    td[data-label="Price / Sale"]::before{content:"Price"}
+    /* drop cells whose only value is "no data" so no dead "—" lines clutter the card */
+    td[data-label="Sale ends"]:has(.nosale){display:none}
+    td[data-label="Weighted"]:has(.wrval.na){display:none}
+    td[data-label="Trend"]:has(.trend.none){display:none}
+    /* every value block left-aligned (override the desktop right/center rules) */
+    .num,.qtop,.hltb,.hltb-stack,.havg,.center,.ratecell,.pricebox,.ptcell{justify-content:flex-start;
+        align-items:flex-start; text-align:left}
+    .center{justify-content:flex-start !important}
+    .ratecell,.ptcell,.hltb-stack,.pricebox{flex:1 1 auto}
+    .age,.updated,.updcad{text-align:left}
+    .grouplabel{width:auto; text-align:left}
+
+    /* logical field order: verdict → price → ratings → length → dates → tags */
+    td[data-label="Game"]{order:1}
+    td[data-label="QTPD"]{order:2}
+    td[data-label="Price / Sale"]{order:3}
+    td[data-label="Sale ends"]{order:4}
+    td[data-label="Reviews"]{order:5}
+    td[data-label="Weighted"]{order:6}
+    td[data-label="Trend"]{order:7}
+    td[data-label="HLTB M/E/100%"]{order:8}
+    td[data-label="Playtime"]{order:9}
+    td[data-label="Released"]{order:10}
+    td[data-label="Updated"]{order:11}
+    td[data-label="Tags"]{order:12}
+
+    /* Game: full-width headline (thumb + title), no redundant "GAME" label */
+    td[data-label="Game"]{padding-bottom:9px}
+    td[data-label="Game"]::before{display:none}
+    .gamecell{width:100%}
+    .gtitle{-webkit-line-clamp:2; font-size:16px}
+    .thumb{width:120px; height:46px}
+
+    /* QTPD: headline card row — big number + full-width bar; the app's whole point. Selector is
+       `tbody td.tdqtpd` (not the data-label form) so it out-specifies the grouped
+       `tbody td.num{...}` rule — the QTPD cell carries the .num class. */
+    tbody td.tdqtpd{flex-flow:row nowrap; align-items:center; gap:10px; margin:3px 0 9px;
+        padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:10px}
+    tbody td.tdqtpd::before{color:var(--gold); align-self:center; width:auto; font-size:11px}
+    td.tdqtpd .qtop{flex:none}
+    td.tdqtpd .qval{font-size:20px}
+    .qbar{flex:1; max-width:none; margin-top:0; min-width:56px}
+
+    /* Tags: full-width, label on its own line above the wrapping chips */
+    td[data-label="Tags"]{flex-direction:column; align-items:stretch; padding-top:9px}
+    td[data-label="Tags"]::before{width:auto}
+    td[data-label="Tags"] .tags{justify-content:flex-start; margin-top:5px}
+
+    /* filter controls that carried fixed pixel widths: let them fill the row on narrow screens */
+    .rangefield{min-width:0; flex-basis:100%; max-width:none}
+    .wishbox{flex:1 1 240px}
+    .wishbox input{width:auto; flex:1; min-width:0}
+    /* price min/max steppers: desktop's 22×17px arrows are too small to tap on a phone —
+       give them a roomier target (and a little gap) without changing the desktop look. */
+    .steppers{gap:3px}
+    .steppers button{width:30px; height:23px; font-size:13px}
+
+  /* ── Phones (~≤560px): tighter spacing and type ──────────────────────────────────────── */
   @media (max-width:560px){
     .tablecard{border-radius:10px; margin-top:8px}
-    tbody tr{padding:14px 12px}
-    tbody td{padding:7px 0; gap:12px}
-    .thumb{width:132px; height:50px}
+    tbody tr{padding:13px 12px 13px}
+    .thumb{width:104px; height:40px}
     .gamecell{gap:8px}
     .gtitle{font-size:15px}
-    /* the three HLTB figures + avg can crowd their label on a phone: give the value side
-       priority and let the label sit above it if space is tight. */
-    td[data-label="HLTB M/E/100%"]{align-items:flex-start}
-    .hltb{gap:8px}
+    td.tdqtpd .qval{font-size:19px}
+    tbody td::before{width:66px}
+    .hltb{gap:10px}
   }
   @media (prefers-reduced-motion:reduce){ .qfill{transition:none} }
 </style>
@@ -485,6 +556,25 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
       </label>
+      <div class="mobile-sort" id="mobileSort" title="Sort games (the table headers do this on desktop)">
+        <span class="ms-lbl">Sort</span>
+        <select id="msort" aria-label="Sort games by">
+          <option value="qtpd">QTPD</option>
+          <option value="title">Name</option>
+          <option value="rating_pct">Review score</option>
+          <option value="review_count">Review count</option>
+          <option value="trend">Trend</option>
+          <option value="wr">Weighted rating</option>
+          <option value="price_final">Price</option>
+          <option value="discount_pct">Discount</option>
+          <option value="discount_end">Sale ends</option>
+          <option value="release_ts">Released</option>
+          <option value="updated">Updated</option>
+          <option value="playtime">Playtime</option>
+          <option value="hltb">HLTB</option>
+        </select>
+        <button id="msortdir" type="button" title="Toggle sort direction" aria-label="Toggle sort direction">▼</button>
+      </div>
       <div class="meta" id="meta"></div>
       <div class="pagesize" id="pagesize" title="Games shown per page (scroll down to load more)">
         <span class="pagesize-lbl">per page</span>
@@ -1525,6 +1615,19 @@ function syncSortArrows(){
       existing.textContent = "▼";   // default QTPD arrow stays as a hint
     }
   });
+  syncMobileSort();
+}
+// Keep the mobile Sort control (the card-mode replacement for the hidden <thead>) in step
+// with state.sortKey / state.sortDir, so it reflects sorts made on desktop headers or via URL.
+function syncMobileSort(){
+  const s = document.getElementById("msort"); if(!s) return;
+  s.value = state.sortKey;
+  const d = document.getElementById("msortdir");
+  if(d){
+    d.textContent = state.sortDir < 0 ? "▼" : "▲";
+    d.title = state.sortDir < 0 ? "Sorted high → low — tap for low → high"
+                                : "Sorted low → high — tap for high → low";
+  }
 }
 function setSort(key){
   if(state.sortKey === key){ state.sortDir *= -1; }
@@ -1803,6 +1906,20 @@ function init(data){
 
   document.querySelectorAll("thead .sortable").forEach(th =>
     th.addEventListener("click", (e) => { e.stopPropagation(); setSort(th.dataset.sort); }));
+  // Mobile sort control: picking a field sets that sort with its natural default direction;
+  // the ▼/▲ button flips direction. Mirrors the header behavior for the card layout.
+  const msort = document.getElementById("msort");
+  if(msort){
+    msort.addEventListener("change", () => {
+      state.sortKey = msort.value;
+      state.sortDir = (msort.value === "title") ? 1 : -1;   // A→Z for names, high→low otherwise
+      syncSortArrows(); render(); syncURL();
+    });
+    document.getElementById("msortdir").addEventListener("click", () => {
+      state.sortDir *= -1;
+      syncSortArrows(); render(); syncURL();
+    });
+  }
   document.body.addEventListener("click", e => {
     const h = e.target.closest("[data-hide]");
     if(h){ e.preventDefault(); e.stopPropagation(); hideGame(h.dataset.hide); return; }
