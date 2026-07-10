@@ -148,19 +148,24 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
 
 Works off data already collected. Several are cheap and high-impact.
 
-- **Mobile / narrow-screen layout — highest-frequency complaint. [Partly done.]** The old
+- **Mobile / narrow-screen layout — highest-frequency complaint. [Done.]** The old
   `table-layout: fixed` grid overflowed small screens, titles truncated, and the sale badge +
-  discount % wasted a column. *Done so far:* the desktop table is now **fluid** (`auto` layout,
-  per-column min/max — §11), and the sub-1040px **card layout was improved** (roomier spacing,
-  a ~560px phone breakpoint, Tags as a full-width left-aligned row). The old fixed-1556px
-  conflict this item called out is **resolved** (that assumption is gone). *Also shipped since:*
-  **Price and Discount are now a single merged `Price / Sale` column** (struck full price on top,
-  sale price + discount badge below) with a **split header** whose two halves sort independently
-  (Price by current price, Sale by discount depth) — this reclaims the column the discount % used
-  to waste, on desktop as well as mobile. *Still open:* a richer per-card mobile design —
-  thumbnail+title as a proper card header, and optionally folding Sale-ends into the merged price
-  unit and hiding secondary fields behind a tap. *What to do next:* design the card header +
-  decide which fields are primary-vs-secondary on a phone.
+  discount % wasted a column. *Fixed in stages:* the desktop table became **fluid** (`auto`
+  layout, per-column min/max — §11); the old fixed-1556px conflict this item called out is
+  **resolved**; **Price and Discount** merged into one `Price / Sale` column with a **split
+  header** whose halves sort independently (Price by current price, Sale by discount depth). Then
+  (2026-07) the narrow-screen view was **rebuilt into a proper card** (§11 *Responsive*). Below
+  1374px each row is now a **single-column spec-sheet card**: a **thumbnail + title header**, the
+  **QTPD** value + meter as the headline metric, then one metric per line (fixed **label gutter**
+  + value) in a **logical order** — name → QTPD → price → ratings → length → release → updates →
+  tags — set by CSS **`order`**, independent of the table's column order. Column names are
+  relabeled to plain words on mobile (Reviews→**Rating**, HLTB→**Length**, Price / Sale→**Price**)
+  and **no-data cells are dropped** (`:has()`) so cards carry no dead "—" lines. Crucially,
+  because the sortable `<thead>` is hidden in card mode, a **native `<select>` Sort control +
+  direction toggle** was added to the bar — **sorting on a phone was previously impossible**.
+  *Still open (optional):* progressive disclosure — folding secondary fields behind a per-card
+  tap. *Known caveat:* CSS `order` reorders visually only, so screen-reader / tab order still
+  follows the table's DOM column order.
 
 - **Hover tooltips on filter controls. [Done.]** Top-of-page filters (HLTB especially) were
   opaque to new users. *Done:* most filter toggles already carried `title` tooltips; added them
@@ -933,16 +938,25 @@ after Reviews — it's derived from them — and **Price + Discount are merged**
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
   neutral color, so a full-price value is never mistaken for a discount deal.
 
-**Responsive / card layout.** The table is for the desktop width range; a **fluid table alone
-cannot fit a phone** (twelve columns at legible minimums sum to ~1324px). So below **1374px**
-the layout switches: `<thead>` hides, each row becomes a **card** (every `<td>` a
-label→value line, the header supplied by the cell's `data-label`). A second **~560px** phone
-breakpoint tightens it further (smaller thumbnail, roomier tap targets, HLTB row given
-priority so its figures don't crowd the label). **Tags** on mobile render as a **full-width,
-left-aligned** row (label on its own line, chips wrapping with room) rather than crammed
-against the right edge. This card mode *is* the mobile-friendly view users keep asking for; a
-richer per-card design (thumbnail+title as a card header, secondary fields behind a tap) is
-still open (§3.2).
+**Responsive / card layout (single-column spec sheet, 2026-07 redesign).** The table is for the
+desktop width range; a **fluid table alone cannot fit a phone** (twelve columns at legible
+minimums sum to ~1324px). So below **1374px** `<thead>` hides and each row becomes a
+**single-column spec-sheet card**. The card leads with a **thumbnail + title header** and the
+**QTPD** value + meter as a headline row, then lays out **one metric per line** — a fixed muted
+**label gutter** with the value beside it — so labels and values form two aligned columns the eye
+scans straight down. Fields run in a **logical order** (name → QTPD → price → ratings → length →
+release → updates → tags) driven by CSS **`order`**, decoupled from the table's column order.
+Long/technical headers are **relabeled** on mobile (Reviews→**Rating**, HLTB→**Length**,
+Price / Sale→**Price**), and cells whose value is only "no data" (no active sale, no weighted
+rating, no trend, no playtime) are **dropped via `:has()`** so no dead "—" lines clutter the card.
+A **~560px** breakpoint tightens type and spacing. Because the sortable `<thead>` is hidden here,
+sorting is exposed through a **native `<select>` Sort control** (plus a direction toggle) in the
+bar — the mobile stand-in for clicking a column header; it drives the same `sortKey`/`sortDir`
+state and is kept in sync by `syncMobileSort()` on header clicks and URL restore. *(This
+superseded the earlier "every `<td>` a label→value line" card and its ~560px HLTB-priority tweak
+— both gone.)* The one caveat: CSS `order` changes visual order only, so assistive-tech reads
+cells in table (DOM) order; progressive disclosure of secondary fields behind a tap is the
+remaining open item (§3.2).
 
 **Filters & controls.** Title search · on-sale-only · min rating (any/60+/70+/80+/90+) ·
 min & max price · min-reviews bands (0/10/100/1k/5k+, independent toggles, gaps allowed) ·
@@ -1108,6 +1122,20 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Mobile card redesign + mobile sort (Jul 2026).** The narrow-screen (<1374px) view was
+  rebuilt from the old "every `<td>` a label→value line" stack into a **single-column spec-sheet
+  card**: thumbnail+title header, **QTPD** value + meter as the headline metric, then one metric
+  per line (fixed label gutter + value) in a **logical order** — name → QTPD → price → ratings →
+  length → release → updates → tags — set by CSS **`order`**, independent of the table's column
+  order. Headers are **relabeled** on mobile (Reviews→Rating, HLTB→Length, Price / Sale→Price),
+  and **no-data cells are dropped via `:has()`** (no active sale / weighted / trend / playtime) so
+  cards carry no dead "—" lines; card height dropped ~620→~455px. Because the sortable `<thead>`
+  is hidden in card mode, **sorting was previously impossible on a phone** — fixed by a **native
+  `<select>` Sort control + direction toggle** in the bar, kept in sync with the header/URL sort
+  state via `syncMobileSort()`. Filter controls that had fixed pixel widths (QTPD range, wishlist
+  input) go fluid, and the price steppers get larger tap targets. CSS + markup + a small sort
+  handler only; **desktop table untouched** (§11 *Responsive*, §3.2). *Caveat:* CSS `order`
+  reorders visually only — assistive-tech reads cells in DOM (table-column) order.
 - **Null-`last_update_ts` drain speedup (Jul 2026).** The one-off News-API fix (below) left a
   backlog of **52,371 false-null `last_update_ts` games** queued via `queue_null_updates.py`. The
   drain crawled — after the first window only ~3,900 had cleared (48,461 still null). Root cause
