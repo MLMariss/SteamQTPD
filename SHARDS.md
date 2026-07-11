@@ -1,6 +1,6 @@
 # Shard health — `playtime_raw/` · QTPD (SteamQHPP)
 
-_Generated 2026-07-10 10:05 UTC by `shard_health.py`._
+_Generated 2026-07-11 08:27 UTC by `shard_health.py`._
 
 ## Status
 
@@ -12,13 +12,13 @@ _Generated 2026-07-10 10:05 UTC by `shard_health.py`._
 |---|---|
 | Shards | 64 (non-empty 64) |
 | shard_ver | [2] |
-| Total games | 42,709 |
-| Games/shard | min 89 · median 1167 · max 1297 (max/mean 1.94) |
-| Size/shard | min 1.11 MB · median 10.48 MB · **max 12.87 MB** |
+| Total games | 50,666 |
+| Games/shard | min 89 · median 1198 · max 1297 (max/mean 1.64) |
+| Size/shard | min 1.11 MB · median 11.38 MB · **max 12.90 MB** |
 | Headroom on biggest | 87.1 MB under the 100 MB limit |
 | Bytes/game | ~10.2 KB |
-| Games-to-100MB (per shard) | ~10,077 |
-| Addressable universe (≥10 reviews) | 78,643 → ~1,228/shard at full coverage |
+| Games-to-100MB (per shard) | ~10,051 |
+| Addressable universe (≥10 reviews) | 78,656 → ~1,229/shard at full coverage |
 | **Projected max shard at full coverage** | **~12 MB** |
 
 ## Per-shard
@@ -82,13 +82,13 @@ _Generated 2026-07-10 10:05 UTC by `shard_health.py`._
 | 54 | 1,250 | 10.48 MB | 10.5% | 2026-07-09 22:19 |
 | 55 | 1,246 | 11.80 MB | 11.8% | 2026-07-10 01:07 |
 | 56 | 1,208 | 12.31 MB | 12.3% | 2026-07-10 06:40 |
-| 57 | 111 | 1.53 MB | 1.5% | 2026-07-06 06:27 |
-| 58 | 108 | 1.57 MB | 1.6% | 2026-07-06 06:27 |
-| 59 | 100 | 1.36 MB | 1.4% | 2026-07-06 06:27 |
-| 60 | 119 | 1.72 MB | 1.7% | 2026-07-06 06:27 |
-| 61 | 103 | 1.57 MB | 1.6% | 2026-07-06 06:27 |
-| 62 | 106 | 1.78 MB | 1.8% | 2026-07-06 06:27 |
-| 63 | 103 | 1.35 MB | 1.3% | 2026-07-06 06:27 |
+| 57 | 1,269 | 12.02 MB | 12.0% | 2026-07-10 11:58 |
+| 58 | 1,251 | 12.13 MB | 12.1% | 2026-07-10 14:16 |
+| 59 | 1,228 | 11.36 MB | 11.4% | 2026-07-10 17:12 |
+| 60 | 1,245 | 12.84 MB | 12.8% | 2026-07-10 19:43 |
+| 61 | 1,254 | 12.90 MB | 12.9% | 2026-07-10 22:29 |
+| 62 | 1,223 | 12.48 MB | 12.5% | 2026-07-11 00:54 |
+| 63 | 1,237 | 12.67 MB | 12.7% | 2026-07-11 06:12 |
 
 _Buckets rotate — each is scraped roughly every ~64 runs, so a shard being several days old is normal. The number that matters is **max shard size** vs the 100 MB limit._
 
