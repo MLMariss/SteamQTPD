@@ -504,7 +504,8 @@
 
   /* L3 / L5 — cool grid (box-art) view. Steam header art with a QTPD badge overlay so it
      stays ours; coloured borders flag on-sale / high-value. Tap a card to expand basic info. */
-  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; padding:14px}
+  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; padding:14px;
+        align-items:start}   /* start-align so an expanded (taller) card doesn't stretch its row-mates */
   body.grid-view .tablescroll{display:none}
   body.grid-view .gridview{display:grid}
   .gcard{position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
@@ -523,19 +524,43 @@
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:12px;
         gap:6px; font-family:var(--mono)}
-  .gcard.open .ginfo{display:flex}
-  .gcard.open .gcaption{display:none}
+  /* Expanded card: drop the fixed box-art aspect ratio and lay the info panel in normal flow so
+     the card grows to fit its content — the KPIs and the Steam/Close actions are never clipped,
+     even on tiny mobile grid cells (point 6). */
+  .gcard.open{aspect-ratio:auto; cursor:default}
+  .gcard.open .gcap,.gcard.open .gbadge,.gcard.open .gdisc,.gcard.open .gcaption{display:none}
+  .gcard.open .ginfo{display:flex; position:static}
   .gi-title{font-family:var(--sans); font-weight:600; font-size:14px; color:var(--title); line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gi-row{display:flex; justify-content:space-between; font-size:13px; color:var(--muted)}
   .gi-row b{color:var(--text); font-weight:600}
   .gi-row .gi-q{color:var(--gold); font-weight:700}
   .gi-actions{margin-top:auto; display:flex; gap:7px}
-  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:12px;
-        padding:7px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
+  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:13px;
+        padding:9px 7px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
         color:var(--text); text-decoration:none}
   .gi-steam{background:var(--gold-soft) !important; border-color:var(--gold-deep) !important; color:var(--gold) !important}
   .gi-actions a:hover,.gi-actions button:hover{border-color:var(--muted-2)}
+
+  /* Grid-only sort control (desktop grid). Reuses the .mobile-sort select/dir styling. */
+  .gridsort{display:none; align-items:center; gap:8px; padding:14px 14px 0}
+  body.grid-view:not(.narrow) .gridsort{display:flex}
+  .gridsort select{appearance:none; -webkit-appearance:none; -moz-appearance:none; background:var(--panel);
+        border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:13px;
+        padding:8px 28px 8px 10px; border-radius:8px; cursor:pointer;
+        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%2394a0c0' stroke-width='1.6'><path d='M1 1l4 4 4-4'/></svg>");
+        background-repeat:no-repeat; background-position:right 10px center}
+  .gridsort select:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33; outline:none}
+  .gridsort #gsortdir{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--gold);
+        font-family:var(--mono); font-size:14px; line-height:1; padding:8px 11px; border-radius:8px; cursor:pointer}
+  .gridsort #gsortdir:hover{border-color:var(--gold-deep)}
+
+  /* Tag match-mode toggle (ALL / ANY for required tags) — sits prominently above the tag rail. */
+  .tagmode-bar{display:flex; align-items:center; gap:14px 20px; flex-wrap:wrap; flex-basis:100%; margin-bottom:4px}
+  .tagmode{display:flex; align-items:center; gap:9px; margin-left:auto}
+  .tagmode-lbl{font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.05em; text-transform:uppercase}
+  .tagmode .seg button{padding:8px 16px; font-weight:600}
+  .tagmode .seg button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
 
   /* L4 — random-pick highlight flash (works on both a table row and a grid card) */
   @keyframes qflash{0%{background:var(--gold-soft)} 100%{background:transparent}}
@@ -569,7 +594,10 @@
   body.layout-card thead{display:none}
   body.layout-card table,body.layout-card tbody{display:block; width:100%}
   body.layout-card thead tr{display:none}
-  body.layout-card .mobile-sort,body.grid-view .mobile-sort{display:inline-flex}
+  /* Top-bar sort shows only on MOBILE (card, or grid on a narrow screen). On desktop the table
+     sorts via its headers and the grid uses its own #gridSort bar — so the top bar is identical
+     across desktop table↔grid and the tools cluster never shifts when switching (point 4). */
+  body.layout-card .mobile-sort,body.grid-view.narrow .mobile-sort{display:inline-flex}
 
   /* row → card: single-column stack, no zebra/hover fills */
   body.layout-card tbody tr{display:flex; flex-direction:column; padding:14px 15px 15px; border-bottom:1px solid var(--line)}
@@ -687,6 +715,7 @@ try{
   var _view = localStorage.getItem("qtpd.view");
   // Detailed view is a table on desktop, cards on mobile — so layout-card is purely
   // viewport-driven (the Table/Card buttons just relabel the same detailed view per device).
+  if(_narrow) document.body.classList.add("narrow");
   if(_view === "grid") document.body.classList.add("grid-view");
   else if(_narrow) document.body.classList.add("layout-card");
 }catch(e){}
@@ -698,7 +727,7 @@ try{
     <div class="bar-main">
       <div class="brand">
         <button class="logo" id="logoToggle" type="button" title="Show / hide filters" aria-label="Toggle filters">Q<b>T</b>PD</button>
-        <div class="tagline">quality time per dollar · steam value hunter</div>
+        <div class="tagline">quality time per dollar</div>
       </div>
       <label class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -782,8 +811,8 @@ try{
         <div class="field">
           <label>HLTB data</label>
           <div class="seg" role="group" aria-label="HLTB data quality">
-            <button data-hquality="loose" aria-pressed="false" title="Use estimated HLTB values (filled from the typical main/extras/completionist ratio) when HowLongToBeat is missing a time.">All</button>
             <button data-hquality="real" aria-pressed="true" title="Only use real HowLongToBeat values. Estimated times are hidden and not used, so games without a real value for the selected metric show no HLTB/QTPD.">Real</button>
+            <button data-hquality="loose" aria-pressed="false" title="Use estimated HLTB values (filled from the typical main/extras/completionist ratio) when HowLongToBeat is missing a time.">All</button>
           </div>
         </div>
         <div class="field">
@@ -814,7 +843,7 @@ try{
       </div>
 
       <div class="filter-section" data-section="quality">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Quality</span><span class="sec-count" data-count="quality"></span></button>
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Quality &amp; Activity</span><span class="sec-count" data-count="quality"></span></button>
         <div class="section-body"><div class="ctl-row">
         <div class="field">
           <label>Min rating</label>
@@ -829,8 +858,8 @@ try{
         <div class="field">
           <label>Reviews sort by</label>
           <div class="seg" role="group" aria-label="Rating source for the Reviews column sort">
-            <button data-ratesrc="all"    aria-pressed="false" title="Sort the Reviews column by the all-time review score">All-time</button>
             <button data-ratesrc="recent" aria-pressed="true"  title="Sort the Reviews column by the past-30-day review score">30-day</button>
+            <button data-ratesrc="all"    aria-pressed="false" title="Sort the Reviews column by the all-time review score">All-time</button>
           </div>
         </div>
         <div class="field">
@@ -851,12 +880,6 @@ try{
             <button data-rev="4" aria-pressed="true" title="5k+ reviews">5k+</button>
           </div>
         </div>
-        </div></div>
-      </div>
-
-      <div class="filter-section" data-section="activity">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Activity</span><span class="sec-count" data-count="activity"></span></button>
-        <div class="section-body"><div class="ctl-row">
         <div class="field">
           <label>Updated within</label>
           <div class="seg" role="group" aria-label="Updated within">
@@ -881,12 +904,21 @@ try{
       <div class="filter-section" data-section="tags">
         <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
         <div class="section-body"><div class="ctl-row">
-        <div class="taglegend" aria-hidden="true">
-          <span>Click a tag:</span>
-          <span class="chip inc"><span class="mk">✓</span>require</span>
-          <span class="tl-arrow">→ again:</span>
-          <span class="chip exc"><span class="mk">✕</span>exclude</span>
-          <span class="tl-arrow">→ again: clear</span>
+        <div class="tagmode-bar">
+          <span class="taglegend" aria-hidden="true">
+            <span>Click a tag:</span>
+            <span class="chip inc"><span class="mk">✓</span>require</span>
+            <span class="tl-arrow">→ again:</span>
+            <span class="chip exc"><span class="mk">✕</span>exclude</span>
+            <span class="tl-arrow">→ again: clear</span>
+          </span>
+          <div class="tagmode" title="How required (✓) tags combine: ALL = a game must have every required tag; ANY = a game with at least one required tag matches.">
+            <span class="tagmode-lbl">Required tags match</span>
+            <div class="seg" role="group" aria-label="Required-tag match mode">
+              <button data-tagmode="and" aria-pressed="true"  title="A game must have ALL of the required tags">ALL</button>
+              <button data-tagmode="or"  aria-pressed="false" title="A game matches if it has ANY of the required tags">ANY</button>
+            </div>
+          </div>
         </div>
         <div class="tagrail-wrap" id="tagrail" style="flex:1"
              title="Click a tag to require it · click again to exclude it · once more to clear. Counts update to show how many of the current results have each tag."></div>
@@ -925,6 +957,27 @@ try{
         </thead>
         <tbody id="rows"></tbody>
       </table>
+    </div>
+    <!-- Grid view gets its OWN sort control (desktop) so the top-bar tools never shift when
+         switching table↔grid — the top bar stays identical across those views (point 4). -->
+    <div class="gridsort" id="gridSort">
+      <span class="ms-lbl">Sort by</span>
+      <select id="gsort" aria-label="Sort games by">
+        <option value="qtpd">QTPD</option>
+        <option value="title">Name</option>
+        <option value="rating_pct">Review score</option>
+        <option value="review_count">Review count</option>
+        <option value="trend">Trend</option>
+        <option value="wr">Weighted rating</option>
+        <option value="price_final">Price</option>
+        <option value="discount_pct">Discount</option>
+        <option value="discount_end">Sale ends</option>
+        <option value="release_ts">Released</option>
+        <option value="updated">Updated</option>
+        <option value="playtime">Playtime</option>
+        <option value="hltb">HLTB</option>
+      </select>
+      <button id="gsortdir" type="button" title="Toggle sort direction" aria-label="Toggle sort direction">▼</button>
     </div>
     <!-- L3/L5: cool box-art grid. Populated by renderGrid(); shown only in grid view. -->
     <div class="gridview" id="gridview"></div>
@@ -990,7 +1043,7 @@ const bandOf = rc => {
 };
 
 // ----- state -----
-const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:false,
+const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", saleOnly:false,
                 qBasis:"after", hltbMetric:"main", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
                 trendSet:new Set(["up","flat","down"]), updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
@@ -1160,8 +1213,18 @@ function passNonRange(x){
   }
   if(state.tagsInc.size || state.tagsExc.size){
     const cs = canonSet(x);
-    for(const w of state.tagsInc) if(!cs.has(w)) return false;
-    for(const b of state.tagsExc) if(cs.has(b)) return false;
+    if(state.tagsInc.size){
+      if(state.tagMode === "or"){
+        // ANY: keep the game if it has at least one required tag
+        let hit = false;
+        for(const w of state.tagsInc){ if(cs.has(w)){ hit = true; break; } }
+        if(!hit) return false;
+      } else {
+        // ALL (default): the game must have every required tag
+        for(const w of state.tagsInc) if(!cs.has(w)) return false;
+      }
+    }
+    for(const b of state.tagsExc) if(cs.has(b)) return false;   // exclude is always AND-NOT
   }
   return true;
 }
@@ -1664,6 +1727,7 @@ const isNarrow = () => window.matchMedia("(max-width:1374px)").matches;
 // current device (Table = desktop-only, Card = mobile-only). `grid-view` is the box-art grid.
 function applyLayout(){
   const narrow = isNarrow();
+  document.body.classList.toggle("narrow", narrow);   // used to split mobile-sort vs desktop #gridSort
   document.body.classList.toggle("grid-view", state.view === "grid");
   document.body.classList.toggle("layout-card", state.view !== "grid" && narrow);
   updateViewButtons(narrow);
@@ -1728,7 +1792,7 @@ function gridCardHTML(g){
 }
 
 // ── L1 — accordion filter sections ──────────────────────────────────────────────────────
-const SECTION_DEFAULT = {value:true, quality:true, activity:true, tags:false};   // Tags folded by default
+const SECTION_DEFAULT = {value:true, quality:true, tags:false};   // Tags folded by default (Activity merged into Quality)
 function loadSectionState(){
   let saved = {};
   try{ saved = JSON.parse(localStorage.getItem("qtpd.sections") || "{}") || {}; }catch(e){}
@@ -1759,9 +1823,10 @@ function sectionActiveCounts(){
   return {
     value: (state.qBasis !== "after" ? 1 : 0) + (state.hltbMetric !== "main" ? 1 : 0) + (state.hltbQuality !== "real" ? 1 : 0)
          + ((state.minPrice != null || state.maxPrice != null) ? 1 : 0) + (state.saleOnly ? 1 : 0) + (state.qRangeTouched ? 1 : 0),
+    // Quality now also carries the merged Activity controls (updated-within, playtime-sort).
     quality: (state.minScore > 0 ? 1 : 0) + (state.ratingSource !== "recent" ? 1 : 0)
-         + ((state.trendSet.size > 0 && state.trendSet.size < 3) ? 1 : 0) + revActive,
-    activity: (state.updatedWithin !== "any" ? 1 : 0) + (state.ptMetric !== "up" ? 1 : 0),
+         + ((state.trendSet.size > 0 && state.trendSet.size < 3) ? 1 : 0) + revActive
+         + (state.updatedWithin !== "any" ? 1 : 0) + (state.ptMetric !== "up" ? 1 : 0),
     tags: state.tagsInc.size + state.tagsExc.size,
   };
 }
@@ -1795,7 +1860,7 @@ function renderSummary(){
   if(state.trendSet.size > 0 && state.trendSet.size < 3){ const map = {up:"▲", flat:"≈", down:"▼"}; const t = ["up","flat","down"].filter(x => state.trendSet.has(x)).map(x => map[x]).join(""); parts.push(chip("trend", `trend ${t}`)); }
   if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
   if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
-  if(state.tagsInc.size || state.tagsExc.size){ const t = (state.tagsInc.size ? "+" + state.tagsInc.size : "") + (state.tagsExc.size ? " −" + state.tagsExc.size : ""); parts.push(chip("tags", `tags ${t.trim()}`)); }
+  if(state.tagsInc.size || state.tagsExc.size){ const t = (state.tagsInc.size ? "+" + state.tagsInc.size : "") + (state.tagsExc.size ? " −" + state.tagsExc.size : ""); const modeStr = (state.tagsInc.size > 1) ? (state.tagMode === "or" ? " any" : " all") : ""; parts.push(chip("tags", `tags ${t.trim()}${modeStr}`)); }
   if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
 
   const sortName = SORT_LABELS[state.sortKey] || state.sortKey;
@@ -2141,14 +2206,12 @@ function syncSortArrows(){
 // Keep the mobile Sort control (the card-mode replacement for the hidden <thead>) in step
 // with state.sortKey / state.sortDir, so it reflects sorts made on desktop headers or via URL.
 function syncMobileSort(){
-  const s = document.getElementById("msort"); if(!s) return;
-  s.value = state.sortKey;
-  const d = document.getElementById("msortdir");
-  if(d){
-    d.textContent = state.sortDir < 0 ? "▼" : "▲";
-    d.title = state.sortDir < 0 ? "Sorted high → low — tap for low → high"
-                                : "Sorted low → high — tap for high → low";
-  }
+  // keep both the mobile top-bar sort and the desktop grid sort in step with state
+  const dirTxt = state.sortDir < 0 ? "▼" : "▲";
+  const dirTip = state.sortDir < 0 ? "Sorted high → low — tap for low → high"
+                                   : "Sorted low → high — tap for high → low";
+  ["msort", "gsort"].forEach(id => { const s = document.getElementById(id); if(s) s.value = state.sortKey; });
+  ["msortdir", "gsortdir"].forEach(id => { const d = document.getElementById(id); if(d){ d.textContent = dirTxt; d.title = dirTip; } });
 }
 function setSort(key){
   if(state.sortKey === key){ state.sortDir *= -1; }
@@ -2161,6 +2224,7 @@ function setSort(key){
       else th.insertAdjacentHTML("beforeend", ` <span class="arrow">${mark}</span>`);
     } else if(existing && th.dataset.sort !== "qtpd"){ existing.remove(); }
   });
+  syncMobileSort();            // keep the mobile + grid sort dropdowns in step with header clicks
   render(); syncURL();
 }
 function setBasis(b){
@@ -2205,6 +2269,7 @@ function syncURL(){
   if(state.q) p.set("q", state.q);
   if(state.tagsInc.size) p.set("inc", [...state.tagsInc].join(","));
   if(state.tagsExc.size) p.set("exc", [...state.tagsExc].join(","));
+  if(state.tagMode !== "and") p.set("tagmode", state.tagMode);
   if(state.saleOnly) p.set("sale", "1");
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.hltbMetric !== "main") p.set("hltb", state.hltbMetric);
@@ -2240,6 +2305,8 @@ function loadFromURL(){
   setIf("q", v => { state.q = v; const el=$("#q"); if(el) el.value = v; });
   setIf("inc", v => v.split(",").filter(Boolean).forEach(t => state.tagsInc.add(canon(t.toLowerCase()))));
   setIf("exc", v => v.split(",").filter(Boolean).forEach(t => state.tagsExc.add(canon(t.toLowerCase()))));
+  setIf("tagmode", v => { if(v==="or"||v==="and"){ state.tagMode = v;
+    document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===v)); } });
   setIf("sale", () => { state.saleOnly = true; const el=$("#saleOnly"); if(el) el.setAttribute("aria-pressed","true"); });
   setIf("basis", v => { if(v==="before"||v==="after"){ state.qBasis=v;
     $("#qb-after").setAttribute("aria-pressed", v==="after"); $("#qb-before").setAttribute("aria-pressed", v==="before"); } });
@@ -2315,11 +2382,12 @@ function init(data){
 
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
+    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.saleOnly=false;
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
-    state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up"; state.qRangeTouched=false;
+    state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up"; state.qRangeTouched=false;
     loadFromURL();
+    document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===state.tagMode));
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); render();
   });
 
@@ -2396,6 +2464,13 @@ function init(data){
     v = Math.max(0, v + parseInt(btn.dataset.d,10));
     inp.value = v; priceHandler();
   }));
+  // Tag match-mode (ALL / ANY for required tags)
+  document.querySelectorAll("[data-tagmode]").forEach(b =>
+    b.addEventListener("click", () => {
+      state.tagMode = b.dataset.tagmode;
+      document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      update();
+    }));
   $("#qmin").addEventListener("input", () => onRangeInput("min"));
   $("#qmax").addEventListener("input", () => onRangeInput("max"));
 
@@ -2415,7 +2490,8 @@ function init(data){
   });
 
   $("#clear").addEventListener("click", () => {
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.saleOnly=false;
+    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.saleOnly=false;
+    document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode==="and"));
     state.minScore=0; state.revBands=new Set([1,2,3,4]); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
@@ -2434,18 +2510,19 @@ function init(data){
     th.addEventListener("click", (e) => { e.stopPropagation(); setSort(th.dataset.sort); }));
   // Mobile sort control: picking a field sets that sort with its natural default direction;
   // the ▼/▲ button flips direction. Mirrors the header behavior for the card layout.
-  const msort = document.getElementById("msort");
-  if(msort){
-    msort.addEventListener("change", () => {
-      state.sortKey = msort.value;
-      state.sortDir = (msort.value === "title") ? 1 : -1;   // A→Z for names, high→low otherwise
+  // Bind a <select>+dir pair (mobile top-bar sort AND the desktop grid sort) to the sort state.
+  const bindSortControl = (selectId, dirId) => {
+    const sel = document.getElementById(selectId); if(!sel) return;
+    sel.addEventListener("change", () => {
+      state.sortKey = sel.value;
+      state.sortDir = (sel.value === "title") ? 1 : -1;   // A→Z for names, high→low otherwise
       syncSortArrows(); render(); syncURL();
     });
-    document.getElementById("msortdir").addEventListener("click", () => {
-      state.sortDir *= -1;
-      syncSortArrows(); render(); syncURL();
-    });
-  }
+    const d = document.getElementById(dirId);
+    if(d) d.addEventListener("click", () => { state.sortDir *= -1; syncSortArrows(); render(); syncURL(); });
+  };
+  bindSortControl("msort", "msortdir");
+  bindSortControl("gsort", "gsortdir");
   document.body.addEventListener("click", e => {
     const h = e.target.closest("[data-hide]");
     if(h){ e.preventDefault(); e.stopPropagation(); hideGame(h.dataset.hide); return; }
