@@ -337,10 +337,20 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     click-cycle legend** (right-aligned) in the Tags section — the legend's base `flex-basis:100%`
     is overridden inside `.tagmode-bar` so the toggle doesn't wrap to a second, empty row. Required
     (✓) tags combine with AND or OR; **exclude (✕) is always AND-NOT**. Serialized as `tagmode=or`.
-  - **Grid card expand fix** — an open card **drops its fixed box-art aspect ratio** and lays the
-    info panel in normal flow so it **grows to fit**; the KPIs and `Steam ↗`/`Close ✕` actions are
-    never clipped (they were, on tiny mobile grid cells). `align-items:start` stops row-mates
-    stretching.
+  - **Grid card expand fix** — an open card originally *grew to fit* its info so the `Steam ↗`/
+    `Close ✕` actions weren't clipped on tiny mobile cells. **Superseded by R4's fixed-height cards.**
+
+**Refinements — Round 4 (grid sizing + tag mini, 2026-07).** ✅ SHIPPED.
+  - **Fixed-height grid cards** — cards use a fixed height (`--gh`: 188px desktop / 176px phone)
+    instead of an aspect ratio, so a card is the **exact same size collapsed or expanded** — clicking
+    never resizes it and the grid never reflows (the deliberate "bigger cards, one height" trade;
+    replaces R3's grow-to-fit). The box art fills via `object-fit:cover` (centre-cropped); `--gh` is
+    sized to fit the expanded KPIs + actions, with `.ginfo{overflow-y:auto}` as a safety net.
+  - **Collapsed-Tags mini chips** — when the Tags section is folded, the currently-picked tags render
+    as chips in the header's otherwise-empty middle band (`.tag-mini` / `#tagMini`, built by
+    `buildTagMini()` from `buildTagRail()`). The overlay is `pointer-events:none` (clicking the empty
+    area still opens the section) while the chips are `pointer-events:auto` and reuse the normal
+    `[data-tag]` cycle handler (require → exclude → clear). Hidden when the section is open or empty.
 
 **Implementation reference (as-built).** For a future session touching this UI (`index.html`):
   - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`).
