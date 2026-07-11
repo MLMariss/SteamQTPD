@@ -333,8 +333,10 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     table/grid. `body.narrow` splits the two sort controls; `bindSortControl()` wires both and
     `setSort()`/`syncMobileSort()` keep them in step.
   - **Tag AND/OR match mode** — `state.tagMode` (`"and"` default / `"or"`), toggled by the
-    prominent **"Required tags match: ALL / ANY"** control in the Tags section. Required (✓) tags
-    combine with AND or OR; **exclude (✕) is always AND-NOT**. Serialized as `tagmode=or`.
+    prominent **"Required tags match: ALL / ANY"** control that sits **on one line with the
+    click-cycle legend** (right-aligned) in the Tags section — the legend's base `flex-basis:100%`
+    is overridden inside `.tagmode-bar` so the toggle doesn't wrap to a second, empty row. Required
+    (✓) tags combine with AND or OR; **exclude (✕) is always AND-NOT**. Serialized as `tagmode=or`.
   - **Grid card expand fix** — an open card **drops its fixed box-art aspect ratio** and lays the
     info panel in normal flow so it **grows to fit**; the KPIs and `Steam ↗`/`Close ✕` actions are
     never clipped (they were, on tiny mobile grid cells). `align-items:start` stops row-mates
