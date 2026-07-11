@@ -431,6 +431,113 @@
   .empty b{color:var(--text); font-weight:600}
   .foot{margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--muted-2); line-height:1.9}
 
+  /* ═════════════════════════════════════════════════════════════════════════════════════
+     Lorenzo-list additions (ARCHITECTURE §3.4): accordion filter sections (L1), collapsed-bar
+     filter summary (L2), view switcher + cool box-art grid (L3/L5), utility actions (L4).
+     ═════════════════════════════════════════════════════════════════════════════════════ */
+
+  /* L1 — accordion filter sections. The flat ~15-group filter wall is split into four
+     independently collapsible sections (Value / Quality / Activity / Tags); each folds on
+     its own so a user can e.g. collapse the big Tags rail and keep the main switches visible.
+     Open/closed state persists in localStorage (qtpd.sections). */
+  .filter-section{border-top:1px solid var(--line)}
+  .section-head{display:flex; align-items:center; gap:9px; width:100%; background:none; border:0;
+        color:var(--muted); font-family:var(--mono); font-size:12px; letter-spacing:.06em;
+        text-transform:uppercase; padding:11px 2px; cursor:pointer; text-align:left}
+  .section-head:hover{color:var(--text)}
+  .section-head:focus-visible{outline:2px solid var(--blue); outline-offset:-2px; border-radius:6px}
+  .section-head .sec-caret{color:var(--muted-2); font-size:11px; transition:transform .15s ease; flex:none}
+  .filter-section.open .section-head .sec-caret{transform:rotate(90deg)}
+  .filter-section.open .section-head{color:var(--text)}
+  .section-head .sec-count{margin-left:auto; color:var(--gold); font-size:11px; letter-spacing:.03em; opacity:.9}
+  .section-body{padding:2px 0 14px}
+  .filter-section:not(.open) .section-body{display:none}
+
+  /* Top-bar tools cluster: view switcher (right of the bar) + utility actions. */
+  .bar-tools{display:flex; align-items:center; gap:10px; flex:none; flex-wrap:wrap}
+  .seg.viewseg button[aria-pressed="true"]{background:var(--panel-2); color:var(--gold)}
+  .util-btn{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
+        font-family:var(--mono); font-size:13px; padding:8px 11px; border-radius:8px; cursor:pointer;
+        display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
+  .util-btn:hover{color:var(--text); border-color:var(--muted-2)}
+  .util-btn:focus-visible{outline:2px solid var(--blue); outline-offset:2px}
+
+  /* L2 — collapsed-bar filter summary. Rendered ONLY when the nav bar is fully collapsed:
+     a one-line summary of the currently-picked filters where each highlighted term is
+     clickable → opens a small popover to change just that filter (no full-bar expand). */
+  .filter-summary{display:none}
+  .topbar.compact .filter-summary{display:block; padding:11px 16px; border-top:1px solid var(--line);
+        font-family:var(--mono); font-size:13px; color:var(--muted); line-height:2}
+  .filter-summary .sumlbl{color:var(--muted-2)}
+  .filter-summary .sumf{appearance:none; background:var(--gold-soft); border:1px solid var(--gold-deep);
+        color:var(--gold); font-family:var(--mono); font-size:13px; padding:2px 8px; border-radius:7px;
+        cursor:pointer; margin:0 1px}
+  .filter-summary .sumf:hover{filter:brightness(1.15)}
+  .filter-summary .sumf.plain{background:var(--panel); border-color:var(--line); color:var(--muted)}
+
+  /* Popover host — shared by the L2 summary editors and the L4 CSV column-picker. */
+  .pop-host{position:fixed; inset:0; z-index:150; display:none}
+  .pop-host.on{display:block}
+  .pop-backdrop{position:absolute; inset:0; background:transparent}
+  .popover{position:absolute; background:var(--panel-2); border:1px solid var(--line); border-radius:11px;
+        box-shadow:0 16px 44px #000b; padding:12px; min-width:200px; max-width:340px}
+  .popover h4{margin:0 0 9px; font-family:var(--mono); font-size:11px; letter-spacing:.06em;
+        text-transform:uppercase; color:var(--muted-2); font-weight:500}
+  .pop-opts{display:flex; flex-wrap:wrap; gap:6px}
+  .pop-opt{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
+        font-family:var(--mono); font-size:13px; padding:7px 11px; border-radius:8px; cursor:pointer}
+  .pop-opt:hover{color:var(--text); border-color:var(--muted-2)}
+  .pop-opt.on{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
+  .pop-actions{display:flex; gap:8px; margin-top:11px}
+  .pop-go{flex:1; background:var(--gold-soft); border:1px solid var(--gold-deep); color:var(--gold);
+        font-family:var(--mono); font-size:13px; padding:8px; border-radius:8px; cursor:pointer}
+  .pop-go:hover{filter:brightness(1.12)}
+  .pop-checks{display:flex; flex-direction:column; gap:2px; max-height:280px; overflow:auto}
+  label.pop-check{display:flex; align-items:center; gap:9px; padding:5px 3px; cursor:pointer;
+        color:var(--muted); font-family:var(--mono); font-size:13px}
+  label.pop-check:hover{color:var(--text)}
+  label.pop-check input{accent-color:var(--gold); width:15px; height:15px}
+
+  /* L3 / L5 — cool grid (box-art) view. Steam header art with a QTPD badge overlay so it
+     stays ours; coloured borders flag on-sale / high-value. Tap a card to expand basic info. */
+  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; padding:14px}
+  body.grid-view .tablescroll{display:none}
+  body.grid-view .gridview{display:grid}
+  .gcard{position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
+        background:#0b0f18; cursor:pointer; aspect-ratio:460/215}
+  .gcard:hover{border-color:var(--muted-2)}
+  .gcard.sale{border-color:var(--gold-deep)}
+  .gcard.hi{box-shadow:0 0 0 1px var(--gold-deep)}
+  .gcard .gcap{width:100%; height:100%; object-fit:cover; display:block}
+  .gcard.adult .gcap{filter:blur(11px); transform:scale(1.06)}
+  .gbadge{position:absolute; top:7px; left:7px; background:#0e1320d9; border:1px solid var(--gold-deep);
+        color:var(--gold); font-family:var(--mono); font-size:12px; font-weight:600; padding:2px 7px; border-radius:6px}
+  .gdisc{position:absolute; top:7px; right:7px; background:var(--coral); color:#0e1320;
+        font-family:var(--mono); font-size:12px; font-weight:700; padding:2px 6px; border-radius:6px}
+  .gcaption{position:absolute; left:0; right:0; bottom:0; padding:18px 9px 8px; color:#fff; font-weight:600;
+        font-size:14px; line-height:1.2; background:linear-gradient(0deg,#000e 0%,#000b 45%,transparent);
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:12px;
+        gap:6px; font-family:var(--mono)}
+  .gcard.open .ginfo{display:flex}
+  .gcard.open .gcaption{display:none}
+  .gi-title{font-family:var(--sans); font-weight:600; font-size:14px; color:var(--title); line-height:1.25;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .gi-row{display:flex; justify-content:space-between; font-size:13px; color:var(--muted)}
+  .gi-row b{color:var(--text); font-weight:600}
+  .gi-row .gi-q{color:var(--gold); font-weight:700}
+  .gi-actions{margin-top:auto; display:flex; gap:7px}
+  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:12px;
+        padding:7px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
+        color:var(--text); text-decoration:none}
+  .gi-steam{background:var(--gold-soft) !important; border-color:var(--gold-deep) !important; color:var(--gold) !important}
+  .gi-actions a:hover,.gi-actions button:hover{border-color:var(--muted-2)}
+
+  /* L4 — random-pick highlight flash (works on both a table row and a grid card) */
+  @keyframes qflash{0%{background:var(--gold-soft)} 100%{background:transparent}}
+  tbody tr.flash{animation:qflash 2.2s ease}
+  .gcard.flash{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold)}
+
   /* ── Narrow screens: table → compact spec-sheet card ──────────────────────────────────
      Redesign (2026 responsive-table best practice). Below the table's real floor the 12
      columns can't be compared row-to-row on a phone, so each row becomes a self-contained
@@ -446,103 +553,120 @@
      rating, no trend) are dropped via :has() so the card carries no dead "—" lines. Sorting —
      which on desktop lives only in the now-hidden <thead> — is exposed through the .mobile-sort
      control in the bar (see #mobileSort). */
-  @media (max-width:1374px){
-    table{min-width:0; max-width:none; margin:0}
-    colgroup{display:none}
-    thead{display:none}
-    table,tbody{display:block; width:100%}
-    thead tr{display:none}
-    .mobile-sort{display:inline-flex}
+  /* Layout is now driven by a body class (`layout-card`), set by JS when EITHER the viewport
+     is below the table's real floor OR the user explicitly picks the "Card" view from the
+     switcher (L3). Single source of truth — the rules below were previously an
+     `@media (max-width:1374px)` block; a tiny inline script + a matchMedia listener toggle the
+     class so mobile still gets the card layout with no flash. The genuinely-small-screen tweaks
+     stay in a real `@media (max-width:560px)` below (they only ever matter on real phones, which
+     always have layout-card active). Grid view (`body.grid-view`) hides the table entirely. */
+  body.layout-card table{min-width:0; max-width:none; margin:0}
+  body.layout-card colgroup{display:none}
+  body.layout-card thead{display:none}
+  body.layout-card table,body.layout-card tbody{display:block; width:100%}
+  body.layout-card thead tr{display:none}
+  body.layout-card .mobile-sort,body.grid-view .mobile-sort{display:inline-flex}
 
-    /* row → card: single-column stack, no zebra/hover fills */
-    tbody tr{display:flex; flex-direction:column; padding:14px 15px 15px; border-bottom:1px solid var(--line)}
-    tbody tr:nth-child(even){background:transparent}
-    tbody tr:hover{background:transparent}
+  /* row → card: single-column stack, no zebra/hover fills */
+  body.layout-card tbody tr{display:flex; flex-direction:column; padding:14px 15px 15px; border-bottom:1px solid var(--line)}
+  body.layout-card tbody tr:nth-child(even){background:transparent}
+  body.layout-card tbody tr:hover{background:transparent}
 
-    /* metric cell: [ LABEL gutter ][ value ] on one baseline row; multi-part values (release
-       date+age, updated recency+cadence) sit inline and wrap under the value column if needed. */
-    tbody td,tbody td.num,tbody td.center{padding:4px 0; border:0; display:flex; flex-flow:row wrap;
-        align-items:baseline; justify-content:flex-start; gap:2px 9px; min-width:0; min-height:0; overflow:hidden}
-    td.pad{padding:4px 0}
-    tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:10px; letter-spacing:.03em;
-        text-transform:uppercase; color:var(--muted-2); flex:none; width:72px; line-height:1.5}
-    tbody td:empty{display:none}
-    /* plain-language relabels for the mobile card */
-    td[data-label="Reviews"]::before{content:"Rating"}
-    td[data-label="HLTB M/E/100%"]::before{content:"Length"}
-    td[data-label="Price / Sale"]::before{content:"Price"}
-    /* drop cells whose only value is "no data" so no dead "—" lines clutter the card */
-    td[data-label="Sale ends"]:has(.nosale){display:none}
-    td[data-label="Weighted"]:has(.wrval.na){display:none}
-    td[data-label="Trend"]:has(.trend.none){display:none}
-    /* every value block left-aligned (override the desktop right/center rules) */
-    .num,.qtop,.hltb,.hltb-stack,.havg,.center,.ratecell,.pricebox,.ptcell{justify-content:flex-start;
-        align-items:flex-start; text-align:left}
-    .center{justify-content:flex-start !important}
-    .ratecell,.ptcell,.hltb-stack,.pricebox{flex:1 1 auto}
-    .age,.updated,.updcad{text-align:left}
-    .grouplabel{width:auto; text-align:left}
+  /* metric cell: [ LABEL gutter ][ value ] on one baseline row; multi-part values (release
+     date+age, updated recency+cadence) sit inline and wrap under the value column if needed. */
+  body.layout-card tbody td,body.layout-card tbody td.num,body.layout-card tbody td.center{padding:4px 0; border:0; display:flex; flex-flow:row wrap;
+      align-items:baseline; justify-content:flex-start; gap:2px 9px; min-width:0; min-height:0; overflow:hidden}
+  body.layout-card td.pad{padding:4px 0}
+  body.layout-card tbody td::before{content:attr(data-label); font-family:var(--mono); font-size:10px; letter-spacing:.03em;
+      text-transform:uppercase; color:var(--muted-2); flex:none; width:72px; line-height:1.5}
+  body.layout-card tbody td:empty{display:none}
+  /* plain-language relabels for the mobile card */
+  body.layout-card td[data-label="Reviews"]::before{content:"Rating"}
+  body.layout-card td[data-label="HLTB M/E/100%"]::before{content:"Length"}
+  body.layout-card td[data-label="Price / Sale"]::before{content:"Price"}
+  /* drop cells whose only value is "no data" so no dead "—" lines clutter the card */
+  body.layout-card td[data-label="Sale ends"]:has(.nosale){display:none}
+  body.layout-card td[data-label="Weighted"]:has(.wrval.na){display:none}
+  body.layout-card td[data-label="Trend"]:has(.trend.none){display:none}
+  /* every value block left-aligned (override the desktop right/center rules) */
+  body.layout-card .num,body.layout-card .qtop,body.layout-card .hltb,body.layout-card .hltb-stack,body.layout-card .havg,body.layout-card .center,body.layout-card .ratecell,body.layout-card .pricebox,body.layout-card .ptcell{justify-content:flex-start;
+      align-items:flex-start; text-align:left}
+  body.layout-card .center{justify-content:flex-start !important}
+  body.layout-card .ratecell,body.layout-card .ptcell,body.layout-card .hltb-stack,body.layout-card .pricebox{flex:1 1 auto}
+  body.layout-card .age,body.layout-card .updated,body.layout-card .updcad{text-align:left}
+  body.layout-card .grouplabel{width:auto; text-align:left}
 
-    /* logical field order: verdict → price → ratings → length → dates → tags */
-    td[data-label="Game"]{order:1}
-    td[data-label="QTPD"]{order:2}
-    td[data-label="Price / Sale"]{order:3}
-    td[data-label="Sale ends"]{order:4}
-    td[data-label="Reviews"]{order:5}
-    td[data-label="Weighted"]{order:6}
-    td[data-label="Trend"]{order:7}
-    td[data-label="HLTB M/E/100%"]{order:8}
-    td[data-label="Playtime"]{order:9}
-    td[data-label="Released"]{order:10}
-    td[data-label="Updated"]{order:11}
-    td[data-label="Tags"]{order:12}
+  /* logical field order: verdict → price → ratings → length → dates → tags */
+  body.layout-card td[data-label="Game"]{order:1}
+  body.layout-card td[data-label="QTPD"]{order:2}
+  body.layout-card td[data-label="Price / Sale"]{order:3}
+  body.layout-card td[data-label="Sale ends"]{order:4}
+  body.layout-card td[data-label="Reviews"]{order:5}
+  body.layout-card td[data-label="Weighted"]{order:6}
+  body.layout-card td[data-label="Trend"]{order:7}
+  body.layout-card td[data-label="HLTB M/E/100%"]{order:8}
+  body.layout-card td[data-label="Playtime"]{order:9}
+  body.layout-card td[data-label="Released"]{order:10}
+  body.layout-card td[data-label="Updated"]{order:11}
+  body.layout-card td[data-label="Tags"]{order:12}
 
-    /* Game: full-width headline (thumb + title), no redundant "GAME" label */
-    td[data-label="Game"]{padding-bottom:9px}
-    td[data-label="Game"]::before{display:none}
-    .gamecell{width:100%}
-    .gtitle{-webkit-line-clamp:2; font-size:16px}
-    .thumb{width:120px; height:46px}
+  /* Game: full-width headline (thumb + title), no redundant "GAME" label */
+  body.layout-card td[data-label="Game"]{order:1; padding-bottom:9px}
+  body.layout-card td[data-label="Game"]::before{display:none}
+  body.layout-card .gamecell{width:100%}
+  body.layout-card .gtitle{-webkit-line-clamp:2; font-size:16px}
+  body.layout-card .thumb{width:120px; height:46px}
 
-    /* QTPD: headline card row — big number + full-width bar; the app's whole point. Selector is
-       `tbody td.tdqtpd` (not the data-label form) so it out-specifies the grouped
-       `tbody td.num{...}` rule — the QTPD cell carries the .num class. */
-    tbody td.tdqtpd{flex-flow:row nowrap; align-items:center; gap:10px; margin:3px 0 9px;
-        padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:10px}
-    tbody td.tdqtpd::before{color:var(--gold); align-self:center; width:auto; font-size:11px}
-    td.tdqtpd .qtop{flex:none}
-    td.tdqtpd .qval{font-size:20px}
-    .qbar{flex:1; max-width:none; margin-top:0; min-width:56px}
+  /* QTPD: headline card row — big number + full-width bar; the app's whole point. Selector is
+     `tbody td.tdqtpd` (not the data-label form) so it out-specifies the grouped
+     `tbody td.num{...}` rule — the QTPD cell carries the .num class. */
+  body.layout-card tbody td.tdqtpd{flex-flow:row nowrap; align-items:center; gap:10px; margin:3px 0 9px;
+      padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:10px}
+  body.layout-card tbody td.tdqtpd::before{color:var(--gold); align-self:center; width:auto; font-size:11px}
+  body.layout-card td.tdqtpd .qtop{flex:none}
+  body.layout-card td.tdqtpd .qval{font-size:20px}
+  body.layout-card .qbar{flex:1; max-width:none; margin-top:0; min-width:56px}
 
-    /* Tags: full-width, label on its own line above the wrapping chips */
-    td[data-label="Tags"]{flex-direction:column; align-items:stretch; padding-top:9px}
-    td[data-label="Tags"]::before{width:auto}
-    td[data-label="Tags"] .tags{justify-content:flex-start; margin-top:5px}
+  /* Tags: full-width, label on its own line above the wrapping chips */
+  body.layout-card td[data-label="Tags"]{flex-direction:column; align-items:stretch; padding-top:9px}
+  body.layout-card td[data-label="Tags"]::before{width:auto}
+  body.layout-card td[data-label="Tags"] .tags{justify-content:flex-start; margin-top:5px}
 
-    /* filter controls that carried fixed pixel widths: let them fill the row on narrow screens */
-    .rangefield{min-width:0; flex-basis:100%; max-width:none}
-    .wishbox{flex:1 1 240px}
-    .wishbox input{width:auto; flex:1; min-width:0}
-    /* price min/max steppers: desktop's 22×17px arrows are too small to tap on a phone —
-       give them a roomier target (and a little gap) without changing the desktop look. */
-    .steppers{gap:3px}
-    .steppers button{width:30px; height:23px; font-size:13px}
+  /* filter controls that carried fixed pixel widths: let them fill the row on narrow screens */
+  body.layout-card .rangefield{min-width:0; flex-basis:100%; max-width:none}
+  body.layout-card .wishbox{flex:1 1 240px}
+  body.layout-card .wishbox input{width:auto; flex:1; min-width:0}
+  /* price min/max steppers: desktop's 22×17px arrows are too small to tap on a phone —
+     give them a roomier target (and a little gap) without changing the desktop look. */
+  body.layout-card .steppers{gap:3px}
+  body.layout-card .steppers button{width:30px; height:23px; font-size:13px}
 
-  /* ── Phones (~≤560px): tighter spacing and type ──────────────────────────────────────── */
+  /* ── Phones (~≤560px): tighter spacing and type (only reached when layout-card is active) ── */
   @media (max-width:560px){
-    .tablecard{border-radius:10px; margin-top:8px}
-    tbody tr{padding:13px 12px 13px}
-    .thumb{width:104px; height:40px}
-    .gamecell{gap:8px}
-    .gtitle{font-size:15px}
-    td.tdqtpd .qval{font-size:19px}
-    tbody td::before{width:66px}
-    .hltb{gap:10px}
+    body.layout-card .tablecard{border-radius:10px; margin-top:8px}
+    body.layout-card tbody tr{padding:13px 12px 13px}
+    body.layout-card .thumb{width:104px; height:40px}
+    body.layout-card .gamecell{gap:8px}
+    body.layout-card .gtitle{font-size:15px}
+    body.layout-card td.tdqtpd .qval{font-size:19px}
+    body.layout-card tbody td::before{width:66px}
+    body.layout-card .hltb{gap:10px}
+    .gridview{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; padding:10px}
   }
-  @media (prefers-reduced-motion:reduce){ .qfill{transition:none} }
+  @media (prefers-reduced-motion:reduce){ .qfill{transition:none} .section-head .sec-caret{transition:none} }
 </style>
 </head>
 <body>
+<script>
+/* Set the layout class before first paint so mobile gets the card layout with no flash and a
+   saved Grid/Card view applies immediately. The main script re-derives this on load + resize. */
+try{
+  var _narrow = matchMedia("(max-width:1374px)").matches;
+  var _view = localStorage.getItem("qtpd.view");
+  if(_view === "grid") document.body.classList.add("grid-view");
+  else if(_view === "card" || _narrow) document.body.classList.add("layout-card");
+}catch(e){}
+</script>
 
 <div class="topbar compact" id="topbar">
  <div class="wrap">
@@ -582,7 +706,19 @@
         <button data-size="500">500</button>
         <button data-size="2000">2000</button>
       </div>
+      <div class="bar-tools">
+        <div class="seg viewseg" id="viewSwitch" role="group" aria-label="View mode" title="Switch how results are laid out">
+          <button data-view="table" aria-pressed="true"  title="Detailed table (desktop)">Table</button>
+          <button data-view="card"  aria-pressed="false" title="Stacked spec-sheet cards">Card</button>
+          <button data-view="grid"  aria-pressed="false" title="Cool grid — Steam box art with a QTPD badge">Grid</button>
+        </div>
+        <button class="util-btn" id="randomBtn" title="Jump to a random game from the current filtered results">🎲 Random</button>
+        <button class="util-btn" id="exportBtn" title="Export the current filtered results to CSV (pick which columns)">⬇ CSV</button>
+        <button class="util-btn" id="shareBtn" title="Copy a shareable link to this filtered view">🔗 Copy link</button>
+      </div>
     </div>
+
+    <div class="filter-summary" id="filterSummary" aria-live="polite"></div>
 
     <div class="bar-filters" id="barFilters">
       <div class="ctl-row">
@@ -598,7 +734,11 @@
         <button class="linkbtn" id="clear" style="margin-left:auto">Reset all filters</button>
       </div>
 
-      <div class="ctl-row">
+      <!-- L1: accordion filter sections. Each folds independently; open/closed persists in
+           localStorage. The wishlist row above stays always-visible (it's a global action). -->
+      <div class="filter-section" data-section="value">
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Value</span><span class="sec-count" data-count="value"></span></button>
+        <div class="section-body"><div class="ctl-row">
         <div class="field">
           <label>QTPD price basis</label>
           <div class="seg" role="group" aria-label="QTPD price basis">
@@ -623,6 +763,36 @@
           </div>
         </div>
         <div class="field">
+          <label>Price range (USD)</label>
+          <div style="display:flex; align-items:center; gap:6px">
+            <span class="pricesep">min $</span>
+            <div class="numinput"><input id="minprice" type="number" min="0" step="1" inputmode="decimal" placeholder="0" />
+              <span class="steppers"><button type="button" data-step="minprice" data-d="1">▲</button><button type="button" data-step="minprice" data-d="-1">▼</button></span></div>
+            <span class="pricesep">– max $</span>
+            <div class="numinput"><input id="maxprice" type="number" min="0" step="1" inputmode="decimal" placeholder="∞" />
+              <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
+          </div>
+        </div>
+        <div class="field" style="align-self:flex-end">
+          <label>&nbsp;</label>
+          <button class="toggle" id="saleOnly" aria-pressed="false">On sale only</button>
+        </div>
+        <div class="field rangefield">
+          <label>QTPD range (log scale, fits current results)</label>
+          <div class="rangewrap">
+            <div class="rangetrack"><div class="rangefill" id="qrangefill"></div></div>
+            <input type="range" id="qmin" min="0" max="1000" step="1" value="0" />
+            <input type="range" id="qmax" min="0" max="1000" step="1" value="1000" />
+          </div>
+          <div class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></div>
+        </div>
+        </div></div>
+      </div>
+
+      <div class="filter-section" data-section="quality">
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Quality</span><span class="sec-count" data-count="quality"></span></button>
+        <div class="section-body"><div class="ctl-row">
+        <div class="field">
           <label>Min rating</label>
           <div class="seg" role="group" aria-label="Minimum rating">
             <button data-minscore="0"  aria-pressed="true">Any</button>
@@ -640,10 +810,11 @@
           </div>
         </div>
         <div class="field">
-          <label>Playtime sort</label>
-          <div class="seg" role="group" aria-label="Which median drives the Playtime column sort">
-            <button data-ptmetric="up"   aria-pressed="true"  title="Sort the Playtime column by recommenders' median playtime">▲ rec</button>
-            <button data-ptmetric="down" aria-pressed="false" title="Sort the Playtime column by non-recommenders' median playtime">▼ not</button>
+          <label>Review trend</label>
+          <div class="seg" role="group" aria-label="Review trend">
+            <button data-trend="up" aria-pressed="true" title="Improving: recent score above all-time">▲</button>
+            <button data-trend="flat" aria-pressed="true" title="Stable: recent score near all-time">≈</button>
+            <button data-trend="down" aria-pressed="true" title="Declining: recent score below all-time">▼</button>
           </div>
         </div>
         <div class="field">
@@ -656,29 +827,12 @@
             <button data-rev="4" aria-pressed="true" title="5k+ reviews">5k+</button>
           </div>
         </div>
-        <div class="field">
-          <label>Price range (USD)</label>
-          <div style="display:flex; align-items:center; gap:6px">
-            <span class="pricesep">min $</span>
-            <div class="numinput"><input id="minprice" type="number" min="0" step="1" inputmode="decimal" placeholder="0" />
-              <span class="steppers"><button type="button" data-step="minprice" data-d="1">▲</button><button type="button" data-step="minprice" data-d="-1">▼</button></span></div>
-            <span class="pricesep">– max $</span>
-            <div class="numinput"><input id="maxprice" type="number" min="0" step="1" inputmode="decimal" placeholder="∞" />
-              <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
-          </div>
-        </div>
-        <div class="field" style="align-self:flex-end">
-          <label>&nbsp;</label>
-          <button class="toggle" id="saleOnly" aria-pressed="false">On sale only</button>
-        </div>
-        <div class="field">
-          <label>Review trend</label>
-          <div class="seg" role="group" aria-label="Review trend">
-            <button data-trend="up" aria-pressed="true" title="Improving: recent score above all-time">▲</button>
-            <button data-trend="flat" aria-pressed="true" title="Stable: recent score near all-time">≈</button>
-            <button data-trend="down" aria-pressed="true" title="Declining: recent score below all-time">▼</button>
-          </div>
-        </div>
+        </div></div>
+      </div>
+
+      <div class="filter-section" data-section="activity">
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Activity</span><span class="sec-count" data-count="activity"></span></button>
+        <div class="section-body"><div class="ctl-row">
         <div class="field">
           <label>Updated within</label>
           <div class="seg" role="group" aria-label="Updated within">
@@ -690,18 +844,19 @@
             <button data-upd="1yr+" title="No update in over a year (abandonware)">1yr+</button>
           </div>
         </div>
-        <div class="field rangefield">
-          <label>QTPD range (log scale, fits current results)</label>
-          <div class="rangewrap">
-            <div class="rangetrack"><div class="rangefill" id="qrangefill"></div></div>
-            <input type="range" id="qmin" min="0" max="1000" step="1" value="0" />
-            <input type="range" id="qmax" min="0" max="1000" step="1" value="1000" />
+        <div class="field">
+          <label>Playtime sort</label>
+          <div class="seg" role="group" aria-label="Which median drives the Playtime column sort">
+            <button data-ptmetric="up"   aria-pressed="true"  title="Sort the Playtime column by recommenders' median playtime">▲ rec</button>
+            <button data-ptmetric="down" aria-pressed="false" title="Sort the Playtime column by non-recommenders' median playtime">▼ not</button>
           </div>
-          <div class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></div>
         </div>
+        </div></div>
       </div>
 
-      <div class="ctl-row">
+      <div class="filter-section" data-section="tags">
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
+        <div class="section-body"><div class="ctl-row">
         <div class="taglegend" aria-hidden="true">
           <span>Click a tag:</span>
           <span class="chip inc"><span class="mk">✓</span>require</span>
@@ -711,6 +866,7 @@
         </div>
         <div class="tagrail-wrap" id="tagrail" style="flex:1"
              title="Click a tag to require it · click again to exclude it · once more to clear. Counts update to show how many of the current results have each tag."></div>
+        </div></div>
       </div>
     </div>
 
@@ -746,6 +902,8 @@
         <tbody id="rows"></tbody>
       </table>
     </div>
+    <!-- L3/L5: cool box-art grid. Populated by renderGrid(); shown only in grid view. -->
+    <div class="gridview" id="gridview"></div>
     <div class="loadmore" id="loadmore" style="display:none"></div>
     <div class="empty" id="empty" style="display:none"></div>
   </div>
@@ -754,6 +912,8 @@
 </div>
 
 <div class="toast-host" id="toastHost"></div>
+<!-- shared popover host: L2 summary editors + L4 CSV column-picker -->
+<div class="pop-host" id="popHost"><div class="pop-backdrop" id="popBackdrop"></div><div class="popover" id="popover" role="dialog"></div></div>
 
 <script>
 const NOW = () => Math.floor(Date.now()/1000);
@@ -812,7 +972,8 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), saleOnly:
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
                 hidden:new Set(),
                 pageSize:100, pagesShown:1,
-                wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", hltbQuality:"real", ptMetric:"up", fullCounts:{} };
+                wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", hltbQuality:"real", ptMetric:"up", fullCounts:{},
+                view:"table" };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -1090,6 +1251,7 @@ function render(){
 
   if(!allGames.length){
     tbody.innerHTML = "";
+    $("#gridview").innerHTML = "";
     empty.style.display = "block";
     empty.innerHTML = "<b>No games match these filters.</b><br>Loosen the QTPD range, clear tags, or reset.";
     renderMeta();
@@ -1097,6 +1259,12 @@ function render(){
   }
   empty.style.display = "none";
 
+  // L3/L5: grid view renders box-art cards from the same paged `games`; table view builds rows.
+  if(state.view === "grid"){
+    $("#gridview").innerHTML = games.map(gridCardHTML).join("");
+    tbody.innerHTML = "";
+  } else {
+  $("#gridview").innerHTML = "";
   const sel = state.hltbMetric;
   const inc = state.tagsInc;
   tbody.innerHTML = games.map(g => {
@@ -1274,6 +1442,7 @@ function render(){
       <td data-label="QTPD" class="num pad tdqtpd">${qtpd}</td>
     </tr>`;
   }).join("");
+  }
 
   // Infinite scroll: if more filtered games remain beyond the current page, show a
   // sentinel row at the bottom; an IntersectionObserver loads the next page when it
@@ -1456,6 +1625,311 @@ function cycleTag(t, dir){
 // Any filter/sort/search/page-size change resets to page 1 of the new result set.
 function update(){ resetPaging(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════
+   Lorenzo-list features (ARCHITECTURE §3.4)
+   ═══════════════════════════════════════════════════════════════════════════════════════ */
+const sameSet = (s, arr) => s.size === arr.length && arr.every(x => s.has(x));
+const fmtQval = v => v == null ? "—" : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+
+// ── L3 / L5 — view switcher + cool box-art grid ─────────────────────────────────────────
+const VIEWS = ["table", "card", "grid"];
+// Layout is class-driven: `layout-card` for the stacked spec-sheet (narrow screens OR the
+// explicit Card view), `grid-view` for the box-art grid. Kept in sync with view + viewport.
+function applyLayout(){
+  const narrow = window.matchMedia("(max-width:1374px)").matches;
+  document.body.classList.toggle("grid-view", state.view === "grid");
+  document.body.classList.toggle("layout-card", state.view === "card" || (state.view !== "grid" && narrow));
+}
+function setView(v){
+  if(!VIEWS.includes(v)) v = "table";
+  state.view = v;
+  try{ localStorage.setItem("qtpd.view", v); }catch(e){}
+  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
+  applyLayout();
+  render();
+}
+// One box-art card: Steam header art, a QTPD badge overlay (so it stays ours), a discount
+// flag, and a tap-to-expand info panel with the key KPIs + a Steam link.
+function gridCardHTML(g){
+  const q = activeQ(g);
+  const onSale = g.discount_pct > 0;
+  const cls = "gcard" + (isAdult(g) ? " adult" : "") + (onSale ? " sale" : "") + ((q != null && q >= state.qDomain * 0.66) ? " hi" : "");
+  const disc = onSale ? `<span class="gdisc">-${g.discount_pct}%</span>` : "";
+  let priceTxt;
+  if(g.is_free) priceTxt = "Free";
+  else if(g.price_final == null) priceTxt = "—";
+  else if(onSale) priceTxt = `$${g.price_final.toFixed(2)} (-${g.discount_pct}%)`;
+  else priceTxt = `$${g.price_final.toFixed(2)}`;
+  const h = hoursFor(g);
+  const hStr = h != null ? (h >= 10 ? Math.round(h) : (Math.round(h * 10) / 10).toFixed(1)) + "h" : "—";
+  const rating = g.rating_pct != null ? g.rating_pct + "%" : "—";
+  return `<div class="${cls}" data-gappid="${g.appid}" tabindex="0" role="button" aria-label="${esc(g.title)}">
+    <img class="gcap" loading="lazy" src="${headerUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
+         onerror="this.onerror=null;this.src='${capsuleUrl(g.appid)}'" />
+    <span class="gbadge">QTPD ${fmtQval(q)}</span>${disc}
+    <div class="gcaption">${esc(g.title)}</div>
+    <div class="ginfo">
+      <div class="gi-title">${esc(g.title)}</div>
+      <div class="gi-row"><span>QTPD</span><b class="gi-q">${fmtQval(q)}</b></div>
+      <div class="gi-row"><span>Price</span><b>${priceTxt}</b></div>
+      <div class="gi-row"><span>Rating</span><b>${rating}</b></div>
+      <div class="gi-row"><span>Length</span><b>${hStr}</b></div>
+      <div class="gi-actions">
+        <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener">Steam ↗</a>
+        <button type="button" data-gclose="1">Close ✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── L1 — accordion filter sections ──────────────────────────────────────────────────────
+const SECTION_DEFAULT = {value:true, quality:true, activity:true, tags:false};   // Tags folded by default
+function loadSectionState(){
+  let saved = {};
+  try{ saved = JSON.parse(localStorage.getItem("qtpd.sections") || "{}") || {}; }catch(e){}
+  return Object.assign({}, SECTION_DEFAULT, saved);
+}
+function applySections(){
+  const st = loadSectionState();
+  document.querySelectorAll(".filter-section").forEach(sec => {
+    const open = !!st[sec.dataset.section];
+    sec.classList.toggle("open", open);
+    const head = sec.querySelector(".section-head");
+    if(head) head.setAttribute("aria-expanded", String(open));
+  });
+}
+function toggleSection(name){
+  const st = loadSectionState();
+  st[name] = !st[name];
+  try{ localStorage.setItem("qtpd.sections", JSON.stringify(st)); }catch(e){}
+  applySections();
+}
+function openSectionByName(name){
+  const st = loadSectionState();
+  if(!st[name]){ st[name] = true; try{ localStorage.setItem("qtpd.sections", JSON.stringify(st)); }catch(e){} applySections(); }
+}
+// Count of non-default filters per section — shown as a small "N active" badge on the header.
+function sectionActiveCounts(){
+  const revActive = sameSet(state.revBands, [1,2,3,4]) ? 0 : 1;
+  return {
+    value: (state.qBasis !== "after" ? 1 : 0) + (state.hltbMetric !== "main" ? 1 : 0) + (state.hltbQuality !== "real" ? 1 : 0)
+         + ((state.minPrice != null || state.maxPrice != null) ? 1 : 0) + (state.saleOnly ? 1 : 0) + (state.qRangeTouched ? 1 : 0),
+    quality: (state.minScore > 0 ? 1 : 0) + (state.ratingSource !== "recent" ? 1 : 0)
+         + ((state.trendSet.size > 0 && state.trendSet.size < 3) ? 1 : 0) + revActive,
+    activity: (state.updatedWithin !== "any" ? 1 : 0) + (state.ptMetric !== "up" ? 1 : 0),
+    tags: state.tagsInc.size + state.tagsExc.size,
+  };
+}
+function updateSectionCounts(){
+  const c = sectionActiveCounts();
+  document.querySelectorAll("[data-count]").forEach(el => {
+    const n = c[el.dataset.count] || 0;
+    el.textContent = n ? `${n} active` : "";
+  });
+}
+
+// ── L2 — collapsed-bar filter summary sentence + inline editors ─────────────────────────
+const SORT_LABELS = {qtpd:"QTPD", title:"Name", rating_pct:"Review score", review_count:"Review count",
+  trend:"Trend", wr:"Weighted", price_final:"Price", discount_pct:"Discount", discount_end:"Sale ends",
+  release_ts:"Released", updated:"Updated", playtime:"Playtime", hltb:"HLTB"};
+const REV_LBLS = ["0", "10", "100", "1k", "5k+"];
+
+function renderSummary(){
+  const host = $("#filterSummary"); if(!host) return;
+  const parts = [];
+  const chip = (key, text) => `<button class="sumf" data-sumf="${key}">${esc(text)}</button>`;
+  if(state.q) parts.push(chip("q", `“${state.q}”`));
+  if(state.qBasis === "before") parts.push(chip("basis", "full-price QTPD"));
+  if(state.hltbMetric !== "main"){ const m = {extra:"+Extras", complete:"100%", avg:"Avg"}[state.hltbMetric] || state.hltbMetric; parts.push(chip("metric", `${m} length`)); }
+  if(state.hltbQuality !== "real") parts.push(chip("hq", "incl. estimated HLTB"));
+  if(state.minScore > 0) parts.push(chip("minscore", `rating ≥ ${state.minScore}%`));
+  if(state.ratingSource !== "recent") parts.push(chip("ratesrc", "all-time reviews"));
+  if(!sameSet(state.revBands, [1,2,3,4])){ const t = [...state.revBands].sort((a,b)=>a-b).map(i => REV_LBLS[i]).join("/"); parts.push(chip("rev", state.revBands.size ? `reviews: ${t}` : "reviews: none")); }
+  if(state.minPrice != null || state.maxPrice != null){ const lo = state.minPrice != null ? `$${state.minPrice}` : "$0"; const hi = state.maxPrice != null ? `$${state.maxPrice}` : "∞"; parts.push(chip("price", `${lo}–${hi}`)); }
+  if(state.saleOnly) parts.push(chip("sale", "on sale"));
+  if(state.trendSet.size > 0 && state.trendSet.size < 3){ const map = {up:"▲", flat:"≈", down:"▼"}; const t = ["up","flat","down"].filter(x => state.trendSet.has(x)).map(x => map[x]).join(""); parts.push(chip("trend", `trend ${t}`)); }
+  if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
+  if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
+  if(state.tagsInc.size || state.tagsExc.size){ const t = (state.tagsInc.size ? "+" + state.tagsInc.size : "") + (state.tagsExc.size ? " −" + state.tagsExc.size : ""); parts.push(chip("tags", `tags ${t.trim()}`)); }
+  if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
+
+  const sortName = SORT_LABELS[state.sortKey] || state.sortKey;
+  const sortChip = `<button class="sumf plain" data-sumf="sort">${esc(sortName)} ${state.sortDir < 0 ? "↓" : "↑"}</button>`;
+  const count = state._totalFiltered != null ? state._totalFiltered : "";
+  host.innerHTML = parts.length
+    ? `<span class="sumlbl">Showing</span> ${parts.join(" ")} <span class="sumlbl">· ${count} games · sorted by</span> ${sortChip}`
+    : `<span class="sumlbl">All ${count} games · sorted by</span> ${sortChip}`;
+}
+
+// Popover host (shared by summary editors + CSV picker).
+function showPopover(anchor){
+  const host = $("#popHost"), pop = $("#popover");
+  host.classList.add("on");
+  const r = anchor.getBoundingClientRect();
+  pop.style.visibility = "hidden";
+  requestAnimationFrame(() => {
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let left = r.left; if(left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    let top = r.bottom + 6; if(top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+    pop.style.left = Math.max(8, left) + "px"; pop.style.top = Math.max(8, top) + "px";
+    pop.style.visibility = "visible";
+  });
+}
+function closePopover(){ $("#popHost").classList.remove("on"); const p = $("#popover"); p.onclick = null; p.innerHTML = ""; }
+
+// Filters that need the full control set (free text, ranges, tags) just deep-link into the
+// expanded bar; the rest get an inline option popover that drives the REAL hidden controls
+// (so there's zero duplicated state logic — clicking a popover option clicks the actual button).
+const SUMMARY_EDITORS = {
+  basis:    {title:"QTPD price basis", cur:() => state.qBasis, opts:[["Sale","#qb-after","after"],["Full","#qb-before","before"]]},
+  metric:   {title:"HLTB metric", cur:() => state.hltbMetric, opts:[["Main",'[data-metric="main"]',"main"],["+Extras",'[data-metric="extra"]',"extra"],["100%",'[data-metric="complete"]',"complete"],["Avg",'[data-metric="avg"]',"avg"]]},
+  hq:       {title:"HLTB data", cur:() => state.hltbQuality, opts:[["All (incl. est.)",'[data-hquality="loose"]',"loose"],["Real only",'[data-hquality="real"]',"real"]]},
+  minscore: {title:"Min rating", cur:() => String(state.minScore), opts:[["Any",'[data-minscore="0"]',"0"],["60+",'[data-minscore="60"]',"60"],["70+",'[data-minscore="70"]',"70"],["80+",'[data-minscore="80"]',"80"],["90+",'[data-minscore="90"]',"90"]]},
+  ratesrc:  {title:"Reviews sort by", cur:() => state.ratingSource, opts:[["All-time",'[data-ratesrc="all"]',"all"],["30-day",'[data-ratesrc="recent"]',"recent"]]},
+  upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
+  sale:     {title:"On sale", toggleSel:"#saleOnly", isOn:() => state.saleOnly, opts:[["On sale only",null,"on"],["Any",null,"off"]]},
+  wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
+  trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
+  rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0",'[data-rev="0"]',"0"],["10",'[data-rev="1"]',"1"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
+};
+function openSummaryEditor(anchor, key){
+  const EXPAND = {q:["value","#q"], price:["value","#minprice"], qrange:["value","#qmin"], tags:["tags",null]};
+  if(EXPAND[key]){
+    setFiltersCompact(false);
+    const [sec, focusSel] = EXPAND[key];
+    openSectionByName(sec);
+    const el = focusSel ? $(focusSel) : document.querySelector('.filter-section[data-section="tags"]');
+    if(el){ if(focusSel) el.focus(); el.scrollIntoView({block:"nearest"}); }
+    return;
+  }
+  if(key === "sort") return buildSortPopover(anchor);
+  const cfg = SUMMARY_EDITORS[key];
+  if(!cfg){ setFiltersCompact(false); return; }
+  buildOptionPopover(anchor, cfg);
+}
+function buildOptionPopover(anchor, cfg){
+  const pop = $("#popover");
+  const renderContent = () => {
+    let html = `<h4>${esc(cfg.title)}</h4><div class="pop-opts">`;
+    cfg.opts.forEach(([label, sel, val]) => {
+      let on;
+      if(cfg.multi) on = cfg.has(val);
+      else if(cfg.toggleSel) on = (val === "on") === !!cfg.isOn();
+      else on = cfg.cur() === val;
+      html += `<button class="pop-opt${on ? " on" : ""}" data-sel="${sel ? esc(sel) : ""}" data-val="${esc(val)}">${esc(label)}</button>`;
+    });
+    pop.innerHTML = html + `</div>`;
+  };
+  renderContent();
+  pop.onclick = e => {
+    const o = e.target.closest(".pop-opt"); if(!o) return;
+    const val = o.dataset.val;
+    if(cfg.toggleSel){                          // On/Off toggle: click the control only if it must flip
+      if((val === "on") !== !!cfg.isOn()) $(cfg.toggleSel).click();
+    } else {
+      const el = $(o.dataset.sel); if(el) el.click();   // reuse the real control's handler
+    }
+    if(cfg.multi) renderContent();              // multi stays open so you can toggle several
+    else closePopover();
+  };
+  showPopover(anchor);
+}
+function buildSortPopover(anchor){
+  const pop = $("#popover");
+  const renderContent = () => {
+    let html = `<h4>Sort by</h4><div class="pop-opts">`;
+    Object.entries(SORT_LABELS).forEach(([k, lbl]) => {
+      html += `<button class="pop-opt${state.sortKey === k ? " on" : ""}" data-sortk="${k}">${esc(lbl)}</button>`;
+    });
+    html += `</div><div class="pop-actions"><button class="pop-go" data-sortdir="1">${state.sortDir < 0 ? "↓ High → Low" : "↑ Low → High"} — flip</button></div>`;
+    pop.innerHTML = html;
+  };
+  renderContent();
+  pop.onclick = e => {
+    const k = e.target.closest("[data-sortk]");
+    if(k){ if(state.sortKey !== k.dataset.sortk){ setSort(k.dataset.sortk); renderContent(); } return; }
+    if(e.target.closest("[data-sortdir]")){ state.sortDir *= -1; syncSortArrows(); render(); syncURL(); renderContent(); }
+  };
+  showPopover(anchor);
+}
+
+// ── L4 — utility actions: random pick, CSV export, copy link ────────────────────────────
+function randomPick(){
+  const games = visibleGames();
+  if(!games.length){ toast("No games match the current filters.", "err", 5000); return; }
+  const idx = Math.floor(Math.random() * games.length);
+  const g = games[idx];
+  // grow the paged view until the pick is actually rendered, then scroll to + flash it
+  while(state.pageSize * state.pagesShown <= idx && state.pageSize * state.pagesShown < games.length) state.pagesShown += 1;
+  render();
+  toast(`🎲 <b>${esc(g.title)}</b> — QTPD ${fmtQval(activeQ(g))}`, "ok", 6000);
+  requestAnimationFrame(() => {
+    let el;
+    if(state.view === "grid") el = document.querySelector(`.gcard[data-gappid="${g.appid}"]`);
+    else { const hb = document.querySelector(`[data-hide="${g.appid}"]`); el = hb ? hb.closest("tr") : null; }
+    if(el){
+      el.scrollIntoView({behavior:"smooth", block:"center"});
+      el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+      if(state.view === "grid") el.classList.add("open");
+    }
+  });
+}
+// CSV columns: [key, header, valueFn]. QTPD/price/HLTB honor the current basis/metric toggles.
+const CSV_COLS = [
+  ["title", "Name", g => g.title],
+  ["url", "Steam URL", g => g.url],
+  ["appid", "App ID", g => g.appid],
+  ["qtpd", "QTPD", g => { const q = activeQ(g); return q != null ? q.toFixed(3) : ""; }],
+  ["price", "Price (USD)", g => g.is_free ? "Free" : (g.price_final != null ? g.price_final.toFixed(2) : "")],
+  ["discount", "Discount %", g => g.discount_pct || 0],
+  ["rating", "Rating %", g => g.rating_pct != null ? g.rating_pct : ""],
+  ["recent", "Recent %", g => g.recent_pct != null ? g.recent_pct : ""],
+  ["reviews", "Review count", g => g.review_count != null ? g.review_count : ""],
+  ["weighted", "Weighted %", g => g.wr != null ? g.wr : ""],
+  ["hltb", "HLTB hours", g => { const h = hoursFor(g); return h != null ? h : ""; }],
+  ["playtime", "Playtime rec (h)", g => g.pt_up != null ? (g.pt_up / 60).toFixed(1) : ""],
+  ["released", "Released", g => fmtRelease(g)],
+  ["updated", "Last update", g => g.last_update_ts ? new Date(g.last_update_ts * 1000).toISOString().slice(0,10) : ""],
+  ["tags", "Tags", g => (g.tags || []).join("; ")],
+];
+const CSV_DEFAULT = new Set(["title", "url", "qtpd", "price", "rating"]);
+function openExportPopover(anchor){
+  const pop = $("#popover");
+  let html = `<h4>Export CSV — pick columns</h4><div class="pop-checks">`;
+  CSV_COLS.forEach(([k, lbl]) => { html += `<label class="pop-check"><input type="checkbox" data-col="${k}" ${CSV_DEFAULT.has(k) ? "checked" : ""}/> ${esc(lbl)}</label>`; });
+  html += `</div><div class="pop-actions"><button class="pop-go" id="csvGo">Download CSV</button></div>`;
+  pop.innerHTML = html;
+  pop.onclick = e => { if(e.target.closest("#csvGo")) doExportCSV(pop); };
+  showPopover(anchor);
+}
+function doExportCSV(pop){
+  const chosen = [...pop.querySelectorAll("input[data-col]:checked")].map(i => i.dataset.col);
+  if(!chosen.length){ toast("Pick at least one column.", "err", 4000); return; }
+  const cols = CSV_COLS.filter(c => chosen.includes(c[0]));
+  const games = visibleGames();
+  const cell = v => { v = v == null ? "" : String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const rows = [cols.map(c => cell(c[1])).join(",")];
+  games.forEach(g => rows.push(cols.map(c => cell(c[2](g))).join(",")));
+  const blob = new Blob(["﻿" + rows.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `qtpd-export-${games.length}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  closePopover();
+  toast(`Exported <b>${games.length}</b> games (${cols.length} columns) to CSV.`, "ok", 5000);
+}
+function copyLink(){
+  const url = location.href;
+  const done = () => toast("🔗 Link copied to clipboard.", "ok", 4000);
+  const fail = () => toast(`Couldn't copy automatically — here's the link:<br><a href="${esc(url)}">${esc(url)}</a>`, "err", 12000);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(fail);
+  } else {
+    try{ const ta = document.createElement("textarea"); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }catch(e){ fail(); }
+  }
+}
+
 // ----- meta + footer -----
 function renderMeta(){
   const d = state.data;
@@ -1468,6 +1942,8 @@ function renderMeta(){
     : '';
   $("#meta").innerHTML = `<span class="n">${total}</span> / ${d.games.length} games · ${when}USD${badge}${hid}`;
   const ub = $("#unhide"); if(ub) ub.addEventListener("click", unhideAll);
+  renderSummary();          // L2: keep the collapsed-bar summary sentence current
+  updateSectionCounts();    // L1: keep each accordion's "N active" badge current
 }
 function renderFoot(){
   $("#foot").innerHTML =
@@ -1785,6 +2261,12 @@ function init(data){
   buildTagRail(); renderFoot();
   syncSortArrows();                    // reflect restored sort key/dir in headers
   syncPtHeader();                      // reflect restored playtime-median selection
+  // L3/L5 + L1: restore the saved view mode and accordion open/closed states before first paint.
+  try{ state.view = localStorage.getItem("qtpd.view") || "table"; }catch(e){ state.view = "table"; }
+  if(!VIEWS.includes(state.view)) state.view = "table";
+  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  applyLayout();
+  applySections();
   render();
 
   window.addEventListener("popstate", () => {   // back/forward navigation
@@ -1932,6 +2414,35 @@ function init(data){
     const t = e.target.closest("[data-tag]");
     if(t){ e.preventDefault(); cycleTag(t.dataset.tag, -1); }  // right-click: backward
   });
+
+  // ── Lorenzo-list wiring ───────────────────────────────────────────────────────────────
+  // L3/L5: view switcher + keep layout class in sync as the viewport crosses the table floor.
+  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+  window.matchMedia("(max-width:1374px)").addEventListener("change", applyLayout);
+  // Grid card interactions: tap a card to expand its info; Steam link + Close handled inline.
+  $("#gridview").addEventListener("click", e => {
+    const card = e.target.closest(".gcard"); if(!card) return;
+    if(e.target.closest("a")) return;                                   // let the Steam link open
+    if(e.target.closest("[data-gclose]")){ card.classList.remove("open"); return; }
+    card.classList.toggle("open");
+  });
+  $("#gridview").addEventListener("keydown", e => {
+    if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("gcard")){ e.preventDefault(); e.target.classList.toggle("open"); }
+  });
+  // L1: accordion section headers toggle their own open/closed state (persisted).
+  document.querySelectorAll(".section-head").forEach(h =>
+    h.addEventListener("click", () => toggleSection(h.closest(".filter-section").dataset.section)));
+  // L2: clicking a summarized filter term opens its inline editor (or deep-links into the bar).
+  $("#filterSummary").addEventListener("click", e => {
+    const b = e.target.closest("[data-sumf]"); if(b) openSummaryEditor(b, b.dataset.sumf);
+  });
+  // L4: utility actions.
+  $("#randomBtn").addEventListener("click", randomPick);
+  $("#exportBtn").addEventListener("click", () => openExportPopover($("#exportBtn")));
+  $("#shareBtn").addEventListener("click", copyLink);
+  // Popover dismissal (backdrop click / Escape).
+  $("#popBackdrop").addEventListener("click", closePopover);
+  document.addEventListener("keydown", e => { if(e.key === "Escape") closePopover(); });
 }
 
 // Collapse a sale whose end date has passed: show base price, no discount, no QTPD
