@@ -262,85 +262,115 @@ aren't lost, but each needs a source-feasibility check before it's worth scoping
   angle. Only viable source floated was LinkedIn scraping, which is a **ToS problem** and far
   off-mission. *Recorded but not recommended.*
 
-### 3.4 Lorenzo list — filter/view patterns to adopt (comparison-sourced, 2026-07)
+### 3.4 Lorenzo list — filter/view patterns (comparison-sourced 2026-07; **SHIPPED**)
 
 Ideas lifted from a **side-by-side with Lorenzo Stanco's Steam Wishlist Filters tool**
 (<https://www.lorenzostanco.com/lab/steam/wishlist/>), reviewed from its two view modes
 (**Detailed list** and **Cool grid**). Context: his tool is a **wishlist organizer** — filters
 by tags / features / platforms / languages, light on metrics; QTPD is a **value-analysis
-engine** over the whole catalog (QTPD, ratings, HLTB, playtime, price/discount, trend). So we
-borrow his **filter *organization* and view modes**, not his features. All five are **frontend /
-UX only** (no new scraping), so they also belong to §3.2. **Status (2026-07): agreed direction;
-L1 and L5 to prototype first next session.** Each item records what he does, the QTPD plan, the
-owner's refinements, and the open questions.
+engine** over the whole catalog. So we borrowed his **filter *organization* and view modes**,
+not his features. All frontend / UX only (no new scraping) — see §3.2.
 
-- **L1. Accordion filter sections — [agreed; build first].** *His pattern:* filters are collapsed
-  behind a row of expandable category headers (`ORDER BY ▸`, `FILTER BY PLATFORMS ▸`, `… FEATURES`,
-  `… ACCESSIBILITY`, `… LANGUAGES`, `… TAGS`) — you expand only the one you need, so the default
-  screen stays calm and the complexity is opt-in. *QTPD plan:* break the single **flat
-  `bar-filters` wall (~15 control groups)** into ~4 **independently collapsible sections** matched
-  to our domain — **Value** (QTPD basis, HLTB metric/data, QTPD range, price range, on-sale),
-  **Quality** (min rating, reviews-sort, trend, min reviews, weighted), **Activity** (updated-within,
-  playtime-sort), **Tags**. Each section folds on its own, so a user can e.g. **collapse the big
-  Tags rail** and keep the main switches visible while working (owner's framing — confirmed correct).
-  *Open:* final grouping; whether open/closed state persists (localStorage or URL); desktop vs.
-  mobile default states. Pairs with the mobile progressive-disclosure item (§3.2 / §11).
+**Status: L1–L5 all built, tested, and merged to `main` (PR #6, 2026-07). Two follow-up
+polish passes then shipped (R2, R3 — see "Refinements" below).** This section is now an
+**as-built record**: each item marks what shipped, the decisions taken (resolving the earlier
+open questions), and anything **decided against**. See the *Implementation reference* subsection
+for the concrete state/URL/CSS contract, and *Future work* for what's still open.
 
-- **L2. Collapsed-bar summary sentence with inline-edit filters — [refined; mobile-first].**
-  *His pattern:* a permanent natural-language sentence with inline dropdowns — *"Show only
-  \[Free or paid] games released in \[any year] with \[0]+ \[overall] user reviews."* *Owner's
-  refinement (deliberately better than his):* **do not show the sentence permanently** (it wastes
-  space). Render it **only when the nav bar is fully collapsed**, as a **one-line summary of the
-  currently-picked filters** where each highlighted term is **clickable → opens a small inline
-  dropdown / popover** to change just that filter **without expanding the whole bar**. This doubles
-  as the "active-filter summary" (see the active-filter-chips idea — L2 supersedes it with an
-  editable version) *and* an edit affordance, and is flagged **mega-useful on mobile**. *Open:*
-  how to render the sentence from filter state; which filters get an inline editor vs. deep-link
-  into a section; popover positioning / tap targets on mobile.
+- **L1. Accordion filter sections — ✅ SHIPPED.** The flat `bar-filters` wall was split into
+  **independently collapsible `.filter-section` accordions**, each with a header showing an
+  **"N active" count badge**. **As-built grouping** (started as 4 sections; R3 merged Activity
+  into Quality → **3 sections**):
+  - **Value** — QTPD price basis, HLTB metric, HLTB data, price range, on-sale, QTPD range.
+  - **Quality & Activity** — min rating, reviews-sort, review trend, min reviews, updated-within,
+    playtime-sort.
+  - **Tags** — click-cycle legend, tag rail, and the **ALL/ANY match toggle** (see L-tags below).
+  - *Decisions:* open/closed state **persists in `localStorage["qtpd.sections"]`** (not the URL —
+    keeps shared links clean). **Defaults:** Value + Quality open, **Tags folded**. The planned
+    "weighted" control under Quality was **not added** (there is only a Weighted *column*, no such
+    filter). The wishlist import row stays outside the accordions (global action).
 
-- **L3. View-mode switcher + "Cool grid" (box-art) view — [agreed; prototype].** *His pattern:* a
-  `Display: [Detailed list | Cool grid]` toggle; the grid is **pure Steam capsule art** (~6 cols,
-  coloured borders to flag status). *QTPD plan:* add a **view switcher (Table · Card · Grid)** on
-  the **right side of the nav bar**; the Grid is capsule art (we already hold the capsule URLs)
-  with a **small QTPD badge overlay** so it stays *ours*, not just a pretty wall. *Owner's mobile
-  refinement:* the **image-only grid may itself be the better mobile layout** — on **tap**, a card
-  **expands to show basic info** (QTPD, price, rating…) with actions to **close** or **open the
-  Steam page**. I.e. progressive disclosure via the grid (ties directly into the §3.2 mobile
-  progressive-disclosure item). *Open:* which KPIs appear in the tap-expand; grid columns per
-  breakpoint; badge design.
+- **L2. Collapsed-bar filter summary + inline editors — ✅ SHIPPED.** Rejected the permanent
+  sentence (space waste); instead `#filterSummary` renders **only when the nav bar is compact**
+  (`.topbar.compact`). It lists the currently-picked filters as clickable `.sumf` chips plus a
+  trailing sort chip. *Decisions:* clicking a chip opens an **inline popover** (`#popHost`) that
+  **drives the real hidden controls** (`.click()` on the actual buttons — zero duplicated state
+  logic); segmented/toggle/multi/sort filters get an in-popover editor, while **complex filters
+  (search, price, QTPD range, tags) deep-link** into the expanded section instead.
 
-- **L4. Utility actions — random / export / share — [agreed, with design notes].**
-  - **Pick random game** — must pick **from the current *filtered* list**, not the whole catalog.
-    *Open problem:* his tool links straight to Steam; **QTPD has no game-detail card**, so a random
-    pick has nowhere native to land. Options: **(a)** open the game's **Steam page** in a new tab,
-    or **(b)** drop the picked title into the **search box** (or scroll to + highlight its row) so
-    it surfaces **within QTPD**. *Decision pending* (b feels more on-brand).
-  - **Export to CSV** — opens a **column-picker popup**: the user chooses what to export (e.g. just
-    **game names + Steam links**, or a **selection of KPIs**). Not a blind dump of every field.
-  - **Share / copy link** — add an explicit **"copy link to clipboard"** button (QTPD already
-    encodes all filter/sort state in the URL, so the state is shareable today; this just makes it
-    one click).
+- **L3 / L5. View switcher (Table · Card · Grid) + cool grid — ✅ SHIPPED.** Switcher lives in the
+  `.bar-tools` cluster (right of the bar). **Grid** = Steam **header art** (`header.jpg`, capsule
+  fallback) + a **QTPD badge overlay** + discount flag + coloured status border (on-sale = gold).
+  **Tap a card to expand** → shows QTPD / price / rating / length and **`Steam ↗` / `Close ✕`**
+  actions. *Decisions:* layout is **class-driven** — `body.layout-card` (stacked spec-sheet),
+  `body.grid-view` (grid), `body.narrow` — set by `applyLayout()` + a tiny inline FOUC script.
+  The **"detailed" view is one thing relabelled per device**: **Table = desktop-only, Card =
+  mobile-only** (the off-device button is dimmed and shows a hint toast). View persists in
+  `localStorage["qtpd.view"]`. Breakpoint = **1374px** (the table's real floor) via `matchMedia`.
 
-- **L5. Cool-grid prototype — [agreed; try it].** Same as L3's grid mode — the owner wants to
-  **see how the box-art grid looks** against real data before committing. Low effort (capsule URLs
-  exist); first thing to mock alongside L1.
+- **L4. Utility actions — ✅ SHIPPED** (in `.bar-tools`).
+  - **Random** — picks from the **current filtered list**, grows the page until the pick is
+    rendered, then **scrolls to + flashes** its row/card. *Decision:* went with **option (b)** —
+    surface the pick **within QTPD** (not open Steam), since the grid card now *is* a detail view.
+  - **CSV export** — a **column-picker popover** (15 columns; defaults: name, Steam URL, QTPD,
+    price, rating). Exports the whole filtered set, honouring the basis/metric toggles; BOM + CRLF.
+  - **Copy link** — one-click copy of the current (already state-encoding) URL to the clipboard.
 
-**Separate item (NOT part of the Lorenzo list) — short-link encoder for filter URLs — [new;
-needs design].** *Problem:* QTPD packs the full filter/sort state into the querystring, so shared
-links are **long and ugly**. *Want:* encode a long filter URL into a **short code** that expands
-back to the full URL when opened. *Architecture tension (important — see §1 static-first, §12
-Worker):* a **true** shortener (random code → stored full URL) needs **persistent storage**, which
-a static site can't provide on its own. Two routes:
-  1. **Client-side reversible compression** — pack the filter state into a **compact/compressed
-     hash** (e.g. LZ-string, or a bespoke bitfield over the known filter set) carried in the URL
-     fragment. Shorter, **still 100% static**, no storage, no lookup, no abuse surface. *Downside:*
-     shorter but not "a few random digits" short.
-  2. **Worker + KV store** — the existing Cloudflare Worker (§12) stores `{shortcode → state}` in
-     Workers KV, yielding **truly short random codes**. *Cost:* adds a **stateful component + a
-     write path** (needs abuse/rate limits, code collisions, expiry policy) — a real departure
-     from static-first.
-  *Recommendation:* evaluate **(1)** first (fits the architecture); only reach for **(2)** if
-  genuinely-short random codes are a hard requirement.
+**Refinements — Round 2 (mobile polish, 2026-07).** ✅ SHIPPED.
+  - Mobile card **group-separator lines** chunk the tall spec-sheet into price · ratings ·
+    length/playtime · dates · tags.
+  - **Per-page selector hidden on mobile** (meaningless on an infinite-scroll list).
+  - **Table = desktop-only / Card = mobile-only** device-aware disabling (see L3).
+  - **Wishlist import demoted** to the bottom of the mobile filter panel so quick filters lead.
+
+**Refinements — Round 3 (declutter + tags, 2026-07).** ✅ SHIPPED.
+  - **Activity merged into "Quality & Activity"** — one fewer section/header, no wasted whitespace.
+  - **Default-option-on-left theme** (repo-wide convention): the default value is the leftmost
+    button. Applied: HLTB data → **Real**, All; Reviews sort → **30-day**, All-time.
+  - **Tagline trimmed** to "quality time per dollar" (dropped "· steam value hunter").
+  - **View tools never reflow** when switching Table↔Grid: the top-bar sort shows on **mobile
+    only**; **desktop grid gets its own `#gridSort`**, so `bar-main` is identical across desktop
+    table/grid. `body.narrow` splits the two sort controls; `bindSortControl()` wires both and
+    `setSort()`/`syncMobileSort()` keep them in step.
+  - **Tag AND/OR match mode** — `state.tagMode` (`"and"` default / `"or"`), toggled by the
+    prominent **"Required tags match: ALL / ANY"** control in the Tags section. Required (✓) tags
+    combine with AND or OR; **exclude (✕) is always AND-NOT**. Serialized as `tagmode=or`.
+  - **Grid card expand fix** — an open card **drops its fixed box-art aspect ratio** and lays the
+    info panel in normal flow so it **grows to fit**; the KPIs and `Steam ↗`/`Close ✕` actions are
+    never clipped (they were, on tiny mobile grid cells). `align-items:start` stops row-mates
+    stretching.
+
+**Implementation reference (as-built).** For a future session touching this UI (`index.html`):
+  - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`).
+  - **localStorage keys:** `qtpd.view`, `qtpd.sections` (JSON `{value,quality,tags:bool}`).
+  - **Body classes** (set by `applyLayout()` + inline FOUC script): `layout-card`, `grid-view`,
+    `narrow`. Breakpoint `matchMedia("(max-width:1374px)")`; phone tier `@media (max-width:560px)`.
+  - **URL params:** existing set + **`tagmode`** (see §2/§ URL-state; `syncURL`/`loadFromURL`).
+  - **Key functions:** view — `applyLayout` / `setView` / `updateViewButtons` / `gridCardHTML`;
+    accordions — `applySections` / `toggleSection` / `sectionActiveCounts` / `updateSectionCounts`;
+    summary+popover — `renderSummary` / `openSummaryEditor` / `buildOptionPopover` /
+    `buildSortPopover` / `showPopover`; utilities — `randomPick` / `openExportPopover` /
+    `doExportCSV` (`CSV_COLS`) / `copyLink`; sort — `bindSortControl` / `syncMobileSort`.
+  - **Test harness:** `.claude/launch.json` "sample" config serves a copy of `index.html` with no
+    JSON so the app falls back to its 6-game `SAMPLE` — fast, deterministic UI testing.
+
+**Future work / still open.**
+  - **Short-link encoder for filter URLs — ⏳ NOT DONE (design pending).** QTPD packs full
+    filter/sort state into the querystring, so shared links are long. Encode into a short code
+    that expands back. *Architecture tension (see §1 static-first, §12 Worker):* a **true**
+    shortener needs persistent storage. Two routes: **(1)** client-side reversible compression
+    (LZ-string / bitfield in the URL fragment — 100% static, no storage/abuse surface, but only
+    "shorter", not "a few digits"); **(2)** Worker + KV `{shortcode → state}` (truly short random
+    codes, but adds a stateful write path with abuse/expiry concerns — departs from static-first).
+    **Recommendation: evaluate (1) first;** reach for (2) only if genuinely-short codes are a hard
+    requirement.
+  - **Mobile progressive disclosure (per-card fold, §3.2 / §11)** — partially addressed by the
+    grid tap-to-expand; the spec-sheet **card** view still shows all fields at once.
+
+**Decided against (do NOT re-add without cause).** Permanent L2 summary sentence (space waste →
+collapsed-only); a "weighted" *filter* control (only a column exists); per-page selector on mobile
+(removed as noise); forcing the "Card" view on desktop / "Table" on mobile (they render identically
+per device, so the off-device button is disabled instead).
 
 ---
 
