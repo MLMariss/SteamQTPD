@@ -453,6 +453,18 @@
   .section-body{padding:2px 0 14px}
   .filter-section:not(.open) .section-body{display:none}
 
+  /* Collapsed Tags header: show the currently-picked tags in the otherwise-empty middle band so
+     they can be re-cycled without expanding. It overlays the header button; the container is
+     pointer-events:none (so clicking the empty area still opens the section) while the chips are
+     pointer-events:auto (clicking one cycles it via the normal [data-tag] handler). Hidden when
+     the section is open (the full rail shows them) or when empty. */
+  .section-head-wrap{position:relative}
+  .tag-mini{position:absolute; inset:0; padding:0 96px 0 104px; display:flex; align-items:center; gap:6px;
+        flex-wrap:nowrap; overflow:hidden; pointer-events:none}
+  .filter-section.open .tag-mini,.tag-mini:empty{display:none}
+  .tag-mini .chip{pointer-events:auto; flex:none; font-size:12px; padding:3px 9px}
+  .tag-mini .chip .mk{margin-right:4px}
+
   /* Top-bar tools cluster: view switcher (right of the bar) + utility actions. */
   .bar-tools{display:flex; align-items:center; gap:10px; flex:none; flex-wrap:wrap}
   .seg.viewseg button[aria-pressed="true"]{background:var(--panel-2); color:var(--gold)}
@@ -504,12 +516,15 @@
 
   /* L3 / L5 — cool grid (box-art) view. Steam header art with a QTPD badge overlay so it
      stays ours; coloured borders flag on-sale / high-value. Tap a card to expand basic info. */
-  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; padding:14px;
-        align-items:start}   /* start-align so an expanded (taller) card doesn't stretch its row-mates */
+  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:14px; padding:14px; --gh:188px}
   body.grid-view .tablescroll{display:none}
   body.grid-view .gridview{display:grid}
+  /* Cards use a FIXED height (var --gh), not an aspect ratio, so a card is the exact same size
+     whether collapsed (box art) or expanded (info) — clicking never resizes it and the grid never
+     reflows. --gh is chosen to fit the expanded KPIs + Steam/Close actions; the art fills via
+     object-fit:cover (centre-cropped). This is the deliberate "bigger cards, one height" trade. */
   .gcard{position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
-        background:#0b0f18; cursor:pointer; aspect-ratio:460/215}
+        background:#0b0f18; cursor:pointer; height:var(--gh)}
   .gcard:hover{border-color:var(--muted-2)}
   .gcard.sale{border-color:var(--gold-deep)}
   .gcard.hi{box-shadow:0 0 0 1px var(--gold-deep)}
@@ -522,22 +537,21 @@
   .gcaption{position:absolute; left:0; right:0; bottom:0; padding:18px 9px 8px; color:#fff; font-weight:600;
         font-size:14px; line-height:1.2; background:linear-gradient(0deg,#000e 0%,#000b 45%,transparent);
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
-  .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:12px;
-        gap:6px; font-family:var(--mono)}
-  /* Expanded card: drop the fixed box-art aspect ratio and lay the info panel in normal flow so
-     the card grows to fit its content — the KPIs and the Steam/Close actions are never clipped,
-     even on tiny mobile grid cells (point 6). */
-  .gcard.open{aspect-ratio:auto; cursor:default}
+  /* Info panel overlays the whole (fixed-height) card; overflow-y:auto is a safety net so actions
+     stay reachable even if a long title pushes content past --gh. */
+  .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:11px;
+        gap:5px; font-family:var(--mono); overflow-y:auto}
+  .gcard.open{cursor:default}
   .gcard.open .gcap,.gcard.open .gbadge,.gcard.open .gdisc,.gcard.open .gcaption{display:none}
-  .gcard.open .ginfo{display:flex; position:static}
-  .gi-title{font-family:var(--sans); font-weight:600; font-size:14px; color:var(--title); line-height:1.25;
+  .gcard.open .ginfo{display:flex}
+  .gi-title{font-family:var(--sans); font-weight:600; font-size:13.5px; color:var(--title); line-height:1.2;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
-  .gi-row{display:flex; justify-content:space-between; font-size:13px; color:var(--muted)}
+  .gi-row{display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted)}
   .gi-row b{color:var(--text); font-weight:600}
   .gi-row .gi-q{color:var(--gold); font-weight:700}
-  .gi-actions{margin-top:auto; display:flex; gap:7px}
-  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:13px;
-        padding:9px 7px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
+  .gi-actions{margin-top:auto; display:flex; gap:7px; padding-top:2px}
+  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:12px;
+        padding:8px 6px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
         color:var(--text); text-decoration:none}
   .gi-steam{background:var(--gold-soft) !important; border-color:var(--gold-deep) !important; color:var(--gold) !important}
   .gi-actions a:hover,.gi-actions button:hover{border-color:var(--muted-2)}
@@ -705,7 +719,7 @@
     body.layout-card td.tdqtpd .qval{font-size:19px}
     body.layout-card tbody td::before{width:66px}
     body.layout-card .hltb{gap:10px}
-    .gridview{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; padding:10px}
+    .gridview{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; padding:10px; --gh:176px}
   }
   @media (prefers-reduced-motion:reduce){ .qfill{transition:none} .section-head .sec-caret{transition:none} }
 </style>
@@ -906,7 +920,10 @@ try{
       </div>
 
       <div class="filter-section" data-section="tags">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
+        <div class="section-head-wrap">
+          <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
+          <div class="tag-mini" id="tagMini" aria-hidden="true"></div>
+        </div>
         <div class="section-body"><div class="ctl-row">
         <div class="tagmode-bar">
           <span class="taglegend" aria-hidden="true">
@@ -1688,6 +1705,18 @@ function buildTagRail(){
           + `<span class="grouptags">${chips}${moreBtn}</span></div>`;
   });
   $("#tagrail").innerHTML = html;
+  buildTagMini();
+}
+// Mini chips of the currently-picked tags, shown in the collapsed Tags header (see .tag-mini).
+// Reuses the real .chip inc/exc styling and data-tag, so clicking one cycles it via the normal
+// body [data-tag] handler (include → exclude → clear); right-click cycles back.
+function buildTagMini(){
+  const host = document.getElementById("tagMini"); if(!host) return;
+  const label = t => t.replace(/\b\w/g, c => c.toUpperCase());
+  const chip = (t, inc) => `<button class="chip ${inc ? "inc" : "exc"}" data-tag="${esc(t)}" `
+      + `title="${inc ? "Required" : "Excluded"} tag — click to cycle (require → exclude → clear)">`
+      + `<span class="mk">${inc ? "✓" : "✕"}</span>${esc(label(t))}</button>`;
+  host.innerHTML = [...state.tagsInc].map(t => chip(t, true)).concat([...state.tagsExc].map(t => chip(t, false))).join("");
 }
 function hideGame(appid){
   state.hidden.add(Number(appid));
