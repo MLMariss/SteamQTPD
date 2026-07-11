@@ -456,6 +456,10 @@
   /* Top-bar tools cluster: view switcher (right of the bar) + utility actions. */
   .bar-tools{display:flex; align-items:center; gap:10px; flex:none; flex-wrap:wrap}
   .seg.viewseg button[aria-pressed="true"]{background:var(--panel-2); color:var(--gold)}
+  /* device-inappropriate detailed view (Table on mobile / Card on desktop): dimmed + a hint
+     toast on click, so users see the view is supported but screen-specific. */
+  .seg.viewseg button.disabled{opacity:.38; cursor:help}
+  .seg.viewseg button.disabled[aria-pressed="true"]{background:transparent; color:var(--muted)}
   .util-btn{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
         font-family:var(--mono); font-size:13px; padding:8px 11px; border-radius:8px; cursor:pointer;
         display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
@@ -641,6 +645,24 @@
   body.layout-card .steppers{gap:3px}
   body.layout-card .steppers button{width:30px; height:23px; font-size:13px}
 
+  /* ── Mobile-polish (2026-07): readability groups, leaner bar, demoted wishlist ──────────── */
+  /* #2: per-page is meaningless on an infinite-scroll phone list — hide it for a leaner bar. */
+  body.layout-card #pagesize{display:none}
+  /* #1: group separator lines chunk the tall card into scannable blocks —
+     price · ratings · length/playtime · dates · tags — so ratings read apart from length. */
+  body.layout-card tbody td{padding:5px 0}
+  /* Selectors carry the cells' own .num/.center class so they out-specify the base
+     `body.layout-card tbody td.num{border:0}` reset (which would otherwise cancel the divider). */
+  body.layout-card tbody td[data-label="Reviews"],
+  body.layout-card tbody td[data-label="HLTB M/E/100%"].num,
+  body.layout-card tbody td[data-label="Released"].center{
+      border-top:1px solid var(--line); margin-top:8px; padding-top:11px}
+  body.layout-card tbody td[data-label="Tags"]{border-top:1px solid var(--line); margin-top:8px; padding-top:12px}
+  /* #5: on mobile the filter panel leads with the quick filter sections; the wishlist import
+     (rarely the first thing wanted) sinks to the bottom, still available when the nav is open. */
+  body.layout-card .bar-filters{display:flex; flex-direction:column}   /* class, not #id, so .topbar.compact's display:none still wins */
+  body.layout-card .bar-filters > .ctl-row{order:20; border-top:1px solid var(--line); margin-top:8px; padding-top:12px}
+
   /* ── Phones (~≤560px): tighter spacing and type (only reached when layout-card is active) ── */
   @media (max-width:560px){
     body.layout-card .tablecard{border-radius:10px; margin-top:8px}
@@ -663,8 +685,10 @@
 try{
   var _narrow = matchMedia("(max-width:1374px)").matches;
   var _view = localStorage.getItem("qtpd.view");
+  // Detailed view is a table on desktop, cards on mobile — so layout-card is purely
+  // viewport-driven (the Table/Card buttons just relabel the same detailed view per device).
   if(_view === "grid") document.body.classList.add("grid-view");
-  else if(_view === "card" || _narrow) document.body.classList.add("layout-card");
+  else if(_narrow) document.body.classList.add("layout-card");
 }catch(e){}
 </script>
 
@@ -1633,18 +1657,39 @@ const fmtQval = v => v == null ? "—" : v >= 100 ? v.toFixed(0) : v >= 10 ? v.t
 
 // ── L3 / L5 — view switcher + cool box-art grid ─────────────────────────────────────────
 const VIEWS = ["table", "card", "grid"];
-// Layout is class-driven: `layout-card` for the stacked spec-sheet (narrow screens OR the
-// explicit Card view), `grid-view` for the box-art grid. Kept in sync with view + viewport.
+const isNarrow = () => window.matchMedia("(max-width:1374px)").matches;
+// The "detailed" view is a real table on desktop and stacked cards on mobile — the same view,
+// relabelled per device. So `layout-card` is purely viewport-driven (any non-grid view on a
+// narrow screen), and the Table/Card buttons only differ in which one is enabled/pressed for the
+// current device (Table = desktop-only, Card = mobile-only). `grid-view` is the box-art grid.
 function applyLayout(){
-  const narrow = window.matchMedia("(max-width:1374px)").matches;
+  const narrow = isNarrow();
   document.body.classList.toggle("grid-view", state.view === "grid");
-  document.body.classList.toggle("layout-card", state.view === "card" || (state.view !== "grid" && narrow));
+  document.body.classList.toggle("layout-card", state.view !== "grid" && narrow);
+  updateViewButtons(narrow);
+}
+// Enable only the device-appropriate detailed button; disable the other with a hint. Pressed
+// state follows the device: Grid when gridding, else Table (desktop) / Card (mobile).
+function updateViewButtons(narrow){
+  const sw = document.querySelector("#viewSwitch"); if(!sw) return;
+  const btn = v => sw.querySelector(`[data-view="${v}"]`);
+  const isGrid = state.view === "grid";
+  btn("table").classList.toggle("disabled", narrow);
+  btn("card").classList.toggle("disabled", !narrow);
+  btn("table").setAttribute("aria-disabled", String(narrow));
+  btn("card").setAttribute("aria-disabled", String(!narrow));
+  btn("grid").setAttribute("aria-pressed", String(isGrid));
+  btn("table").setAttribute("aria-pressed", String(!isGrid && !narrow));
+  btn("card").setAttribute("aria-pressed", String(!isGrid && narrow));
 }
 function setView(v){
   if(!VIEWS.includes(v)) v = "table";
+  const narrow = isNarrow();
+  // Coerce the detailed view to whichever is valid for this device (they render identically).
+  if(v === "table" && narrow) v = "card";
+  else if(v === "card" && !narrow) v = "table";
   state.view = v;
   try{ localStorage.setItem("qtpd.view", v); }catch(e){}
-  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
   applyLayout();
   render();
 }
@@ -2264,8 +2309,7 @@ function init(data){
   // L3/L5 + L1: restore the saved view mode and accordion open/closed states before first paint.
   try{ state.view = localStorage.getItem("qtpd.view") || "table"; }catch(e){ state.view = "table"; }
   if(!VIEWS.includes(state.view)) state.view = "table";
-  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === state.view));
-  applyLayout();
+  applyLayout();        // sets grid-view/layout-card classes + the device-appropriate view buttons
   applySections();
   render();
 
@@ -2417,7 +2461,15 @@ function init(data){
 
   // ── Lorenzo-list wiring ───────────────────────────────────────────────────────────────
   // L3/L5: view switcher + keep layout class in sync as the viewport crosses the table floor.
-  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+  document.querySelectorAll("#viewSwitch [data-view]").forEach(b => b.addEventListener("click", () => {
+    if(b.classList.contains("disabled")){
+      toast(b.dataset.view === "table"
+        ? "Table view is desktop-only — mobile shows the same data as cards."
+        : "Card view is mobile-only — desktop shows the full table.", "", 5000);
+      return;
+    }
+    setView(b.dataset.view);
+  }));
   window.matchMedia("(max-width:1374px)").addEventListener("change", applyLayout);
   // Grid card interactions: tap a card to expand its info; Steam link + Close handled inline.
   $("#gridview").addEventListener("click", e => {
