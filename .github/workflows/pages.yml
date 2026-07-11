@@ -1,0 +1,64 @@
+name: Deploy site to GitHub Pages
+
+# WHY THIS EXISTS
+# The site (index.html + the *.json data files) lives in main's root. Previously Pages
+# was set to "Deploy from a branch: main", so GitHub's built-in "pages build and
+# deployment" fired on EVERY push to main. But the scraper workflows (hltb, tags,
+# prices, playtime, ...) checkpoint-commit progress to main every ~5 minutes during
+# their long, near-continuous runs — so main was pushed every 2-3 minutes and Pages
+# rebuilt ~50+ times/day, each new build interrupting the previous one.
+#
+# This workflow decouples "data committed" from "site published":
+#   - data checkpoints push to main freely and get published on the 30-min schedule;
+#   - a push that touches index.html (the only file that changes how the site LOOKS)
+#     publishes immediately.
+# REQUIRES the repo Pages source to be switched from "Deploy from a branch" to
+# "GitHub Actions" (Settings -> Pages -> Build and deployment -> Source: GitHub
+# Actions), otherwise the old branch build keeps running alongside this one.
+
+on:
+  workflow_dispatch:              # publish current main on demand
+  push:
+    branches: [main]
+    paths:
+      - index.html                # a look/layout change -> deploy right away
+  schedule:
+    - cron: "0,30 * * * *"        # republish current main every 30 min, on :00 and :30
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one publish at a time. cancel-in-progress:false => if a manual/index-push deploy
+# is running (e.g. started 13:59), the next scheduled run (14:00) QUEUES and waits for
+# it to finish instead of interrupting it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Stage site files (index.html + data JSON only, no source)
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp *.json _site/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
