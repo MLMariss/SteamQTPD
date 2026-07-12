@@ -559,8 +559,9 @@
   .gq.na{color:var(--muted-2); font-weight:400}
   .grate{font-family:var(--mono); font-size:13px; font-weight:600; white-space:nowrap}
   .grate.na{color:var(--muted-2); font-weight:400}
-  .gname{font-family:var(--sans); font-weight:600; font-size:13.5px; color:#fff; line-height:1.25;
+  .gname{flex:1; min-width:0; font-family:var(--sans); font-weight:600; font-size:13.5px; color:#fff; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .gmeta-top .grate{flex:none}   /* rating stays put on the right as the title truncates */
   /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards. */
   .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:11px;
         gap:5px; font-family:var(--mono); overflow-y:auto}
@@ -1898,8 +1899,8 @@ function gridCardHTML(g){
       ${disc}
     </div>
     <div class="gmeta">
-      <div class="gmeta-top">${qHtml}${rateHtml}</div>
-      <div class="gname">${esc(g.title)}</div>
+      <div class="gmeta-top"><div class="gname">${esc(g.title)}</div>${rateHtml}</div>
+      ${qHtml}
     </div>
     <div class="ginfo">
       <div class="gi-title">${esc(g.title)}</div>

@@ -406,6 +406,10 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     replacing a trip into the panel for "Reset all filters".
   - **Grid card rating simplified** to the **plain Steam all-time review %** (number + `%`, no
     source letter) — supersedes R5's weighted→recent→all-time fallback; `bestRating()` removed.
+  - **Grid card info panel finalised** — *supersedes R5's "stats line over the title".* The **title
+    leads on top**; the **Steam rating shares the title's line, right-aligned** (`.gmeta-top` =
+    `.gname` flex:1 + truncate, `.grate` flex:none); **QTPD sits on its own line below**. Reads
+    title-first with the rating at a glance and QTPD as the standout metric underneath.
 
 **Implementation reference (as-built).** For a future session touching this UI (`index.html`):
   - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`),
