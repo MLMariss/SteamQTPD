@@ -404,6 +404,9 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
   - **Warning-styled Reset on the summary line** — a coral, uppercase **`Reset`** floats to the line's
     top-right whenever filters are active (`.sumreset` / `data-reset`, reuses the real `#clear`),
     replacing a trip into the panel for "Reset all filters".
+  - **Leaner tools cluster labels** (all screens, keeps the mobile bar from overflowing once Random
+    appears): Random renamed **`Lucky`** (no dice icon), **CSV** keeps letters only (no ⬇), and Copy
+    link is **icon-only `🔗`** (with `title` + `aria-label="Copy link"`).
   - **Grid card rating simplified** to the **plain Steam all-time review %** (number + `%`, no
     source letter) — supersedes R5's weighted→recent→all-time fallback; `bestRating()` removed.
   - **Grid card info panel finalised** — *supersedes R5's "stats line over the title".* The **title
