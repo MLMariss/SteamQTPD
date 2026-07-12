@@ -346,23 +346,59 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     never resizes it and the grid never reflows (the deliberate "bigger cards, one height" trade;
     replaces R3's grow-to-fit). The box art fills via `object-fit:cover` (centre-cropped); `--gh` is
     sized to fit the expanded KPIs + actions, with `.ginfo{overflow-y:auto}` as a safety net.
+    **Superseded by R5** — the fixed height cropped the art and clipped titles; R5 sizes the art by
+    aspect ratio and drops `--gh`.
   - **Collapsed-Tags mini chips** — when the Tags section is folded, the currently-picked tags render
     as chips in the header's otherwise-empty middle band (`.tag-mini` / `#tagMini`, built by
     `buildTagMini()` from `buildTagRail()`). The overlay is `pointer-events:none` (clicking the empty
     area still opens the section) while the chips are `pointer-events:auto` and reuse the normal
     `[data-tag]` cycle handler (require → exclude → clear). Hidden when the section is open or empty.
 
+**Refinements — Round 5 (grid card rebuild + inline tag chips, 2026-07).** ✅ SHIPPED.
+  - **Grid cards rebuilt "art on top, info below"** — *replaces R4's fixed-height cover-crop.* The
+    art frame is sized by **`aspect-ratio:460/215`** (the exact Steam header ratio) with
+    `object-fit:cover`, so header art fills it with **no crop and no letterbox matte** at any column
+    width. Below it sits a **solid, darker (`#080b12`) info panel**: a stats line with **QTPD (left)
+    and the best-available rating (right)** over the title. The on-art QTPD badge is gone (moved into
+    the panel); the discount stays as a corner flag. Card height = art + panel (no fixed `--gh`);
+    columns share width so each row stays even. Tap flips to a slimmed details overlay
+    (**price / length / `Steam ↗`**). Rating uses a fallback chain **playtime-weighted (`wr`) →
+    recent 30-day (`recent_pct`) → all-time (`rating_pct`)**, colour-coded via `ratingColor()`, with
+    a `wtd`/`30d`/`all` source tag + review-count tooltip (`bestRating()` / `gridCardHTML`).
+  - **Compact summary: tags are inline cycle-chips.** `renderSummary()` no longer emits a single
+    `tags +2 −1` chip that deep-links into the bar (the old L2 behaviour). The interacted tags now
+    render as their **own `.chip` inc/exc cycle-chips at the end of the line** (shared with the
+    collapsed Tags header via `interactedTagChipsHTML()`), each re-cyclable in place; an **`all`/
+    `any`** chip (`data-sumf="tagmode"`) trails when >1 tag is required and opens its own popover. So
+    **every** summarized filter now edits in place or via a small popover — only the input-heavy
+    search / price / QTPD-range chips still deep-link into the expanded bar.
+  - **Tag linger + fade (mis-click undo).** Cycling a tag back to neutral no longer removes its chip
+    instantly: it **holds full opacity ~3s, then fades to 0 over ~3s** (JS-driven opacity via
+    `state.tagLinger` map + `startLingerTicker()`, robust to re-renders), then is dropped so the line
+    may collapse. Re-cycling the chip during the window cancels the fade. Applies to both the summary
+    line and the collapsed Tags mini-rail.
+  - **Folded filter bar tidy-up.** `.bar-filters` vertical padding → 0; the wishlist row gets its own
+    balanced vertical space and is centred; the divider between the wishlist row and Value is dropped
+    so the input isn't sandwiched between two lines (desktop only — mobile keeps the reordered
+    wishlist row and its separator).
+  - **QTPD range control** — the current value moved **onto the label line** (`QTPD range 0 to ∞`)
+    and the `(log scale, fits current results)` note demoted to a **hover tooltip** on the label.
+
 **Implementation reference (as-built).** For a future session touching this UI (`index.html`):
-  - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`).
+  - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`),
+    `tagLinger` (Map `tag → clearedAt` ms, for the summary/mini chip fade — R5).
   - **localStorage keys:** `qtpd.view`, `qtpd.sections` (JSON `{value,quality,tags:bool}`).
   - **Body classes** (set by `applyLayout()` + inline FOUC script): `layout-card`, `grid-view`,
     `narrow`. Breakpoint `matchMedia("(max-width:1374px)")`; phone tier `@media (max-width:560px)`.
   - **URL params:** existing set + **`tagmode`** (see §2/§ URL-state; `syncURL`/`loadFromURL`).
-  - **Key functions:** view — `applyLayout` / `setView` / `updateViewButtons` / `gridCardHTML`;
+  - **Key functions:** view — `applyLayout` / `setView` / `updateViewButtons` / `gridCardHTML`
+    (+ `bestRating` for the card's rating fallback — R5);
     accordions — `applySections` / `toggleSection` / `sectionActiveCounts` / `updateSectionCounts`;
     summary+popover — `renderSummary` / `openSummaryEditor` / `buildOptionPopover` /
-    `buildSortPopover` / `showPopover`; utilities — `randomPick` / `openExportPopover` /
-    `doExportCSV` (`CSV_COLS`) / `copyLink`; sort — `bindSortControl` / `syncMobileSort`.
+    `buildSortPopover` / `showPopover`; tag chips + fade (R5) — `interactedTagChipsHTML` /
+    `tagChipHTML` / `buildTagMini` / `startLingerTicker` / `applyLingerOpacities`;
+    utilities — `randomPick` / `openExportPopover` / `doExportCSV` (`CSV_COLS`) / `copyLink`;
+    sort — `bindSortControl` / `syncMobileSort`.
   - **Test harness:** `.claude/launch.json` "sample" config serves a copy of `index.html` with no
     JSON so the app falls back to its 6-game `SAMPLE` — fast, deterministic UI testing.
 
