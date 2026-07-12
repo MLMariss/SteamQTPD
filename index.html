@@ -501,6 +501,12 @@
         cursor:pointer; margin:0 1px}
   .filter-summary .sumf:hover{filter:brightness(1.15)}
   .filter-summary .sumf.plain{background:var(--panel); border-color:var(--line); color:var(--muted)}
+  /* #8 — warning-styled Reset, floated to the line's top-right corner. */
+  .filter-summary .sumreset{float:right; margin-left:10px; appearance:none; background:#3a2026;
+        border:1px solid var(--coral); color:var(--coral); font-family:var(--mono); font-size:12px; font-weight:600;
+        letter-spacing:.04em; text-transform:uppercase; padding:3px 12px; border-radius:7px; cursor:pointer}
+  .filter-summary .sumreset:hover{background:var(--coral); color:#160c10}
+  .filter-summary .sumreset:focus-visible{outline:2px solid var(--coral); outline-offset:2px}
 
   /* Popover host — shared by the L2 summary editors and the L4 CSV column-picker. */
   .pop-host{position:fixed; inset:0; z-index:150; display:none}
@@ -552,10 +558,10 @@
   .gq{font-family:var(--mono); font-size:13px; font-weight:600; color:var(--gold); white-space:nowrap}
   .gq.na{color:var(--muted-2); font-weight:400}
   .grate{font-family:var(--mono); font-size:13px; font-weight:600; white-space:nowrap}
-  .grate .src{font-size:10px; font-weight:400; color:var(--muted-2); margin-left:3px}
   .grate.na{color:var(--muted-2); font-weight:400}
-  .gname{font-family:var(--sans); font-weight:600; font-size:13.5px; color:#fff; line-height:1.25;
+  .gname{flex:1; min-width:0; font-family:var(--sans); font-weight:600; font-size:13.5px; color:#fff; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .gmeta-top .grate{flex:none}   /* rating stays put on the right as the title truncates */
   /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards. */
   .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:11px;
         gap:5px; font-family:var(--mono); overflow-y:auto}
@@ -630,10 +636,9 @@
   body.layout-card thead{display:none}
   body.layout-card table,body.layout-card tbody{display:block; width:100%}
   body.layout-card thead tr{display:none}
-  /* Top-bar sort shows only on MOBILE (card, or grid on a narrow screen). On desktop the table
-     sorts via its headers and the grid uses its own #gridSort bar — so the top bar is identical
-     across desktop table↔grid and the tools cluster never shifts when switching (point 4). */
-  body.layout-card .mobile-sort,body.grid-view.narrow .mobile-sort{display:inline-flex}
+  /* Mobile no longer shows a dedicated top-bar Sort control — sorting lives on the collapsed
+     summary line's "sorted by …" chip (which opens the sort popover). Desktop table sorts via its
+     headers; desktop grid uses its own #gridSort bar. So #mobileSort stays hidden everywhere. */
 
   /* row → card: single-column stack, no zebra/hover fills */
   body.layout-card tbody tr{display:flex; flex-direction:column; padding:14px 15px 15px; border-bottom:1px solid var(--line)}
@@ -711,7 +716,7 @@
 
   /* ── Mobile-polish (2026-07): readability groups, leaner bar, demoted wishlist ──────────── */
   /* #2: per-page is meaningless on an infinite-scroll phone list — hide it for a leaner bar. */
-  body.layout-card #pagesize{display:none}
+  body.layout-card #pagesize,body.grid-view.narrow #pagesize{display:none}   /* #3: also hide on mobile grid; infinite scroll loads 100/page by default */
   /* #1: group separator lines chunk the tall card into scannable blocks —
      price · ratings · length/playtime · dates · tags — so ratings read apart from length. */
   body.layout-card tbody td{padding:5px 0}
@@ -726,6 +731,21 @@
      (rarely the first thing wanted) sinks to the bottom, still available when the nav is open. */
   body.layout-card .bar-filters{display:flex; flex-direction:column}   /* class, not #id, so .topbar.compact's display:none still wins */
   body.layout-card .bar-filters > .ctl-row{order:20; border-top:1px solid var(--line); margin-top:8px; padding-top:12px}
+
+  /* ── Mobile top-bar: fit + sticky (all narrow screens) ────────────────────────────────────
+     #1 leaner bar so nothing runs off the right edge; #5 the compact nav sticks to the top while
+     browsing (always one tap from reopening filters), and when the filter panel is OPEN the
+     "Hide filters" bar sticks to the bottom of the viewport so the close control is never
+     scrolled off-screen — it releases and scrolls up once you reach the panel's end. The sticky
+     bottom needs a non-clipping ancestor, so barwrap drops overflow:hidden on mobile (its rounded
+     corners are re-applied to the first/last child instead). */
+  body.narrow .bar-main{gap:9px 12px; padding:10px 12px}
+  body.narrow .barwrap{overflow:visible}
+  body.narrow .bar-main{border-radius:14px 14px 0 0}
+  body.narrow .collapse-handle{border-radius:0 0 14px 14px}
+  body.narrow .topbar.compact{position:sticky; top:0}
+  body.narrow .topbar.compact .meta{display:none}   /* count/updated dupes the summary line — drop it to slim the sticky browsing nav */
+  body.narrow .topbar:not(.compact) .collapse-handle{position:sticky; bottom:0; z-index:41; box-shadow:0 -7px 18px #0008}
 
   /* ── Phones (~≤560px): tighter spacing and type (only reached when layout-card is active) ── */
   @media (max-width:560px){
@@ -1853,14 +1873,6 @@ function setView(v){
   applyLayout();
   render();
 }
-// Best-available rating for a game, with the fallback chain the card uses:
-// playtime-weighted (wr) → recent 30-day (recent_pct) → all-time (rating_pct).
-function bestRating(g){
-  if(g.wr != null)          return {pct:g.wr,         src:"wtd", label:"Playtime-weighted", n:g.wr_n};
-  if(g.recent_pct != null)  return {pct:g.recent_pct, src:"30d", label:"Recent 30-day",     n:g.recent_count};
-  if(g.rating_pct != null)  return {pct:g.rating_pct, src:"all", label:"All-time",          n:g.review_count};
-  return null;
-}
 // One box-art card: Steam header art on top at its true ratio, a solid info panel (QTPD left ·
 // rating right, over the title), and a tap-to-expand details overlay (price / length / Steam).
 function gridCardHTML(g){
@@ -1869,10 +1881,10 @@ function gridCardHTML(g){
   const cls = "gcard" + (isAdult(g) ? " adult" : "") + (onSale ? " sale" : "") + ((q != null && q >= state.qDomain * 0.66) ? " hi" : "");
   const disc = onSale ? `<span class="gdisc">-${g.discount_pct}%</span>` : "";
   const qHtml = q != null ? `<span class="gq">QTPD ${fmtQval(q)}</span>` : `<span class="gq na">QTPD —</span>`;
-  const r = bestRating(g);
-  const rateHtml = r != null
-    ? `<span class="grate" style="color:${ratingColor(r.pct)}" title="${esc(r.label)} rating ${r.pct}%${r.n ? " · " + r.n.toLocaleString() + " reviews" : ""}">${r.pct}%<span class="src">${r.src}</span></span>`
-    : `<span class="grate na" title="No rating yet">—</span>`;
+  // Rating = Steam all-time review score, plain number + % (no weighted/recent source letters).
+  const rateHtml = g.rating_pct != null
+    ? `<span class="grate" style="color:${ratingColor(g.rating_pct)}" title="Steam review score ${g.rating_pct}%${g.review_count ? " · " + g.review_count.toLocaleString() + " reviews" : ""}">${g.rating_pct}%</span>`
+    : `<span class="grate na" title="No reviews yet">—</span>`;
   let priceTxt;
   if(g.is_free) priceTxt = "Free";
   else if(g.price_final == null) priceTxt = "—";
@@ -1887,8 +1899,8 @@ function gridCardHTML(g){
       ${disc}
     </div>
     <div class="gmeta">
-      <div class="gmeta-top">${qHtml}${rateHtml}</div>
-      <div class="gname">${esc(g.title)}</div>
+      <div class="gmeta-top"><div class="gname">${esc(g.title)}</div>${rateHtml}</div>
+      ${qHtml}
     </div>
     <div class="ginfo">
       <div class="gi-title">${esc(g.title)}</div>
@@ -1985,10 +1997,15 @@ function renderSummary(){
   const sortChip = `<button class="sumf plain" data-sumf="sort">${esc(sortName)} ${state.sortDir < 0 ? "↓" : "↑"}</button>`;
   const count = state._totalFiltered != null ? state._totalFiltered : "";
   const lead = [parts.join(" "), tagsPart].filter(Boolean).join(" ");
-  host.innerHTML = lead
+  const active = !!lead;                                   // any non-default filter (incl. lingering tags)
+  // Warning-styled Reset in the top-right corner of the line — only when there's something to reset.
+  const resetBtn = active ? `<button class="sumreset" data-reset="1" title="Clear all filters">Reset</button>` : "";
+  host.innerHTML = resetBtn + (active
     ? `<span class="sumlbl">Showing</span> ${lead} <span class="sumlbl">· ${count} games · sorted by</span> ${sortChip}`
-    : `<span class="sumlbl">All ${count} games · sorted by</span> ${sortChip}`;
+    : `<span class="sumlbl">All ${count} games · sorted by</span> ${sortChip}`);
   applyLingerOpacities();
+  // #6 — Random only makes sense once the user has narrowed to a list; hide it otherwise.
+  const rb = $("#randomBtn"); if(rb) rb.style.display = active ? "" : "none";
 }
 
 // Popover host (shared by summary editors + CSV picker).
@@ -2495,7 +2512,10 @@ function init(data){
   syncSortArrows();                    // reflect restored sort key/dir in headers
   syncPtHeader();                      // reflect restored playtime-median selection
   // L3/L5 + L1: restore the saved view mode and accordion open/closed states before first paint.
-  try{ state.view = localStorage.getItem("qtpd.view") || "table"; }catch(e){ state.view = "table"; }
+  // #4 — default to Grid on mobile (box art suits small screens); desktop still defaults to Table.
+  // A previously-saved choice always wins.
+  let savedView = null; try{ savedView = localStorage.getItem("qtpd.view"); }catch(e){}
+  state.view = savedView || (isNarrow() ? "grid" : "table");
   if(!VIEWS.includes(state.view)) state.view = "table";
   applyLayout();        // sets grid-view/layout-card classes + the device-appropriate view buttons
   applySections();
@@ -2684,6 +2704,7 @@ function init(data){
     h.addEventListener("click", () => toggleSection(h.closest(".filter-section").dataset.section)));
   // L2: clicking a summarized filter term opens its inline editor (or deep-links into the bar).
   $("#filterSummary").addEventListener("click", e => {
+    if(e.target.closest("[data-reset]")){ $("#clear").click(); return; }   // #8 — warning Reset reuses the real reset
     const b = e.target.closest("[data-sumf]"); if(b) openSummaryEditor(b, b.dataset.sumf);
   });
   // L4: utility actions.

@@ -364,7 +364,8 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     columns share width so each row stays even. Tap flips to a slimmed details overlay
     (**price / length / `Steam ↗`**). Rating uses a fallback chain **playtime-weighted (`wr`) →
     recent 30-day (`recent_pct`) → all-time (`rating_pct`)**, colour-coded via `ratingColor()`, with
-    a `wtd`/`30d`/`all` source tag + review-count tooltip (`bestRating()` / `gridCardHTML`).
+    a `wtd`/`30d`/`all` source tag + review-count tooltip — **superseded by R6** (now the plain
+    Steam all-time %).
   - **Compact summary: tags are inline cycle-chips.** `renderSummary()` no longer emits a single
     `tags +2 −1` chip that deep-links into the bar (the old L2 behaviour). The interacted tags now
     render as their **own `.chip` inc/exc cycle-chips at the end of the line** (shared with the
@@ -383,6 +384,32 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     wishlist row and its separator).
   - **QTPD range control** — the current value moved **onto the label line** (`QTPD range 0 to ∞`)
     and the `(log scale, fits current results)` note demoted to a **hover tooltip** on the label.
+
+**Refinements — Round 6 (mobile overhaul, 2026-07).** ✅ SHIPPED.
+  - **Grid is the default view on mobile** — `init()`: no saved `qtpd.view` + `isNarrow()` ⇒ `grid`
+    (desktop still defaults to Table; a saved choice always wins).
+  - **Leaner mobile top bar that fits the screen.** The dedicated top-bar **Sort** control is gone on
+    mobile (`#mobileSort` hidden everywhere) — sorting lives on the summary line's "sorted by …" chip.
+    **Per-page** is now hidden on mobile **grid** too (was only hidden in card layout); infinite scroll
+    loads 100/page. The `meta` count line is hidden in the compact browsing nav (dupes the summary).
+    Bar gaps/padding tightened so nothing runs off the right edge.
+  - **Sticky filter bar (mobile / `body.narrow`).** While browsing (compact), the nav is
+    `position:sticky; top:0` so filters are always one tap away. When the panel is **open**, the
+    **"Hide filters" bar is `position:sticky; bottom:0`** — pinned to the viewport bottom so the close
+    control is never scrolled off-screen, releasing to scroll up at the panel's end. Needs a
+    non-clipping ancestor, so `.barwrap` drops `overflow:hidden` on mobile (rounded corners moved to
+    the first/last child).
+  - **Random hidden until filtered** — `#randomBtn` shows only when ≥1 non-default filter is active
+    (toggled in `renderSummary()` from the `active` flag; applies on all screen sizes).
+  - **Warning-styled Reset on the summary line** — a coral, uppercase **`Reset`** floats to the line's
+    top-right whenever filters are active (`.sumreset` / `data-reset`, reuses the real `#clear`),
+    replacing a trip into the panel for "Reset all filters".
+  - **Grid card rating simplified** to the **plain Steam all-time review %** (number + `%`, no
+    source letter) — supersedes R5's weighted→recent→all-time fallback; `bestRating()` removed.
+  - **Grid card info panel finalised** — *supersedes R5's "stats line over the title".* The **title
+    leads on top**; the **Steam rating shares the title's line, right-aligned** (`.gmeta-top` =
+    `.gname` flex:1 + truncate, `.grate` flex:none); **QTPD sits on its own line below**. Reads
+    title-first with the rating at a glance and QTPD as the standout metric underneath.
 
 **Implementation reference (as-built).** For a future session touching this UI (`index.html`):
   - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`),
