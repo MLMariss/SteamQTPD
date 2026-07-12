@@ -51,7 +51,14 @@
   .preview-badge{display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid var(--gold-deep);
         color:var(--gold); border-radius:999px; font-size:12px; letter-spacing:.05em; text-transform:uppercase}
 
-  .bar-filters{padding:14px 16px; border-top:1px solid var(--line)}
+  .bar-filters{padding:0 16px; border-top:1px solid var(--line)}
+  /* Folded filter bar reads as a clean vertical list — the wishlist row, then the three section
+     headers, all similar height. #1 no container vertical padding; #2 the wishlist row gets its
+     own balanced vertical space (min-height matches a section header) and centres its box in it;
+     #3 drop the divider between the wishlist row and Value so the input isn't sandwiched between
+     two lines. (Mobile reorders the wishlist row to the bottom — see the layout-card block.) */
+  .bar-filters > .ctl-row:first-child{margin:0; padding:6px 0; min-height:47px; align-items:center}
+  body:not(.layout-card) .bar-filters > .filter-section[data-section="value"]{border-top:0}
   .topbar.compact .bar-filters{display:none}             /* instant, no animation */
   .topbar.compact .tagline{display:none}
   .topbar.compact .logo{font-size:23px}
@@ -154,7 +161,8 @@
         height:18px; width:18px; border-radius:50%; background:var(--gold); cursor:pointer; border:2px solid #0e1320; box-shadow:0 1px 3px #0008}
   .rangewrap input[type=range]::-moz-range-thumb{pointer-events:all; height:16px; width:16px; border-radius:50%;
         background:var(--gold); cursor:pointer; border:2px solid #0e1320}
-  .rangevals{font-family:var(--mono); font-size:13px; color:var(--muted); margin-top:3px}
+  .rangelabel{display:inline-flex; align-items:baseline; gap:8px; cursor:help}
+  .rangevals{font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:none; letter-spacing:0}
   .rangevals b{color:var(--gold); font-weight:600}
 
   /* grouped tag rail (no search; hover tooltip carries the hint) */
@@ -169,6 +177,9 @@
   .chip.dim{opacity:.4}
   .chip.inc{background:#1c3528; border-color:var(--green); color:#9cf0c2; opacity:1}
   .chip.exc{background:#3a2026; border-color:var(--red); color:#ffb4b4; text-decoration:line-through; opacity:1}
+  /* A tag cycled back to neutral lingers here (dashed, muted) then fades out over ~3s — its
+     opacity is driven in JS (see tagLinger) so a mis-click can be re-applied before it vanishes. */
+  .chip.linger{background:var(--panel); border-style:dashed; border-color:var(--muted-2); color:var(--muted); transition:opacity .12s linear}
   .chip .mk{margin-right:5px; font-weight:600}
   .chip .ct{opacity:.6; margin-left:5px; display:inline-block; text-align:left; box-sizing:content-box}
   /* T7: per-group overflow tier — hidden until the group's "+ more" is toggled */
@@ -514,35 +525,42 @@
   label.pop-check:hover{color:var(--text)}
   label.pop-check input{accent-color:var(--gold); width:15px; height:15px}
 
-  /* L3 / L5 — cool grid (box-art) view. Steam header art with a QTPD badge overlay so it
-     stays ours; coloured borders flag on-sale / high-value. Tap a card to expand basic info. */
-  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:14px; padding:14px; --gh:188px}
+  /* L3 / L5 — cool grid (box-art) view. Box art on top at its true 460:215 ratio, then a solid
+     dark info panel; coloured borders flag on-sale / high-value. Tap a card to expand details. */
+  .gridview{display:none; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; padding:14px}
   body.grid-view .tablescroll{display:none}
   body.grid-view .gridview{display:grid}
-  /* Cards use a FIXED height (var --gh), not an aspect ratio, so a card is the exact same size
-     whether collapsed (box art) or expanded (info) — clicking never resizes it and the grid never
-     reflows. --gh is chosen to fit the expanded KPIs + Steam/Close actions; the art fills via
-     object-fit:cover (centre-cropped). This is the deliberate "bigger cards, one height" trade. */
+  /* The art frame is sized by aspect-ratio to EXACTLY the Steam header ratio (460:215), so
+     object-fit:cover fills it with zero crop and zero letterbox matte. Below it sits a solid,
+     darker info panel: a stats line (QTPD left · best-available rating right) over the title.
+     Card height = art + panel — no fixed height, but every card in a row shares the column width
+     so the row stays even. Tapping flips to a details overlay (price / length / Steam link). */
   .gcard{position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
-        background:#0b0f18; cursor:pointer; height:var(--gh)}
+        background:#0b0f18; cursor:pointer; display:flex; flex-direction:column}
   .gcard:hover{border-color:var(--muted-2)}
   .gcard.sale{border-color:var(--gold-deep)}
   .gcard.hi{box-shadow:0 0 0 1px var(--gold-deep)}
+  .gart{position:relative; flex:none; width:100%; aspect-ratio:460/215; overflow:hidden; background:#0b0f18}
   .gcard .gcap{width:100%; height:100%; object-fit:cover; display:block}
   .gcard.adult .gcap{filter:blur(11px); transform:scale(1.06)}
-  .gbadge{position:absolute; top:7px; left:7px; background:#0e1320d9; border:1px solid var(--gold-deep);
-        color:var(--gold); font-family:var(--mono); font-size:12px; font-weight:600; padding:2px 7px; border-radius:6px}
   .gdisc{position:absolute; top:7px; right:7px; background:var(--coral); color:#0e1320;
         font-family:var(--mono); font-size:12px; font-weight:700; padding:2px 6px; border-radius:6px}
-  .gcaption{position:absolute; left:0; right:0; bottom:0; padding:18px 9px 8px; color:#fff; font-weight:600;
-        font-size:14px; line-height:1.2; background:linear-gradient(0deg,#000e 0%,#000b 45%,transparent);
+  /* Info panel — deliberately darker than --panel so the title reads clean off the art. */
+  .gmeta{flex:none; background:#080b12; border-top:1px solid var(--line); padding:7px 10px 8px;
+        display:flex; flex-direction:column; gap:3px}
+  .gmeta-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
+  .gq{font-family:var(--mono); font-size:13px; font-weight:600; color:var(--gold); white-space:nowrap}
+  .gq.na{color:var(--muted-2); font-weight:400}
+  .grate{font-family:var(--mono); font-size:13px; font-weight:600; white-space:nowrap}
+  .grate .src{font-size:10px; font-weight:400; color:var(--muted-2); margin-left:3px}
+  .grate.na{color:var(--muted-2); font-weight:400}
+  .gname{font-family:var(--sans); font-weight:600; font-size:13.5px; color:#fff; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
-  /* Info panel overlays the whole (fixed-height) card; overflow-y:auto is a safety net so actions
-     stay reachable even if a long title pushes content past --gh. */
+  /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards. */
   .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:11px;
         gap:5px; font-family:var(--mono); overflow-y:auto}
   .gcard.open{cursor:default}
-  .gcard.open .gcap,.gcard.open .gbadge,.gcard.open .gdisc,.gcard.open .gcaption{display:none}
+  .gcard.open .gart,.gcard.open .gmeta{display:none}
   .gcard.open .ginfo{display:flex}
   .gi-title{font-family:var(--sans); font-weight:600; font-size:13.5px; color:var(--title); line-height:1.2;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
@@ -719,7 +737,7 @@
     body.layout-card td.tdqtpd .qval{font-size:19px}
     body.layout-card tbody td::before{width:66px}
     body.layout-card .hltb{gap:10px}
-    .gridview{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; padding:10px; --gh:176px}
+    .gridview{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; padding:10px}
   }
   @media (prefers-reduced-motion:reduce){ .qfill{transition:none} .section-head .sec-caret{transition:none} }
 </style>
@@ -849,13 +867,12 @@ try{
           <button class="toggle" id="saleOnly" aria-pressed="false">On sale only</button>
         </div>
         <div class="field rangefield">
-          <label>QTPD range (log scale, fits current results)</label>
+          <label class="rangelabel" title="Log scale — the range auto-fits the current results">QTPD range <span class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></span></label>
           <div class="rangewrap">
             <div class="rangetrack"><div class="rangefill" id="qrangefill"></div></div>
             <input type="range" id="qmin" min="0" max="1000" step="1" value="0" />
             <input type="range" id="qmax" min="0" max="1000" step="1" value="1000" />
           </div>
-          <div class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></div>
         </div>
         </div></div>
       </div>
@@ -1071,7 +1088,7 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"
                 hidden:new Set(),
                 pageSize:100, pagesShown:1,
                 wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", hltbQuality:"real", ptMetric:"up", fullCounts:{},
-                view:"table" };
+                view:"table", tagLinger:new Map() };   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -1707,16 +1724,61 @@ function buildTagRail(){
   $("#tagrail").innerHTML = html;
   buildTagMini();
 }
-// Mini chips of the currently-picked tags, shown in the collapsed Tags header (see .tag-mini).
-// Reuses the real .chip inc/exc styling and data-tag, so clicking one cycles it via the normal
-// body [data-tag] handler (include → exclude → clear); right-click cycles back.
+// Chips for the currently-interacted tags — required (✓), excluded (✕), plus any just CLEARED and
+// still LINGERING (dashed, fading). Shared by the collapsed Tags header mini-rail AND the compact
+// filter-summary line so both behave identically. Clicking one cycles it via the normal body
+// [data-tag] handler (require → exclude → clear); right-click cycles back; clicking a lingering
+// chip re-applies it before it fades.
+const TAG_LINGER_HOLD = 3000, TAG_LINGER_FADE = 3000, TAG_LINGER_TOTAL = TAG_LINGER_HOLD + TAG_LINGER_FADE;
+const tagLabel = t => t.replace(/\b\w/g, c => c.toUpperCase());
+function tagChipHTML(t, kind){   // kind: "inc" | "exc" | "linger"
+  const mk = kind === "exc" ? "✕" : kind === "inc" ? "✓" : "·";
+  const title = kind === "linger"
+      ? "Cleared — click to re-apply before it fades away"
+      : (kind === "inc" ? "Required" : "Excluded") + " tag — click to cycle (require → exclude → clear)";
+  return `<button class="chip ${kind}" data-tag="${esc(t)}" title="${title}"><span class="mk">${mk}</span>${esc(tagLabel(t))}</button>`;
+}
+function interactedTagChipsHTML(){
+  let html = [...state.tagsInc].map(t => tagChipHTML(t, "inc")).join("")
+           + [...state.tagsExc].map(t => tagChipHTML(t, "exc")).join("");
+  for(const t of state.tagLinger.keys()){
+    if(state.tagsInc.has(t) || state.tagsExc.has(t)) continue;   // re-applied since — not lingering
+    html += tagChipHTML(t, "linger");
+  }
+  return html;
+}
 function buildTagMini(){
   const host = document.getElementById("tagMini"); if(!host) return;
-  const label = t => t.replace(/\b\w/g, c => c.toUpperCase());
-  const chip = (t, inc) => `<button class="chip ${inc ? "inc" : "exc"}" data-tag="${esc(t)}" `
-      + `title="${inc ? "Required" : "Excluded"} tag — click to cycle (require → exclude → clear)">`
-      + `<span class="mk">${inc ? "✓" : "✕"}</span>${esc(label(t))}</button>`;
-  host.innerHTML = [...state.tagsInc].map(t => chip(t, true)).concat([...state.tagsExc].map(t => chip(t, false))).join("");
+  host.innerHTML = interactedTagChipsHTML();
+  applyLingerOpacities();
+}
+// Opacity for a lingering chip: full for HOLD ms, then linear fade to 0 over FADE ms.
+function lingerOpacity(ts){
+  const e = performance.now() - ts;
+  if(e <= TAG_LINGER_HOLD) return 1;
+  if(e >= TAG_LINGER_TOTAL) return 0;
+  return 1 - (e - TAG_LINGER_HOLD) / TAG_LINGER_FADE;
+}
+function applyLingerOpacities(){
+  ["tagMini", "filterSummary"].forEach(id => {
+    const host = document.getElementById(id); if(!host) return;
+    host.querySelectorAll(".chip.linger[data-tag]").forEach(el => {
+      const ts = state.tagLinger.get(el.dataset.tag);
+      el.style.opacity = ts == null ? "" : String(lingerOpacity(ts));
+    });
+  });
+}
+let _lingerTimer = null;
+function startLingerTicker(){
+  if(_lingerTimer) return;
+  _lingerTimer = setInterval(() => {
+    const now = performance.now();
+    let expired = false;
+    for(const [t, ts] of state.tagLinger){ if(now - ts >= TAG_LINGER_TOTAL){ state.tagLinger.delete(t); expired = true; } }
+    if(expired){ buildTagMini(); renderSummary(); updateSectionCounts(); }   // fully faded — allow the line to collapse
+    else applyLingerOpacities();
+    if(state.tagLinger.size === 0){ clearInterval(_lingerTimer); _lingerTimer = null; }
+  }, 100);
 }
 function hideGame(appid){
   state.hidden.add(Number(appid));
@@ -1735,8 +1797,9 @@ function cycleTag(t, dir){
   const cur = inc ? 1 : exc ? 2 : 0;          // 0 none, 1 include, 2 exclude
   const next = (cur + (dir < 0 ? 2 : 1)) % 3; // +1 forward, +2 ≡ -1 backward (mod 3)
   state.tagsInc.delete(t); state.tagsExc.delete(t);
-  if(next === 1) state.tagsInc.add(t);
-  else if(next === 2) state.tagsExc.add(t);
+  if(next === 1){ state.tagsInc.add(t); state.tagLinger.delete(t); }
+  else if(next === 2){ state.tagsExc.add(t); state.tagLinger.delete(t); }
+  else if(cur !== 0){ state.tagLinger.set(t, performance.now()); startLingerTicker(); }   // cleared → linger, then fade
   syncURL();
   update();
 }
@@ -1790,13 +1853,26 @@ function setView(v){
   applyLayout();
   render();
 }
-// One box-art card: Steam header art, a QTPD badge overlay (so it stays ours), a discount
-// flag, and a tap-to-expand info panel with the key KPIs + a Steam link.
+// Best-available rating for a game, with the fallback chain the card uses:
+// playtime-weighted (wr) → recent 30-day (recent_pct) → all-time (rating_pct).
+function bestRating(g){
+  if(g.wr != null)          return {pct:g.wr,         src:"wtd", label:"Playtime-weighted", n:g.wr_n};
+  if(g.recent_pct != null)  return {pct:g.recent_pct, src:"30d", label:"Recent 30-day",     n:g.recent_count};
+  if(g.rating_pct != null)  return {pct:g.rating_pct, src:"all", label:"All-time",          n:g.review_count};
+  return null;
+}
+// One box-art card: Steam header art on top at its true ratio, a solid info panel (QTPD left ·
+// rating right, over the title), and a tap-to-expand details overlay (price / length / Steam).
 function gridCardHTML(g){
   const q = activeQ(g);
   const onSale = g.discount_pct > 0;
   const cls = "gcard" + (isAdult(g) ? " adult" : "") + (onSale ? " sale" : "") + ((q != null && q >= state.qDomain * 0.66) ? " hi" : "");
   const disc = onSale ? `<span class="gdisc">-${g.discount_pct}%</span>` : "";
+  const qHtml = q != null ? `<span class="gq">QTPD ${fmtQval(q)}</span>` : `<span class="gq na">QTPD —</span>`;
+  const r = bestRating(g);
+  const rateHtml = r != null
+    ? `<span class="grate" style="color:${ratingColor(r.pct)}" title="${esc(r.label)} rating ${r.pct}%${r.n ? " · " + r.n.toLocaleString() + " reviews" : ""}">${r.pct}%<span class="src">${r.src}</span></span>`
+    : `<span class="grate na" title="No rating yet">—</span>`;
   let priceTxt;
   if(g.is_free) priceTxt = "Free";
   else if(g.price_final == null) priceTxt = "—";
@@ -1804,17 +1880,19 @@ function gridCardHTML(g){
   else priceTxt = `$${g.price_final.toFixed(2)}`;
   const h = hoursFor(g);
   const hStr = h != null ? (h >= 10 ? Math.round(h) : (Math.round(h * 10) / 10).toFixed(1)) + "h" : "—";
-  const rating = g.rating_pct != null ? g.rating_pct + "%" : "—";
   return `<div class="${cls}" data-gappid="${g.appid}" tabindex="0" role="button" aria-label="${esc(g.title)}">
-    <img class="gcap" loading="lazy" src="${headerUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
-         onerror="this.onerror=null;this.src='${capsuleUrl(g.appid)}'" />
-    <span class="gbadge">QTPD ${fmtQval(q)}</span>${disc}
-    <div class="gcaption">${esc(g.title)}</div>
+    <div class="gart">
+      <img class="gcap" loading="lazy" src="${headerUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
+           onerror="this.onerror=null;this.src='${capsuleUrl(g.appid)}'" />
+      ${disc}
+    </div>
+    <div class="gmeta">
+      <div class="gmeta-top">${qHtml}${rateHtml}</div>
+      <div class="gname">${esc(g.title)}</div>
+    </div>
     <div class="ginfo">
       <div class="gi-title">${esc(g.title)}</div>
-      <div class="gi-row"><span>QTPD</span><b class="gi-q">${fmtQval(q)}</b></div>
       <div class="gi-row"><span>Price</span><b>${priceTxt}</b></div>
-      <div class="gi-row"><span>Rating</span><b>${rating}</b></div>
       <div class="gi-row"><span>Length</span><b>${hStr}</b></div>
       <div class="gi-actions">
         <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener">Steam ↗</a>
@@ -1893,15 +1971,24 @@ function renderSummary(){
   if(state.trendSet.size > 0 && state.trendSet.size < 3){ const map = {up:"▲", flat:"≈", down:"▼"}; const t = ["up","flat","down"].filter(x => state.trendSet.has(x)).map(x => map[x]).join(""); parts.push(chip("trend", `trend ${t}`)); }
   if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
   if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
-  if(state.tagsInc.size || state.tagsExc.size){ const t = (state.tagsInc.size ? "+" + state.tagsInc.size : "") + (state.tagsExc.size ? " −" + state.tagsExc.size : ""); const modeStr = (state.tagsInc.size > 1) ? (state.tagMode === "or" ? " any" : " all") : ""; parts.push(chip("tags", `tags ${t.trim()}${modeStr}`)); }
   if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
+
+  // Tags close the line as their OWN inline cycle-chips (not a "+2 −1" count) — the same
+  // interacted-tag chips as the collapsed Tags header, so each can be re-cycled in place and
+  // cleared ones linger + fade here too. An "all/any" chip trails when >1 tag is required.
+  const tagsFrag = interactedTagChipsHTML();
+  const modeChip = (state.tagsInc.size > 1)
+      ? ` <button class="sumf plain" data-sumf="tagmode" title="How required tags combine">${state.tagMode === "or" ? "any" : "all"}</button>` : "";
+  const tagsPart = tagsFrag ? `<span class="sumlbl">tags</span> ${tagsFrag}${modeChip}` : "";
 
   const sortName = SORT_LABELS[state.sortKey] || state.sortKey;
   const sortChip = `<button class="sumf plain" data-sumf="sort">${esc(sortName)} ${state.sortDir < 0 ? "↓" : "↑"}</button>`;
   const count = state._totalFiltered != null ? state._totalFiltered : "";
-  host.innerHTML = parts.length
-    ? `<span class="sumlbl">Showing</span> ${parts.join(" ")} <span class="sumlbl">· ${count} games · sorted by</span> ${sortChip}`
+  const lead = [parts.join(" "), tagsPart].filter(Boolean).join(" ");
+  host.innerHTML = lead
+    ? `<span class="sumlbl">Showing</span> ${lead} <span class="sumlbl">· ${count} games · sorted by</span> ${sortChip}`
     : `<span class="sumlbl">All ${count} games · sorted by</span> ${sortChip}`;
+  applyLingerOpacities();
 }
 
 // Popover host (shared by summary editors + CSV picker).
@@ -1934,6 +2021,7 @@ const SUMMARY_EDITORS = {
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
   trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
   rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0",'[data-rev="0"]',"0"],["10",'[data-rev="1"]',"1"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
+  tagmode:  {title:"Required tags match", cur:() => state.tagMode, opts:[["ALL",'[data-tagmode="and"]',"and"],["ANY",'[data-tagmode="or"]',"or"]]},
 };
 function openSummaryEditor(anchor, key){
   const EXPAND = {q:["value","#q"], price:["value","#minprice"], qrange:["value","#qmin"], tags:["tags",null]};
