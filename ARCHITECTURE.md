@@ -401,6 +401,10 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     the first/last child).
   - **Random hidden until filtered** — `#randomBtn` shows only when ≥1 non-default filter is active
     (toggled in `renderSummary()` from the `active` flag; applies on all screen sizes).
+  - **Scroll-collapsed sticky nav** — once scrolled >24px on mobile, `body.nav-scrolled` (a passive
+    scroll listener) hides the logo/search/view/tools row (`.bar-main`) inside the sticky compact
+    nav, leaving just the filter summary + the Show-filters bar; scrolling back to the top or opening
+    the filters restores it. Keyed on `body.narrow` so **Card and Grid behave identically**.
   - **Warning-styled Reset on the summary line** — a coral, uppercase **`Reset`** floats to the line's
     top-right whenever filters are active (`.sumreset` / `data-reset`, reuses the real `#clear`),
     replacing a trip into the panel for "Reset all filters".
