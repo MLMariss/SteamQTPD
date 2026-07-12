@@ -746,6 +746,10 @@
   body.narrow .topbar.compact{position:sticky; top:0}
   body.narrow .topbar.compact .meta{display:none}   /* count/updated dupes the summary line — drop it to slim the sticky browsing nav */
   body.narrow .topbar:not(.compact) .collapse-handle{position:sticky; bottom:0; z-index:41; box-shadow:0 -7px 18px #0008}
+  /* Once scrolled, the sticky compact nav shrinks to just the filter-summary + the Show-filters
+     bar — the logo/search/view/tools row (bar-main) hides until you scroll back to the top or open
+     the filters. Keyed on body.narrow so Card and Grid behave identically. */
+  body.narrow.nav-scrolled .topbar.compact .bar-main{display:none}
 
   /* ── Phones (~≤560px): tighter spacing and type (only reached when layout-card is active) ── */
   @media (max-width:560px){
@@ -2714,6 +2718,15 @@ function init(data){
   // Popover dismissal (backdrop click / Escape).
   $("#popBackdrop").addEventListener("click", closePopover);
   document.addEventListener("keydown", e => { if(e.key === "Escape") closePopover(); });
+  // Mobile: once scrolled a little, shrink the sticky compact nav to just the summary + Show-filters
+  // bar (CSS hides bar-main under body.nav-scrolled). Passive + class-only so scrolling stays smooth.
+  let _navScrolled = false;
+  const onNavScroll = () => {
+    const s = window.scrollY > 24;
+    if(s !== _navScrolled){ _navScrolled = s; document.body.classList.toggle("nav-scrolled", s); }
+  };
+  window.addEventListener("scroll", onNavScroll, {passive:true});
+  onNavScroll();
 }
 
 // Collapse a sale whose end date has passed: show base price, no discount, no QTPD
