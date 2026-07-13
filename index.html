@@ -551,8 +551,10 @@
   .gcard.adult .gcap{filter:blur(11px); transform:scale(1.06)}
   .gdisc{position:absolute; top:7px; right:7px; background:var(--coral); color:#0e1320;
         font-family:var(--mono); font-size:12px; font-weight:700; padding:2px 6px; border-radius:6px}
-  /* Info panel — deliberately darker than --panel so the title reads clean off the art. */
-  .gmeta{flex:none; background:#080b12; border-top:1px solid var(--line); padding:7px 10px 8px;
+  /* Info panel — deliberately darker than --panel so the title reads clean off the art.
+     Scoped to .gcard: bare .gmeta is also the table's title cell (see ~L293), and the dark
+     background was bleeding behind table titles as a black block. */
+  .gcard .gmeta{flex:none; background:#080b12; border-top:1px solid var(--line); padding:7px 10px 8px;
         display:flex; flex-direction:column; gap:3px}
   .gmeta-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
   .gq{font-family:var(--mono); font-size:13px; font-weight:600; color:var(--gold); white-space:nowrap}

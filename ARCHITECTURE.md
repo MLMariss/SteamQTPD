@@ -433,6 +433,10 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     `tagChipHTML` / `buildTagMini` / `startLingerTicker` / `applyLingerOpacities`;
     utilities — `randomPick` / `openExportPopover` / `doExportCSV` (`CSV_COLS`) / `copyLink`;
     sort — `bindSortControl` / `syncMobileSort`.
+  - **Shared-class gotcha — `.gmeta` is used by BOTH views.** In the table it's the title cell
+    (`min-width:136px; flex:1`); in a grid card it's the dark info panel (`background:#080b12`).
+    The grid rule **must** be scoped `.gcard .gmeta`, not bare `.gmeta`, or the near-black panel
+    background bleeds behind table-view titles as an ugly black block. (Regression fixed post-R6.)
   - **Test harness:** `.claude/launch.json` "sample" config serves a copy of `index.html` with no
     JSON so the app falls back to its 6-game `SAMPLE` — fast, deterministic UI testing.
 
