@@ -76,7 +76,11 @@
   .seg button{appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--mono);
         font-size:13px; padding:9px 12px; cursor:pointer; letter-spacing:.01em; white-space:nowrap}
   .seg button[aria-pressed="true"]{background:var(--panel-2); color:var(--text)}
-  .seg.metric button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
+  /* "Changed from default" = gold. Applied by markChangedControls() (JS) to the pressed button
+     of any group whose value differs from its default — so a group at its default reads neutral
+     (blue-ish) and only manually-adjusted controls light up gold. This supersedes the old blanket
+     `.seg.metric [aria-pressed]` gold, which lit "Main" gold even when it was the untouched default. */
+  .seg button[aria-pressed="true"].changed{background:var(--gold-soft); color:var(--gold)}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
 
   /* per-page size selector in the top bar */
@@ -107,7 +111,9 @@
 
   .toggle{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
         font-family:var(--mono); font-size:13px; padding:9px 14px; border-radius:9px; cursor:pointer; letter-spacing:.01em}
-  .toggle[aria-pressed="true"]{border-color:var(--coral); color:var(--coral)}
+  /* active = changed-from-default → gold (the sale/wishlist toggles are only ever "on" when the
+     user turned them on, so pressed == changed; no separate .changed class needed here) */
+  .toggle[aria-pressed="true"]{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
   .toggle.wish[aria-pressed="true"]{border-color:var(--gold); color:var(--gold)}
   .toggle:focus-visible{outline:2px solid var(--blue); outline-offset:2px}
   .linkbtn{background:none; border:0; color:var(--muted-2); font-family:var(--mono); font-size:12px;
@@ -122,6 +128,9 @@
         -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield}
   .numinput input::-webkit-outer-spin-button,.numinput input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
   .numinput:focus-within{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  /* changed-from-default (a price bound was typed) → gold, matching the seg toggles */
+  .numinput.changed{background:var(--gold-soft); border-color:var(--gold-deep)}
+  .numinput.changed input{color:var(--gold)}
   .steppers{display:flex; flex-direction:column; gap:2px}
   .steppers button{width:22px; height:17px; line-height:1; border:1px solid var(--line); background:var(--panel-2);
         color:var(--muted); border-radius:4px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; padding:0}
@@ -162,6 +171,8 @@
   .rangewrap input[type=range]::-moz-range-thumb{pointer-events:all; height:16px; width:16px; border-radius:50%;
         background:var(--gold); cursor:pointer; border:2px solid #0e1320}
   .rangelabel{display:inline-flex; align-items:baseline; gap:8px; cursor:help}
+  /* changed-from-default (range dragged off 0–∞) → gold label, consistent with the other controls */
+  .rangelabel.changed{color:var(--gold)}
   .rangevals{font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:none; letter-spacing:0}
   .rangevals b{color:var(--gold); font-weight:600}
 
@@ -1967,6 +1978,35 @@ function updateSectionCounts(){
   });
 }
 
+// Paint each control gold ONLY when it's been changed from its default — so an open section shows
+// at a glance what's been touched. Mirrors the default definitions in sectionActiveCounts(): a
+// group at its default reads neutral (blue-ish); a non-default group's pressed button(s) go gold
+// via the `.changed` class. Segmented groups are matched by their data-* attribute. Sale/Wishlist
+// toggles and tag chips carry their own on-state colours (see CSS), so they're not touched here.
+function markChangedControls(){
+  const setGroup = (sel, changed) =>
+    document.querySelectorAll(sel).forEach(b =>
+      b.classList.toggle("changed", changed && b.getAttribute("aria-pressed") === "true"));
+
+  // VALUE — segmented
+  setGroup("#qb-after,#qb-before", state.qBasis !== "after");
+  setGroup("[data-metric]",       state.hltbMetric !== "main");
+  setGroup("[data-hquality]",     state.hltbQuality !== "real");
+  // QUALITY & ACTIVITY — segmented
+  setGroup("[data-minscore]",     state.minScore > 0);
+  setGroup("[data-ratesrc]",      state.ratingSource !== "recent");
+  setGroup("[data-trend]",        state.trendSet.size > 0 && state.trendSet.size < 3);
+  setGroup("[data-rev]",          !sameSet(state.revBands, [1,2,3,4]));
+  setGroup("[data-upd]",          state.updatedWithin !== "any");
+  setGroup("[data-ptmetric]",     state.ptMetric !== "up");
+
+  // Price inputs — gold the box when that bound is set
+  const mp = document.getElementById("minprice"); if(mp) mp.closest(".numinput").classList.toggle("changed", state.minPrice != null);
+  const xp = document.getElementById("maxprice"); if(xp) xp.closest(".numinput").classList.toggle("changed", state.maxPrice != null);
+  // QTPD range — gold the label when dragged off 0–∞
+  document.querySelectorAll(".rangelabel").forEach(l => l.classList.toggle("changed", !!state.qRangeTouched));
+}
+
 // ── L2 — collapsed-bar filter summary sentence + inline editors ─────────────────────────
 const SORT_LABELS = {qtpd:"QTPD", title:"Name", rating_pct:"Review score", review_count:"Review count",
   trend:"Trend", wr:"Weighted", price_final:"Price", discount_pct:"Discount", discount_end:"Sale ends",
@@ -2198,6 +2238,7 @@ function renderMeta(){
   const ub = $("#unhide"); if(ub) ub.addEventListener("click", unhideAll);
   renderSummary();          // L2: keep the collapsed-bar summary sentence current
   updateSectionCounts();    // L1: keep each accordion's "N active" badge current
+  markChangedControls();    // L1: gold-highlight only the controls changed from default
 }
 function renderFoot(){
   $("#foot").innerHTML =

@@ -427,7 +427,8 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
   - **URL params:** existing set + **`tagmode`** (see §2/§ URL-state; `syncURL`/`loadFromURL`).
   - **Key functions:** view — `applyLayout` / `setView` / `updateViewButtons` / `gridCardHTML`
     (+ `bestRating` for the card's rating fallback — R5);
-    accordions — `applySections` / `toggleSection` / `sectionActiveCounts` / `updateSectionCounts`;
+    accordions — `applySections` / `toggleSection` / `sectionActiveCounts` / `updateSectionCounts`
+    / `markChangedControls` (per-control gold highlight);
     summary+popover — `renderSummary` / `openSummaryEditor` / `buildOptionPopover` /
     `buildSortPopover` / `showPopover`; tag chips + fade (R5) — `interactedTagChipsHTML` /
     `tagChipHTML` / `buildTagMini` / `startLingerTicker` / `applyLingerOpacities`;
@@ -437,6 +438,20 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     (`min-width:136px; flex:1`); in a grid card it's the dark info panel (`background:#080b12`).
     The grid rule **must** be scoped `.gcard .gmeta`, not bare `.gmeta`, or the near-black panel
     background bleeds behind table-view titles as an ugly black block. (Regression fixed post-R6.)
+  - **"Changed from default" = gold (single source of truth).** A control at its default reads
+    neutral (blue-ish, grey pressed state); a control the user has *manually adjusted* lights up
+    gold, so an opened accordion shows at a glance what's been touched (mirrors the header's
+    `N active` badge, one level down). `markChangedControls()` (called from `renderMeta` after
+    `updateSectionCounts`) adds `.changed` to the pressed button(s) of any non-default group.
+    Its default definitions **must** stay in lockstep with `sectionActiveCounts()` — both read the
+    same `state` fields against the same defaults (`qBasis:"after"`, `hltbMetric:"main"`,
+    `hltbQuality:"real"`, `minScore:0`, `ratingSource:"recent"`, `revBands:[1,2,3,4]`, full trend
+    set, `updatedWithin:"any"`, `ptMetric:"up"`; price bounds `null`; `qRangeTouched:false`). CSS
+    hooks: `.seg button[aria-pressed="true"].changed`, `.numinput.changed` (price boxes),
+    `.rangelabel.changed` (QTPD range). The old blanket `.seg.metric [aria-pressed]` gold was
+    removed — it lit "Main" gold even untouched, defeating the whole signal. Sale/Wishlist toggles
+    are gold whenever pressed (pressed == changed for them); **tag chips keep their own green/red
+    include/exclude colours** and are deliberately left out of the gold convention.
   - **Test harness:** `.claude/launch.json` "sample" config serves a copy of `index.html` with no
     JSON so the app falls back to its 6-game `SAMPLE` — fast, deterministic UI testing.
 
