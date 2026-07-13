@@ -1,6 +1,6 @@
 # Shard health — `playtime_raw/` · QTPD (SteamQHPP)
 
-_Generated 2026-07-12 08:55 UTC by `shard_health.py`._
+_Generated 2026-07-13 10:00 UTC by `shard_health.py`._
 
 ## Status
 
@@ -12,13 +12,13 @@ _Generated 2026-07-12 08:55 UTC by `shard_health.py`._
 |---|---|
 | Shards | 64 (non-empty 64) |
 | shard_ver | [2] |
-| Total games | 59,667 |
-| Games/shard | min 89 · median 1214 · max 1297 (max/mean 1.39) |
-| Size/shard | min 1.11 MB · median 11.73 MB · **max 13.20 MB** |
+| Total games | 67,573 |
+| Games/shard | min 96 · median 1215 · max 1297 (max/mean 1.23) |
+| Size/shard | min 1.11 MB · median 11.99 MB · **max 13.20 MB** |
 | Headroom on biggest | 86.8 MB under the 100 MB limit |
 | Bytes/game | ~10.4 KB |
 | Games-to-100MB (per shard) | ~9,824 |
-| Addressable universe (≥10 reviews) | 78,665 → ~1,229/shard at full coverage |
+| Addressable universe (≥10 reviews) | 78,672 → ~1,229/shard at full coverage |
 | **Projected max shard at full coverage** | **~13 MB** |
 
 ## Per-shard
@@ -33,13 +33,13 @@ _Generated 2026-07-12 08:55 UTC by `shard_health.py`._
 | 05 | 1,220 | 11.53 MB | 11.5% | 2026-07-11 21:43 |
 | 06 | 1,276 | 13.20 MB | 13.2% | 2026-07-12 00:55 |
 | 07 | 1,235 | 11.22 MB | 11.2% | 2026-07-12 06:09 |
-| 08 | 102 | 1.49 MB | 1.5% | 2026-07-06 06:27 |
-| 09 | 102 | 1.65 MB | 1.7% | 2026-07-06 06:27 |
-| 10 | 127 | 1.93 MB | 1.9% | 2026-07-06 06:27 |
-| 11 | 97 | 1.31 MB | 1.3% | 2026-07-06 06:27 |
-| 12 | 94 | 1.42 MB | 1.4% | 2026-07-06 06:27 |
-| 13 | 112 | 1.50 MB | 1.5% | 2026-07-06 06:27 |
-| 14 | 89 | 1.21 MB | 1.2% | 2026-07-06 06:27 |
+| 08 | 1,212 | 12.95 MB | 12.9% | 2026-07-12 10:59 |
+| 09 | 1,213 | 12.77 MB | 12.8% | 2026-07-12 13:09 |
+| 10 | 1,291 | 12.13 MB | 12.1% | 2026-07-12 16:06 |
+| 11 | 1,176 | 10.64 MB | 10.6% | 2026-07-12 18:49 |
+| 12 | 1,236 | 12.50 MB | 12.5% | 2026-07-12 21:45 |
+| 13 | 1,288 | 11.98 MB | 12.0% | 2026-07-13 00:42 |
+| 14 | 1,213 | 11.59 MB | 11.6% | 2026-07-13 06:16 |
 | 15 | 263 | 3.87 MB | 3.9% | 2026-07-06 06:27 |
 | 16 | 100 | 1.62 MB | 1.6% | 2026-07-06 06:27 |
 | 17 | 103 | 1.36 MB | 1.4% | 2026-07-06 06:27 |
