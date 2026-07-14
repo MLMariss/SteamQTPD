@@ -109,10 +109,13 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   degrading to nothing where updates.json has no coverage yet. Sort is by update recency.*
   *Still open (tracked in §9.5): the **precedence switch** — flip the event-based layer from
   fallback to primary once shard coverage is broad enough to beat the News-API's ~42% null
-  `last_update_ts`. Trigger: today only 1/64 shards are populated (rotation just started; all
-  64 fill every ~16 days at 4×/day), so leave News-API primary (the column still sorts by it)
-  until the shards cover materially more games than News-API does, then invert the precedence
-  in `index.html`.*
+  `last_update_ts`. Trigger: leave News-API primary (the column still sorts by it) until the
+  event layer covers materially more games than News-API does, then invert the precedence in
+  `index.html`. **Live coverage is now tracked in `COVERAGE.md` (Axis 1, `updates.json` /
+  `updates_raw/` rows) — read the current figure there rather than any hand-written count.**
+  (As of 2026-07 the rotation had advanced well past its start — tens of shards populated, not
+  the "1/64" this note used to claim — which is exactly the drift that motivated adding the
+  updates layer to coverage tracking; see §11.5.)*
 
 - **Mod support & mod count.** Flag whether a game is moddable and roughly how large its mod
   scene is — especially relevant to the survival-craft audience. *What to do:* query the
@@ -529,12 +532,17 @@ each single-writes its `.md`):
 | `shard-health.yml`  | `shard_health.py` | `SHARDS.md`   | `35 6 * * *` (daily)                             | `shards-md`       |
 | `coverage.yml`      | `coverage.py`     | `COVERAGE.md` | `workflow_run` after **scrape** succeeds (~4×/day) | `coverage-md`     |
 
-`coverage.py` recomputes every coverage figure from the live files + shards (base universe,
-per-metric covered/%/missing sorted by % descending, the on-sale count, and the
-addressable-set framing) and self-commits `COVERAGE.md`. It uses only the standard library —
-no `pip install` step. It's triggered off the **scrape** completion (via `workflow_run` keyed
-to that workflow's exact name) so the snapshot always reflects the freshest `games.json`, the
-base everything is measured against; it also has `workflow_dispatch` for manual runs.
+`coverage.py` recomputes every coverage figure from the live files + shards and self-commits
+`COVERAGE.md`. It reports **two axes** (full design in §11.5): **Axis 1 — total coverage**
+(per-metric covered/%/missing sorted by % descending, the on-sale count, addressable-set
+framing) and **Axis 2 — refresh schedule** (covered rows bucketed by each scraper's own
+cooldown gate: active-vs-dormant track, overdue backlog, correctly-skipped `empty`, and the
+`never`-seen fill frontier). It uses only the standard library — no `pip install` step. It's
+triggered off the **scrape** completion (via `workflow_run` keyed to that workflow's exact
+name) so the snapshot always reflects the freshest `games.json`, the base everything is
+measured against; it also has `workflow_dispatch` for manual runs. The per-row Axis-2 pass
+reads all `playtime_raw/` + `updates_raw/` shards, so a run takes ~1 min — fine for a
+background job with no user-facing path.
 
 > **Fixed (was silently broken since the workflow rename).** `coverage.yml`'s `workflow_run`
 > trigger named the workflow `"Scrape Steam -> games.json"`, but the "Workflow renumbering"
@@ -1215,6 +1223,79 @@ good as SteamSpy's tagging. Each row has a slim `[x]` hide button; hidden games 
 un-hidden, but the hide list is **session-only and deliberately excluded from URL
 serialization** (unlike every other filter/sort choice, §11 *State in the URL* below) — a
 reload or a shared link does not carry hidden games with it.
+
+---
+
+## 11.5 Coverage tracking (`coverage.py` → `COVERAGE.md`)
+
+`COVERAGE.md` is a **generated, two-axis** snapshot of the database's completeness and
+freshness, rebuilt after every scrape (§4). It exists because coverage silently drifted while
+the data jobs kept running — most sharply, the `updates.json` / `updates_raw/` layer was **not
+measured at all**, which is why a simple "why does the badge show for some games and not
+others?" question had no answer without manually reading shards. **Rule of thumb: every value
+the frontend renders must have a row here.** If you add a scraper or a displayed field, add it
+to `coverage.py` in the same change.
+
+### Field → source → refresh map (the authoritative list)
+
+Every frontend-consumed value, its storage file, its producing scraper, and the per-game
+timestamp used for staleness. This table *is* the checklist for "did we forget to track
+something."
+
+| Frontend value(s) | Storage file | Scraper | Per-game staleness key | Refresh rule |
+|---|---|---|---|---|
+| name, appid, release, rating %, review count, `last_update_ts` | `games.json` | `scraper.py` | `scraped_at` | Steam `last_modified` in Actions; 7d fallback timer |
+| price, discount, sale-end | `prices.json` | `price_and_sale.py` | `scraped_at` | no cooldown — whole non-free base re-batched ~3h |
+| tags | `tags.json` | `tags_refresh.py` | **none** | fetch-once, **no rescrape** (see Future work) |
+| recent 30d % / count | `recent.json` | `recent_refresh.py` | `recent_scraped_at` | two-track: active 4d / dormant 30d |
+| HLTB main/extra/complete/avg + `est` | `hltb.json` | `hltb_refresh.py` | `fetched_at` | partial 14d / full 365d; blank backoff 3→30→180d |
+| median playtime ↑/↓ + n | `playtime.json` ← `playtime_raw/` | `playtime_refresh.py` → `playtime_summarize.py` | **none per-game** (proxy: newest review `ts`) | two-track: active 7d / dormant 30d; floor 10 reviews |
+| weighted rating (steam/raw/capped + n) | `ratings.json` ← `playtime_raw/` | `ratings_summarize.py` | inherits `playtime_raw/` | derived on every raw pass |
+| cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
+
+### Axis 1 — total coverage
+
+Per metric: how many of the `games.json` universe have data, as a % of catalog, sorted
+descending. The "have we got it?" axis. Playtime/updates also get an **addressable-set**
+framing in the Notes (denominator = games above the `MIN_REVIEWS_FLOOR = 10` gate), because
+measuring them against the *full* catalog understates them — the sub-floor games are
+deliberately never fetched, not missing.
+
+### Axis 2 — refresh schedule
+
+Covered rows bucketed by **how each row's own scraper will treat it on the next pass** — never
+against a flat target. This answers "is the pipeline keeping up, and what's the queue shape?"
+
+The two-track scrapers (recent, playtime, updates) classify each game as **active** (its
+`last_update_ts` is within `UPDATE_ACTIVE_DAYS = 90` → short cooldown) or **dormant** (long
+cooldown). The dormant lane refreshing rarely is a **feature**, not a shortfall — budget is
+front-loaded onto games whose data actually moves. Buckets:
+
+- **7d-track / 30d-track** — which cooldown lane the game sits in (totals include overdue members).
+- **overdue** — already past its lane's cooldown = the real backlog signal.
+- **empty** — scraped but correctly produced nothing usable (below the review floor, or a null
+  score). Not pending work; keeping it separate stops "correctly skipped" from inflating backlog.
+- **never** — no data yet = the fill frontier / true pending backlog.
+
+`coverage.py` copies each scraper's cooldown constants **verbatim** (see the constants block at
+the top of the file) so the doc can't drift from the real `is_eligible()` gates. Single-window
+scrapers that don't fit the two-track shape (`games.json` core, `hltb.json`, `prices.json`) are
+reported as inline fresh/overdue lines rather than table rows.
+
+**Known approximation (playtime).** `playtime_raw/` stores a timestamp per *review*, not per
+*game*, so playtime staleness uses each game's **newest review `ts`** as a proxy. A game with
+no recent reviews reads as overdue even if freshly walked, so its `overdue` figure is an
+**upper bound** (marked `†` in the table), not exact backlog — unlike Update events, which has
+a real per-game `scraped_at`. An exact figure needs a per-game `scraped_at` added to the shard
+records (Future work). **Tags** have no timestamp at all and are Axis-1-only until one is added.
+
+### Invariants
+
+- **One writer:** `coverage.py` → `COVERAGE.md` only, same discipline as `shard_health.py` →
+  `SHARDS.md`. All reads are read-only; each source file stays owned by its own scraper.
+- **Generated, never hand-edited** — a banner at the top of `COVERAGE.md` says so.
+- **Superset discipline:** the script must stay a superset of what the frontend renders. The
+  field→source table above is the contract; update both when the data model changes.
 
 ---
 
