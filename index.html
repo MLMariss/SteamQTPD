@@ -899,9 +899,14 @@ try{
               <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
           </div>
         </div>
-        <div class="field" style="align-self:flex-end">
-          <label>&nbsp;</label>
-          <button class="toggle" id="saleOnly" aria-pressed="false">On sale only</button>
+        <div class="field">
+          <label>Price type</label>
+          <div class="seg" id="priceClass" role="group" aria-label="Price type">
+            <button data-pc="all"  aria-pressed="true"  title="Show every game (default). Click to re-enable all types.">All</button>
+            <button data-pc="full" aria-pressed="true"  title="Paid games at full price (not discounted)">Full</button>
+            <button data-pc="sale" aria-pressed="true"  title="Paid games with an active discount">Sale</button>
+            <button data-pc="free" aria-pressed="true"  title="Free-to-play games. When shown alone, the QTPD column ranks them by playtime × rating (no price).">Free</button>
+          </div>
         </div>
         <div class="field rangefield">
           <label class="rangelabel" title="Log scale — the range auto-fits the current results">QTPD range <span class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></span></label>
@@ -1118,7 +1123,7 @@ const bandOf = rc => {
 };
 
 // ----- state -----
-const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", saleOnly:false,
+const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", hltbMetric:"main", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
                 trendSet:new Set(["up","flat","down"]), updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
@@ -1129,6 +1134,7 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const CDN = "https://cdn.cloudflare.steamstatic.com/steam/apps";
 const capsuleUrl = a => `${CDN}/${a}/capsule_231x87.jpg`;
@@ -1183,6 +1189,20 @@ function computeQ(g, basis){
 }
 const activeQ = g => computeQ(g, state.qBasis);
 const altQ    = g => computeQ(g, state.qBasis === "after" ? "before" : "after");
+
+// Free-value score: QTPD's numerator with no price division (quality-weighted hours).
+// Free games have no price, so a $-based QTPD is undefined; this ranks them among
+// themselves by playtime × rating instead.
+function freeScore(g){
+  const h = hoursFor(g), r = g.rating_pct;
+  return (h && r) ? h * (r/100) : null;
+}
+// True only when the price-class filter is narrowed to Free alone — the one state
+// where free games are the whole list and the QTPD column switches to freeScore.
+function freeMode(){ return state.priceClass.size === 1 && state.priceClass.has("free"); }
+// The value used for the QTPD column (sort + bar + range): freeScore in free-only mode,
+// otherwise the normal price-based QTPD.
+const colValue = g => freeMode() ? freeScore(g) : activeQ(g);
 
 function ratingColor(p){
   if(p == null) return "var(--muted-2)";
@@ -1265,7 +1285,13 @@ function updCad(g){
 function passNonRange(x){
   if(state.hidden.has(x.appid)) return false;     // session-hidden by the user
   if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
-  if(state.saleOnly && !(x.discount_pct > 0)) return false;
+  // Price-class facets (multi-toggle, OR'd). Non-overlapping primitives:
+  //   full = paid & not discounted, sale = paid & discounted, free = is_free.
+  // Empty set never occurs (the last lit facet can't be un-pressed); all three = no filter.
+  if(state.priceClass.size < 3){
+    const cls = x.is_free ? "free" : (x.discount_pct > 0 ? "sale" : "full");
+    if(!state.priceClass.has(cls)) return false;
+  }
   if(state.minScore > 0 && !(x.rating_pct != null && x.rating_pct >= state.minScore)) return false;
   // Review-count band toggles. A game passes if its band is enabled. Empty set = no filter.
   // Default {1,2,3,4} excludes only the 0-9 band (i.e. "10+"). Games with null review_count
@@ -1308,7 +1334,7 @@ function rangeActive(){ return state.qMinVal > 0.001 || !state.qMaxUnbounded; }
 function visibleGames(){
   let g = state.data.games.filter(passNonRange);
   if(rangeActive()) g = g.filter(x => {
-    const q = activeQ(x);
+    const q = colValue(x);
     return q != null && q >= state.qMinVal && (state.qMaxUnbounded || q <= state.qMaxVal);
   });
   const k = state.sortKey, dir = state.sortDir;
@@ -1324,7 +1350,7 @@ function visibleGames(){
   const countVal = x => (state.ratingSource === "recent")
     ? (x.recent_count != null ? x.recent_count : 0)
     : x.review_count;
-  const val = x => k === "qtpd" ? activeQ(x) : k === "trend" ? gTrend(x) : k === "hltb" ? hoursFor(x)
+  const val = x => k === "qtpd" ? colValue(x) : k === "trend" ? gTrend(x) : k === "hltb" ? hoursFor(x)
                  : k === "rating_pct" ? ratingVal(x)
                  : k === "review_count" ? countVal(x)
                  : k === "wr" ? x.wr
@@ -1350,7 +1376,7 @@ const valToPos = (v, dmax) => 1000 * Math.log(v + 1) / Math.log(dmax + 1);
 function recomputeDomain(){
   let mx = 0;
   for(const x of state.data.games){
-    if(passNonRange(x)){ const q = activeQ(x); if(q != null && q > mx) mx = q; }
+    if(passNonRange(x)){ const q = colValue(x); if(q != null && q > mx) mx = q; }
   }
   state.qDomain = Math.max(1, Math.ceil(mx * 10) / 10);
   if(state.qRangeTouched){
@@ -1400,7 +1426,7 @@ function render(){
   // so loading more rows per page never shifts the bars. The scale only changes when the
   // filters change the result set — which is the intended behavior. (Previously this used
   // the paged `games`, so changing per-page silently rescaled every bar. T7 follow-up.)
-  const qs = allGames.map(activeQ).filter(v => v != null);
+  const qs = allGames.map(colValue).filter(v => v != null);
   const qLo = Math.min(...qs), qHi = Math.max(...qs);
   // log-scaled fill: matches the slider's log domain so a single huge-QTPD outlier
   // doesn't squash every other bar to near-zero. Floor of 6% keeps tiny values visible.
@@ -1483,7 +1509,17 @@ function render(){
     // QTPD display precision: 3-digit values → 0 decimals, 2-digit → 1, 1-digit → 2.
     const fmtQ = v => v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
     let qtpd;
-    if(qAfter == null && qFull == null){
+    if(freeMode()){
+      // Free-only view: rank by quality-weighted hours (no price). No sale/full split,
+      // no dollar bar — the value isn't a per-dollar figure.
+      const fs = freeScore(g);
+      if(fs == null){
+        qtpd = `<div class="qnull">—</div>`;
+      } else {
+        qtpd = `<div class="qtop"><span class="qval qfull" title="Free-value score — quality-weighted hours (playtime × rating), no price">${fmtQ(fs)}</span><span class="qtag full" title="Free game: ranked by playtime × rating instead of price">free</span></div>`
+             + `<div class="qbar"><div class="qfill" style="width:${fillPct(fs).toFixed(1)}%"></div></div>`;
+      }
+    } else if(qAfter == null && qFull == null){
       qtpd = `<div class="qnull">—</div>`;
     } else if(!onSale){
       // single number (not discounted, or one side missing); highlight if its basis is active
@@ -1843,6 +1879,15 @@ function cycleTag(t, dir){
 
 // central update for any non-range filter change (refits range + faceted counts).
 // Any filter/sort/search/page-size change resets to page 1 of the new result set.
+// Reflect state.priceClass onto the band's aria-pressed. "All" is lit only when all three
+// facets are on; each facet button reflects its own membership.
+function syncPriceClassUI(){
+  const allOn = state.priceClass.size === 3;
+  $$("#priceClass button").forEach(b => {
+    const pc = b.dataset.pc;
+    b.setAttribute("aria-pressed", pc === "all" ? allOn : state.priceClass.has(pc));
+  });
+}
 function update(){ resetPaging(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════
@@ -1893,11 +1938,12 @@ function setView(v){
 // One box-art card: Steam header art on top at its true ratio, a solid info panel (QTPD left ·
 // rating right, over the title), and a tap-to-expand details overlay (price / length / Steam).
 function gridCardHTML(g){
-  const q = activeQ(g);
+  const q = colValue(g);
   const onSale = g.discount_pct > 0;
   const cls = "gcard" + (isAdult(g) ? " adult" : "") + (onSale ? " sale" : "") + ((q != null && q >= state.qDomain * 0.66) ? " hi" : "");
   const disc = onSale ? `<span class="gdisc">-${g.discount_pct}%</span>` : "";
-  const qHtml = q != null ? `<span class="gq">QTPD ${fmtQval(q)}</span>` : `<span class="gq na">QTPD —</span>`;
+  const qLbl = freeMode() ? "FREE" : "QTPD";
+  const qHtml = q != null ? `<span class="gq">${qLbl} ${fmtQval(q)}</span>` : `<span class="gq na">${qLbl} —</span>`;
   // Rating = Steam all-time review score, plain number + % (no weighted/recent source letters).
   const rateHtml = g.rating_pct != null
     ? `<span class="grate" style="color:${ratingColor(g.rating_pct)}" title="Steam review score ${g.rating_pct}%${g.review_count ? " · " + g.review_count.toLocaleString() + " reviews" : ""}">${g.rating_pct}%</span>`
@@ -1962,7 +2008,7 @@ function sectionActiveCounts(){
   const revActive = sameSet(state.revBands, [1,2,3,4]) ? 0 : 1;
   return {
     value: (state.qBasis !== "after" ? 1 : 0) + (state.hltbMetric !== "main" ? 1 : 0) + (state.hltbQuality !== "real" ? 1 : 0)
-         + ((state.minPrice != null || state.maxPrice != null) ? 1 : 0) + (state.saleOnly ? 1 : 0) + (state.qRangeTouched ? 1 : 0),
+         + ((state.minPrice != null || state.maxPrice != null) ? 1 : 0) + (state.priceClass.size < 3 ? 1 : 0) + (state.qRangeTouched ? 1 : 0),
     // Quality now also carries the merged Activity controls (updated-within, playtime-sort).
     quality: (state.minScore > 0 ? 1 : 0) + (state.ratingSource !== "recent" ? 1 : 0)
          + ((state.trendSet.size > 0 && state.trendSet.size < 3) ? 1 : 0) + revActive
@@ -1999,6 +2045,7 @@ function markChangedControls(){
   setGroup("[data-rev]",          !sameSet(state.revBands, [1,2,3,4]));
   setGroup("[data-upd]",          state.updatedWithin !== "any");
   setGroup("[data-ptmetric]",     state.ptMetric !== "up");
+  setGroup('[data-pc="full"],[data-pc="sale"],[data-pc="free"]', state.priceClass.size < 3);
 
   // Price inputs — gold the box when that bound is set
   const mp = document.getElementById("minprice"); if(mp) mp.closest(".numinput").classList.toggle("changed", state.minPrice != null);
@@ -2025,7 +2072,7 @@ function renderSummary(){
   if(state.ratingSource !== "recent") parts.push(chip("ratesrc", "all-time reviews"));
   if(!sameSet(state.revBands, [1,2,3,4])){ const t = [...state.revBands].sort((a,b)=>a-b).map(i => REV_LBLS[i]).join("/"); parts.push(chip("rev", state.revBands.size ? `reviews: ${t}` : "reviews: none")); }
   if(state.minPrice != null || state.maxPrice != null){ const lo = state.minPrice != null ? `$${state.minPrice}` : "$0"; const hi = state.maxPrice != null ? `$${state.maxPrice}` : "∞"; parts.push(chip("price", `${lo}–${hi}`)); }
-  if(state.saleOnly) parts.push(chip("sale", "on sale"));
+  if(state.priceClass.size < 3){ const lbl = {full:"full price",sale:"on sale",free:"free"}; const t = ["full","sale","free"].filter(c => state.priceClass.has(c)).map(c => lbl[c]).join(" / "); parts.push(chip("pc", t)); }
   if(state.trendSet.size > 0 && state.trendSet.size < 3){ const map = {up:"▲", flat:"≈", down:"▼"}; const t = ["up","flat","down"].filter(x => state.trendSet.has(x)).map(x => map[x]).join(""); parts.push(chip("trend", `trend ${t}`)); }
   if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
   if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
@@ -2080,7 +2127,7 @@ const SUMMARY_EDITORS = {
   minscore: {title:"Min rating", cur:() => String(state.minScore), opts:[["Any",'[data-minscore="0"]',"0"],["60+",'[data-minscore="60"]',"60"],["70+",'[data-minscore="70"]',"70"],["80+",'[data-minscore="80"]',"80"],["90+",'[data-minscore="90"]',"90"]]},
   ratesrc:  {title:"Reviews sort by", cur:() => state.ratingSource, opts:[["All-time",'[data-ratesrc="all"]',"all"],["30-day",'[data-ratesrc="recent"]',"recent"]]},
   upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
-  sale:     {title:"On sale", toggleSel:"#saleOnly", isOn:() => state.saleOnly, opts:[["On sale only",null,"on"],["Any",null,"off"]]},
+  pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
   trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
   rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0",'[data-rev="0"]',"0"],["10",'[data-rev="1"]',"1"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
@@ -2455,7 +2502,7 @@ function syncURL(){
   if(state.tagsInc.size) p.set("inc", [...state.tagsInc].join(","));
   if(state.tagsExc.size) p.set("exc", [...state.tagsExc].join(","));
   if(state.tagMode !== "and") p.set("tagmode", state.tagMode);
-  if(state.saleOnly) p.set("sale", "1");
+  if(state.priceClass.size < 3) p.set("pc", ["full","sale","free"].filter(c => state.priceClass.has(c)).join(","));
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.hltbMetric !== "main") p.set("hltb", state.hltbMetric);
   if(state.hltbQuality !== "real") p.set("hq", state.hltbQuality);
@@ -2492,7 +2539,8 @@ function loadFromURL(){
   setIf("exc", v => v.split(",").filter(Boolean).forEach(t => state.tagsExc.add(canon(t.toLowerCase()))));
   setIf("tagmode", v => { if(v==="or"||v==="and"){ state.tagMode = v;
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===v)); } });
-  setIf("sale", () => { state.saleOnly = true; const el=$("#saleOnly"); if(el) el.setAttribute("aria-pressed","true"); });
+  setIf("pc", v => { const want = v.split(",").filter(c => ["full","sale","free"].includes(c));
+    if(want.length){ state.priceClass = new Set(want); syncPriceClassUI(); } });
   setIf("basis", v => { if(v==="before"||v==="after"){ state.qBasis=v;
     $("#qb-after").setAttribute("aria-pressed", v==="after"); $("#qb-before").setAttribute("aria-pressed", v==="before"); } });
   setIf("hltb", v => { state.hltbMetric=v;
@@ -2570,12 +2618,13 @@ function init(data){
 
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.saleOnly=false;
+    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.priceClass=new Set(["full","sale","free"]);
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up"; state.qRangeTouched=false;
     loadFromURL();
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===state.tagMode));
+    syncPriceClassUI();
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); render();
   });
 
@@ -2587,9 +2636,23 @@ function init(data){
       document.querySelectorAll("#pagesize button").forEach(x => x.classList.toggle("on", x === b));
       resetPaging(); render(); syncURL();
     }));
-  $("#saleOnly").addEventListener("click", e => {
-    state.saleOnly = !state.saleOnly; e.currentTarget.setAttribute("aria-pressed", state.saleOnly); update();
-  });
+  // Price-type band: All is a one-way reset (re-lights every facet, never itself un-presses).
+  // Facets Full/Sale/Free toggle independently but can never all be off — un-pressing the
+  // last lit facet snaps back to All-on, so the list is never empty.
+  syncPriceClassUI();
+  $$("#priceClass button").forEach(btn => btn.addEventListener("click", () => {
+    const pc = btn.dataset.pc;
+    if(pc === "all"){
+      state.priceClass = new Set(["full","sale","free"]);
+    } else if(state.priceClass.has(pc)){
+      if(state.priceClass.size > 1) state.priceClass.delete(pc);
+      // last one lit: leave as-is (can't reach empty)
+    } else {
+      state.priceClass.add(pc);
+    }
+    syncPriceClassUI();
+    update();
+  }));
   $("#qb-after").addEventListener("click", () => setBasis("after"));
   $("#qb-before").addEventListener("click", () => setBasis("before"));
   document.querySelectorAll("[data-metric]").forEach(b => b.addEventListener("click", () => setMetric(b.dataset.metric)));
@@ -2678,12 +2741,12 @@ function init(data){
   });
 
   $("#clear").addEventListener("click", () => {
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.saleOnly=false;
+    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.priceClass=new Set(["full","sale","free"]);
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode==="and"));
     state.minScore=0; state.revBands=new Set([1,2,3,4]); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
-    $("#saleOnly").setAttribute("aria-pressed","false"); $("#wishOnly").setAttribute("aria-pressed","false");
+    syncPriceClassUI(); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", "true"));
     document.querySelectorAll("[data-ratesrc]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ratesrc==="recent"));
