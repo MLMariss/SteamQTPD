@@ -1,0 +1,375 @@
+# PICS Metadata Pipeline — Design Spec
+
+**Status:** Design locked, pre-build
+**Author:** MLMariss + Claude working session
+**Scope:** New SteamQTPD data pipeline harvesting the Steam PICS `common`
+app-info block via anonymous CM session. Adds AI-content disclosure plus a
+large batch of previously-unscraped or better-sourced metadata (store tags,
+Steam Deck compatibility, review-bomb-adjusted scores, dev/publisher, feature
+categories, family-share exclusion, custom EULA presence).
+
+This document is the authoritative record of **what we decided and why**.
+The scraper (`pics_refresh.py`) and summarizer (`pics_summarize.py`) implement it.
+
+---
+
+## 1. Motivation
+
+The original goal was narrow: scrape Steam's **AI content disclosure** (the
+"AI Generated Content Disclosure" block on store pages). Investigation
+established:
+
+- There is **no dedicated AI-disclosure field** in the public
+  `store.steampowered.com/api/appdetails` JSON. The store-page block is not
+  surfaced as a top-level key there.
+- The disclosure **does** exist as a clean structured field in the Steam
+  **PICS** (`get_product_info`) `common` block, under the key **`aicontenttype`**.
+  This is the same internal app-info source SteamDB reads.
+- Fetching PICS requires a **stateful CM websocket session** (via
+  `ValvePython/steam`), not a stateless HTTP GET — a different execution model
+  from SteamQTPD's existing HTTP scrapers. **Anonymous login is sufficient**;
+  no account credentials are required.
+
+Because a PICS session is the expensive part, and the `common` block carries
+**dozens of other useful fields for free in the same call**, the scope expanded
+from "AI disclosure" to "harvest the whole `common` block once, derive many
+fields."
+
+---
+
+## 2. Field investigation — what `common` contains
+
+Probed against a 120-game sample (live top-100 most-played + curated seed
+spanning F2P, AAA, indie, EA, VR, DLC, survival/strategy, AI-disclosed titles).
+
+### 2.1 `aicontenttype` — the origin field
+
+Small int enum stored as a string:
+
+| Value | Meaning | Sample |
+|---|---|---|
+| absent | No AI disclosure | Dota 2, Balatro, most games |
+| `"1"` | Pre-generated AI content (shipped assets made with AI) | THE FINALS (TTS commentators) |
+| `"2"` | Live-generated AI content (runtime generation) | DREAMIO (ChatGPT + Stable Diffusion + TTS) |
+
+- `"3"` (both) is plausible but no carrier seen; handle gracefully.
+- Coverage in sample: 13/120 ≈ 11% (11 pre-gen, 2 live-gen).
+- The **free-text disclosure blurb** ("we use TTS for…") is **NOT** in `common` —
+  it lives only on the rendered store page. PICS gives the **flag + category only**.
+  This is deemed sufficient: a typed flag is more filterable than prose.
+
+### 2.2 High-value keepers (tier 1)
+
+Measured coverage over the 120-game sample:
+
+| Key | Coverage | Shape | Why we keep it |
+|---|---|---|---|
+| `store_tags` | 99% | `{"0":"4115","1":"1695",…}` ordered tag-ID list (top ~20, rank order) | Ranked community tags. Hard to get cleanly elsewhere. **Biggest win.** Needs tag-ID→name lookup. |
+| `steam_deck_compatibility` | 97% | struct: `category`, `steamos_compatibility`, `steam_machine_compatibility`, `test_timestamp`, `tested_build_id`, `tests{}` | Deck verified/playable/unsupported + new Steam Machine compat. Not in appdetails. |
+| `review_score` | 99% | `"1"`–`"9"` bucket | Valve's canonical review bucket. |
+| `review_percentage` | 99% | `"0"`–`"100"` | Canonical % positive. |
+| `review_score_bombs` / `review_percentage_bombs` | ~10% | same shapes | **Review-bomb-adjusted** score. Present only on bombed games. Compare vs raw to *detect* review bombing (e.g. War Thunder raw 5/64% vs de-bombed 6/71%). |
+| `associations` | 100% | `{"0":{"type":"developer","name":"…"},…}` | Structured dev/publisher/franchise. No HTML parsing. |
+| `category` | 100% | `{"category_2":"1","category_1":"1",…}` | Feature flags (single-player, co-op, achievements, cloud, controller…). Filterable. |
+| `genres` / `primary_genre` | 99% | `{"0":"3"}` / `"3"` | Genre IDs. Needs genre-ID→name lookup. |
+| `releasestate` | 94% | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. |
+| `supported_languages` | 99% | per-language `{supported, full_audio, subtitles}` | Richer than a flat list. |
+| `steam_release_date` | 95% | unix ts string | Release date. |
+| `original_release_date` | 15% | unix ts string | True original date for EA→1.0 games. |
+| `metacritic_score` / `metacritic_name` / `metacritic_fullurl` | ~40-50% | int / str / url | Metacritic when present. |
+| `content_descriptors` | 36% | `{"0":"1","1":"2","2":"5"}` | Mature-content flags (violence/gore/sexual). **Unrelated to AI** despite adjacency. |
+
+### 2.3 Promoted keepers — investigated specially (tier 2)
+
+| Key | Coverage | Decision | Notes |
+|---|---|---|---|
+| `exfgls` | ~24% | **KEEP as family-share-exclusion flag** | See §2.4. Name = "EXclude From Family Library Sharing". Presence ⇒ NOT shareable. |
+| `eulas` | 60% | **KEEP as `has_custom_eula` + names** | Presence ⇒ extra agreement(s) to accept. Struct: `{id,name,url,version}`. |
+| `market_presence` | 10% | keep (cheap) | Steam Market items exist. |
+| `workshop_visible` | 30% | keep (cheap) | Workshop support. |
+| `parent` | 1-2% | keep | DLC → base app linkage. |
+| `mastersubs_granting_app` | 1-2% | keep | Subscription-granting app linkage. |
+
+### 2.4 `exfgls` — family-share exclusion (verified)
+
+Tested against 33 games split into known SHAREABLE vs NOT_SHAREABLE buckets.
+**Result: 31/33 agreement.** Confirmed decode:
+
+- **absent** ⇒ family-shareable (18/18 clean in sample)
+- **`"1"`** ⇒ excluded — launcher/account/DRM games (Apex, Sims 4, Diablo IV, GTA V, R6, DayZ, CoD, PoE2, Warframe, CS2)
+- **`"3"`** ⇒ excluded — Valve F2P + similar (Dota 2, TF2, War Thunder)
+- **`"6"`** ⇒ Applications, not games (Wallpaper Engine, OBS, Crosshair X)
+- **`"0"`** ⇒ Application variant (Soundpad)
+
+**Modeling rule (important — polarity + soft edge):**
+- `family_share_excluded = ("exfgls" in common)` is **high-confidence** when TRUE
+  (0 false positives in 33 games).
+- **Absence does NOT guarantee shareable** — 2 own-account games (PUBG, Destiny 2)
+  lacked the key despite being non-shareable (their restriction lives at the
+  account layer, not this Steam flag). So model as a **positive exclusion signal**,
+  never as an inverted "shareable" boolean. Surface the reason code optionally.
+
+*Caveat: the "exclude" meaning is inferred from strong correlation, not official
+Valve docs. Confident but not certified.*
+
+### 2.5 Confirmed junk — dropped at ingest (tier 0)
+
+Verified against sample; **dropped before archiving** (see §4 trim-at-ingest):
+
+| Key | Why dropped |
+|---|---|
+| `clienticon`, `clienttga`, `logo`, `logo_small` | SHA1 hashes of *client-mode* icons (not URLs). Store art URLs already scraped elsewhere & more usable. |
+| `clienticns`, `linuxclienticon` | SHA1 of Mac/Linux client icons. **Unreliable as OS-support signal** — disagreed with `oslist` on 19 (Mac) / 12 (Linux) of 120 games. `oslist` supersedes. |
+| `gameid` | Literal duplicate of appid. |
+| `controllertagwizard` | Internal Valve tagging-wizard flag. No player-facing meaning. |
+| `icon`, `small_capsule`, `header_image`, `library_assets`, `library_assets_full` | Store art already sourced via existing pipeline. |
+| `community_hub_visible`, `community_visible_stats` | Plumbing. |
+| `clienticns`, `name_localized`, `name_linux` | Low value / redundant with `name`. |
+
+*If ever wrong about a dropped field: re-sweep to recover (accepted worst case).*
+
+---
+
+## 3. Size analysis (measured, not estimated)
+
+Measured on the 120-game probe:
+
+| Metric | Value |
+|---|---|
+| Raw `common` per game | mean **5.4 KB**, median 5.3 KB, max 15 KB (tag-heavy AAA) |
+| Trimmed (junk dropped) per game | **3.2 KB** (~42% reduction) |
+| gzip ratio on this data | **10-15%** (keys repeat identically across games → highly compressible) |
+
+Extrapolated to full library:
+
+| Library size | Raw uncompressed | Trimmed uncompressed | Trimmed + gzip |
+|---|---|---|---|
+| 50k games | 259 MB | ~150 MB | **~14 MB** |
+| 100k games | 519 MB | ~300 MB | **~29 MB** |
+
+Per 64-shard file @ 100k games: ~1,560 games/shard ≈ **464 KB gzipped**
+(~1.4 MB raw). Well under the near-limit shard-size warning previously hit.
+
+### 3.1 Decompression cost (measured)
+
+On a realistic full-size shard (1,560 games, 447 KB gzipped):
+
+- gzip **decompress: ~9 ms** (negligible — native, linear, single-pass)
+- **`JSON.parse`: ~118 ms** ← the actual cost, 13× the decompress
+- The compression adds ~7% overhead; **data volume dominates, not gzip.**
+
+**Conclusion:** gzip is a non-issue. Never store a manual "zip blob." See §5.
+
+---
+
+## 4. Storage architecture — decisions
+
+### 4.1 Trim-at-ingest (DECIDED)
+
+Drop the tier-0 junk (§2.5) **before archiving**. Rationale: the junk fields
+are verified worthless, gzip already crushes them, and the ~40% archive
+reduction is worth it. If ever wrong, re-sweep. Chosen over full-raw archiving.
+
+**v2 additions (measured over 45 real games, evidence-driven):**
+Bytes-per-key profiling showed two fields dominate the payload:
+`steam_deck_compatibility` = **41%**, `supported_languages` = **17%**.
+
+- **`languages` → dropped at ingest.** Verified strict keyset-subset of
+  `supported_languages` (pure redundancy, 100% recoverable from the sibling key).
+- **`steam_deck_compatibility` → nested-trim at ingest (Option B).** The bulk is
+  the nested `tests` / `steam_machine_tests` / `steamos_tests` / `configuration`
+  blocks (~1.4 KB/game of per-test display tokens — verified non-filterable).
+  Keep the filterable scalars `category`, `steamos_compatibility`,
+  `steam_machine_compatibility`, `test_timestamp`; **lift** two genuinely-useful
+  flags out of `configuration` before dropping it —
+  `requires_internet_for_singleplayer` (always-online-even-solo filter) and
+  `hdr_support`. This is the **one deliberate exception** to "keep Layer 1
+  faithful," justified because the dropped detail is pure UI trivia and
+  re-scrapable.
+- **`supported_languages` → NOT trimmed at ingest.** Per-language
+  audio/subtitle flags are genuinely filterable (e.g. "has Latvian subtitles"),
+  so kept faithful in Layer 1; collapse to lean lists in `pics_summarize.py`
+  (Layer 2) instead. (Deferred summarizer task.)
+
+**Measured result:** 3,607 → 2,126 B/game uncompressed (**−41%**). Note: gzipped
+transfer size is ~unchanged (gzip already crushed the repetitive Deck tokens);
+the win is on-disk archive size and JSON.parse speed (fewer objects), which is
+the real client-side cost (§3.1: parse 118 ms ≫ decompress 9 ms).
+
+Schema bumped to **`pics_raw_v2`** to mark the shape change.
+
+### 4.2 Two-layer model
+
+**Layer 1 — Raw archive (`pics_raw/`, source of truth, write-once-per-refresh)**
+- The **trimmed** `common` block, stored **verbatim** (compact JSON), sharded 64-way.
+- Per-game **fetch timestamp** stored for incremental refresh.
+- This is the cold store. The frontend does NOT read it.
+- Purpose: adding a future field = re-derive from this archive, **no re-scrape**.
+  Satisfies "swap/include/exchange data points whenever" + "future-proof."
+- ~50 MB gzipped @ 100k. ~780 KB/shard.
+
+**Layer 2 — Derived `game_meta` view (`pics.json` shards, what the site loads)**
+- Trimmed, **typed, decoded** projection: tags→names, deck→int category,
+  review+bomb fields, `family_share_excluded` bool, `has_custom_eula` bool,
+  AI type, dev/publisher, feature-category booleans.
+- Merged client-side by appid, exactly like `playtime.json` / `ratings.json`.
+- Regenerated from Layer 1 by `pics_summarize.py` — a field change is a
+  summarizer edit + regenerate, **never** a scraper change.
+- ~29 MB gzipped @ 100k. ~464 KB/shard.
+
+This is the established SteamQTPD **`*_raw/` → `*_summarize.py` → shards**
+pattern (as used by playtime), extended.
+
+### 4.3 Shard key
+
+Reuse the existing invariant: **`(appid // 10) % 64`**. One appid → one shard →
+one file → one writer. The partition is a pure function of appid, so
+one-writer-per-file holds by construction regardless of fetch parallelism.
+
+### 4.5 Frontend decode strategy — IDs + maps, index-once (DECIDED: Option B)
+
+`pics.json` (Layer 2) stores **numeric IDs**, not decoded names, for `store_tags`,
+`genres`, and `category`. The three lookup maps (`tags.json`, `genres.json`,
+`categories.json`, ~30 KB total) ship as static files the frontend loads **once**.
+
+**Why B over A (names baked in):** the user-facing metric that matters is
+toggle/filter responsiveness, and that is governed by *what filter comparisons
+operate on*, not file size. IDs win on every axis the user feels:
+- **Filtering:** integer/set-membership (`game.catSet.has(9)`) is faster than
+  string matching (`includes("Co-op")`), and this runs across every game on
+  every toggle.
+- **Load/parse:** smaller data; short IDs parse faster than long strings repeated
+  tens of thousands of times (JSON.parse is the real client cost — §3.1, 118 ms
+  ≫ 9 ms decompress). Baking names writes "Free to Play" ~40k times.
+- **Transfer:** IDs are shorter and compress well; the maps are a fixed one-time
+  ~30 KB cost, not per-game.
+- (A's only advantage is frontend-code simplicity — i.e. *developer* experience,
+  not end-user experience.)
+
+**MANDATORY implementation rule — index once, filter on IDs, decode only for
+labels.** B is *only* faster if the frontend obeys this. On load:
+1. Parse `pics.json` shards.
+2. For each game, build filter indexes **once** — e.g. convert each game's tag /
+   category / genre ID lists into `Set`s (`game._tagSet = new Set(tagIds)`),
+   or build inverted indexes (tagId -> Set of appids) for O(1) filtering.
+3. Toggling a filter = set-membership test against the prebuilt index. **Never
+   re-parse or re-decode on a filter change.**
+4. The lookup maps are touched **only when rendering a visible label** (turning
+   ID `113` into "Free to Play" for a chip/column), never during filtering.
+
+Filtering and display are decoupled: filter on IDs (fast), decode to names only
+for the handful of on-screen labels (cheap). The anti-pattern that throws away
+B's advantage is re-joining names on every toggle — this MUST NOT happen. If the
+frontend ever re-decodes per filter change, B degrades to worse-than-A; the
+index-once discipline is what makes it decisively smoother.
+
+`pics_summarize.py` therefore emits IDs (ranked order preserved for tags), and
+the frontend build must construct the filter index once at load.
+
+### 4.4 Parallelism vs one-writer-per-file (resolved)
+
+PICS fetching is **not** per-shard (a single `get_product_info` call batches
+arbitrary appids across all shards). So we split phases:
+
+- **Fetch phase** — parallel by *batch* (chunks of ~100-200 appids per call),
+  NOT by shard. One anonymous session. Writes raw scratch (each worker owns its
+  own scratch file → one-writer-per-file even here).
+- **Write/partition phase** — a single summarize step groups by shard key and
+  writes each shard file exactly once.
+
+**Rule: fetchers never write shard files.** Fetchers write their own scratch;
+the partition step writes shards. This avoids the multi-writer collision class
+(same discipline as the earlier multi-workflow git-push collision fix).
+
+---
+
+## 5. Serving — HTTP Content-Encoding (Path 1, DECIDED)
+
+**Store plain `.json` shard files. Do NOT store `.gz` blobs.**
+
+GitHub Pages / CDN serves them gzipped over the wire automatically via
+`Content-Encoding: gzip`; the **browser transparently decompresses before JS
+sees it**. Consequences:
+
+- `fetch('pics_shard_12.json').then(r => r.json())` is byte-identical to today.
+  **Zero code changes, zero manual decompression, no library.**
+- Files on disk stay **plain readable JSON** — `cat`-able, greppable, editable.
+  No binary format, no lock-in, no schema-migration tooling.
+- Transfer size is the compressed ~464 KB/shard; on-disk/committed size is the
+  raw JSON (fine for the repo).
+
+Rejected alternatives: explicit `.json.gz` files (needs `DecompressionStream` /
+lib, marginal benefit) and binary formats like protobuf/msgpack (breaks
+greppability, over-engineered for a solo project — gzip'd JSON gets ~90% of the
+size win while staying debuggable).
+
+---
+
+## 6. Future-proofing
+
+1. **Schema version field** on Layer 2 (`_schema` / `_format`) so old vs new
+   derivations are distinguishable (matches existing `_format` convention).
+2. **Per-game fetch timestamp** in Layer 1 → enables **incremental refresh**
+   (re-pull only games whose `store_asset_mtime` changed, or on an age cycle)
+   instead of full sweeps forever. Keeps ongoing cost bounded.
+3. **Layer 1 archive** means any newly-wanted field is a re-derivation, not a
+   re-scrape (except the tier-0 junk we deliberately dropped).
+4. Size scales linearly and gzips to ~29-79 MB even at 100k — fine for the repo.
+
+---
+
+## 7. Lookup tables needed (one-time, small, committed)
+
+The IDs in `store_tags`, `genres`, `category` are numeric and stable. Fetch
+once, commit, cache:
+
+- **tag-ID → name** (~450 entries; Steam tag endpoint). 278 distinct tags seen
+  in just 120 games, so this is essential for readable tag filters.
+- **genre-ID → name** map.
+- **category_N → feature name** map (single-player, co-op, achievements, …).
+
+These are stable enough to commit as static JSON and refresh rarely.
+
+---
+
+## 8. Environment / dependencies (verified on Windows)
+
+`ValvePython/steam` 1.4.4 install gotchas encountered and resolved:
+
+- `pip install steam` — core lib.
+- Also requires `gevent`, `gevent-eventemitter` (NOT the generic PyPI
+  `eventemitter`, which shadows the ValvePython fork and breaks `_listeners`).
+- Requires `protobuf<3.21` **or** env var
+  `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` (protobuf-version
+  incompatibility otherwise crashes on import).
+- Anonymous login: `client.anonymous_login()` — no credentials.
+- Batch fetch: `client.get_product_info(apps=[...], timeout=…)` — batches
+  hundreds per call.
+
+**Note:** the CM session needs open network egress to Steam's servers
+(`api.steampowered.com` + CM hosts). Runs fine on a normal dev box or GitHub
+Actions runner; will NOT run in a restricted/allowlisted sandbox.
+
+---
+
+## 9. Pipeline components (to build)
+
+| Component | Role | Pattern match |
+|---|---|---|
+| `pics_refresh.py` | Anonymous PICS session; batched fetch; write trimmed `common` + fetch-ts to `pics_raw/` scratch shards | analog of `playtime_refresh.py` → `playtime_raw` |
+| `pics_summarize.py` | Read `pics_raw/`; decode via lookup tables; emit typed `game_meta` → `pics.json` shards | analog of `playtime_summarize.py` → `playtime.json` |
+| `pics.yml` | Workflow: schedule fetch + summarize, staggered cron, concurrency guard | analog of playtime/ratings workflows |
+| tag/genre/category lookup JSON | Static decode maps | new, committed |
+| COVERAGE.md rows | Two-axis coverage for the new layer | extends existing coverage.py |
+| ARCHITECTURE.md §N | Field→source→refresh table for PICS layer | extends existing authority doc |
+
+---
+
+## 10. Open items / deferred
+
+- Confirm `aicontenttype = "3"` (both pre+live) handling when a carrier appears.
+- `exfgls` reason-code meanings (1/3/6/0) are inferred, not certified — safe to
+  ship the binary flag; treat codes as advisory.
+- Incremental-refresh trigger (store_asset_mtime delta vs age cycle) — design in
+  the refresh step; first run is a full sweep.
+- Whether to surface Deck `tests[]` detail or just the top-level `category`.

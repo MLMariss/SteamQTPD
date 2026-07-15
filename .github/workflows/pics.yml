@@ -1,0 +1,71 @@
+name: PICS metadata -> pics.json
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_minutes:
+        description: "Fetch time budget in minutes"
+        default: "240"
+      stale_days:
+        description: "Skip games refreshed within N days (0 = refresh all)"
+        default: "14"
+  schedule:
+    # Staggered off the storefront-facing scrapers. PICS uses a separate CM
+    # session (not the storefront HTTP budget), but we still offset to keep
+    # commit traffic tidy. 03:20 UTC daily.
+    - cron: "20 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: steam-pics
+  cancel-in-progress: false
+
+jobs:
+  pics:
+    runs-on: ubuntu-latest
+    steps:
+      # v5/v6 deliberate: checkout v5 preserves the credential-persistence the
+      # fetch -> rebase -> push commit pattern relies on (v6/v7 changed it).
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install steam gevent gevent-eventemitter "protobuf<3.21"
+
+      # -------- Stage 1: fetch raw PICS common blocks (Layer 1) --------
+      - name: Refresh PICS raw
+        env:
+          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+        run: |
+          python pics_refresh.py \
+            --catalog games.json \
+            --out pics_raw \
+            --stale-days "${{ github.event.inputs.stale_days || '14' }}" \
+            --run-minutes "${{ github.event.inputs.run_minutes || '240' }}" \
+            --checkpoint-min 15
+
+      # -------- Stage 2: derive frontend view (Layer 2) --------
+      - name: Summarize PICS -> pics.json
+        run: |
+          python pics_summarize.py --in pics_raw --out pics
+
+      # -------- Commit (fetch -> rebase -> push, commit only on diff) --------
+      - name: Commit pics_raw + pics
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pics_raw pics
+          if git diff --staged --quiet; then
+            echo "No changes this run"
+          else
+            git commit -m "Refresh PICS metadata ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+            git fetch origin main
+            git rebase origin/main || (git rebase --abort; git merge -s ours origin/main)
+            git push
+          fi

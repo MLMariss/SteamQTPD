@@ -494,6 +494,8 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `price_and_sale.py`     | `prices.json`       | frequent         | Fast-changing layer: price, discount, sale end. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
 | `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (1 bucket/run); commits every 30 min + on shutdown. |
+| `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
+| `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
 
 **Non-Steam scrapers** (hit their own sites, so no Steam-budget contention):
 
@@ -1022,6 +1024,48 @@ code: today only 1/64 `updates_raw/` shards are populated (rotation just started
 every ~16 days at 4×/day), so `updates.json` covers far fewer games than the News-API's ~58%
 non-null `last_update_ts`. Keep News-API primary (the column sorts by it for now) until the
 shards cover materially more games, then flip precedence. See §3.1.
+
+---
+
+## 9.6 PICS metadata layer (AI disclosure, tags, Deck, reviews, family-share)
+
+A two-layer pipeline harvesting the Steam PICS `common` app-info block via an
+anonymous CM session (`ValvePython/steam`). Full design + decision record in
+`PICS_METADATA_PIPELINE.md`.
+
+**Layer 1 — `pics_raw/` (source of truth).** `pics_refresh.py` batch-fetches the
+`common` block, trims junk + nested-trims `steam_deck_compatibility` at ingest
+(schema `pics_raw_v2`), and writes 64 shards keyed by the existing
+`(appid // 10) % 64`. One writer per shard file. Per-game `_ts` enables
+incremental refresh. Time-budgeted with periodic checkpoint flush (playtime
+pattern).
+
+**Layer 2 — `pics/` (frontend view).** `pics_summarize.py` projects each game to
+a lean, index-friendly record storing **IDs, not names** (Option B, see spec
+§4.5). The frontend loads three static maps once (`tags.json`, `genres.json`,
+`categories.json`) and builds filter indexes from the IDs — filter on IDs
+(fast set-membership), decode to names only for visible labels.
+
+**Field → source → refresh:**
+
+| Field (pics.json) | From `common` key | Meaning |
+|---|---|---|
+| `tags` | `store_tags` | ranked tag IDs (decode via `tags.json`) |
+| `genres`, `pgenre` | `genres`, `primary_genre` | genre IDs (decode via `genres.json`) |
+| `cats` | `category` | feature IDs (decode via `categories.json`) |
+| `rev` | `review_score`, `review_percentage` | `[score_1_9, pct]` |
+| `rev_bomb`, `review_bombed` | `review_score_bombs`, `review_percentage_bombs` | de-bombed score; present only when divergent |
+| `deck` | `steam_deck_compatibility` | `{cat, os, machine, tested_ts, online_solo?, hdr?}` |
+| `ai` | `aicontenttype` | 0 none / 1 pre-generated / 2 live-generated |
+| `fse` | `exfgls` (presence) | family-share excluded |
+| `eula` | `eulas` (presence) | has custom EULA |
+| `dev`/`pub`/`franchise` | `associations` | structured names |
+| `langs`/`audio` | `supported_languages` | supported + full-audio language codes |
+| `mc`, `released`, `state` | `metacritic_score`, `steam_release_date`, `releasestate` | scalars |
+
+**Lookup maps** (`pics_lookups.py` + `build_category_map.py`, refreshed rarely):
+`tags.json` (live from `IStoreService/GetTagList`), `genres.json`,
+`categories.json` (derived from appdetails ground truth). Committed static.
 
 ---
 

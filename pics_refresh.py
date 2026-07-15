@@ -1,0 +1,322 @@
+#!/usr/bin/env python3
+"""
+pics_refresh.py — SteamQTPD PICS metadata scraper (Layer 1 / raw archive)
+
+Opens ONE anonymous Steam CM session, batch-fetches the PICS `common` app-info
+block for a list of appids, trims confirmed-junk fields at ingest, and writes
+the trimmed blocks (plus a per-game fetch timestamp) into 64 raw scratch shards.
+
+This is the "fetch phase" from PICS_METADATA_PIPELINE.md §4.4:
+  - parallel/batched by CHUNK, NOT by shard
+  - fetchers write raw scratch only; pics_summarize.py does the derived view
+  - shard key = (appid // 10) % 64  (existing SteamQTPD invariant)
+
+One-writer-per-file: this script is the sole writer of pics_raw/shard_NN.json.
+
+Env / deps (see spec §8):
+  pip install steam gevent gevent-eventemitter "protobuf<3.21"
+  # or set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+Requires open network egress to Steam CM + api.steampowered.com.
+
+Usage:
+  python pics_refresh.py --appids appids.txt
+  python pics_refresh.py --top 500                # pull live top-N as the list
+  python pics_refresh.py --appids ids.txt --out ./data/pics_raw --chunk 150
+  python pics_refresh.py --appids ids.txt --stale-days 30   # incremental: skip
+                                                            # games fetched < N days ago
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+from datetime import datetime, timezone
+
+SHARD_COUNT = 64
+
+# Fields dropped at ingest (spec §2.5 tier-0 junk). Everything else is kept
+# verbatim so the summarizer can derive from a faithful trimmed archive.
+DROP_KEYS = {
+    "clienticon", "clienttga", "clienticns", "linuxclienticon",
+    "logo", "logo_small", "gameid", "controllertagwizard",
+    "icon", "small_capsule", "header_image",
+    "library_assets", "library_assets_full",
+    "community_hub_visible", "community_visible_stats",
+    "name_localized", "name_linux",
+    "languages",   # redundant: strict keyset subset of supported_languages
+    # store art / client plumbing already sourced elsewhere
+}
+
+# --- Steam Deck compatibility nested-trim (spec §3, evidence: 41% of payload) ---
+# Keep the filterable top-level scalars; drop the ~1.4 KB of per-test display
+# detail (tests / steam_machine_tests / steamos_tests) and most of configuration.
+# Option B: also lift two genuinely-filterable flags out of `configuration`.
+DECK_KEEP_SCALARS = {
+    "category",                    # 1/2/3 = unknown/playable/verified (the main filter)
+    "steamos_compatibility",       # SteamOS support level
+    "steam_machine_compatibility", # Steam Machine support level
+    "test_timestamp",              # when tested (staleness signal)
+}
+DECK_CONFIG_LIFT = {
+    "requires_internet_for_singleplayer",  # always-online-even-solo filter
+    "hdr_support",                          # HDR filter
+}
+
+
+def nested_trim(rec: dict) -> dict:
+    """Reduce steam_deck_compatibility to filterable fields only (in place)."""
+    deck = rec.get("steam_deck_compatibility")
+    if isinstance(deck, dict):
+        slim = {k: v for k, v in deck.items() if k in DECK_KEEP_SCALARS}
+        cfg = deck.get("configuration")
+        if isinstance(cfg, dict):
+            for k in DECK_CONFIG_LIFT:
+                if k in cfg:
+                    slim[k] = cfg[k]
+        rec["steam_deck_compatibility"] = slim
+    return rec
+
+SCHEMA = "pics_raw_v2"  # v2: dropped `languages`, nested-trimmed steam_deck_compatibility
+
+
+def shard_of(appid: int) -> int:
+    return (appid // 10) % SHARD_COUNT
+
+
+def trim_common(common: dict) -> dict:
+    return {k: v for k, v in common.items() if k not in DROP_KEYS}
+
+
+def load_appids(args) -> list:
+    """Resolve the appid worklist from --appids, --catalog, and/or --top."""
+    ids = []
+    if args.appids:
+        with open(args.appids, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    try:
+                        ids.append(int(line.split(",")[0]))
+                    except ValueError:
+                        pass
+    if args.catalog:
+        ids.extend(load_catalog_appids(args.catalog))
+    if args.top:
+        ids.extend(get_live_top_appids(args.top))
+    # dedupe, preserve order
+    return list(dict.fromkeys(ids))
+
+
+def load_catalog_appids(path: str) -> list:
+    """Read appids from the canonical catalog/games JSON (list, dict, or
+    {"apps": {...}} / {"games": [...]} shapes are all tolerated)."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"  catalog load failed ({e})", file=sys.stderr)
+        return []
+    ids = []
+    if isinstance(data, dict):
+        # {"12345": {...}} or {"apps": {"12345": ...}} or {"games": [...]}
+        container = data.get("apps") or data.get("games") or data
+        if isinstance(container, dict):
+            for k in container:
+                try:
+                    ids.append(int(k))
+                except (ValueError, TypeError):
+                    pass
+        elif isinstance(container, list):
+            for row in container:
+                aid = row.get("appid") if isinstance(row, dict) else row
+                try:
+                    ids.append(int(aid))
+                except (ValueError, TypeError):
+                    pass
+    elif isinstance(data, list):
+        for row in data:
+            aid = row.get("appid") if isinstance(row, dict) else row
+            try:
+                ids.append(int(aid))
+            except (ValueError, TypeError):
+                pass
+    print(f"  catalog: {len(ids)} appids from {path}")
+    return ids
+
+
+def get_live_top_appids(n: int) -> list:
+    import urllib.request
+    url = "https://api.steampowered.com/ISteamChartsService/GetMostPlayedGames/v1/"
+    try:
+        with urllib.request.urlopen(url, timeout=20) as r:
+            data = json.loads(r.read().decode())
+        ranks = data.get("response", {}).get("ranks", [])
+        out = [row["appid"] for row in ranks[:n]]
+        print(f"  live top pull: {len(out)} appids")
+        return out
+    except Exception as e:
+        print(f"  live top pull failed: {e}", file=sys.stderr)
+        return []
+
+
+def read_existing_shard(out_dir: str, shard: int) -> dict:
+    path = os.path.join(out_dir, f"shard_{shard:02d}.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+        return doc.get("apps", {})
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def write_shard(out_dir: str, shard: int, apps: dict):
+    """Sole writer of shard_NN.json. Atomic via temp + replace."""
+    path = os.path.join(out_dir, f"shard_{shard:02d}.json")
+    tmp = path + ".tmp"
+    doc = {
+        "_schema": SCHEMA,
+        "_shard": shard,
+        "_updated": datetime.now(timezone.utc).isoformat(),
+        "apps": apps,
+    }
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f, separators=(",", ":"), ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+def main():
+    ap = argparse.ArgumentParser(description="SteamQTPD PICS raw metadata scraper")
+    ap.add_argument("--appids", help="file of appids (one per line, # comments ok)")
+    ap.add_argument("--catalog", help="canonical catalog/games JSON to read appids from")
+    ap.add_argument("--top", type=int, help="also pull live top-N most-played")
+    ap.add_argument("--out", default="pics_raw", help="output dir for raw shards")
+    ap.add_argument("--chunk", type=int, default=150, help="appids per PICS call")
+    ap.add_argument("--stale-days", type=float, default=0,
+                    help="skip games whose stored fetch ts is younger than N days (0=refresh all)")
+    ap.add_argument("--run-minutes", type=float, default=0,
+                    help="time budget: stop fetching after N minutes, checkpoint-committing (0=unbounded)")
+    ap.add_argument("--checkpoint-min", type=float, default=10,
+                    help="write shards to disk every N minutes during a budgeted run")
+    ap.add_argument("--timeout", type=int, default=60, help="per-call PICS timeout (s)")
+    args = ap.parse_args()
+
+    # protobuf shim (spec §8) — set before importing steam if not already set
+    os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
+    from steam.client import SteamClient  # noqa: E402
+
+    worklist = load_appids(args)
+    if not worklist:
+        print("no appids to fetch (use --appids, --catalog and/or --top)", file=sys.stderr)
+        sys.exit(2)
+    print(f"worklist: {len(worklist)} appids")
+
+    os.makedirs(args.out, exist_ok=True)
+
+    # --- incremental skip: preload existing shard data, drop fresh games ---
+    now = time.time()
+    existing_by_shard = {}
+    if args.stale_days > 0:
+        cutoff = now - args.stale_days * 86400
+        skip = set()
+        for shard in range(SHARD_COUNT):
+            existing_by_shard[shard] = read_existing_shard(args.out, shard)
+            for aid_str, rec in existing_by_shard[shard].items():
+                if rec.get("_ts", 0) >= cutoff:
+                    skip.add(int(aid_str))
+        before = len(worklist)
+        worklist = [a for a in worklist if a not in skip]
+        print(f"  incremental: skipped {before - len(worklist)} fresh games "
+              f"(< {args.stale_days}d), {len(worklist)} to fetch")
+    else:
+        for shard in range(SHARD_COUNT):
+            existing_by_shard[shard] = read_existing_shard(args.out, shard)
+
+    if not worklist:
+        print("nothing stale to fetch; done.")
+        return
+
+    # --- fetch phase (time-budgeted, checkpoint-flushing) ---
+    client = SteamClient()
+    client.anonymous_login()
+    if not client.logged_on:
+        print("anonymous login failed", file=sys.stderr)
+        sys.exit(1)
+    print("logged in anonymously")
+
+    start = time.time()
+    budget = args.run_minutes * 60 if args.run_minutes > 0 else None
+    checkpoint = args.checkpoint_min * 60
+    last_flush = start
+
+    fetched_total = 0
+    pending = {}  # appid -> rec, not yet flushed to shards
+    total = len(worklist)
+
+    def flush(pending_map):
+        """Merge pending records into shards and write touched shards (sole writer)."""
+        touched = set()
+        for appid, rec in pending_map.items():
+            shard = shard_of(appid)
+            existing_by_shard[shard][str(appid)] = rec
+            touched.add(shard)
+        for shard in sorted(touched):
+            write_shard(args.out, shard, existing_by_shard[shard])
+        return len(touched)
+
+    stopped_early = False
+    for i in range(0, total, args.chunk):
+        if budget is not None and (time.time() - start) >= budget:
+            print(f"  time budget reached ({args.run_minutes} min); stopping at {i}/{total}")
+            stopped_early = True
+            break
+        chunk = worklist[i:i + args.chunk]
+        try:
+            resp = client.get_product_info(apps=chunk, timeout=args.timeout)
+        except Exception as e:
+            print(f"  chunk {i}: fetch error {e}; retrying once", file=sys.stderr)
+            time.sleep(3)
+            try:
+                resp = client.get_product_info(apps=chunk, timeout=args.timeout)
+            except Exception as e2:
+                print(f"  chunk {i}: retry failed ({e2}); skipping", file=sys.stderr)
+                continue
+        apps = resp.get("apps", {})
+        ts = int(time.time())
+        for appid in chunk:
+            app = apps.get(appid)
+            if app and "common" in app:
+                rec = nested_trim(trim_common(app["common"]))
+                rec["_ts"] = ts
+                pending[appid] = rec
+                fetched_total += 1
+        print(f"  fetched {min(i + args.chunk, total)}/{total}")
+
+        # periodic checkpoint so a crash / runner interruption loses <=1 interval
+        if (time.time() - last_flush) >= checkpoint and pending:
+            n = flush(pending)
+            print(f"  checkpoint: flushed {len(pending)} games to {n} shards")
+            pending = {}
+            last_flush = time.time()
+
+    client.logout()
+
+    # final flush of anything still pending
+    if pending:
+        n = flush(pending)
+        print(f"final flush: {len(pending)} games to {n} shards")
+    print(f"got {fetched_total} common blocks{' (partial run)' if stopped_early else ''}")
+
+    # tiny run summary
+    ai = sum(
+        1 for shard in existing_by_shard.values()
+        for r in shard.values()
+        if isinstance(r, dict) and "aicontenttype" in r
+    )
+    print(f"summary: {fetched_total} games this run; {ai} games with aicontenttype in archive")
+
+
+if __name__ == "__main__":
+    main()
