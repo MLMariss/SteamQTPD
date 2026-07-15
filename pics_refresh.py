@@ -33,6 +33,8 @@ import sys
 import time
 from datetime import datetime, timezone
 
+import gevent  # hard wall-clock watchdog around CM calls (see fetch_chunk)
+
 SHARD_COUNT = 64
 
 # Fields dropped at ingest (spec §2.5 tier-0 junk). Everything else is kept
@@ -187,6 +189,33 @@ def write_shard(out_dir: str, shard: int, apps: dict):
     os.replace(tmp, path)
 
 
+def ensure_logged_on(client) -> bool:
+    """Re-establish the anonymous CM session if it dropped. Retrying a call on a
+    dead socket just hangs again, so recovery means a fresh login, not a repeat.
+    Returns True once logged on."""
+    if client.logged_on:
+        return True
+    try:
+        client.disconnect()
+    except Exception:
+        pass
+    try:
+        client.anonymous_login()
+    except Exception as e:
+        print(f"  reconnect failed: {e}", file=sys.stderr)
+    return bool(client.logged_on)
+
+
+def fetch_chunk(client, chunk, timeout):
+    """`get_product_info` wrapped in a hard `gevent.Timeout` a few seconds beyond
+    the library's own timeout. The library timeout does not fire when the CM
+    socket is dead, so without this backstop one wedged call freezes the whole
+    run indefinitely (and defeats the --run-minutes budget). Raises
+    gevent.Timeout on wedge, or the underlying exception on other errors."""
+    with gevent.Timeout(timeout + 5):
+        return client.get_product_info(apps=chunk, timeout=timeout)
+
+
 def main():
     ap = argparse.ArgumentParser(description="SteamQTPD PICS raw metadata scraper")
     ap.add_argument("--appids", help="file of appids (one per line, # comments ok)")
@@ -273,16 +302,33 @@ def main():
             stopped_early = True
             break
         chunk = worklist[i:i + args.chunk]
-        try:
-            resp = client.get_product_info(apps=chunk, timeout=args.timeout)
-        except Exception as e:
-            print(f"  chunk {i}: fetch error {e}; retrying once", file=sys.stderr)
-            time.sleep(3)
+        resp = None
+        for attempt in (1, 2):
             try:
-                resp = client.get_product_info(apps=chunk, timeout=args.timeout)
-            except Exception as e2:
-                print(f"  chunk {i}: retry failed ({e2}); skipping", file=sys.stderr)
-                continue
+                resp = fetch_chunk(client, chunk, args.timeout)
+                break
+            except gevent.Timeout:
+                print(f"  chunk {i}: timed out after ~{args.timeout}s "
+                      f"(attempt {attempt})", file=sys.stderr)
+            except Exception as e:
+                print(f"  chunk {i}: fetch error {e} (attempt {attempt})",
+                      file=sys.stderr)
+            # Recover before retrying: a dropped CM session needs a fresh login,
+            # not another call on the same dead socket.
+            if attempt == 1:
+                if not ensure_logged_on(client):
+                    print(f"  chunk {i}: session down, reconnect failed; skipping",
+                          file=sys.stderr)
+                    break
+                time.sleep(3)
+        if resp is None:
+            # A hang/skip must not defeat the time budget: re-check it here so a
+            # run of dead chunks still stops on schedule instead of wedging.
+            if budget is not None and (time.time() - start) >= budget:
+                print(f"  time budget reached during recovery; stopping at {i}/{total}")
+                stopped_early = True
+                break
+            continue
         apps = resp.get("apps", {})
         ts = int(time.time())
         for appid in chunk:
@@ -301,7 +347,10 @@ def main():
             pending = {}
             last_flush = time.time()
 
-    client.logout()
+    try:
+        client.logout()
+    except Exception:
+        pass
 
     # final flush of anything still pending
     if pending:
