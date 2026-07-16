@@ -475,16 +475,9 @@
   /* Open sections lay the header (title+caret+count) on the LEFT and the controls
      BESIDE it on the same row, reclaiming the empty gutter that used to sit next to
      the title. The header stays the sole collapse toggle; the body isn't clickable. */
-  .filter-section.open{display:flex; align-items:flex-start; gap:18px; cursor:pointer}
-  .filter-section.open > .section-body{flex:1 1 auto; min-width:0; cursor:pointer}
-  .filter-section.open .field,
-  .filter-section.open .seg,
-  .filter-section.open .tagrail,
-  .filter-section.open input,
-  .filter-section.open button{cursor:auto}
-  .filter-section.open .seg button,
-  .filter-section.open .chip,
-  .filter-section.open [data-tag]{cursor:pointer}
+  .filter-section.open{display:flex; align-items:flex-start; gap:18px}
+  .filter-section.open > .section-head{cursor:pointer}
+  .filter-section.open > .section-body{flex:1 1 auto; min-width:0; cursor:auto}
   .filter-section.open > .section-head{flex:0 0 132px; align-self:stretch; padding-top:16px;
         flex-wrap:wrap; align-content:flex-start; row-gap:4px}
   .filter-section.open > .section-head .sec-count{margin-left:19px; flex-basis:100%}
@@ -961,7 +954,7 @@ try{
       </div>
 
       <div class="filter-section" data-section="quality">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Quality &amp; Activity</span><span class="sec-count" data-count="quality"></span></button>
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Quality</span><span class="sec-count" data-count="quality"></span></button>
         <div class="section-body"><div class="ctl-row">
         <div class="field">
           <label>Min rating</label>
@@ -3061,16 +3054,14 @@ function init(data){
   $("#gridview").addEventListener("keydown", e => {
     if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("gcard")){ e.preventDefault(); e.target.classList.toggle("open"); }
   });
-  // L1: accordion sections toggle open/closed (persisted). The WHOLE header band is the
-  // click target — the title column AND the empty gutter to the right of the controls —
-  // so folding a section is forgiving, matching the pre-compact layout. Only real control
-  // widgets are exempt, so tapping a filter never collapses the section.
-  const SECTION_CONTROL_SEL = "button, input, select, textarea, a, label, .seg, .chip, [data-tag], [role='group'], .tagrail, .ctl-row .field";
+  // L1: accordion sections toggle open/closed (persisted). The toggle target is the
+  // header column ONLY (caret + title + count) — never the control body. This protects
+  // every filter/tag/button area from folding on a near-miss or a hover-then-click, while
+  // keeping a clean, predictable fold target on the title itself.
   document.querySelectorAll(".filter-section").forEach(sec =>
     sec.addEventListener("click", e => {
-      // A click inside an actual control (or its group/label) shouldn't fold the section…
-      if(e.target.closest(SECTION_CONTROL_SEL) && !e.target.closest(".section-head")) return;
-      // …but the title column, caret, count, and the empty body gutter all toggle.
+      const head = e.target.closest(".section-head");
+      if(!head || head.closest(".filter-section") !== sec) return;   // only the header column folds
       toggleSection(sec.dataset.section);
     }));
   // L2: clicking a summarized filter term opens its inline editor (or deep-links into the bar).

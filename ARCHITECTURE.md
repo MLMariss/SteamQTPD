@@ -1078,26 +1078,46 @@ a lean, index-friendly record storing **IDs, not names** (Option B, see spec
 `tags.json` (live from `IStoreService/GetTagList`), `genres.json`,
 `categories.json` (derived from appdetails ground truth). Committed static.
 
-**Frontend data-model direction (decided 2026-07-16, implementation pending).**
-Full record in `PICS_METADATA_PIPELINE.md §11`. Summary:
+**Frontend data-model direction (decided 2026-07-16, SHIPPED 2026-07-16).**
+Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
+`pics.json` (built by `pics_merge.py`, see §9.6). Summary of what shipped:
 
-- **Tags → PICS primary, SteamSpy supplement.** `store_tags` drives the rail;
-  taxonomy remaps to stable IDs; SteamSpy is a thin coverage fallback only.
-- **Modes → `cats` primary, not tags.** User tags are unreliable on long-tail
-  titles; `cats` is authoritative Valve feature data.
+- **Tags → PICS primary, SteamSpy supplement.** `store_tags` (ranked IDs,
+  decoded to names via `lookups/tags.json`) drive the rail; the existing
+  name-based tag taxonomy/canon works unchanged on top. SteamSpy `tags.json`
+  kept as a coverage fallback only.
+- **Modes / controller / VR → `cats` primary, not tags.** Authoritative Valve
+  feature flags; controller is derived from cats 28/18, VR Only from cats 54.
 - **Genres → backend only** (no rail — would duplicate the tag rail); used for
-  the EA signal and primary-genre display.
+  the EA signal (genre-70) and primary-genre display.
 - **Early Access → genre-70 only.** SteamSpy EA tag dropped (lingers post-launch,
-  unreliable).
-- **Mature/adult gate → `content_desc` code 4 (+ genres 71/72)**, replacing
-  `ADULT_TAGS`. New blur UX: blur → "18+?" confirm → reveal + open store link.
-- **"Flags" cluster** (one compact toggle group): AI · custom EULA · Early
-  Access · family-share excluded · controller (Full/Partial) · Steam Deck
-  (Verified/Playable/Unsupported, tier dropdown + row glyph) · VR Only.
+  unreliable). Precomputed as the `ea` flag by the summarizer.
+- **Mature/adult gate → `content_desc` codes 3+4 only** (Adult-Only Sexual /
+  Frequent Nudity-Sexual), precomputed as the `adult` flag. Code 1 ("Some
+  Nudity") is EXCLUDED — it over-flags mainstream titles (Witcher 3, BG3,
+  Cyberpunk) exactly like the old `ADULT_TAGS` heuristic did; code 5 is a
+  container marker. Replaces `ADULT_TAGS`, which is now a pre-PICS fallback only.
+  New blur UX: blur → "18+?" confirm tap → reveal + open store link (table + card).
+- **"Flags" cluster** (own collapsible filter-section): Early Access · AI
+  disclosure (any/hide/only) · Controller (any/full/partial) · Steam Deck
+  (any/verified/playable+/unsupported) · Adult (any/hide/only) · VR Only ·
+  Family sharing (excluded) · Custom EULA. All URL-serialized/shareable; the
+  filters no-op unless `pics.json` actually carries games (HAS_PICS guard), so
+  the empty placeholder doesn't zero the list.
 - **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
   staleness / review bombing).
 - **Parked backend-only:** dev/publisher, franchise, languages, review-bomb
-  adjusted score / review-bombing detection (not surfaced).
+  adjusted score / review-bombing detection (not surfaced; dropped from the
+  slim `pics.json` cut entirely).
+
+**Filter-bar layout (shipped same day).** Filter sections use a compact
+side-by-side layout: the section header (caret + title + active-count badge)
+sits in a fixed ~132px left column, with controls flowing beside it in the
+reclaimed gutter (previously the controls sat on a second row below the title).
+Collapse toggles on the **header column only** — never the control body — so a
+near-miss or hover-then-click on a filter/tag never folds the section. On
+viewports ≤720px the layout reverts to header-above-controls. The "Quality &
+Activity" section was renamed to just "Quality".
 
 ---
 

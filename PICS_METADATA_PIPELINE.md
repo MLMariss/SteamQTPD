@@ -87,7 +87,7 @@ titles; the Live figure is the true real-world incidence.
 | `steam_release_date` | 95% | **98.7%** | unix ts string | Release date. |
 | `original_release_date` | 15% | **9.1%** | unix ts string | True original date for EA→1.0 games. |
 | `metacritic_score` / `metacritic_name` / `metacritic_fullurl` | ~40-50% | **3.3%** | int / str / url | Metacritic when present. Sample was AAA-heavy; library-wide only ~4k titles carry a Metacritic score. |
-| `content_descriptors` | 36% | **22.7%** (emitted as `content_desc`) | `[1,2,5]` int list | Mature-content flags. **Unrelated to AI** despite adjacency. **SHIPPED to `pics/` as `content_desc`** (28,006 carriers). Codes: 1=violence, 2=gore, 3=general mature, 4=nudity/sexual, 5=**container marker** (present in 100% of carriers — NOT "adult only"; never gate on 5). The real adult signal is **code 4** (7,825 titles); genres 71/72 (Sexual Content / Nudity) are a secondary Valve signal. |
+| `content_descriptors` | 36% | **22.7%** (emitted as `content_desc`) | `[1,3,4,5]` int list | Mature-content flags. **Unrelated to AI** despite adjacency. **SHIPPED to `pics/` as `content_desc`** (28,006 carriers). Canonical Steam codes: 1=Some Nudity/Sexual, 2=Frequent Violence/Gore, 3=Adult Only Sexual, 4=Frequent Nudity/Sexual, 5=**General Mature — container marker** (present in 100% of carriers; never gate on 5). The adult gate uses **codes 3+4** (7,825 titles). **Code 1 is deliberately NOT used** — it over-flags mainstream titles (Witcher 3, BG3, Cyberpunk) just like the old user-tag heuristic. |
 
 ### 2.3 Promoted keepers — investigated specially (tier 2)
 
@@ -397,12 +397,13 @@ the summarized view and counted by `coverage.py`:
 - **`content_descriptors` → `content_desc`** — SHIPPED, **22.7%** (28,006
   carriers). The earlier "dropped at Layer-1 trim, needs a re-sweep" note no
   longer holds — the key is retained through ingest and surfaced by the
-  summarizer. Code semantics: 1=violence, 2=gore, 3=general mature, 4=nudity/
-  sexual, **5=container marker (100% co-occurrence — NOT adult-only)**. The
-  mature/adult gate uses **code 4** (7,825 titles), with genres 71/72 as a
-  secondary Valve signal. This **replaces** the old client-side `ADULT_TAGS`
-  heuristic, which mis-flagged normal titles (e.g. Witcher 3) that merely carry
-  a user "Sexual Content" tag.
+  summarizer. Canonical Steam codes: 1=Some Nudity/Sexual, 2=Frequent Violence/
+  Gore, 3=Adult Only Sexual, 4=Frequent Nudity/Sexual, **5=General Mature
+  container marker (100% co-occurrence — never gate on it)**. The mature/adult
+  gate uses **codes 3+4** (7,825 titles); **code 1 is excluded** because it
+  over-flags mainstream titles. This **replaces** the old client-side
+  `ADULT_TAGS` heuristic, which mis-flagged normal titles (e.g. Witcher 3) that
+  merely carry a user "Sexual Content" tag.
 - **`releasestate` → `state`** — SHIPPED, **98.8%** (122,110 records: 121,640
   released, 470 prerelease). Summarizer-emitted, no re-scrape was needed. Note:
   `state` is the live/coming-soon signal; it is **not** the Early Access signal —
@@ -446,15 +447,32 @@ tag is **dropped for this signal** — user tags linger after a game leaves EA a
 are wrongly added, so they are unreliable. genre-70 is Valve-authoritative and
 catches ~4,344 titles the tag missed.
 
-**Mature/adult gate — switched entirely to PICS.** `content_desc` code 4 (+
-genres 71/72), replacing `ADULT_TAGS`. New blur UX: image blurred → 1st click
-shows an "18+?" confirm → 2nd click reveals the image and opens the store link.
+**Mature/adult gate — switched entirely to PICS (SHIPPED).** `content_desc`
+codes **3+4** (Adult-Only Sexual / Frequent Nudity-Sexual), precomputed as the
+`adult` flag by `pics_summarize.py`. Code 1 excluded (over-flags mainstream
+titles); code 5 is a container marker. Replaces `ADULT_TAGS` (now a pre-PICS
+fallback only). New blur UX: image blurred → 1st click shows an "18+?" confirm →
+2nd click reveals the image and opens the store link (table thumb + mobile card).
 
-**"Flags" cluster — one compact toggle group** (keeps the dense filter bar from
-growing): AI disclosure (10.2%), custom EULA (8.9%), Early Access (genre-70),
-family-share excluded (0.7%), controller support (Full/Partial from `cats`
-28/18), Steam Deck (Verified/Playable/Unsupported from `deck.cat`, compact tier
-dropdown + row glyph, no new column), VR Only (`cats` 54, 5,372).
+**"Flags" cluster — its own collapsible filter-section** (SHIPPED): Early Access
+(genre-70), AI disclosure (any/hide/only, 10.2%), Controller (any/full/partial
+from `cats` 28/18), Steam Deck (any/verified/playable+/unsupported from
+`deck.cat`), Adult (any/hide/only), VR Only (`cats` 54, 5,372), Family sharing
+(excluded, 0.7%), Custom EULA (8.9%). All URL-serialized/shareable. Filters
+no-op unless `pics.json` carries games (HAS_PICS guard), so the empty placeholder
+never zeroes the list.
+
+**Filter-bar layout (SHIPPED).** Compact side-by-side: header (caret + title +
+active-count) in a ~132px left column, controls beside it in the reclaimed
+gutter. Collapse toggles on the header column only (never the control body), so
+a near-miss/hover-then-click on a filter or tag never folds the section. Reverts
+to stacked layout ≤720px. "Quality & Activity" renamed to "Quality".
+
+**Data delivery — one slim merged file.** `pics_merge.py` merges the 64 `pics/`
+shards into a single `pics.json` (the file the frontend fetches), dropping the
+parked backend-only fields (dev/pub/franchise/langs/audio) for a ~37% smaller
+transfer (12.4 MB → 7.8 MB gz). Wired into `pics.yml` as the stage after
+summarize; without it `pics.json` is never written.
 
 **Rating — games.json primary, PICS validator.** games.json `rating_pct` (93.6%)
 stays primary; PICS `rev` (64.0%) validates (agrees ±2 pts on 77,556/79,013
