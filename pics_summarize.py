@@ -27,7 +27,7 @@ import json
 import os
 
 SHARD_COUNT = 64
-FORMAT = "pics_v1"
+FORMAT = "pics_v2"
 # lean array/object contract, documented in the output header
 FORMAT_DOC = {
     "tags": "ranked tag IDs (decode via tags.json)",
@@ -41,7 +41,25 @@ FORMAT_DOC = {
     "eula": "has_custom_eula (bool)",
     "langs": "supported language codes",
     "audio": "language codes with full audio",
+    "content_desc": "mature-content codes (1=violence 2=gore 3=mature 4=nudity/sexual 5=container)",
+    "controller": "full / partial (from cats 28/18)",
+    "state": "released / prerelease",
+    # --- v2 derived filter flags (computed once here so the frontend never re-derives) ---
+    "ea": "Early Access (bool) = genre-70 present. Valve signal, NOT the SteamSpy tag.",
+    "adult": "adult gate (bool) = content_desc code 3 or 4. Replaces the ADULT_TAGS heuristic; excludes code 1 (over-flags AAA).",
+    "vr_only": "VR Only (bool) = cats category 54.",
 }
+
+# Genre / category IDs used by the derived flags (keep in one place).
+GENRE_EARLY_ACCESS = 70
+CONTENT_DESC_ADULT_ONLY_SEXUAL = 3   # "Adult Only Sexual Content"
+CONTENT_DESC_FREQUENT_NUD_SEXUAL = 4 # "Frequent Nudity or Sexual Content"
+CAT_VR_ONLY = 54
+# NB: content_desc code 1 ("Some Nudity/Sexual") and code 5 ("General Mature",
+# a container present on ~all classified games) are DELIBERATELY excluded — code 1
+# over-flags mainstream titles (Witcher 3, Baldur's Gate 3, Cyberpunk) exactly like
+# the old ADULT_TAGS heuristic did. Codes 3+4 target the true adult catalog with no
+# AAA false positives.
 
 
 def shard_of(appid: int) -> int:
@@ -198,6 +216,22 @@ def summarize_game(appid: int, rec: dict) -> dict:
     cd = ids_from_indexed(rec.get("content_descriptors"))
     if cd:
         g["content_desc"] = [_int(x, x) for x in cd]
+
+    # --- v2 derived filter flags (emit only when True; sparse, index-once friendly) ---
+    genre_ids = g.get("genres") or []
+    cat_ids_list = g.get("cats") or []
+    cd_codes = g.get("content_desc") or []
+
+    if GENRE_EARLY_ACCESS in genre_ids:
+        g["ea"] = True
+    # Adult gate: PICS content descriptor codes 3 (Adult Only Sexual) or 4 (Frequent
+    # Nudity/Sexual). Deliberately NOT code 1 (over-flags Witcher 3 / BG3 / Cyberpunk)
+    # and NOT user "Sexual Content" tags. Targets the true adult catalog, no AAA noise.
+    if (CONTENT_DESC_ADULT_ONLY_SEXUAL in cd_codes
+            or CONTENT_DESC_FREQUENT_NUD_SEXUAL in cd_codes):
+        g["adult"] = True
+    if CAT_VR_ONLY in cat_ids_list:
+        g["vr_only"] = True
 
     return g
 

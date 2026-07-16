@@ -248,12 +248,18 @@ aren't lost, but each needs a source-feasibility check before it's worth scoping
 - **isthereanydeal integration.** Cross-store pricing and price history. *Overlaps with
   region-pricing (§3.1); evaluate together.* Needs an API/ToS review.
 
-- **Sequel / franchise linkage — "what has a sequel and what it is."** Steam exposes no
-  structured franchise graph; would need an external DB (e.g. IGDB) or heuristics. *Feasibility
-  unclear; scope creep risk.*
+- **Sequel / franchise linkage — "what has a sequel and what it is."** ~~Steam exposes no
+  structured franchise graph; would need an external DB.~~ **Partly solved by PICS:** the
+  `associations` block yields a structured `franchise` name, now shipped to `pics/` at **23.5%**
+  (29,067 titles) — no external DB needed for franchise *grouping*. What PICS does **not** give
+  is an ordered sequel graph (which title is the sequel of which); that ordering would still need
+  heuristics or an external DB. *Franchise grouping: available now (parked, backend-only). Ordered
+  sequel graph: still open.*
 
-- **Correlate dev teams across games.** "Made by the same people who made X." No structured
-  Steam source; would ride on an external DB. *Harder than franchise linkage.*
+- **Correlate dev teams across games.** "Made by the same people who made X." **PICS `dev`/`pub`
+  (99.9% / 99.6%, structured) makes same-developer grouping directly available** — no external DB
+  for the grouping itself. Parked backend-only for now (no frontend). *Was "harder than franchise
+  linkage"; now the easy half is a shipped field.*
 
 - **"Talked about vs actually playing" metric.** Buzz-vs-engagement. Needs a social/mentions
   data source cross-referenced with playtime. *No clear source; vague; park it.*
@@ -1048,24 +1054,50 @@ a lean, index-friendly record storing **IDs, not names** (Option B, see spec
 
 **Field → source → refresh:**
 
-| Field (pics.json) | From `common` key | Meaning |
-|---|---|---|
-| `tags` | `store_tags` | ranked tag IDs (decode via `tags.json`) |
-| `genres`, `pgenre` | `genres`, `primary_genre` | genre IDs (decode via `genres.json`) |
-| `cats` | `category` | feature IDs (decode via `categories.json`) |
-| `rev` | `review_score`, `review_percentage` | `[score_1_9, pct]` |
-| `rev_bomb`, `review_bombed` | `review_score_bombs`, `review_percentage_bombs` | de-bombed score; present only when divergent |
-| `deck` | `steam_deck_compatibility` | `{cat, os, machine, tested_ts, online_solo?, hdr?}` |
-| `ai` | `aicontenttype` | 0 none / 1 pre-generated / 2 live-generated |
-| `fse` | `exfgls` (presence) | family-share excluded |
-| `eula` | `eulas` (presence) | has custom EULA |
-| `dev`/`pub`/`franchise` | `associations` | structured names |
-| `langs`/`audio` | `supported_languages` | supported + full-audio language codes |
-| `mc`, `released`, `state` | `metacritic_score`, `steam_release_date`, `releasestate` | scalars |
+| Field (pics.json) | From `common` key | Coverage | Meaning |
+|---|---|---:|---|
+| `tags` | `store_tags` | 99.9% | ranked tag IDs (decode via `tags.json`) |
+| `genres`, `pgenre` | `genres`, `primary_genre` | 99.9% / 100% | genre IDs (decode via `genres.json`); **EA = genre-70** |
+| `cats` | `category` | 100% | feature IDs (decode via `categories.json`) — modes, controller, VR |
+| `rev` | `review_score`, `review_percentage` | 64.0% | `[score_1_9, pct]` |
+| `rev_bomb`, `review_bombed` | `review_score_bombs`, `review_percentage_bombs` | 0.1% | de-bombed score; present only when divergent. **Backend only — not surfaced.** |
+| `deck` | `steam_deck_compatibility` | 27.2% | `{cat, os, machine, tested_ts, online_solo?, hdr?}` — cat 1=Unsupported/2=Playable/3=Verified |
+| `controller` | `category` (28/18) | 34.2% | `full` / `partial` — 100% derivable from `cats` |
+| `content_desc` | `content_descriptors` | 22.7% | int list; 1=violence 2=gore 3=mature 4=nudity/sexual **5=container (not adult)** |
+| `ai` | `aicontenttype` | 10.2% | 0 none / 1 pre-generated / 2 live-generated |
+| `fse` | `exfgls` (presence) | 0.7% | family-share excluded |
+| `eula` | `eulas` (presence) | 8.9% | has custom EULA |
+| `dev`/`pub` | `associations` | 99.9% / 99.6% | structured names. **Backend only (parked).** |
+| `franchise` | `associations` | 23.5% | structured franchise name(s). **Backend only (parked).** |
+| `langs`/`audio` | `supported_languages` | 99.9% / 44.0% | supported + full-audio codes. **Backend only (parked).** |
+| `mc` | `metacritic_score` | 3.3% | scalar |
+| `released`, `orig_released` | `steam_release_date`, `original_release_date` | 98.7% / 9.1% | unix ts scalars |
+| `state` | `releasestate` | 98.8% | `released` / `prerelease` — live/coming-soon (**not** the EA signal) |
 
 **Lookup maps** (`pics_lookups.py` + `build_category_map.py`, refreshed rarely):
 `tags.json` (live from `IStoreService/GetTagList`), `genres.json`,
 `categories.json` (derived from appdetails ground truth). Committed static.
+
+**Frontend data-model direction (decided 2026-07-16, implementation pending).**
+Full record in `PICS_METADATA_PIPELINE.md §11`. Summary:
+
+- **Tags → PICS primary, SteamSpy supplement.** `store_tags` drives the rail;
+  taxonomy remaps to stable IDs; SteamSpy is a thin coverage fallback only.
+- **Modes → `cats` primary, not tags.** User tags are unreliable on long-tail
+  titles; `cats` is authoritative Valve feature data.
+- **Genres → backend only** (no rail — would duplicate the tag rail); used for
+  the EA signal and primary-genre display.
+- **Early Access → genre-70 only.** SteamSpy EA tag dropped (lingers post-launch,
+  unreliable).
+- **Mature/adult gate → `content_desc` code 4 (+ genres 71/72)**, replacing
+  `ADULT_TAGS`. New blur UX: blur → "18+?" confirm → reveal + open store link.
+- **"Flags" cluster** (one compact toggle group): AI · custom EULA · Early
+  Access · family-share excluded · controller (Full/Partial) · Steam Deck
+  (Verified/Playable/Unsupported, tier dropdown + row glyph) · VR Only.
+- **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
+  staleness / review bombing).
+- **Parked backend-only:** dev/publisher, franchise, languages, review-bomb
+  adjusted score / review-bombing detection (not surfaced).
 
 ---
 

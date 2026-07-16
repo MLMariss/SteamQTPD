@@ -80,14 +80,14 @@ titles; the Live figure is the true real-world incidence.
 | `review_percentage` | 99% | **64.0%** | `"0"`–`"100"` | Canonical % positive. |
 | `review_score_bombs` / `review_percentage_bombs` | ~10% | **0.1%** | same shapes | **Review-bomb-adjusted** score. Present only on bombed games (just 97 across the library — the sample's ~10% was famous-bombed-title bias). Compare vs raw to *detect* review bombing. |
 | `associations` | 100% | **99.9% dev / 99.6% pub** | `{"0":{"type":"developer","name":"…"},…}` | Structured dev/publisher/franchise. No HTML parsing. |
-| `category` | 100% | **100.0%** | `{"category_2":"1","category_1":"1",…}` | Feature flags (single-player, co-op, achievements, cloud, controller…). Filterable. |
+| `category` | 100% | **100.0%** (emitted as `cats`) | `{"category_2":"1","category_1":"1",…}` | Feature flags. **Primary source for mode filters** (Single-player 95.9%, Multiplayer 17.8%, Co-op 9.8%, Online Co-op, Split-screen, PvP/Online PvP), **controller support** (cat 28=Full 22.7% / 18=Partial 11.6% — `controller` field is 100% derivable from these), and **VR Only** (cat 54, 4.3%). Trusted over user tags for modes. |
 | `genres` / `primary_genre` | 99% | **99.9% / 100.0%** | `{"0":"3"}` / `"3"` | Genre IDs. Needs genre-ID→name lookup. |
-| `releasestate` | 94% | present in raw (470 prerelease) | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. **Note: carried in `pics_raw/` but NOT yet emitted to `pics/` — see §10.** |
+| `releasestate` | 94% | **98.8%** (emitted as `state`) | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. **SHIPPED to `pics/` as `state`** (122,110 records: 121,640 released, 470 prerelease). Corrects the earlier "not yet emitted" note. |
 | `supported_languages` | 99% | **99.9%** (langs) / **44.0%** (full-audio) | per-language `{supported, full_audio, subtitles}` | Richer than a flat list. |
 | `steam_release_date` | 95% | **98.7%** | unix ts string | Release date. |
 | `original_release_date` | 15% | **9.1%** | unix ts string | True original date for EA→1.0 games. |
 | `metacritic_score` / `metacritic_name` / `metacritic_fullurl` | ~40-50% | **3.3%** | int / str / url | Metacritic when present. Sample was AAA-heavy; library-wide only ~4k titles carry a Metacritic score. |
-| `content_descriptors` | 36% | not yet in `pics/` | `{"0":"1","1":"2","2":"5"}` | Mature-content flags (violence/gore/sexual). **Unrelated to AI** despite adjacency. **Not yet wired through the summarizer** (and dropped at Layer-1 trim, so a re-sweep is needed to surface it) — see §10. Deferred scope, not a data gap. |
+| `content_descriptors` | 36% | **22.7%** (emitted as `content_desc`) | `[1,2,5]` int list | Mature-content flags. **Unrelated to AI** despite adjacency. **SHIPPED to `pics/` as `content_desc`** (28,006 carriers). Codes: 1=violence, 2=gore, 3=general mature, 4=nudity/sexual, 5=**container marker** (present in 100% of carriers — NOT "adult only"; never gate on 5). The real adult signal is **code 4** (7,825 titles); genres 71/72 (Sexual Content / Nudity) are a secondary Valve signal. |
 
 ### 2.3 Promoted keepers — investigated specially (tier 2)
 
@@ -388,20 +388,78 @@ Actions runner; will NOT run in a restricted/allowlisted sandbox.
   the refresh step; first run is a full sweep.
 - Whether to surface Deck `tests[]` detail or just the top-level `category`.
 
-### Not-yet-implemented fields (deferred scope, noted 2026-07-16)
+### Shipped since first spec (corrected 2026-07-16)
 
-These are fields present in the PICS source that the summarizer does not yet
-emit to `pics/`. They are intentionally **excluded from COVERAGE.md** (showing
-them at 0% would misread as a data gap rather than unbuilt scope):
+The two fields previously logged here as "not yet implemented" **are now emitted
+to `pics/`.** This block is kept as a correction of the record; both are live in
+the summarized view and counted by `coverage.py`:
 
-- **`content_descriptors`** — mature-content flags. Present in ~22.5% of PICS
-  source, but the Layer-1 trim in `pics_refresh.py` drops the key before
-  archiving, so it's not in `pics_raw/` either. Surfacing it needs: (a) add
-  `content_descriptors` to the Layer-1 keep-list, (b) a re-sweep to repopulate
-  raw, (c) a summarizer block. Not started. Decide later if the mature-content
-  flag is worth the re-sweep.
-- **`releasestate`** — live/prerelease/coming-soon state. This one IS retained in
-  `pics_raw/` (470 prerelease titles present), so surfacing it is a
-  **summarizer-only edit + re-derive, no re-scrape**. Cheap win whenever a
-  live/coming-soon filter is wanted; tied to the upcoming-games decision (see
-  `UPCOMING_GAMES_PICS_MEMO.md`, parked for later).
+- **`content_descriptors` → `content_desc`** — SHIPPED, **22.7%** (28,006
+  carriers). The earlier "dropped at Layer-1 trim, needs a re-sweep" note no
+  longer holds — the key is retained through ingest and surfaced by the
+  summarizer. Code semantics: 1=violence, 2=gore, 3=general mature, 4=nudity/
+  sexual, **5=container marker (100% co-occurrence — NOT adult-only)**. The
+  mature/adult gate uses **code 4** (7,825 titles), with genres 71/72 as a
+  secondary Valve signal. This **replaces** the old client-side `ADULT_TAGS`
+  heuristic, which mis-flagged normal titles (e.g. Witcher 3) that merely carry
+  a user "Sexual Content" tag.
+- **`releasestate` → `state`** — SHIPPED, **98.8%** (122,110 records: 121,640
+  released, 470 prerelease). Summarizer-emitted, no re-scrape was needed. Note:
+  `state` is the live/coming-soon signal; it is **not** the Early Access signal —
+  EA is **genre-70** (see §11 below).
+
+### Still open / deferred
+
+- Confirm `aicontenttype = "3"` (both pre+live) handling when a carrier appears.
+- `exfgls` reason-code meanings (1/3/6/0) are inferred, not certified — safe to
+  ship the binary flag; treat codes as advisory.
+- Incremental-refresh trigger (store_asset_mtime delta vs age cycle).
+- Whether to surface Deck `tests[]` detail beyond the top-level `category`.
+
+---
+
+## 11. Frontend data-model direction (decided 2026-07-16)
+
+Working-session decision record for how the shipped PICS fields feed the
+frontend. Implementation is a **separate future session**; this section is the
+authoritative plan, mirrored in `ARCHITECTURE.md`.
+
+**Tags — PICS primary, SteamSpy supplement.** `store_tags` (ranked IDs, 99.9%)
+becomes the source of truth for the tag rail and display; the `TAG_GROUPS` /
+`TAG_CAT` taxonomy remaps onto stable tag IDs (retiring the `CANON_GROUPS`
+synonym-collapse maintenance). SteamSpy `tags.json` is kept only as a thin
+coverage fallback for the ~34 games PICS lacks — **never** as a structured
+signal.
+
+**Feature categories (`cats`) — PRIMARY for modes.** User tags are unreliable on
+long-tail / lesser-known titles; `cats` is authoritative Valve feature data.
+Mode filters (Single-player / Multiplayer / Co-op / Online Co-op / Split-screen /
+PvP / Online PvP) read `cats`, not tags.
+
+**Genres — backend only, no filter rail.** PICS `genres` is the trustworthy
+taxonomy (Indie/Action/RPG/Strategy/…), but a genre rail would duplicate the tag
+rail, so genres stay backend-only: used for the **EA signal (genre-70)** and
+primary-genre display/sort.
+
+**Early Access — genre-70 only (11,776 titles).** The SteamSpy "Early Access"
+tag is **dropped for this signal** — user tags linger after a game leaves EA and
+are wrongly added, so they are unreliable. genre-70 is Valve-authoritative and
+catches ~4,344 titles the tag missed.
+
+**Mature/adult gate — switched entirely to PICS.** `content_desc` code 4 (+
+genres 71/72), replacing `ADULT_TAGS`. New blur UX: image blurred → 1st click
+shows an "18+?" confirm → 2nd click reveals the image and opens the store link.
+
+**"Flags" cluster — one compact toggle group** (keeps the dense filter bar from
+growing): AI disclosure (10.2%), custom EULA (8.9%), Early Access (genre-70),
+family-share excluded (0.7%), controller support (Full/Partial from `cats`
+28/18), Steam Deck (Verified/Playable/Unsupported from `deck.cat`, compact tier
+dropdown + row glyph, no new column), VR Only (`cats` 54, 5,372).
+
+**Rating — games.json primary, PICS validator.** games.json `rating_pct` (93.6%)
+stays primary; PICS `rev` (64.0%) validates (agrees ±2 pts on 77,556/79,013
+overlapping games; a >5-pt divergence flags staleness / review bombing).
+
+**Parked (backend only, no frontend now):** dev/publisher (99.9%), franchise
+(23.5%), supported languages (99.9% / 44% audio), review-bomb-adjusted score and
+review-bombing detection (retained in data, deliberately **not** surfaced).

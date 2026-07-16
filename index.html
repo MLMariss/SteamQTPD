@@ -292,15 +292,24 @@
   .thumb .pop{position:fixed; z-index:60; width:380px; height:178px; border-radius:8px; overflow:hidden;
         border:1px solid var(--line); box-shadow:0 14px 40px #000b; display:none; pointer-events:none; background:#0b0f18}
   .thumb .pop img{width:100%; height:100%; object-fit:cover}
-  /* Adult-tagged games (T6): serve the real art but blur it and mark 18+.
-     Permanent blur for now — no click-to-reveal until a real age gate exists. */
-  .thumb.adult img{filter:blur(8px); transform:scale(1.08)}   /* scale hides blurred edges */
+  /* Adult games (PICS content_desc 3/4): blur the art with a two-stage reveal.
+     Stage 0 (default): blurred + "18+" badge, whole thumb is a button.
+     Stage 1 (.confirm): tap once -> "18+?" confirmation prompt.
+     Stage 2 (.revealed): tap again -> unblur + the title link opens the store. */
+  .thumb.adult img{filter:blur(8px); transform:scale(1.08); transition:filter .18s ease}
   .thumb.adult .pop img{filter:blur(16px); transform:scale(1.06)}
-  .thumb.adult::after{content:"18+"; position:absolute; inset:0; z-index:2;
+  .thumb.adult{cursor:pointer}
+  .thumb.adult::after{position:absolute; inset:0; z-index:2;
         display:flex; align-items:center; justify-content:center;
         font:700 13px/1 system-ui,sans-serif; letter-spacing:.5px; color:#fff;
         text-shadow:0 1px 3px #000c; pointer-events:none;
         background:radial-gradient(circle at center, #0006, #0002)}
+  .thumb.adult:not(.revealed)::after{content:"18+"}
+  .thumb.adult.confirm::after{content:"18+?"; font-size:15px;
+        background:radial-gradient(circle at center, #000a, #0006)}
+  .thumb.adult.revealed img{filter:none; transform:none}
+  .thumb.adult.revealed{cursor:default}
+  .thumb.adult.revealed::after{content:""; background:none}
   .gmeta{min-width:136px; flex:1}     /* title never collapses below readable width */
   .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
@@ -559,7 +568,16 @@
   .gcard.hi{box-shadow:0 0 0 1px var(--gold-deep)}
   .gart{position:relative; flex:none; width:100%; aspect-ratio:460/215; overflow:hidden; background:#0b0f18}
   .gcard .gcap{width:100%; height:100%; object-fit:cover; display:block}
-  .gcard.adult .gcap{filter:blur(11px); transform:scale(1.06)}
+  .gcard.adult .gcap{filter:blur(11px); transform:scale(1.06); transition:filter .18s ease}
+  .gcard.adult .gart::after{position:absolute; inset:0; z-index:3;
+        display:flex; align-items:center; justify-content:center;
+        font:700 18px/1 system-ui,sans-serif; letter-spacing:.5px; color:#fff;
+        text-shadow:0 1px 4px #000c; pointer-events:none;
+        background:radial-gradient(circle at center, #0007, #0003)}
+  .gcard.adult:not(.revealed) .gart::after{content:"18+"}
+  .gcard.adult.confirm .gart::after{content:"18+?"; background:radial-gradient(circle at center, #000b, #0007)}
+  .gcard.adult.revealed .gcap{filter:none; transform:none}
+  .gcard.adult.revealed .gart::after{content:""; background:none}
   .gdisc{position:absolute; top:7px; right:7px; background:var(--coral); color:#0e1320;
         font-family:var(--mono); font-size:12px; font-weight:700; padding:2px 6px; border-radius:6px}
   /* Info panel — deliberately darker than --panel so the title reads clean off the art.
@@ -978,6 +996,67 @@ try{
         </div></div>
       </div>
 
+      <div class="filter-section" data-section="flags">
+        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
+        <div class="section-body"><div class="ctl-row">
+        <div class="field">
+          <label>Early Access</label>
+          <div class="seg" role="group" aria-label="Early Access">
+            <button data-flag="ea" data-val="off" aria-pressed="true">Any</button>
+            <button data-flag="ea" data-val="on"  aria-pressed="false" title="Only games in Early Access (Valve genre, not user tag)">EA only</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>AI disclosure</label>
+          <div class="seg" role="group" aria-label="AI content disclosure">
+            <button data-ai="any"  aria-pressed="true">Any</button>
+            <button data-ai="hide" aria-pressed="false" title="Exclude games with an AI content disclosure">Hide AI</button>
+            <button data-ai="only" aria-pressed="false" title="Only games with an AI content disclosure">AI only</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Controller</label>
+          <div class="seg" role="group" aria-label="Controller support">
+            <button data-ctrl="any"     aria-pressed="true">Any</button>
+            <button data-ctrl="full"    aria-pressed="false" title="Full controller support">Full</button>
+            <button data-ctrl="partial" aria-pressed="false" title="Full or partial controller support">Partial+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Steam Deck</label>
+          <div class="seg" role="group" aria-label="Steam Deck compatibility">
+            <button data-deck="any"         aria-pressed="true">Any</button>
+            <button data-deck="verified"    aria-pressed="false" title="Deck Verified only">Verified</button>
+            <button data-deck="playable"    aria-pressed="false" title="Verified or Playable">Playable+</button>
+            <button data-deck="unsupported" aria-pressed="false" title="Deck Unsupported">Unsupported</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Adult content</label>
+          <div class="seg" role="group" aria-label="Adult content">
+            <button data-adult="any"  aria-pressed="true">Any</button>
+            <button data-adult="hide" aria-pressed="false" title="Exclude adult games (Valve Adult-Only / Frequent Nudity-Sexual)">Hide</button>
+            <button data-adult="only" aria-pressed="false" title="Only adult games">Only</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Other</label>
+          <div class="seg" role="group" aria-label="Other flags">
+            <button data-flag="vrOnly" data-val="off" aria-pressed="true">Any</button>
+            <button data-flag="vrOnly" data-val="on"  aria-pressed="false" title="VR Only titles">VR only</button>
+          </div>
+          <div class="seg" role="group" aria-label="More flags" style="margin-top:6px">
+            <button data-flag="fse" data-val="off" aria-pressed="true">Any</button>
+            <button data-flag="fse" data-val="on"  aria-pressed="false" title="Excluded from Steam Family Sharing">No family-share</button>
+          </div>
+          <div class="seg" role="group" aria-label="EULA flag" style="margin-top:6px">
+            <button data-flag="eula" data-val="off" aria-pressed="true">Any</button>
+            <button data-flag="eula" data-val="on"  aria-pressed="false" title="Requires accepting a custom EULA">Custom EULA</button>
+          </div>
+        </div>
+        </div></div>
+      </div>
+
       <div class="filter-section" data-section="tags">
         <div class="section-head-wrap">
           <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
@@ -1130,7 +1209,14 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"
                 hidden:new Set(),
                 pageSize:100, pagesShown:1,
                 wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", hltbQuality:"real", ptMetric:"up", fullCounts:{},
-                view:"table", tagLinger:new Map() };   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
+                view:"table", tagLinger:new Map(),   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
+                // PICS "Flags" cluster. Each key is independent; "any"/false = no filter.
+                //   ea/eula/fse/vrOnly : boolean require-present toggles
+                //   ai       : "any" | "hide" (exclude disclosed) | "only" (require disclosed)
+                //   ctrl     : "any" | "full" | "partial"
+                //   deck     : "any" | "verified" | "playable" (verified+playable) | "unsupported"
+                //   adultF   : "any" | "hide" (exclude adult) | "only"
+                flags:{ ea:false, eula:false, fse:false, vrOnly:false, ai:"any", ctrl:"any", deck:"any", adultF:"any" } };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -1147,8 +1233,19 @@ const headerUrl  = a => `${CDN}/${a}/header.jpg`;
 // but empty" result (naturalWidth === 0, or a degenerate 1px response). Chain is
 // deterministic from appid: capsule -> header, with header as the terminal fallback
 // (no screenshot step — screenshot URLs aren't derivable from appid; see T6 notes).
+// Adult gate. PRIMARY: PICS `adult` flag (content_desc codes 3/4 = Adult Only /
+// Frequent Nudity-Sexual) — Valve-authoritative, precomputed by pics_summarize.py.
+// This replaces the old user-tag heuristic, which over-flagged mainstream titles
+// (Witcher 3, Baldur's Gate 3, Cyberpunk all carry a user "Sexual Content" tag).
+// FALLBACK: the tag heuristic, used only for games PICS hasn't covered.
 const ADULT_TAGS = new Set(["Nudity","Sexual Content","Mature","NSFW","Hentai"]);
-const isAdult = g => (g.tags||[]).some(t => ADULT_TAGS.has(t));
+const isAdult = g => {
+  if(g.pics_adult != null && (g.pics_adult || window.HAS_PICS)){
+    // When PICS is loaded, its flag is authoritative (true OR a definitive false).
+    if(g.cat_ids || g.tag_ids || g.pics_state != null) return !!g.pics_adult;
+  }
+  return (g.tags||[]).some(t => ADULT_TAGS.has(t));   // pre-PICS fallback
+};
 // Build the ordered source list once per appid.
 const imgChain = a => [capsuleUrl(a), headerUrl(a)];
 // onerror / onload handler shared by table thumb and popup. Reads the appid and the
@@ -1312,6 +1409,21 @@ function passNonRange(x){
       if(!(age <= d*86400)) return false;
     }
   }
+  // --- PICS "Flags" cluster (all independent; only applied when PICS is loaded) ---
+  const F = state.flags;
+  if(F.ea && !x.pics_ea) return false;
+  if(F.eula && !x.pics_eula) return false;
+  if(F.fse && !x.pics_fse) return false;
+  if(F.vrOnly && !x.pics_vr_only) return false;
+  if(F.ai === "hide" && (x.pics_ai||0) > 0) return false;
+  if(F.ai === "only" && !((x.pics_ai||0) > 0)) return false;
+  if(F.ctrl === "full"    && x.pics_controller !== "full") return false;
+  if(F.ctrl === "partial" && !(x.pics_controller === "full" || x.pics_controller === "partial")) return false;
+  if(F.deck === "verified"    && x.deck_cat !== 3) return false;
+  if(F.deck === "playable"    && !(x.deck_cat === 3 || x.deck_cat === 2)) return false;
+  if(F.deck === "unsupported" && x.deck_cat !== 1) return false;
+  if(F.adultF === "hide" && isAdult(x)) return false;
+  if(F.adultF === "only" && !isAdult(x)) return false;
   if(state.tagsInc.size || state.tagsExc.size){
     const cs = canonSet(x);
     if(state.tagsInc.size){
@@ -1699,6 +1811,9 @@ setInterval(() => {
 document.body.addEventListener("mouseover", e => {
   const thumb = e.target.closest(".thumb");
   if(!thumb) return;
+  // Don't enlarge an un-revealed adult thumb — showing bigger blurred art is pointless
+  // and the user hasn't passed the 18+ gate yet.
+  if(thumb.classList.contains("adult") && !thumb.classList.contains("revealed")) return;
   const pop = thumb.querySelector(".pop"), img = pop.querySelector("img");
   if(!img.src){
     // Same content-verified chain as the table thumb. Popup starts at the header
@@ -1718,6 +1833,24 @@ document.body.addEventListener("mouseover", e => {
 document.body.addEventListener("mouseout", e => {
   const thumb = e.target.closest(".thumb");
   if(thumb && !thumb.contains(e.relatedTarget)) thumb.querySelector(".pop").style.display = "none";
+});
+
+// Two-stage 18+ reveal for adult thumbs (PICS content_desc 3/4).
+//   click 1  -> .confirm  ("18+?")
+//   click 2  -> .revealed (unblur) AND open the store page (the intent of the 2nd tap)
+// Non-adult thumbs are unaffected. Revealed thumbs behave normally (hover-enlarge works).
+document.body.addEventListener("click", e => {
+  const thumb = e.target.closest(".thumb.adult");
+  if(!thumb || thumb.classList.contains("revealed")) return;
+  e.preventDefault(); e.stopPropagation();
+  if(!thumb.classList.contains("confirm")){
+    thumb.classList.add("confirm");                 // stage 1: ask
+  } else {
+    thumb.classList.remove("confirm");
+    thumb.classList.add("revealed");                // stage 2: reveal
+    const a = thumb.dataset.appid;
+    if(a) window.open("https://store.steampowered.com/app/" + a, "_blank", "noopener");
+  }
 });
 
 // ----- tag rail: stable membership (full counts), contextual badges -----
@@ -1978,7 +2111,7 @@ function gridCardHTML(g){
 }
 
 // ── L1 — accordion filter sections ──────────────────────────────────────────────────────
-const SECTION_DEFAULT = {value:true, quality:true, tags:false};   // Tags folded by default (Activity merged into Quality)
+const SECTION_DEFAULT = {value:true, quality:true, flags:false, tags:false};   // Tags + Flags folded by default
 function loadSectionState(){
   let saved = {};
   try{ saved = JSON.parse(localStorage.getItem("qtpd.sections") || "{}") || {}; }catch(e){}
@@ -2014,6 +2147,10 @@ function sectionActiveCounts(){
          + ((state.trendSet.size > 0 && state.trendSet.size < 3) ? 1 : 0) + revActive
          + (state.updatedWithin !== "any" ? 1 : 0) + (state.ptMetric !== "up" ? 1 : 0),
     tags: state.tagsInc.size + state.tagsExc.size,
+    flags: (() => { const F = state.flags; let n = 0;
+      if(F.ea) n++; if(F.eula) n++; if(F.fse) n++; if(F.vrOnly) n++;
+      if(F.ai !== "any") n++; if(F.ctrl !== "any") n++; if(F.deck !== "any") n++; if(F.adultF !== "any") n++;
+      return n; })(),
   };
 }
 function updateSectionCounts(){
@@ -2046,6 +2183,17 @@ function markChangedControls(){
   setGroup("[data-upd]",          state.updatedWithin !== "any");
   setGroup("[data-ptmetric]",     state.ptMetric !== "up");
   setGroup('[data-pc="full"],[data-pc="sale"],[data-pc="free"]', state.priceClass.size < 3);
+  // FLAGS — segmented + boolean toggles
+  { const F = state.flags;
+    setGroup("[data-ai]",    F.ai !== "any");
+    setGroup("[data-ctrl]",  F.ctrl !== "any");
+    setGroup("[data-deck]",  F.deck !== "any");
+    setGroup("[data-adult]", F.adultF !== "any");
+    setGroup('[data-flag="ea"]',     F.ea);
+    setGroup('[data-flag="vrOnly"]', F.vrOnly);
+    setGroup('[data-flag="fse"]',    F.fse);
+    setGroup('[data-flag="eula"]',   F.eula);
+  }
 
   // Price inputs — gold the box when that bound is set
   const mp = document.getElementById("minprice"); if(mp) mp.closest(".numinput").classList.toggle("changed", state.minPrice != null);
@@ -2459,6 +2607,17 @@ function setSort(key){
   syncMobileSort();            // keep the mobile + grid sort dropdowns in step with header clicks
   render(); syncURL();
 }
+// Reflect state.flags into the cluster's button aria-pressed states (used on URL restore
+// and back/forward nav, where state is set directly rather than via a click).
+function syncFlagsUI(){
+  const F = state.flags;
+  const seg = (attr, val) => document.querySelectorAll(`[data-${attr}]`).forEach(o =>
+    o.setAttribute("aria-pressed", o.dataset[attr] === val));
+  seg("ai", F.ai); seg("ctrl", F.ctrl); seg("deck", F.deck); seg("adult", F.adultF);
+  const bool = (key, on) => document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
+    o.setAttribute("aria-pressed", (o.dataset.val === "on") === on));
+  bool("ea", F.ea); bool("vrOnly", F.vrOnly); bool("fse", F.fse); bool("eula", F.eula);
+}
 function setBasis(b){
   state.qBasis = b;
   $("#qb-after").setAttribute("aria-pressed", b==="after");
@@ -2514,6 +2673,19 @@ function syncURL(){
   if(state.trendSet.size > 0 && state.trendSet.size < 3) p.set("trend", [...state.trendSet].join(","));
   if(state.updatedWithin !== "any") p.set("upd", state.updatedWithin);
   if(state.wishOnly) p.set("wishonly", "1");
+  // PICS flags cluster — only non-default values emitted (keeps shared links clean).
+  { const F = state.flags;
+    const on = [];
+    if(F.ea) on.push("ea");
+    if(F.eula) on.push("eula");
+    if(F.fse) on.push("fse");
+    if(F.vrOnly) on.push("vr");
+    if(on.length) p.set("flags", on.join(","));
+    if(F.ai !== "any")   p.set("ai", F.ai);
+    if(F.ctrl !== "any") p.set("ctrl", F.ctrl);
+    if(F.deck !== "any") p.set("deck", F.deck);
+    if(F.adultF !== "any") p.set("adult", F.adultF);
+  }
   if(state.ratingSource !== "recent") p.set("ratesrc", state.ratingSource);
   if(state.ptMetric !== "up") p.set("pt", state.ptMetric);
   if(state.sortKey !== "qtpd") p.set("sort", state.sortKey);
@@ -2560,6 +2732,14 @@ function loadFromURL(){
   setIf("upd", v => { state.updatedWithin=v;
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd===v)); });
   setIf("wishonly", () => { state.wishOnly = true; });
+  // PICS flags cluster restore.
+  setIf("flags", v => { const s = new Set(v.split(",").filter(Boolean));
+    state.flags.ea = s.has("ea"); state.flags.eula = s.has("eula");
+    state.flags.fse = s.has("fse"); state.flags.vrOnly = s.has("vr"); });
+  setIf("ai",    v => { if(["hide","only"].includes(v)) state.flags.ai = v; });
+  setIf("ctrl",  v => { if(["full","partial"].includes(v)) state.flags.ctrl = v; });
+  setIf("deck",  v => { if(["verified","playable","unsupported"].includes(v)) state.flags.deck = v; });
+  setIf("adult", v => { if(["hide","only"].includes(v)) state.flags.adultF = v; });
   setIf("sort", v => { state.sortKey = v; });
   setIf("dir", v => { state.sortDir = v==="a" ? 1 : -1; });
   setIf("pt", v => { if(v==="up"||v==="down"){ state.ptMetric = v;
@@ -2606,6 +2786,7 @@ function init(data){
   buildTagRail(); renderFoot();
   syncSortArrows();                    // reflect restored sort key/dir in headers
   syncPtHeader();                      // reflect restored playtime-median selection
+  syncFlagsUI();                       // reflect restored PICS flag cluster state
   // L3/L5 + L1: restore the saved view mode and accordion open/closed states before first paint.
   // #4 — default to Grid on mobile (box art suits small screens); desktop still defaults to Table.
   // A previously-saved choice always wins.
@@ -2622,10 +2803,11 @@ function init(data){
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up"; state.qRangeTouched=false;
+    state.flags={ ea:false, eula:false, fse:false, vrOnly:false, ai:"any", ctrl:"any", deck:"any", adultF:"any" };
     loadFromURL();
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===state.tagMode));
     syncPriceClassUI();
-    recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); render();
+    recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); syncFlagsUI(); render();
   });
 
   $("#q").addEventListener("input", e => { state.q = e.target.value; update(); });
@@ -2699,6 +2881,29 @@ function init(data){
     b.addEventListener("click", () => {
       state.updatedWithin = b.dataset.upd;
       document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      update();
+    }));
+  // --- PICS Flags cluster wiring ---
+  // Single-select segmented groups: ai / ctrl / deck / adult.
+  const segGroup = (attr, key) => {
+    document.querySelectorAll(`[data-${attr}]`).forEach(b =>
+      b.addEventListener("click", () => {
+        state.flags[key] = b.dataset[attr];
+        document.querySelectorAll(`[data-${attr}]`).forEach(o => o.setAttribute("aria-pressed", o === b));
+        update();
+      }));
+  };
+  segGroup("ai", "ai");
+  segGroup("ctrl", "ctrl");
+  segGroup("deck", "deck");
+  segGroup("adult", "adultF");
+  // Boolean toggle groups (data-flag/data-val="on"|"off"): ea / vrOnly / fse / eula.
+  document.querySelectorAll("[data-flag]").forEach(b =>
+    b.addEventListener("click", () => {
+      const key = b.dataset.flag, on = b.dataset.val === "on";
+      state.flags[key] = on;
+      document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
+        o.setAttribute("aria-pressed", (o.dataset.val === "on") === on));
       update();
     }));
   const priceHandler = () => {
@@ -2803,6 +3008,18 @@ function init(data){
   $("#gridview").addEventListener("click", e => {
     const card = e.target.closest(".gcard"); if(!card) return;
     if(e.target.closest("a")) return;                                   // let the Steam link open
+    // Two-stage 18+ reveal takes precedence over expand on an unrevealed adult card.
+    if(card.classList.contains("adult") && !card.classList.contains("revealed")
+        && e.target.closest(".gart")){
+      e.preventDefault(); e.stopPropagation();
+      if(!card.classList.contains("confirm")){ card.classList.add("confirm"); }
+      else {
+        card.classList.remove("confirm"); card.classList.add("revealed");
+        const a = card.dataset.gappid;
+        if(a) window.open("https://store.steampowered.com/app/" + a, "_blank", "noopener");
+      }
+      return;
+    }
     if(e.target.closest("[data-gclose]")){ card.classList.remove("open"); return; }
     card.classList.toggle("open");
   });
@@ -2865,7 +3082,12 @@ Promise.all([
   fetch("playtime.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("ratings.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
   fetch("updates.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-]).then(([g, pj, hj, tj, rj, ptj, ratj, uj]) => {
+  // PICS layer: one slim merged file (pics_merge.py) + three tiny decode maps.
+  fetch("pics.json",    {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch("lookups/tags.json",      {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch("lookups/genres.json",    {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch("lookups/categories.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+]).then(([g, pj, hj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk]) => {
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
   const hltbMap   = (hj && hj.hltb)   ? hj.hltb   : null;
@@ -2882,6 +3104,17 @@ Promise.all([
   // coming rotations this fills the old system's gaps; later the precedence flips (new
   // becomes primary, old the fallback) once coverage is broad. See ARCHITECTURE §9.5.
   const updatesMap  = (uj && uj.games) ? uj.games : null;
+  // PICS metadata layer (pics.json = one slim merged file from pics_merge.py).
+  // Carries Valve-authoritative fields: ranked store_tags (IDs), feature categories,
+  // Steam Deck compat, AI disclosure, family-share/EULA flags, controller support,
+  // and the derived ea/adult/vr_only booleans. Decoded client-side via the lookup maps.
+  const picsMap  = (picsj && picsj.apps) ? picsj.apps : null;
+  window.PICS_TAG_LK   = (tagLk   && tagLk.tags)   ? tagLk.tags   : (tagLk   || {});  // id -> name
+  window.PICS_GENRE_LK = (genreLk && genreLk.genres)? genreLk.genres: (genreLk || {});
+  window.PICS_CAT_LK   = catLk || {};   // "category_N" -> feature name
+  window.HAS_PICS = !!picsMap;
+  // Decode a category id (int) -> feature name via the categories map ("category_N" keys).
+  const catName = id => window.PICS_CAT_LK["category_" + id] || window.PICS_CAT_LK[String(id)] || null;
   // gray threshold: below this many reviews the weighted rating renders low-confidence.
   window.PT_CONFIDENT = (ratj && ratj.confident_reviews) ? ratj.confident_reviews : 10;
   const now = NOW();
@@ -2906,10 +3139,40 @@ Promise.all([
       // ratio rather than fetched from HLTB) — drives the distinct rendering.
       game.hltb_est = Array.isArray(h.est) ? h.est : [];
     }
-    // tags.json provides SteamSpy user-tags; they replace the genre fallback in games.json
-    // when present (richer/more specific). A non-empty list wins; otherwise keep the fallback.
+    // tags.json provides SteamSpy user-tags; kept as a FALLBACK only. PICS store_tags
+    // (decoded below) are primary when present — Valve-ranked and more reliable on the
+    // long tail. SteamSpy fills games PICS lacks.
     if(tagsMap && Array.isArray(tagsMap[key]) && tagsMap[key].length){
-      game.tags = tagsMap[key];
+      game.tags_ss = tagsMap[key];        // keep SteamSpy separately as fallback source
+      game.tags = tagsMap[key];           // provisional; PICS overrides just below
+    }
+    // --- PICS metadata merge (Valve-authoritative) ---
+    if(picsMap && picsMap[key]){
+      const p = picsMap[key];
+      // Tags: PICS ranked IDs -> names (primary). Fall back to SteamSpy if PICS empty.
+      if(Array.isArray(p.tags) && p.tags.length){
+        const names = p.tags.map(id => window.PICS_TAG_LK[String(id)] || window.PICS_TAG_LK[id]).filter(Boolean);
+        if(names.length) game.tags = names;
+        game.tag_ids = p.tags;            // ranked IDs kept for index-once filtering
+      }
+      // Feature categories (modes/controller/etc): authoritative, replaces tag-inference.
+      if(Array.isArray(p.cats)){
+        game.cat_ids = p.cats;
+        game.catSet = new Set(p.cats);    // prebuilt once for O(1) filter membership
+      }
+      if(Array.isArray(p.genres)) game.genre_ids = p.genres;
+      // Derived filter flags (precomputed by the summarizer — never re-derived here).
+      game.pics_ea      = !!p.ea;
+      game.pics_adult   = !!p.adult;
+      game.pics_vr_only = !!p.vr_only;
+      game.pics_ai      = p.ai || 0;      // 0 none / 1 pre-gen / 2 live-gen
+      game.pics_fse     = !!p.fse;        // family-share excluded
+      game.pics_eula    = !!p.eula;       // has custom EULA
+      game.pics_controller = p.controller || null;   // "full" | "partial"
+      if(p.deck && typeof p.deck === "object"){
+        game.deck_cat = (p.deck.cat != null) ? p.deck.cat : null;  // 1 Unsup /2 Play /3 Verified
+      }
+      game.pics_state = p.state || null;  // "released" | "prerelease"
     }
     if(recentMap && recentMap[key]){
       const r = recentMap[key];
