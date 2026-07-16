@@ -1100,12 +1100,29 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
   Cyberpunk) exactly like the old `ADULT_TAGS` heuristic did; code 5 is a
   container marker. Replaces `ADULT_TAGS`, which is now a pre-PICS fallback only.
   New blur UX: blur → "18+?" confirm tap → reveal + open store link (table + card).
-- **"Flags" cluster** (own collapsible filter-section): Early Access · AI
-  disclosure (any/hide/only) · Controller (any/full/partial) · Steam Deck
-  (any/verified/playable+/unsupported) · Adult (any/hide/only) · VR Only ·
-  Family sharing (excluded) · Custom EULA. All URL-serialized/shareable; the
-  filters no-op unless `pics.json` actually carries games (HAS_PICS guard), so
-  the empty placeholder doesn't zero the list.
+- **"Flags" cluster** (own collapsible filter-section). Six *presence* flags all
+  share ONE toggle schema — **Any / Exclude / Only** (`state.flags[k]` =
+  `"any"|"hide"|"only"`): Early Access · AI disclosure · Adult content · VR-only
+  · Family-share block · Custom EULA. Two *graded* controls keep bespoke buttons
+  because they pick among values rather than the presence of one flag:
+  Controller (any/full/partial) · Steam Deck (any/verified/playable+/unsupported).
+  All URL-serialized/shareable; the filters no-op unless `pics.json` actually
+  carries games (HAS_PICS guard), so the empty placeholder doesn't zero the list.
+  - Because the buttons are generic, **the label has to name the flag** — it is
+    the only thing that says what Exclude/Only act on. Hence "Early Access", not
+    "EA only". Per-field `title` tooltips carry the nuance that won't fit in a
+    label (see the `.field[title] > label` dotted-underline affordance).
+  - **`Family-share block` is labelled for the BLOCK, never inverted into a
+    "Shareable" control** — PICS_METADATA_PIPELINE.md §2.4 verified `exfgls` as a
+    positive exclusion signal *only*: absence does not prove shareability (PUBG,
+    Destiny 2 restrict at the account layer with no flag). So Exclude means "no
+    known block", and the tooltip says exactly that.
+  - **URL:** `flags=` lists the `only` keys and `noflags=` the `hide` keys. Each
+    list sets only the keys it names, so the two never clobber each other, and
+    `flags=` keeps its pre-tri-state meaning — old shared links still resolve.
+  - Flags is the widest cluster in the bar (8 groups / ~23 buttons), so it alone
+    trims 3px of horizontal button padding to hold ONE row; it wraps to two below
+    ~1870px, which is fine.
 - **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
   staleness / review bombing).
 - **Parked backend-only:** dev/publisher, franchise, languages, review-bomb
