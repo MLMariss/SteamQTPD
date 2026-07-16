@@ -475,7 +475,16 @@
   /* Open sections lay the header (title+caret+count) on the LEFT and the controls
      BESIDE it on the same row, reclaiming the empty gutter that used to sit next to
      the title. The header stays the sole collapse toggle; the body isn't clickable. */
-  .filter-section.open{display:flex; align-items:flex-start; gap:18px}
+  .filter-section.open{display:flex; align-items:flex-start; gap:18px; cursor:pointer}
+  .filter-section.open > .section-body{flex:1 1 auto; min-width:0; cursor:pointer}
+  .filter-section.open .field,
+  .filter-section.open .seg,
+  .filter-section.open .tagrail,
+  .filter-section.open input,
+  .filter-section.open button{cursor:auto}
+  .filter-section.open .seg button,
+  .filter-section.open .chip,
+  .filter-section.open [data-tag]{cursor:pointer}
   .filter-section.open > .section-head{flex:0 0 132px; align-self:stretch; padding-top:16px;
         flex-wrap:wrap; align-content:flex-start; row-gap:4px}
   .filter-section.open > .section-head .sec-count{margin-left:19px; flex-basis:100%}
@@ -3052,9 +3061,18 @@ function init(data){
   $("#gridview").addEventListener("keydown", e => {
     if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("gcard")){ e.preventDefault(); e.target.classList.toggle("open"); }
   });
-  // L1: accordion section headers toggle their own open/closed state (persisted).
-  document.querySelectorAll(".section-head").forEach(h =>
-    h.addEventListener("click", () => toggleSection(h.closest(".filter-section").dataset.section)));
+  // L1: accordion sections toggle open/closed (persisted). The WHOLE header band is the
+  // click target — the title column AND the empty gutter to the right of the controls —
+  // so folding a section is forgiving, matching the pre-compact layout. Only real control
+  // widgets are exempt, so tapping a filter never collapses the section.
+  const SECTION_CONTROL_SEL = "button, input, select, textarea, a, label, .seg, .chip, [data-tag], [role='group'], .tagrail, .ctl-row .field";
+  document.querySelectorAll(".filter-section").forEach(sec =>
+    sec.addEventListener("click", e => {
+      // A click inside an actual control (or its group/label) shouldn't fold the section…
+      if(e.target.closest(SECTION_CONTROL_SEL) && !e.target.closest(".section-head")) return;
+      // …but the title column, caret, count, and the empty body gutter all toggle.
+      toggleSection(sec.dataset.section);
+    }));
   // L2: clicking a summarized filter term opens its inline editor (or deep-links into the bar).
   $("#filterSummary").addEventListener("click", e => {
     if(e.target.closest("[data-reset]")){ $("#clear").click(); return; }   // #8 — warning Reset reuses the real reset
