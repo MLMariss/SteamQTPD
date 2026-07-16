@@ -71,6 +71,15 @@
   .ctl-row:last-child{margin-bottom:0}
   .field{display:flex; flex-direction:column; gap:6px}
   .field > label{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.05em; text-transform:uppercase}
+  /* Flags is the widest cluster in the bar (8 groups, ~23 buttons). Once every presence flag
+     shares the same Any/Exclude/Only schema the buttons stop needing generous hit padding to be
+     readable, so this section alone trades 3px of horizontal padding per button to keep the whole
+     cluster on ONE row. Vertical padding is untouched, so the row height and hit area hold. */
+  .filter-section[data-section="flags"] .seg button{padding-left:9px; padding-right:9px}
+  /* A field carrying an explainer tooltip advertises it on its label — otherwise the hover text
+     is undiscoverable. The tooltip itself covers the whole .field, not just the label. */
+  .field[title] > label{cursor:help; text-decoration:underline dotted var(--muted-2); text-underline-offset:3px}
+  .field[title]:hover > label{color:var(--text); text-decoration-color:var(--muted)}
 
   .seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:9px; overflow:hidden}
   .seg button{appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--mono);
@@ -1041,23 +1050,29 @@ try{
       <div class="filter-section" data-section="flags">
         <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
         <div class="section-body"><div class="ctl-row">
-        <div class="field">
+        <!-- Presence flags all share ONE toggle schema — Any / Exclude / Only — so the row stays
+             narrow and the pattern is learned once. That only works if the LABEL names the thing
+             being switched on, because the buttons no longer do; each label is therefore a noun
+             ("Early Access", not "EA only"), and Exclude/Only read against it. The nuance that
+             doesn't fit in a label lives in the field's tooltip. Controller and Steam Deck keep
+             bespoke buttons: they pick among graded values, not the presence of one flag. -->
+        <div class="field" title="Early Access — still in development and sold before a 1.0 release. Uses Valve's official Early Access genre flag, not the user-applied &quot;Early Access&quot; tag, which often lingers for years after a game has actually launched.">
           <label>Early Access</label>
           <div class="seg" role="group" aria-label="Early Access">
             <button data-flag="ea" data-val="any"  aria-pressed="true">Any</button>
-            <button data-flag="ea" data-val="hide" aria-pressed="false" title="Exclude games in Early Access (Valve genre, not user tag)">Hide EA</button>
-            <button data-flag="ea" data-val="only" aria-pressed="false" title="Only games in Early Access (Valve genre, not user tag)">EA only</button>
+            <button data-flag="ea" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="ea" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="AI content disclosure — the developer declared generative-AI content, either pre-generated assets or live generation at runtime. Valve has only required this since 2024, so an older listing that was never revised can lack a disclosure even where AI was used: absence is not proof of none.">
           <label>AI disclosure</label>
           <div class="seg" role="group" aria-label="AI content disclosure">
             <button data-ai="any"  aria-pressed="true">Any</button>
-            <button data-ai="hide" aria-pressed="false" title="Exclude games with an AI content disclosure">Hide AI</button>
-            <button data-ai="only" aria-pressed="false" title="Only games with an AI content disclosure">AI only</button>
+            <button data-ai="hide" aria-pressed="false">Exclude</button>
+            <button data-ai="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Controller support, read from Valve's category flags rather than the store blurb. Full = built for a gamepad end to end. Partial+ widens that to games only partly playable on one — menus or launchers may still need a mouse.">
           <label>Controller</label>
           <div class="seg" role="group" aria-label="Controller support">
             <button data-ctrl="any"     aria-pressed="true">Any</button>
@@ -1065,7 +1080,7 @@ try{
             <button data-ctrl="partial" aria-pressed="false" title="Full or partial controller support">Partial+</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Steam Deck compatibility, as rated by Valve. Verified = playable as shipped. Playable+ widens that to titles needing a tweak, such as the touch keyboard for a launcher. Unsupported is Valve's explicit negative rating — most games are simply unrated and match none of these.">
           <label>Steam Deck</label>
           <div class="seg" role="group" aria-label="Steam Deck compatibility">
             <button data-deck="any"         aria-pressed="true">Any</button>
@@ -1074,41 +1089,41 @@ try{
             <button data-deck="unsupported" aria-pressed="false" title="Deck Unsupported">Unsupported</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Adult content — Valve's Adult-Only Sexual and Frequent Nudity/Sexual content descriptors. The milder &quot;Some Nudity/Sexual&quot; descriptor is deliberately not counted: it over-flags mainstream titles such as The Witcher 3, Baldur's Gate 3 and Cyberpunk 2077.">
           <label>Adult content</label>
           <div class="seg" role="group" aria-label="Adult content">
             <button data-adult="any"  aria-pressed="true">Any</button>
-            <button data-adult="hide" aria-pressed="false" title="Exclude adult games (Valve Adult-Only / Frequent Nudity-Sexual)">Hide</button>
-            <button data-adult="only" aria-pressed="false" title="Only adult games">Only</button>
+            <button data-adult="hide" aria-pressed="false">Exclude</button>
+            <button data-adult="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field">
-          <label>VR only</label>
+        <div class="field" title="VR-only titles — a headset is required and the game cannot be played on a monitor. Games that merely support VR as an option are not flagged, so Exclude drops only the headset-mandatory ones and leaves optional-VR games in.">
+          <label>VR-only</label>
           <div class="seg" role="group" aria-label="VR only">
             <button data-flag="vrOnly" data-val="any"  aria-pressed="true">Any</button>
-            <button data-flag="vrOnly" data-val="hide" aria-pressed="false" title="Exclude VR Only titles">Hide VR</button>
-            <button data-flag="vrOnly" data-val="only" aria-pressed="false" title="VR Only titles">VR only</button>
+            <button data-flag="vrOnly" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="vrOnly" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field">
-          <label>Family sharing</label>
-          <!-- fse is a NEGATIVE flag (true = excluded from Family Sharing). The "hide" side is
-               deliberately NOT labelled "Shareable": per PICS_METADATA_PIPELINE.md §2.4 the flag
-               is a positive exclusion signal only — absence does not prove a game is shareable
-               (PUBG/Destiny 2 restrict at the account layer, with no such flag). "Not excluded"
-               claims exactly what the data supports and no more. -->
-          <div class="seg" role="group" aria-label="Family sharing">
+        <!-- Labelled for the BLOCK, not for "family sharing", so that Exclude/Only read against a
+             flag the data actually supports. Per PICS_METADATA_PIPELINE.md §2.4 exfgls is a
+             positive exclusion signal only — absence does NOT prove a game is shareable (PUBG,
+             Destiny 2 restrict at the account layer with no flag), so this must never be inverted
+             into a "Shareable" control. The tooltip states that limit outright. -->
+        <div class="field" title="Family-share block — the game is excluded from Steam Family Sharing and cannot be shared out of your library. Typical of launcher-, account- or DRM-bound games. Reliable when present; absence is NOT a guarantee, as some games (PUBG, Destiny 2) block at the account layer with no flag. So Exclude means &quot;no known block&quot;, not &quot;definitely shareable&quot;.">
+          <label>Family-share block</label>
+          <div class="seg" role="group" aria-label="Family-share block">
             <button data-flag="fse" data-val="any"  aria-pressed="true">Any</button>
-            <button data-flag="fse" data-val="hide" aria-pressed="false" title="Games without the Family Sharing exclusion flag. Not a guarantee of shareability — some games restrict at the account layer instead, carrying no flag.">Not excluded</button>
-            <button data-flag="fse" data-val="only" aria-pressed="false" title="Only games excluded from Steam Family Sharing">Excluded</button>
+            <button data-flag="fse" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="fse" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Custom EULA — the publisher makes you accept their own licence agreement on top of the Steam Subscriber Agreement. Often a tell for a third-party account or launcher, extra data collection, or arbitration terms.">
           <label>Custom EULA</label>
           <div class="seg" role="group" aria-label="Custom EULA">
             <button data-flag="eula" data-val="any"  aria-pressed="true">Any</button>
-            <button data-flag="eula" data-val="hide" aria-pressed="false" title="Exclude games that require accepting a custom EULA">No EULA</button>
-            <button data-flag="eula" data-val="only" aria-pressed="false" title="Requires accepting a custom EULA">Has EULA</button>
+            <button data-flag="eula" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="eula" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
         </div></div>
