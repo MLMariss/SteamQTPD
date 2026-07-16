@@ -1040,18 +1040,24 @@ try{
           </div>
         </div>
         <div class="field">
-          <label>Other</label>
-          <div class="seg" role="group" aria-label="Other flags">
+          <label>VR only</label>
+          <div class="seg" role="group" aria-label="VR only">
             <button data-flag="vrOnly" data-val="off" aria-pressed="true">Any</button>
             <button data-flag="vrOnly" data-val="on"  aria-pressed="false" title="VR Only titles">VR only</button>
           </div>
-          <div class="seg" role="group" aria-label="More flags" style="margin-top:6px">
+        </div>
+        <div class="field">
+          <label>Family sharing</label>
+          <div class="seg" role="group" aria-label="Family sharing">
             <button data-flag="fse" data-val="off" aria-pressed="true">Any</button>
-            <button data-flag="fse" data-val="on"  aria-pressed="false" title="Excluded from Steam Family Sharing">No family-share</button>
+            <button data-flag="fse" data-val="on"  aria-pressed="false" title="Excluded from Steam Family Sharing">Excluded</button>
           </div>
-          <div class="seg" role="group" aria-label="EULA flag" style="margin-top:6px">
+        </div>
+        <div class="field">
+          <label>Custom EULA</label>
+          <div class="seg" role="group" aria-label="Custom EULA">
             <button data-flag="eula" data-val="off" aria-pressed="true">Any</button>
-            <button data-flag="eula" data-val="on"  aria-pressed="false" title="Requires accepting a custom EULA">Custom EULA</button>
+            <button data-flag="eula" data-val="on"  aria-pressed="false" title="Requires accepting a custom EULA">Has EULA</button>
           </div>
         </div>
         </div></div>
@@ -1409,21 +1415,25 @@ function passNonRange(x){
       if(!(age <= d*86400)) return false;
     }
   }
-  // --- PICS "Flags" cluster (all independent; only applied when PICS is loaded) ---
-  const F = state.flags;
-  if(F.ea && !x.pics_ea) return false;
-  if(F.eula && !x.pics_eula) return false;
-  if(F.fse && !x.pics_fse) return false;
-  if(F.vrOnly && !x.pics_vr_only) return false;
-  if(F.ai === "hide" && (x.pics_ai||0) > 0) return false;
-  if(F.ai === "only" && !((x.pics_ai||0) > 0)) return false;
-  if(F.ctrl === "full"    && x.pics_controller !== "full") return false;
-  if(F.ctrl === "partial" && !(x.pics_controller === "full" || x.pics_controller === "partial")) return false;
-  if(F.deck === "verified"    && x.deck_cat !== 3) return false;
-  if(F.deck === "playable"    && !(x.deck_cat === 3 || x.deck_cat === 2)) return false;
-  if(F.deck === "unsupported" && x.deck_cat !== 1) return false;
-  if(F.adultF === "hide" && isAdult(x)) return false;
-  if(F.adultF === "only" && !isAdult(x)) return false;
+  // --- PICS "Flags" cluster (all independent; ONLY applied when PICS data is loaded).
+  // Without pics.json the pics_* fields are undefined, so an active flag would wrongly
+  // reject every game — guard on HAS_PICS so the filters are inert until data ships. ---
+  if(window.HAS_PICS){
+    const F = state.flags;
+    if(F.ea && !x.pics_ea) return false;
+    if(F.eula && !x.pics_eula) return false;
+    if(F.fse && !x.pics_fse) return false;
+    if(F.vrOnly && !x.pics_vr_only) return false;
+    if(F.ai === "hide" && (x.pics_ai||0) > 0) return false;
+    if(F.ai === "only" && !((x.pics_ai||0) > 0)) return false;
+    if(F.ctrl === "full"    && x.pics_controller !== "full") return false;
+    if(F.ctrl === "partial" && !(x.pics_controller === "full" || x.pics_controller === "partial")) return false;
+    if(F.deck === "verified"    && x.deck_cat !== 3) return false;
+    if(F.deck === "playable"    && !(x.deck_cat === 3 || x.deck_cat === 2)) return false;
+    if(F.deck === "unsupported" && x.deck_cat !== 1) return false;
+    if(F.adultF === "hide" && isAdult(x)) return false;
+    if(F.adultF === "only" && !isAdult(x)) return false;
+  }
   if(state.tagsInc.size || state.tagsExc.size){
     const cs = canonSet(x);
     if(state.tagsInc.size){
@@ -2959,6 +2969,8 @@ function init(data){
     document.querySelectorAll("[data-ptmetric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ptmetric==="up")); syncPtHeader();
     syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
+    state.flags={ ea:false, eula:false, fse:false, vrOnly:false, ai:"any", ctrl:"any", deck:"any", adultF:"any" };
+    syncFlagsUI();
     update();
   });
 
