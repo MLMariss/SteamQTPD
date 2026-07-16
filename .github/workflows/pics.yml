@@ -51,16 +51,25 @@ jobs:
             --checkpoint-min 15
 
       # -------- Stage 2: derive frontend view (Layer 2) --------
-      - name: Summarize PICS -> pics.json
+      - name: Summarize PICS -> pics/ shards
         run: |
           python pics_summarize.py --in pics_raw --out pics
 
+      # -------- Stage 3: merge 64 shards -> single slim pics.json (frontend) --------
+      # The frontend loads one file per data source (games/prices/tags/...); this
+      # merges the pics/ shards into the single pics.json index.html actually fetches,
+      # dropping parked backend-only fields (dev/pub/franchise/langs/audio) for a
+      # ~37% smaller transfer. Without this step pics.json never gets written.
+      - name: Merge PICS shards -> pics.json
+        run: |
+          python pics_merge.py --in pics --out pics.json
+
       # -------- Commit (fetch -> rebase -> push, commit only on diff) --------
-      - name: Commit pics_raw + pics
+      - name: Commit pics_raw + pics + pics.json
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pics_raw pics
+          git add pics_raw pics pics.json
           if git diff --staged --quiet; then
             echo "No changes this run"
           else
