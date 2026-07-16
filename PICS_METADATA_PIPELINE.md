@@ -1,6 +1,9 @@
 # PICS Metadata Pipeline — Design Spec
 
-**Status:** Design locked, pre-build
+**Status:** SHIPPED — full-library sweep complete (123,560 games in `pics_raw/`
+and `pics/` as of 2026-07-16). §2 coverage figures below updated from the
+original 120-game probe to live full-library numbers; the authoritative live
+figures regenerate into `COVERAGE.md` on every pass.
 **Author:** MLMariss + Claude working session
 **Scope:** New SteamQTPD data pipeline harvesting the Steam PICS `common`
 app-info block via anonymous CM session. Adds AI-content disclosure plus a
@@ -53,42 +56,53 @@ Small int enum stored as a string:
 | `"2"` | Live-generated AI content (runtime generation) | DREAMIO (ChatGPT + Stable Diffusion + TTS) |
 
 - `"3"` (both) is plausible but no carrier seen; handle gracefully.
-- Coverage in sample: 13/120 ≈ 11% (11 pre-gen, 2 live-gen).
+- **Live coverage (full sweep, 123,560 games): 12,653 ≈ 10.2%** — 12,247
+  pre-generated, 406 live-generated. (Original 120-game probe read 13/120 ≈ 11%,
+  which held up well.)
 - The **free-text disclosure blurb** ("we use TTS for…") is **NOT** in `common` —
   it lives only on the rendered store page. PICS gives the **flag + category only**.
   This is deemed sufficient: a typed flag is more filterable than prose.
 
 ### 2.2 High-value keepers (tier 1)
 
-Measured coverage over the 120-game sample:
+The **Sample** column is the original 120-game probe (top-played/AAA-heavy).
+The **Live** column is the full-library sweep (123,560 games in `pics/`) and is
+the authoritative figure — it is regenerated automatically into `COVERAGE.md`
+(§"PICS metadata — sub-metric coverage") on every pass. Where the two diverge
+sharply (Deck, review-bombs, metacritic), the sample was biased toward famous
+titles; the Live figure is the true real-world incidence.
 
-| Key | Coverage | Shape | Why we keep it |
-|---|---|---|---|
-| `store_tags` | 99% | `{"0":"4115","1":"1695",…}` ordered tag-ID list (top ~20, rank order) | Ranked community tags. Hard to get cleanly elsewhere. **Biggest win.** Needs tag-ID→name lookup. |
-| `steam_deck_compatibility` | 97% | struct: `category`, `steamos_compatibility`, `steam_machine_compatibility`, `test_timestamp`, `tested_build_id`, `tests{}` | Deck verified/playable/unsupported + new Steam Machine compat. Not in appdetails. |
-| `review_score` | 99% | `"1"`–`"9"` bucket | Valve's canonical review bucket. |
-| `review_percentage` | 99% | `"0"`–`"100"` | Canonical % positive. |
-| `review_score_bombs` / `review_percentage_bombs` | ~10% | same shapes | **Review-bomb-adjusted** score. Present only on bombed games. Compare vs raw to *detect* review bombing (e.g. War Thunder raw 5/64% vs de-bombed 6/71%). |
-| `associations` | 100% | `{"0":{"type":"developer","name":"…"},…}` | Structured dev/publisher/franchise. No HTML parsing. |
-| `category` | 100% | `{"category_2":"1","category_1":"1",…}` | Feature flags (single-player, co-op, achievements, cloud, controller…). Filterable. |
-| `genres` / `primary_genre` | 99% | `{"0":"3"}` / `"3"` | Genre IDs. Needs genre-ID→name lookup. |
-| `releasestate` | 94% | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. |
-| `supported_languages` | 99% | per-language `{supported, full_audio, subtitles}` | Richer than a flat list. |
-| `steam_release_date` | 95% | unix ts string | Release date. |
-| `original_release_date` | 15% | unix ts string | True original date for EA→1.0 games. |
-| `metacritic_score` / `metacritic_name` / `metacritic_fullurl` | ~40-50% | int / str / url | Metacritic when present. |
-| `content_descriptors` | 36% | `{"0":"1","1":"2","2":"5"}` | Mature-content flags (violence/gore/sexual). **Unrelated to AI** despite adjacency. |
+| Key | Sample | **Live** | Shape | Why we keep it |
+|---|---|---|---|---|
+| `store_tags` | 99% | **99.9%** | `{"0":"4115","1":"1695",…}` ordered tag-ID list (top ~20, rank order) | Ranked community tags. Hard to get cleanly elsewhere. **Biggest win.** Needs tag-ID→name lookup. |
+| `steam_deck_compatibility` | 97% | **27.2%** | struct: `category`, `steamos_compatibility`, `steam_machine_compatibility`, `test_timestamp`, `tested_build_id`, `tests{}` | Deck verified/playable/unsupported + new Steam Machine compat. Not in appdetails. Sample was AAA-heavy; most of the long tail is simply unrated by Valve. Of 33,658 rated: 8,116 Verified / 19,401 Playable / 6,141 Unsupported. |
+| `review_score` | 99% | **64.0%** | `"1"`–`"9"` bucket | Valve's canonical review bucket. Live figure tracks the review-floor (games with too few reviews carry no bucket). |
+| `review_percentage` | 99% | **64.0%** | `"0"`–`"100"` | Canonical % positive. |
+| `review_score_bombs` / `review_percentage_bombs` | ~10% | **0.1%** | same shapes | **Review-bomb-adjusted** score. Present only on bombed games (just 97 across the library — the sample's ~10% was famous-bombed-title bias). Compare vs raw to *detect* review bombing. |
+| `associations` | 100% | **99.9% dev / 99.6% pub** | `{"0":{"type":"developer","name":"…"},…}` | Structured dev/publisher/franchise. No HTML parsing. |
+| `category` | 100% | **100.0%** | `{"category_2":"1","category_1":"1",…}` | Feature flags (single-player, co-op, achievements, cloud, controller…). Filterable. |
+| `genres` / `primary_genre` | 99% | **99.9% / 100.0%** | `{"0":"3"}` / `"3"` | Genre IDs. Needs genre-ID→name lookup. |
+| `releasestate` | 94% | present in raw (470 prerelease) | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. **Note: carried in `pics_raw/` but NOT yet emitted to `pics/` — see §10.** |
+| `supported_languages` | 99% | **99.9%** (langs) / **44.0%** (full-audio) | per-language `{supported, full_audio, subtitles}` | Richer than a flat list. |
+| `steam_release_date` | 95% | **98.7%** | unix ts string | Release date. |
+| `original_release_date` | 15% | **9.1%** | unix ts string | True original date for EA→1.0 games. |
+| `metacritic_score` / `metacritic_name` / `metacritic_fullurl` | ~40-50% | **3.3%** | int / str / url | Metacritic when present. Sample was AAA-heavy; library-wide only ~4k titles carry a Metacritic score. |
+| `content_descriptors` | 36% | not yet in `pics/` | `{"0":"1","1":"2","2":"5"}` | Mature-content flags (violence/gore/sexual). **Unrelated to AI** despite adjacency. **Not yet wired through the summarizer** (and dropped at Layer-1 trim, so a re-sweep is needed to surface it) — see §10. Deferred scope, not a data gap. |
 
 ### 2.3 Promoted keepers — investigated specially (tier 2)
 
-| Key | Coverage | Decision | Notes |
-|---|---|---|---|
-| `exfgls` | ~24% | **KEEP as family-share-exclusion flag** | See §2.4. Name = "EXclude From Family Library Sharing". Presence ⇒ NOT shareable. |
-| `eulas` | 60% | **KEEP as `has_custom_eula` + names** | Presence ⇒ extra agreement(s) to accept. Struct: `{id,name,url,version}`. |
-| `market_presence` | 10% | keep (cheap) | Steam Market items exist. |
-| `workshop_visible` | 30% | keep (cheap) | Workshop support. |
-| `parent` | 1-2% | keep | DLC → base app linkage. |
-| `mastersubs_granting_app` | 1-2% | keep | Subscription-granting app linkage. |
+Sample = 120-game probe; Live = full sweep (`fse`/`eula` are emitted to `pics/`
+and tracked in COVERAGE.md; the cheap tier-2 flags below `eulas` are kept in raw
+but not all surfaced in the summarized view yet).
+
+| Key | Sample | **Live** | Decision | Notes |
+|---|---|---|---|---|
+| `exfgls` | ~24% | **0.7%** | **KEEP as family-share-exclusion flag** | See §2.4. Name = "EXclude From Family Library Sharing". Presence ⇒ NOT shareable. Only 838 titles library-wide — the sample's 24% was launcher/DRM-AAA bias. |
+| `eulas` | 60% | **8.9%** | **KEEP as `has_custom_eula` + names** | Presence ⇒ extra agreement(s) to accept. Struct: `{id,name,url,version}`. 10,988 titles library-wide. |
+| `market_presence` | 10% | not in summarized view | keep (cheap) | Steam Market items exist. |
+| `workshop_visible` | 30% | not in summarized view | keep (cheap) | Workshop support. |
+| `parent` | 1-2% | not in summarized view | keep | DLC → base app linkage. |
+| `mastersubs_granting_app` | 1-2% | not in summarized view | keep | Subscription-granting app linkage. |
 
 ### 2.4 `exfgls` — family-share exclusion (verified)
 
@@ -373,3 +387,21 @@ Actions runner; will NOT run in a restricted/allowlisted sandbox.
 - Incremental-refresh trigger (store_asset_mtime delta vs age cycle) — design in
   the refresh step; first run is a full sweep.
 - Whether to surface Deck `tests[]` detail or just the top-level `category`.
+
+### Not-yet-implemented fields (deferred scope, noted 2026-07-16)
+
+These are fields present in the PICS source that the summarizer does not yet
+emit to `pics/`. They are intentionally **excluded from COVERAGE.md** (showing
+them at 0% would misread as a data gap rather than unbuilt scope):
+
+- **`content_descriptors`** — mature-content flags. Present in ~22.5% of PICS
+  source, but the Layer-1 trim in `pics_refresh.py` drops the key before
+  archiving, so it's not in `pics_raw/` either. Surfacing it needs: (a) add
+  `content_descriptors` to the Layer-1 keep-list, (b) a re-sweep to repopulate
+  raw, (c) a summarizer block. Not started. Decide later if the mature-content
+  flag is worth the re-sweep.
+- **`releasestate`** — live/prerelease/coming-soon state. This one IS retained in
+  `pics_raw/` (470 prerelease titles present), so surfacing it is a
+  **summarizer-only edit + re-derive, no re-scrape**. Cheap win whenever a
+  live/coming-soon filter is wanted; tied to the upcoming-games decision (see
+  `UPCOMING_GAMES_PICS_MEMO.md`, parked for later).

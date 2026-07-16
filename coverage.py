@@ -63,6 +63,8 @@ HERE = Path(__file__).resolve().parent
 OUT_FILE = HERE / "COVERAGE.md"
 PT_SHARD_DIR = HERE / "playtime_raw"
 UPD_SHARD_DIR = HERE / "updates_raw"
+PICS_RAW_DIR = HERE / "pics_raw"
+PICS_DIR = HERE / "pics"
 
 DAY = 86400
 MIN_REVIEWS_FLOOR = 10   # addressable-set gate (playtime + updates layers)
@@ -80,6 +82,8 @@ UPD_COOLDOWN_DAYS = 7
 UPD_NOUPDATE_COOLDOWN_DAYS = 45
 # games.json / scraper.py (no last_modified API key -> fallback timer)
 SCRAPER_REFRESH_DAYS = 7
+# pics_refresh.py (single-window --stale-days gate; default from pics.yml)
+PICS_STALE_DAYS = 14
 # hltb_refresh.py (different shape: static windows + blank backoff)
 HLTB_PARTIAL_DAYS = 14
 HLTB_FULL_DAYS = 365
@@ -168,6 +172,102 @@ def read_upd_shards():
     return scraped, populated, len(files), newest, oldest
 
 
+def _iso_to_epoch(s):
+    """Parse pics_raw '_updated' ISO strings to epoch (shard-level stamp)."""
+    if not s:
+        return None
+    try:
+        return int(datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp())
+    except (ValueError, TypeError):
+        return None
+
+
+def read_pics_raw_shards():
+    """pics_raw: {appid: _ts} (REAL per-game fetch stamp) + populated count + bounds.
+
+    Unlike playtime_raw (which has no per-game stamp and uses a review-ts proxy),
+    pics_raw stores a genuine per-game `_ts` set at fetch time, so the refresh axis
+    below is EXACT, not a proxy. Shard-level freshness comes from `_updated` (ISO).
+    """
+    fetched = {}
+    newest = oldest = None
+    populated = 0
+    files = sorted(PICS_RAW_DIR.glob("*.json")) if PICS_RAW_DIR.is_dir() else []
+    for f in files:
+        sh = json.loads(f.read_text(encoding="utf-8"))
+        apps = sh.get("apps") or {}
+        if apps:
+            populated += 1
+        g = _iso_to_epoch(sh.get("_updated"))
+        if g:
+            newest = g if newest is None else max(newest, g)
+            oldest = g if oldest is None else min(oldest, g)
+        for aid, rec in apps.items():
+            fetched[str(aid)] = rec.get("_ts", 0)
+    return fetched, populated, len(files), newest, oldest
+
+
+# Sub-metrics of the summarized pics/ view. (label, predicate, note). The
+# predicate decides "does this game carry the field". Truthy-only fields
+# (rev_bomb, ai, fse, eula, orig_released, mc) are by-design sparse — they are
+# present only on carrier games, so their % is a real-world incidence rate, not
+# a pipeline gap. Structural fields (tags/genres/cats/langs) should sit ~100%.
+PICS_SUBMETRICS = [
+    ("primary_genre",           lambda r: r.get("pgenre") is not None,  "genre ID (structural)"),
+    ("feature categories",      lambda r: bool(r.get("cats")),          "single-player/co-op/cloud/... flags"),
+    ("store_tags",              lambda r: bool(r.get("tags")),          "ranked community tag IDs"),
+    ("genres",                  lambda r: bool(r.get("genres")),        "genre IDs"),
+    ("supported languages",     lambda r: bool(r.get("langs")),         "language codes"),
+    ("developer",               lambda r: bool(r.get("dev")),           "structured dev name(s)"),
+    ("publisher",               lambda r: bool(r.get("pub")),           "structured publisher name(s)"),
+    ("release date",            lambda r: r.get("released") is not None, "PICS steam_release_date"),
+    ("review score",            lambda r: bool(r.get("rev")),           "Valve bucket + %positive (review-floor bound)"),
+    ("full-audio languages",    lambda r: bool(r.get("audio")),         "carriers only"),
+    ("Steam Deck compat",       lambda r: bool(r.get("deck")),          "Deck-rated titles only"),
+    ("AI content disclosure",   lambda r: bool(r.get("ai")),            "aicontenttype 1/2 carriers only"),
+    ("custom EULA",             lambda r: bool(r.get("eula")),          "carriers only"),
+    ("original release date",   lambda r: r.get("orig_released") is not None, "EA->1.0 carriers only"),
+    ("metacritic",              lambda r: r.get("mc") is not None,      "carriers only"),
+    ("family-share excluded",   lambda r: bool(r.get("fse")),           "excluded titles only"),
+    ("review-bomb adjusted",    lambda r: bool(r.get("rev_bomb")),      "bombed titles only"),
+]
+
+
+def read_pics_summary():
+    """pics/: total summarized records + per-sub-metric fill counts + AI/deck splits."""
+    total = 0
+    fills = {label: 0 for label, _, _ in PICS_SUBMETRICS}
+    ai_pre = ai_live = 0
+    deck_verified = deck_playable = deck_unsupported = 0
+    if PICS_DIR.is_dir():
+        for f in sorted(PICS_DIR.glob("*.json")):
+            sh = json.loads(f.read_text(encoding="utf-8"))
+            for aid, r in (sh.get("apps") or {}).items():
+                total += 1
+                for label, pred, _ in PICS_SUBMETRICS:
+                    if pred(r):
+                        fills[label] += 1
+                ai = r.get("ai")
+                if ai == 1:
+                    ai_pre += 1
+                elif ai == 2:
+                    ai_live += 1
+                dk = r.get("deck") or {}
+                dc = dk.get("cat")
+                if dc == 3:
+                    deck_verified += 1
+                elif dc == 2:
+                    deck_playable += 1
+                elif dc == 1:
+                    deck_unsupported += 1
+    return {
+        "total": total, "fills": fills,
+        "ai_pre": ai_pre, "ai_live": ai_live,
+        "deck_verified": deck_verified, "deck_playable": deck_playable,
+        "deck_unsupported": deck_unsupported,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # Refresh-schedule bucketers (each mirrors its scraper's gate)
 # --------------------------------------------------------------------------- #
@@ -219,6 +319,23 @@ def schedule_scraper(games):
         else:
             b["fresh"] += 1
     return b
+
+
+def schedule_pics(fetched):
+    """pics_raw: single-window --stale-days gate (default 14d), keyed on the REAL
+    per-game `_ts` fetch stamp. `never` = catalog games with no PICS record yet.
+    No two-track split: pics_refresh.py uses one flat stale window for all games."""
+    now = int(time.time())
+    b = {"fresh": 0, "overdue": 0, "never": 0}
+    have = set(fetched)
+    for aid, ts in fetched.items():
+        if not ts:
+            b["never"] += 1
+        elif (now - ts) >= PICS_STALE_DAYS * DAY:
+            b["overdue"] += 1
+        else:
+            b["fresh"] += 1
+    return b, have
 
 
 def schedule_hltb(hltb):
@@ -300,6 +417,11 @@ def main():
     upd_scraped, upd_populated, upd_total_shards, upd_new_shard, upd_old_shard = read_upd_shards()
     upd_raw_cov = len(upd_scraped)
 
+    pics_fetched, pics_populated, pics_total_shards, pics_new_shard, pics_old_shard = read_pics_raw_shards()
+    pics_raw_cov = len(pics_fetched)
+    pics_sum = read_pics_summary()
+    pics_cov = pics_sum["total"]
+
     def pct(n):
         return n / BASE * 100.0
 
@@ -317,6 +439,8 @@ def main():
         ("Playtime-weighted rating", "ratings.json",  rt_cov,     BASE - rt_cov),
         ("Update events (summ.)",    "updates.json",  upd_cov,    BASE - upd_cov),
         ("Update events (raw)",      "updates_raw/",  upd_raw_cov, BASE - upd_raw_cov),
+        ("PICS metadata (raw)",      "pics_raw/",     pics_raw_cov, BASE - pics_raw_cov),
+        ("PICS metadata (summ.)",    "pics/",         pics_cov,   BASE - pics_cov),
         ("HLTB (estimated)",         "hltb.json",     hltb_est,   None),
     ]
     rows.sort(key=lambda r: r[2], reverse=True)
@@ -338,6 +462,8 @@ def main():
 
     sched_scraper = schedule_scraper(games)
     sched_hltb = schedule_hltb(hltb)
+    sched_pics, pics_have = schedule_pics(pics_fetched)
+    pics_never = BASE - len(pics_have)
 
     now = ts_utc(int(time.time()))
 
@@ -374,6 +500,9 @@ def main():
     upd_shard_line = (f"newest {ts_utc(upd_new_shard)} · oldest {ts_utc(upd_old_shard)}"
                       if upd_new_shard else "—")
     L.append(f"| `updates_raw/` ({upd_populated}/{upd_total_shards} populated) | {upd_shard_line} |")
+    pics_shard_line = (f"newest {ts_utc(pics_new_shard)} · oldest {ts_utc(pics_old_shard)}"
+                       if pics_new_shard else "—")
+    L.append(f"| `pics_raw/` ({pics_populated}/{pics_total_shards} populated) | {pics_shard_line} |")
     L.append("")
     L.append("---")
     L.append("")
@@ -448,9 +577,57 @@ def main():
              f"rescrape schedule** — coverage-only. See Future work below.")
     L.append(f"- **`playtime.json` / `ratings.json`**: derived from `playtime_raw/` on "
              f"every raw pass; staleness inherits from the raw shard row above.")
+    L.append(f"- **`pics_raw/`** (`pics_refresh.py`): fresh {sched_pics['fresh']:,} · "
+             f"overdue {sched_pics['overdue']:,} · never {pics_never:,}. Single flat "
+             f"`--stale-days {PICS_STALE_DAYS}` window (daily cron), and — unlike playtime — "
+             f"keyed on a **real per-game `_ts` fetch stamp**, so overdue here is exact, not "
+             f"a proxy. `never` = catalog games not yet in `pics_raw/` (the fill frontier). "
+             f"`pics/` is derived from `pics_raw/` by `pics_summarize.py` on every pass, so "
+             f"its staleness inherits from this row.")
     L.append("")
     L.append("---")
     L.append("")
+
+    # ---- PICS sub-metric coverage ----
+    if pics_cov:
+        L.append("## PICS metadata — sub-metric coverage")
+        L.append("")
+        L.append(f"Fill rates **within the {pics_cov:,} summarized `pics/` records** "
+                 f"(not against the full catalog). Structural fields (tags, genres, "
+                 f"categories, languages, dev/pub) sit near 100%; the sparse rows below "
+                 f"them are **by-design carrier-only** fields — their % is a real-world "
+                 f"incidence rate (how many games actually carry an AI disclosure, a "
+                 f"Deck rating, a review-bomb adjustment, …), **not** a pipeline gap. "
+                 f"These figures are live over the full library — they supersede the "
+                 f"120-game probe sample in `PICS_METADATA_PIPELINE.md §2`.")
+        L.append("")
+        L.append("| Sub-metric | Covered | % of `pics/` | Note |")
+        L.append("|---|---:|---:|---|")
+        pf = pics_sum["fills"]
+        for label, _, note in PICS_SUBMETRICS:
+            n = pf[label]
+            p = (n / pics_cov * 100) if pics_cov else 0
+            L.append(f"| {label} | {n:,} | {p:.1f}% | {note} |")
+        L.append("")
+        ai_pre, ai_live = pics_sum["ai_pre"], pics_sum["ai_live"]
+        ai_tot = ai_pre + ai_live
+        dv, dp, du = (pics_sum["deck_verified"], pics_sum["deck_playable"],
+                      pics_sum["deck_unsupported"])
+        L.append(f"**AI content disclosure.** {ai_tot:,} games carry an `aicontenttype` "
+                 f"flag ({pct(ai_tot):.1f}% of catalog): **{ai_pre:,} pre-generated** "
+                 f"(shipped assets made with AI) and **{ai_live:,} live-generated** "
+                 f"(runtime generation). The other ~{100 - (ai_tot/pics_cov*100):.0f}% "
+                 f"of `pics/` records carry no disclosure flag. PICS gives the typed "
+                 f"flag + category only; the free-text blurb lives on the store page.")
+        L.append("")
+        L.append(f"**Steam Deck.** Of the {pf['Steam Deck compat']:,} Deck-rated titles: "
+                 f"**{dv:,} Verified**, **{dp:,} Playable**, **{du:,} Unsupported**. The "
+                 f"long tail of the catalog is simply unrated by Valve (no Deck category), "
+                 f"which is why Deck coverage is ~{pf['Steam Deck compat']/pics_cov*100:.0f}% "
+                 f"of `pics/`, not the ~97% the AAA-heavy probe sample suggested.")
+        L.append("")
+        L.append("---")
+        L.append("")
 
     # ---- Notes ----
     L.append("## Notes")
