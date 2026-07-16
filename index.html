@@ -472,6 +472,14 @@
      its own so a user can e.g. collapse the big Tags rail and keep the main switches visible.
      Open/closed state persists in localStorage (qtpd.sections). */
   .filter-section{border-top:1px solid var(--line)}
+  /* Open sections lay the header (title+caret+count) on the LEFT and the controls
+     BESIDE it on the same row, reclaiming the empty gutter that used to sit next to
+     the title. The header stays the sole collapse toggle; the body isn't clickable. */
+  .filter-section.open{display:flex; align-items:flex-start; gap:18px}
+  .filter-section.open > .section-head{flex:0 0 132px; align-self:stretch; padding-top:16px;
+        flex-wrap:wrap; align-content:flex-start; row-gap:4px}
+  .filter-section.open > .section-head .sec-count{margin-left:19px; flex-basis:100%}
+  .filter-section.open > .section-body{flex:1 1 auto; min-width:0}
   .section-head{display:flex; align-items:center; gap:9px; width:100%; background:none; border:0;
         color:var(--muted); font-family:var(--mono); font-size:12px; letter-spacing:.06em;
         text-transform:uppercase; padding:11px 2px; cursor:pointer; text-align:left}
@@ -482,7 +490,13 @@
   .filter-section.open .section-head{color:var(--text)}
   .section-head .sec-count{margin-left:auto; color:var(--gold); font-size:11px; letter-spacing:.03em; opacity:.9}
   .section-body{padding:2px 0 14px}
+  .filter-section.open > .section-body{padding-top:14px}
   .filter-section:not(.open) .section-body{display:none}
+  /* Narrow viewports: stack header above controls again (side-by-side needs width). */
+  @media (max-width:720px){
+    .filter-section.open{display:block}
+    .filter-section.open > .section-head{padding-top:11px}
+  }
 
   /* Collapsed Tags header: show the currently-picked tags in the otherwise-empty middle band so
      they can be re-cycled without expanding. It overlays the header button; the container is
@@ -3124,7 +3138,10 @@ Promise.all([
   window.PICS_TAG_LK   = (tagLk   && tagLk.tags)   ? tagLk.tags   : (tagLk   || {});  // id -> name
   window.PICS_GENRE_LK = (genreLk && genreLk.genres)? genreLk.genres: (genreLk || {});
   window.PICS_CAT_LK   = catLk || {};   // "category_N" -> feature name
-  window.HAS_PICS = !!picsMap;
+  // True only when pics.json actually carries games. An empty placeholder
+  // ({apps:{}}) is truthy-but-empty, so guard on the count — otherwise the flag
+  // filters activate with no data behind them and zero out the whole list.
+  window.HAS_PICS = !!(picsMap && Object.keys(picsMap).length);
   // Decode a category id (int) -> feature name via the categories map ("category_N" keys).
   const catName = id => window.PICS_CAT_LK["category_" + id] || window.PICS_CAT_LK[String(id)] || null;
   // gray threshold: below this many reviews the weighted rating renders low-confidence.
