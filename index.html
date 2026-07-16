@@ -139,6 +139,11 @@
 
   /* wishlist (inline) */
   .wishrow{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+  /* Dead space on the wishlist row folds the whole bar (see the .bar-filters > .ctl-row
+     handler). The whole .wishrow opts out as one island — it already has a bounding box of
+     its own, so unlike a .field it needs no extra hit-box margin. */
+  .bar-filters > .ctl-row{cursor:pointer}
+  .bar-filters > .ctl-row .wishrow{cursor:auto}
   .wishlabel{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.05em; text-transform:uppercase}
   .wishbox{display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:0 0 0 12px}
   .wishbox input{width:280px; background:transparent; border:0; color:var(--text); font-family:var(--mono); font-size:13px; padding:9px 0; outline:none}
@@ -474,10 +479,31 @@
   .filter-section{border-top:1px solid var(--line)}
   /* Open sections lay the header (title+caret+count) on the LEFT and the controls
      BESIDE it on the same row, reclaiming the empty gutter that used to sit next to
-     the title. The header stays the sole collapse toggle; the body isn't clickable. */
+     the title. The header folds the section, and so does any DEAD space in the body —
+     the wide empty strips beside the controls are the biggest fold targets on the row. */
   .filter-section.open{display:flex; align-items:flex-start; gap:18px}
   .filter-section.open > .section-head{cursor:pointer}
-  .filter-section.open > .section-body{flex:1 1 auto; min-width:0; cursor:auto}
+  .filter-section.open > .section-body{flex:1 1 auto; min-width:0; cursor:pointer}
+  /* Fold-safe islands: every real control (and the inert labels sitting in the row) opts
+     OUT of folding — see FOLD_SAFE in the .filter-section click handler, which this list
+     mirrors. The padding grows each island's hit box by 6px and the equal negative margin
+     cancels the layout shift, so the 12px .ctl-row gutters between controls are fully
+     safe and only genuinely empty space folds. Guards against near-miss clicks. */
+  .filter-section.open > .section-body .field,
+  .filter-section.open > .section-body .taglegend,
+  .filter-section.open > .section-body .tagmode,
+  .filter-section.open > .section-body .grouplabel{cursor:auto; padding:6px; margin:-6px}
+  /* The tag rail packs chips 7px apart, where padding+negative margins would make
+     neighbouring hit boxes overlap. A ::after ring extends each chip's hit box by 4px
+     (>7px gap once both sides count) with zero layout effect — the click still targets
+     the chip itself, since a pseudo-element is never its own event target. */
+  .filter-section.open > .section-body .chip,
+  .filter-section.open > .section-body .tagmore{position:relative}
+  .filter-section.open > .section-body .chip::after,
+  .filter-section.open > .section-body .tagmore::after{content:""; position:absolute; inset:-4px}
+  /* The rail sets its own cursor:default, which (as a specified value) would beat the
+     inherited pointer and leave its dead space folding without looking foldable. */
+  .filter-section.open > .section-body .tagrail-wrap{cursor:pointer}
   .filter-section.open > .section-head{flex:0 0 132px; align-self:stretch; padding-top:16px;
         flex-wrap:wrap; align-content:flex-start; row-gap:4px}
   .filter-section.open > .section-head .sec-count{margin-left:19px; flex-basis:100%}
@@ -1018,8 +1044,9 @@ try{
         <div class="field">
           <label>Early Access</label>
           <div class="seg" role="group" aria-label="Early Access">
-            <button data-flag="ea" data-val="off" aria-pressed="true">Any</button>
-            <button data-flag="ea" data-val="on"  aria-pressed="false" title="Only games in Early Access (Valve genre, not user tag)">EA only</button>
+            <button data-flag="ea" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="ea" data-val="hide" aria-pressed="false" title="Exclude games in Early Access (Valve genre, not user tag)">Hide EA</button>
+            <button data-flag="ea" data-val="only" aria-pressed="false" title="Only games in Early Access (Valve genre, not user tag)">EA only</button>
           </div>
         </div>
         <div class="field">
@@ -1058,22 +1085,30 @@ try{
         <div class="field">
           <label>VR only</label>
           <div class="seg" role="group" aria-label="VR only">
-            <button data-flag="vrOnly" data-val="off" aria-pressed="true">Any</button>
-            <button data-flag="vrOnly" data-val="on"  aria-pressed="false" title="VR Only titles">VR only</button>
+            <button data-flag="vrOnly" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="vrOnly" data-val="hide" aria-pressed="false" title="Exclude VR Only titles">Hide VR</button>
+            <button data-flag="vrOnly" data-val="only" aria-pressed="false" title="VR Only titles">VR only</button>
           </div>
         </div>
         <div class="field">
           <label>Family sharing</label>
+          <!-- fse is a NEGATIVE flag (true = excluded from Family Sharing). The "hide" side is
+               deliberately NOT labelled "Shareable": per PICS_METADATA_PIPELINE.md §2.4 the flag
+               is a positive exclusion signal only — absence does not prove a game is shareable
+               (PUBG/Destiny 2 restrict at the account layer, with no such flag). "Not excluded"
+               claims exactly what the data supports and no more. -->
           <div class="seg" role="group" aria-label="Family sharing">
-            <button data-flag="fse" data-val="off" aria-pressed="true">Any</button>
-            <button data-flag="fse" data-val="on"  aria-pressed="false" title="Excluded from Steam Family Sharing">Excluded</button>
+            <button data-flag="fse" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="fse" data-val="hide" aria-pressed="false" title="Games without the Family Sharing exclusion flag. Not a guarantee of shareability — some games restrict at the account layer instead, carrying no flag.">Not excluded</button>
+            <button data-flag="fse" data-val="only" aria-pressed="false" title="Only games excluded from Steam Family Sharing">Excluded</button>
           </div>
         </div>
         <div class="field">
           <label>Custom EULA</label>
           <div class="seg" role="group" aria-label="Custom EULA">
-            <button data-flag="eula" data-val="off" aria-pressed="true">Any</button>
-            <button data-flag="eula" data-val="on"  aria-pressed="false" title="Requires accepting a custom EULA">Has EULA</button>
+            <button data-flag="eula" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="eula" data-val="hide" aria-pressed="false" title="Exclude games that require accepting a custom EULA">No EULA</button>
+            <button data-flag="eula" data-val="only" aria-pressed="false" title="Requires accepting a custom EULA">Has EULA</button>
           </div>
         </div>
         </div></div>
@@ -1232,13 +1267,13 @@ const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"
                 pageSize:100, pagesShown:1,
                 wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", hltbQuality:"real", ptMetric:"up", fullCounts:{},
                 view:"table", tagLinger:new Map(),   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
-                // PICS "Flags" cluster. Each key is independent; "any"/false = no filter.
-                //   ea/eula/fse/vrOnly : boolean require-present toggles
+                // PICS "Flags" cluster. Each key is independent; "any" = no filter.
+                //   ea/eula/fse/vrOnly : "any" | "hide" (flag absent) | "only" (flag present)
                 //   ai       : "any" | "hide" (exclude disclosed) | "only" (require disclosed)
                 //   ctrl     : "any" | "full" | "partial"
                 //   deck     : "any" | "verified" | "playable" (verified+playable) | "unsupported"
                 //   adultF   : "any" | "hide" (exclude adult) | "only"
-                flags:{ ea:false, eula:false, fse:false, vrOnly:false, ai:"any", ctrl:"any", deck:"any", adultF:"any" } };
+                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:"any" } };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -1436,10 +1471,12 @@ function passNonRange(x){
   // reject every game — guard on HAS_PICS so the filters are inert until data ships. ---
   if(window.HAS_PICS){
     const F = state.flags;
-    if(F.ea && !x.pics_ea) return false;
-    if(F.eula && !x.pics_eula) return false;
-    if(F.fse && !x.pics_fse) return false;
-    if(F.vrOnly && !x.pics_vr_only) return false;
+    // Tri-state presence flags: "only" requires the flag, "hide" requires its absence.
+    const triFail = (mode, has) => (mode === "only" && !has) || (mode === "hide" && !!has);
+    if(triFail(F.ea, x.pics_ea)) return false;
+    if(triFail(F.eula, x.pics_eula)) return false;
+    if(triFail(F.fse, x.pics_fse)) return false;
+    if(triFail(F.vrOnly, x.pics_vr_only)) return false;
     if(F.ai === "hide" && (x.pics_ai||0) > 0) return false;
     if(F.ai === "only" && !((x.pics_ai||0) > 0)) return false;
     if(F.ctrl === "full"    && x.pics_controller !== "full") return false;
@@ -2174,7 +2211,7 @@ function sectionActiveCounts(){
          + (state.updatedWithin !== "any" ? 1 : 0) + (state.ptMetric !== "up" ? 1 : 0),
     tags: state.tagsInc.size + state.tagsExc.size,
     flags: (() => { const F = state.flags; let n = 0;
-      if(F.ea) n++; if(F.eula) n++; if(F.fse) n++; if(F.vrOnly) n++;
+      if(F.ea !== "any") n++; if(F.eula !== "any") n++; if(F.fse !== "any") n++; if(F.vrOnly !== "any") n++;
       if(F.ai !== "any") n++; if(F.ctrl !== "any") n++; if(F.deck !== "any") n++; if(F.adultF !== "any") n++;
       return n; })(),
   };
@@ -2209,16 +2246,16 @@ function markChangedControls(){
   setGroup("[data-upd]",          state.updatedWithin !== "any");
   setGroup("[data-ptmetric]",     state.ptMetric !== "up");
   setGroup('[data-pc="full"],[data-pc="sale"],[data-pc="free"]', state.priceClass.size < 3);
-  // FLAGS — segmented + boolean toggles
+  // FLAGS — all segmented, all tri-state
   { const F = state.flags;
     setGroup("[data-ai]",    F.ai !== "any");
     setGroup("[data-ctrl]",  F.ctrl !== "any");
     setGroup("[data-deck]",  F.deck !== "any");
     setGroup("[data-adult]", F.adultF !== "any");
-    setGroup('[data-flag="ea"]',     F.ea);
-    setGroup('[data-flag="vrOnly"]', F.vrOnly);
-    setGroup('[data-flag="fse"]',    F.fse);
-    setGroup('[data-flag="eula"]',   F.eula);
+    setGroup('[data-flag="ea"]',     F.ea     !== "any");
+    setGroup('[data-flag="vrOnly"]', F.vrOnly !== "any");
+    setGroup('[data-flag="fse"]',    F.fse    !== "any");
+    setGroup('[data-flag="eula"]',   F.eula   !== "any");
   }
 
   // Price inputs — gold the box when that bound is set
@@ -2640,9 +2677,9 @@ function syncFlagsUI(){
   const seg = (attr, val) => document.querySelectorAll(`[data-${attr}]`).forEach(o =>
     o.setAttribute("aria-pressed", o.dataset[attr] === val));
   seg("ai", F.ai); seg("ctrl", F.ctrl); seg("deck", F.deck); seg("adult", F.adultF);
-  const bool = (key, on) => document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
-    o.setAttribute("aria-pressed", (o.dataset.val === "on") === on));
-  bool("ea", F.ea); bool("vrOnly", F.vrOnly); bool("fse", F.fse); bool("eula", F.eula);
+  const tri = (key, val) => document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
+    o.setAttribute("aria-pressed", o.dataset.val === val));
+  tri("ea", F.ea); tri("vrOnly", F.vrOnly); tri("fse", F.fse); tri("eula", F.eula);
 }
 function setBasis(b){
   state.qBasis = b;
@@ -2700,13 +2737,14 @@ function syncURL(){
   if(state.updatedWithin !== "any") p.set("upd", state.updatedWithin);
   if(state.wishOnly) p.set("wishonly", "1");
   // PICS flags cluster — only non-default values emitted (keeps shared links clean).
+  // The tri-state presence flags split across two lists: `flags` = require present (the
+  // pre-tri-state meaning, so old shared links keep working), `noflags` = require absent.
   { const F = state.flags;
-    const on = [];
-    if(F.ea) on.push("ea");
-    if(F.eula) on.push("eula");
-    if(F.fse) on.push("fse");
-    if(F.vrOnly) on.push("vr");
-    if(on.length) p.set("flags", on.join(","));
+    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"]];
+    const on  = TRI.filter(([k]) => F[k] === "only").map(([,tok]) => tok);
+    const off = TRI.filter(([k]) => F[k] === "hide").map(([,tok]) => tok);
+    if(on.length)  p.set("flags", on.join(","));
+    if(off.length) p.set("noflags", off.join(","));
     if(F.ai !== "any")   p.set("ai", F.ai);
     if(F.ctrl !== "any") p.set("ctrl", F.ctrl);
     if(F.deck !== "any") p.set("deck", F.deck);
@@ -2759,9 +2797,12 @@ function loadFromURL(){
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd===v)); });
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
-  setIf("flags", v => { const s = new Set(v.split(",").filter(Boolean));
-    state.flags.ea = s.has("ea"); state.flags.eula = s.has("eula");
-    state.flags.fse = s.has("fse"); state.flags.vrOnly = s.has("vr"); });
+  // Each list only sets the keys it names, so `flags` and `noflags` don't clobber each other.
+  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly" };
+    const readTri = (param, mode) => setIf(param, v => v.split(",").filter(Boolean)
+      .forEach(tok => { if(TOK[tok]) state.flags[TOK[tok]] = mode; }));
+    readTri("flags", "only");
+    readTri("noflags", "hide"); }
   setIf("ai",    v => { if(["hide","only"].includes(v)) state.flags.ai = v; });
   setIf("ctrl",  v => { if(["full","partial"].includes(v)) state.flags.ctrl = v; });
   setIf("deck",  v => { if(["verified","playable","unsupported"].includes(v)) state.flags.deck = v; });
@@ -2829,7 +2870,7 @@ function init(data){
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up"; state.qRangeTouched=false;
-    state.flags={ ea:false, eula:false, fse:false, vrOnly:false, ai:"any", ctrl:"any", deck:"any", adultF:"any" };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:"any" };
     loadFromURL();
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===state.tagMode));
     syncPriceClassUI();
@@ -2923,13 +2964,13 @@ function init(data){
   segGroup("ctrl", "ctrl");
   segGroup("deck", "deck");
   segGroup("adult", "adultF");
-  // Boolean toggle groups (data-flag/data-val="on"|"off"): ea / vrOnly / fse / eula.
+  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula.
   document.querySelectorAll("[data-flag]").forEach(b =>
     b.addEventListener("click", () => {
-      const key = b.dataset.flag, on = b.dataset.val === "on";
-      state.flags[key] = on;
+      const key = b.dataset.flag, val = b.dataset.val;
+      state.flags[key] = val;
       document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
-        o.setAttribute("aria-pressed", (o.dataset.val === "on") === on));
+        o.setAttribute("aria-pressed", o.dataset.val === val));
       update();
     }));
   const priceHandler = () => {
@@ -2985,7 +3026,7 @@ function init(data){
     document.querySelectorAll("[data-ptmetric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ptmetric==="up")); syncPtHeader();
     syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
-    state.flags={ ea:false, eula:false, fse:false, vrOnly:false, ai:"any", ctrl:"any", deck:"any", adultF:"any" };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:"any" };
     syncFlagsUI();
     update();
   });
@@ -3054,16 +3095,30 @@ function init(data){
   $("#gridview").addEventListener("keydown", e => {
     if((e.key === "Enter" || e.key === " ") && e.target.classList.contains("gcard")){ e.preventDefault(); e.target.classList.toggle("open"); }
   });
-  // L1: accordion sections toggle open/closed (persisted). The toggle target is the
-  // header column ONLY (caret + title + count) — never the control body. This protects
-  // every filter/tag/button area from folding on a near-miss or a hover-then-click, while
-  // keeping a clean, predictable fold target on the title itself.
+  // L1: accordion sections toggle open/closed (persisted). Two fold targets: the header
+  // column (caret + title + count), and any dead space in the section's own row — the wide
+  // empty strips beside the controls, which are the largest targets on the row. Everything
+  // that is (or holds) a real control opts out via FOLD_SAFE, and each safe island carries a
+  // ~6px invisible margin in CSS, so the gutters between controls belong to the control and
+  // a near-miss can't fold the section.
+  const FOLD_SAFE = "button, input, select, textarea, a, label, .seg, .field, .numinput,"
+                  + ".chip, .tagmore, .taglegend, .tagmode, .grouplabel, .wishrow";
   document.querySelectorAll(".filter-section").forEach(sec =>
     sec.addEventListener("click", e => {
+      // The header is itself a <button>, so it has to be tested before FOLD_SAFE.
       const head = e.target.closest(".section-head");
-      if(!head || head.closest(".filter-section") !== sec) return;   // only the header column folds
+      if(head) { if(head.closest(".filter-section") === sec) toggleSection(sec.dataset.section); return; }
+      if(e.target.closest(FOLD_SAFE)) return;                 // a control, or its safe margin
+      if(window.getSelection().toString()) return;            // don't fold at the end of a text drag
       toggleSection(sec.dataset.section);
     }));
+  // The wishlist row isn't a filter section (it's a global action that stays visible), so its
+  // dead space folds the whole bar instead — same as the "Hide filters" handle below it.
+  $(".bar-filters > .ctl-row").addEventListener("click", e => {
+    if(e.target.closest(FOLD_SAFE)) return;
+    if(window.getSelection().toString()) return;
+    $(".collapse-handle").click();
+  });
   // L2: clicking a summarized filter term opens its inline editor (or deep-links into the bar).
   $("#filterSummary").addEventListener("click", e => {
     if(e.target.closest("[data-reset]")){ $("#clear").click(); return; }   // #8 — warning Reset reuses the real reset

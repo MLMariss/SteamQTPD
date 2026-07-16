@@ -297,7 +297,9 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
   - *Decisions:* open/closed state **persists in `localStorage["qtpd.sections"]`** (not the URL —
     keeps shared links clean). **Defaults:** Value + Quality open, **Tags folded**. The planned
     "weighted" control under Quality was **not added** (there is only a Weighted *column*, no such
-    filter). The wishlist import row stays outside the accordions (global action).
+    filter). The wishlist import row stays outside the accordions (global action) — clicking its
+    dead space folds the whole bar instead. See "Fold zones" in the changelog for what folds a
+    section: the header, plus any dead space in its row.
 
 - **L2. Collapsed-bar filter summary + inline editors — ✅ SHIPPED.** Rejected the permanent
   sentence (space waste); instead `#filterSummary` renders **only when the nav bar is compact**
@@ -1114,10 +1116,22 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
 side-by-side layout: the section header (caret + title + active-count badge)
 sits in a fixed ~132px left column, with controls flowing beside it in the
 reclaimed gutter (previously the controls sat on a second row below the title).
-Collapse toggles on the **header column only** — never the control body — so a
-near-miss or hover-then-click on a filter/tag never folds the section. On
-viewports ≤720px the layout reverts to header-above-controls. The "Quality &
+On viewports ≤720px the layout reverts to header-above-controls. The "Quality &
 Activity" section was renamed to just "Quality".
+
+**Fold zones (superseding the header-only rule above).** Collapse originally
+toggled on the header column only, which left the wide empty strips beside the
+controls inert. Now the header *and* any dead space in the section's own row
+fold it — those strips are the largest fold targets on the row. Controls opt out
+via `FOLD_SAFE` (a selector list in the `.filter-section` click handler) with a
+CSS list mirroring it: each safe island carries `padding:6px; margin:-6px`, which
+grows its hit box while cancelling the layout shift, so the 12px `.ctl-row`
+gutters belong entirely to the controls and a near-miss still can't fold. Tag
+chips use a `::after{inset:-4px}` ring instead — their 7px spacing is too tight
+for negative margins without overlapping hit boxes. The wishlist row isn't a
+section (it's a global action), so its dead space folds the whole bar via the
+`.collapse-handle`. A `getSelection()` guard prevents folding at the end of a
+text drag.
 
 ---
 
