@@ -1,6 +1,6 @@
 # Shard health — `playtime_raw/` · QTPD (SteamQHPP)
 
-_Generated 2026-07-19 08:58 UTC by `shard_health.py`._
+_Generated 2026-07-20 09:45 UTC by `shard_health.py`._
 
 ## Status
 
@@ -12,22 +12,22 @@ _Generated 2026-07-19 08:58 UTC by `shard_health.py`._
 |---|---|
 | Shards | 64 (non-empty 64) |
 | shard_ver | [2] |
-| Total games | 78,722 |
+| Total games | 78,737 |
 | Games/shard | min 1169 · median 1230 · max 1306 (max/mean 1.06) |
 | Size/shard | min 10.53 MB · median 12.17 MB · **max 13.20 MB** |
 | Headroom on biggest | 86.8 MB under the 100 MB limit |
 | Bytes/game | ~10.4 KB |
 | Games-to-100MB (per shard) | ~9,892 |
-| Addressable universe (≥10 reviews) | 78,825 → ~1,231/shard at full coverage |
+| Addressable universe (≥10 reviews) | 78,834 → ~1,231/shard at full coverage |
 | **Projected max shard at full coverage** | **~12 MB** |
 
 ## Per-shard
 
 | Bucket | Games | Size | % of 100 MB | Updated (UTC) |
 |---:|---:|---:|---:|---|
-| 00 | 1,251 | 12.56 MB | 12.6% | 2026-07-11 10:41 |
-| 01 | 1,242 | 12.26 MB | 12.3% | 2026-07-11 13:03 |
-| 02 | 1,241 | 11.73 MB | 11.7% | 2026-07-11 15:50 |
+| 00 | 1,253 | 12.58 MB | 12.6% | 2026-07-19 20:21 |
+| 01 | 1,245 | 12.31 MB | 12.3% | 2026-07-19 23:24 |
+| 02 | 1,243 | 11.80 MB | 11.8% | 2026-07-20 05:05 |
 | 03 | 1,211 | 11.26 MB | 11.3% | 2026-07-11 17:21 |
 | 04 | 1,218 | 11.99 MB | 12.0% | 2026-07-11 19:01 |
 | 05 | 1,220 | 11.53 MB | 11.5% | 2026-07-11 21:43 |
@@ -85,10 +85,10 @@ _Generated 2026-07-19 08:58 UTC by `shard_health.py`._
 | 57 | 1,276 | 12.10 MB | 12.1% | 2026-07-18 20:18 |
 | 58 | 1,252 | 12.19 MB | 12.2% | 2026-07-18 23:23 |
 | 59 | 1,230 | 11.41 MB | 11.4% | 2026-07-19 04:47 |
-| 60 | 1,245 | 12.84 MB | 12.8% | 2026-07-10 19:43 |
-| 61 | 1,254 | 12.90 MB | 12.9% | 2026-07-10 22:29 |
-| 62 | 1,223 | 12.48 MB | 12.5% | 2026-07-11 00:54 |
-| 63 | 1,237 | 12.67 MB | 12.7% | 2026-07-11 06:12 |
+| 60 | 1,249 | 12.92 MB | 12.9% | 2026-07-19 09:31 |
+| 61 | 1,255 | 12.91 MB | 12.9% | 2026-07-19 11:43 |
+| 62 | 1,225 | 12.50 MB | 12.5% | 2026-07-19 14:44 |
+| 63 | 1,238 | 12.69 MB | 12.7% | 2026-07-19 17:37 |
 
 _Buckets rotate — each is scraped roughly every ~64 runs, so a shard being several days old is normal. The number that matters is **max shard size** vs the 100 MB limit._
 
