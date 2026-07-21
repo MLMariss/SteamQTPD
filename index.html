@@ -257,7 +257,7 @@
       minmax(66px,  104px)   /* Weighted   */
       minmax(96px,  132px)   /* Price/Sale — merged: struck+final price with discount badge */
       minmax(80px,  108px)   /* Sale ends  */
-      minmax(96px,  124px)   /* Released   — floor fits "15.2 yrs old" */
+      minmax(96px,  124px)   /* Released   — floor fits "15.3 yrs old" (longest ageStr form) */
       minmax(84px,  108px)   /* Updated    — last-update recency + patch-cadence badge */
       minmax(140px, 3fr)     /* Tags       — MOST growth (soaks up the slack, fewest wrap rows) */
       minmax(82px,  82px)    /* Playtime   — fixed: fits "▲ 9999h" (ptval min-width 44 + arrow + trimmed pad) */
@@ -1410,12 +1410,39 @@ function releaseTip(g){
   }
   return g.release_date || "Release date not confirmed";
 }
+// Trim a trailing ".0" so exact values read as whole units ("2 weeks old", not "2.0 weeks old")
+// while partial ones keep their decimal. Guards against "2.0" surviving toFixed(1).
+const dec1 = n => n.toFixed(1).replace(/\.0$/, "");
+// Calendar-accurate month age. Counts whole calendar months elapsed, then expresses the
+// leftover days as a fraction of the *containing* month — so the fraction is measured against
+// the real 28/29/30/31-day month rather than a flat 30, and "1.5 mo" genuinely means halfway
+// through the second month. Deliberately diverges from updatedStr's flat d/30, which only
+// needs coarse whole units.
+function monthsBetween(from, to){
+  let mo = (to.getUTCFullYear() - from.getUTCFullYear())*12 + (to.getUTCMonth() - from.getUTCMonth());
+  const anchor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + mo, from.getUTCDate()));
+  if(anchor > to){ mo -= 1; anchor.setUTCMonth(anchor.getUTCMonth() - 1); }
+  // length of the month this partial remainder falls inside
+  const next = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + 1, anchor.getUTCDate()));
+  const frac = (to - anchor) / (next - anchor);
+  return mo + frac;
+}
+// Age line under the Released date. Mirrors updatedStr's stepped resolution: exact days
+// while that's meaningful, then coarser units as precision stops mattering. Ladder is
+// today → Nd (to 14) → N.Nwk (to 30) → N.Nmo (to 1yr) → N.Nyrs. Future-dated (unreleased)
+// games return "" so no age line renders — the tooltip carries their date instead.
 function ageStr(ts){
   if(!ts) return "";
-  const yrs = (NOW() - ts) / (365.25*86400);
-  if(yrs < 0) return "";
-  if(yrs < 1) return Math.max(1,Math.round(yrs*12)) + " mo old";
-  return yrs.toFixed(1) + " yrs old";
+  const s = NOW() - ts;
+  if(s < 0) return "";
+  if(s < 86400) return "today";
+  const d = Math.floor(s/86400);
+  if(d === 1) return "1 day old";
+  if(d < 14) return `${d} days old`;
+  if(d < 30) return dec1(d/7) + " wk old";
+  if(d < 365) return dec1(monthsBetween(new Date(ts*1000), new Date(NOW()*1000))) + " mo old";
+  const y = dec1(d/365.25);
+  return `${y} ${y === "1" ? "yr" : "yrs"} old`;
 }
 function compactNum(n){
   if(n == null) return "—";
