@@ -254,7 +254,7 @@
       minmax(268px, 2.2fr)   /* Game       — floor = thumb + 2-line title; strong growth */
       minmax(100px, 128px)   /* Reviews    — floor fits "ALL 85% 1.5M" */
       minmax(48px,  76px)    /* Trend      — sits right after Reviews (it's derived from them) */
-      minmax(66px,  104px)   /* Weighted   */
+      minmax(54px,  104px)   /* Weighted   — stacked value/delta, so a tight floor still fits */
       minmax(96px,  132px)   /* Price/Sale — merged: struck+final price with discount badge */
       minmax(80px,  108px)   /* Sale ends  */
       minmax(96px,  124px)   /* Released   — floor fits "15.3 yrs old" (longest ageStr form) */
@@ -276,7 +276,7 @@
       minmax(268px, 2.4fr)   /* Game       — biggest single share, but not hoarding it */
       minmax(100px, 0.60fr)  /* Reviews    */
       minmax(48px,  0.34fr)  /* Trend      */
-      minmax(66px,  0.46fr)  /* Weighted   */
+      minmax(54px,  0.46fr)  /* Weighted   */
       minmax(96px,  0.60fr)  /* Price/Sale */
       minmax(80px,  0.50fr)  /* Sale ends  */
       minmax(96px,  0.55fr)  /* Released   */
@@ -304,20 +304,20 @@
   thead th.tagsth:hover{color:var(--text)}
   .tagstoggle{font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none; line-height:1}
   thead th.tagsth:hover .tagstoggle{color:var(--text)}
-  /* Collapsed: the strip is only 34px, so without a visible container the bare "<>" reads
-     as a stray glyph floating between two unrelated columns rather than a control. Give it
-     a bordered pill plus rules on both sides of the track, so it reads as a seam in the
-     table that can be pulled open. */
+  /* Collapsed: the strip is narrow, so without a visible container the bare "<>" reads as a
+     stray glyph rather than a control. Give it a bordered pill plus rules down both sides of
+     the track. Gold is the site-wide "changed from default" signal, so it marks the COLLAPSED
+     state itself (a non-default view), not hover — same convention as the filter controls. */
   body.tags-collapsed:not(.layout-card) thead th.tagsth{
     padding-left:0; padding-right:0; gap:0; justify-content:center;
     border-left:1px solid var(--line); border-right:1px solid var(--line);
   }
   body.tags-collapsed:not(.layout-card) thead th.tagsth .tagstoggle{
-    border:1px solid var(--line); border-radius:5px; padding:3px 4px;
-    background:var(--panel); color:var(--muted); letter-spacing:-.05em;
+    border:1px solid var(--gold-deep); border-radius:5px; padding:4px 3px;
+    background:var(--gold-soft); color:var(--gold); letter-spacing:-.08em;
   }
   body.tags-collapsed:not(.layout-card) thead th.tagsth:hover .tagstoggle{
-    color:var(--gold); border-color:var(--gold-deep);
+    background:var(--gold-deep); color:#1a1206; border-color:var(--gold);
   }
   /* Carry the seam down the body rows so the collapsed column reads as one continuous
      divider instead of a mark that only exists in the header. */
@@ -339,6 +339,14 @@
   thead th.sortable{cursor:pointer}
   thead th.sortable:hover{color:var(--text)}
   thead th.num{justify-content:flex-end; text-align:right}
+  /* thead th sets white-space:nowrap, so a label wider than its track spills into the
+     neighbouring column — right-aligned (.num) headers spill LEFTWARD, which is how
+     "PLAYTIME" ended up printed across the collapsed Tags toggle. Clip each header to its
+     own track; the full text is still available via the existing title tooltips. */
+  thead th{overflow:hidden}
+  /* The collapsed strip must stay clickable and un-overlapped: give it its own stacking
+     context above neighbouring headers. */
+  body.tags-collapsed:not(.layout-card) thead th.tagsth{z-index:1}
   thead th.center{justify-content:center; text-align:center}
   /* Sort arrow sits absolutely at the bottom of the sorted header (position:relative context
      below), so it costs no inline width and no extra height (lives in the header's padding). */
@@ -499,7 +507,12 @@
   .havg.sel{color:var(--gold)} .havg.sel b{color:var(--gold)}
 
   /* Weighted (playtime-weighted rating) cell — one value next to Steam's %. */
-  .wrcell{display:flex; align-items:center; justify-content:center; gap:6px; cursor:help}
+  /* Weighted: dot + value on one line, delta badge beneath. Side-by-side needed ~104px and
+     clipped the "%" whenever the column hit its floor; stacking fits the same information
+     in the narrowest track the grid will ever hand this column. */
+  .wrcell{display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:2px; cursor:help; line-height:1.15}
+  .wrcell .wrtop{display:flex; align-items:center; gap:5px}
   .wrcell .dot{width:8px; height:8px; border-radius:50%; flex:none}
   .wrval{font-family:var(--mono); font-size:16px; font-weight:600}
   .wrval.na{color:var(--muted-2); font-weight:400}
@@ -1240,13 +1253,13 @@ try{
             <th class="sortable center" data-sort="trend" title="Recent minus all-time — improving, stable, or declining">Trend</th>
             <th class="sortable num" data-sort="wr" title="Playtime-weighted rating: each review counted by how long that player actually played (capped at 2× the game's median so no single obsessive dominates). A recommendation from someone with 300 hours counts more than a 20-minute one. Compare against Steam's flat % in the tooltip. Grayed when too few reviews to be reliable.">Weighted</th>
             <th class="th-split" title="Price and discount, combined. Click 'Price' to sort by the current price; click 'Sale' to sort by discount depth."><button class="splitsort sortable" data-sort="price_final">Price</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="discount_pct">Sale</button></th>
-            <th class="sortable center" data-sort="discount_end">Sale ends</th>
-            <th class="sortable center" data-sort="release_ts">Released</th>
+            <th class="sortable center" data-sort="discount_end" title="Time left on the current discount. Sorts by soonest-ending first.">Sale ends</th>
+            <th class="sortable center" data-sort="release_ts" title="Steam release date. Hover a row's value for the exact day.">Released</th>
             <th class="sortable center" data-sort="updated" title="How recently the game was last patched, and how often. The top line is time since the last update; the badge below is the number of updates in the last 90 days (all sizes), with the 365-day count on hover. Sorts by update recency — most recently updated first.">Updated</th>
             <th class="tagsth" id="tagsTh" title="Collapse the Tags column to give the width to Game (bigger art, full titles)"><span class="tagslabel">Tags</span><span class="tagstoggle" id="tagsToggle">&gt;&lt;</span></th>
             <th class="sortable num pad" data-sort="playtime" title="Median hours played, split by review recommendation. Green ▲ = players who recommended it; red ▼ = players who did not. A long playtime on a 'not recommended' is a credible signal (someone knows the game well and still says skip it). Hover a value for mean, sample size, and spread. Click to sort; choose which side drives the sort with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
             <th class="sortable num pad" data-sort="hltb" title="Main / Main+Extras / Completionist (hours), with average below. Sorts by whichever HLTB metric is selected above.">HLTB · M / E / 100%</th>
-            <th class="sortable num pad" data-sort="qtpd">QTPD <span class="arrow" id="qarrow">▼</span></th>
+            <th class="sortable num pad" data-sort="qtpd" title="Quality Time Per Dollar — the headline metric. Higher is more game-hours of value per unit of currency.">QTPD <span class="arrow" id="qarrow">▼</span></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -1893,8 +1906,10 @@ function render(){
         + `. Uncapped weighted: ${g.wr_raw==null?'—':g.wr_raw+'%'}.`
         + (lowConf?` ⚠ Only ${g.wr_n} reviews — low confidence, needs ${window.PT_CONFIDENT}+ to be reliable.`:``);
       wrCell = `<div class="wrcell${lowConf?' lowconf':''}" title="${tip}">`
+        + `<span class="wrtop">`
         + `<span class="dot" style="background:${lowConf?'var(--muted-2)':ratingColor(g.wr)}"></span>`
         + `<span class="wrval" style="${lowConf?'':`color:${ratingColor(g.wr)}`}">${g.wr}%</span>`
+        + `</span>`
         + (delta!=null&&!lowConf?`<span class="wrdelta ${delta>0?'pos':delta<0?'neg':''}">${deltaStr}</span>`:``)
         + `</div>`;
     }
