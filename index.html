@@ -1395,6 +1395,21 @@ function fmtRelease(g){
   if(g.release_ts){ const d = new Date(g.release_ts*1000); return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }
   return g.release_date || "—";
 }
+// Hover text for the Released column. The cell shows "Mon YYYY" (fmtRelease) to fit the
+// column floor, so the exact day is only reachable here. Format is YYYY-MON-DD — unambiguous
+// and locale-proof, unlike the American M/D/Y in Steam's own release_date string.
+// Unreleased games have no release_ts (~450 of them); fall back to whatever vague string
+// Steam gave us ("Q3 2026", "July 2026"), then to a plain statement if even that is missing.
+function releaseTip(g){
+  if(g.release_ts){
+    const d = new Date(g.release_ts*1000);
+    const day = String(d.getUTCDate()).padStart(2,"0");
+    const exact = `${d.getUTCFullYear()}-${MONTHS[d.getUTCMonth()].toUpperCase()}-${day}`;
+    const age = ageStr(g.release_ts);
+    return age ? `${exact} (${age})` : exact;
+  }
+  return g.release_date || "Release date not confirmed";
+}
 function ageStr(ts){
   if(!ts) return "";
   const yrs = (NOW() - ts) / (365.25*86400);
@@ -1822,7 +1837,7 @@ function render(){
       <td data-label="Weighted" class="num">${wrCell}</td>
       <td data-label="Price / Sale">${price}</td>
       <td data-label="Sale ends" class="center">${sale}</td>
-      <td data-label="Released" class="center"><span class="rel">${fmtRelease(g)}</span>${age?`<div class="age">${age}</div>`:""}</td>
+      <td data-label="Released" class="center" title="${esc(releaseTip(g))}"><span class="rel">${fmtRelease(g)}</span>${age?`<div class="age">${age}</div>`:""}</td>
       <td data-label="Updated" class="center"><div class="updated${!g.last_update_ts?' none':''}" title="${g.last_update_ts?'Last content update: '+new Date(g.last_update_ts*1000).toISOString().slice(0,10):'No update posts found on Steam'}">${updatedStr(g.last_update_ts)}</div>${updCad(g)}</td>
       <td data-label="Tags"><div class="tags">${tagHtml}</div></td>
       <td data-label="Playtime" class="num pad">${ptCell}</td>
