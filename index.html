@@ -264,26 +264,27 @@
       minmax(132px, 164px)   /* HLTB       — floor fits "1281 1464 1670" */
       minmax(132px, 144px);  /* QTPD       — floor fits wrapped value+full */
   }
-  /* Tags collapsed: the column shrinks to a narrow clickable strip and its 3fr of growth
-     is handed to Game (2.2fr -> 4.6fr), which is the only other flexible track. That's the
-     point of collapsing — Game is where extra width buys something (bigger thumb, titles
-     on one line) whereas every other column is content-bound and would just gain padding.
-     Slightly raised ceilings on Reviews/Price/Released let the numeric block breathe a
-     little too, since ~700px is more than Game alone needs. */
+  /* Tags collapsed: the column shrinks to a narrow clickable strip. Its 3fr of growth is
+     redistributed across the WHOLE row rather than dumped into Game — Game still takes the
+     largest share (it has the most to gain: bigger art, full titles), but every data column
+     gets a real increase so the numeric block stays proportionate and readable instead of
+     sitting cramped next to one huge cell. Columns that are content-bound at a fixed size
+     (Playtime, HLTB, QTPD) grow via their ceilings too, since their contents can be wide
+     (e.g. "1281 1464 1670", "▲ 9999h") even when a given filtered view shows dashes. */
   body.tags-collapsed:not(.layout-card){
     --grid-cols:
-      minmax(268px, 4.6fr)   /* Game       — absorbs the freed Tags growth */
-      minmax(100px, 148px)   /* Reviews    */
-      minmax(48px,  76px)    /* Trend      */
-      minmax(66px,  104px)   /* Weighted   */
-      minmax(96px,  148px)   /* Price/Sale */
-      minmax(80px,  116px)   /* Sale ends  */
-      minmax(96px,  132px)   /* Released   */
-      minmax(84px,  116px)   /* Updated    */
+      minmax(268px, 3.2fr)   /* Game       — largest single share */
+      minmax(100px, 0.42fr)  /* Reviews    */
+      minmax(48px,  0.24fr)  /* Trend      */
+      minmax(66px,  0.32fr)  /* Weighted   */
+      minmax(96px,  0.42fr)  /* Price/Sale */
+      minmax(80px,  0.34fr)  /* Sale ends  */
+      minmax(96px,  0.38fr)  /* Released   */
+      minmax(84px,  0.34fr)  /* Updated    */
       34px                   /* Tags       — collapsed strip; header stays clickable */
-      minmax(82px,  82px)    /* Playtime   */
-      minmax(132px, 164px)   /* HLTB       */
-      minmax(132px, 144px);  /* QTPD       */
+      minmax(82px,  0.26fr)  /* Playtime   */
+      minmax(132px, 0.50fr)  /* HLTB       */
+      minmax(132px, 0.44fr); /* QTPD       */
   }
   /* Hide tag chips but keep the <td> as a grid item — display:none would desync the
      header/body track count and shift every following column. */
@@ -291,17 +292,22 @@
     overflow:hidden; padding-left:0; padding-right:0;
   }
   body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"] > *{display:none}
-  body.tags-collapsed thead th.tagsth .tagslabel{display:none}
-  /* Bigger art + single-line titles: the payoff for the freed width. Table view only —
-     card view has its own thumb sizing and needs its tags. */
-  body.tags-collapsed:not(.layout-card) .thumb{width:200px; height:76px}
-  body.tags-collapsed:not(.layout-card) .gtitle{font-size:16px; -webkit-line-clamp:1}
-  /* The toggle affordance itself. ">< " when open (click to close), "<>" when collapsed. */
-  thead th.tagsth{cursor:pointer; gap:6px}
+  body.tags-collapsed:not(.layout-card) thead th.tagsth .tagslabel{display:none}
+  /* Modest art bump sized to Game's actual gain (~+110px, not the full freed 292px —
+     the rest goes to the data columns). Title keeps its 2-line clamp: at ~516px the cell
+     fits most titles on one line anyway, and clamping to 1 would truncate the long ones. */
+  body.tags-collapsed:not(.layout-card) .thumb{width:180px; height:68px}
+  /* The toggle affordance. "><" when open (click to close), "<>" when collapsed.
+     overflow:hidden is load-bearing: thead th sets white-space:nowrap, so without it the
+     indicator spills out of the 34px collapsed track and paints over the next column. */
+  thead th.tagsth{cursor:pointer; gap:6px; overflow:hidden}
   thead th.tagsth:hover{color:var(--text)}
-  .tagstoggle{font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none}
+  .tagstoggle{font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none; line-height:1}
   thead th.tagsth:hover .tagstoggle{color:var(--text)}
-  body.tags-collapsed thead th.tagsth{padding-left:0; padding-right:0; justify-content:center}
+  /* Collapsed: kill the padding so the 34px track holds the indicator, and center it. */
+  body.tags-collapsed:not(.layout-card) thead th.tagsth{
+    padding-left:0; padding-right:0; gap:0; justify-content:center;
+  }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
   table{width:100%; margin:0 auto; border-collapse:collapse; min-width:1324px}
