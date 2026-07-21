@@ -42,13 +42,22 @@ SHARD_COUNT = 64
 DROP_KEYS = {
     "clienticon", "clienttga", "clienticns", "linuxclienticon",
     "logo", "logo_small", "gameid", "controllertagwizard",
-    "icon", "small_capsule", "header_image",
+    "icon", "small_capsule",
     "library_assets", "library_assets_full",
     "community_hub_visible", "community_visible_stats",
     "name_localized", "name_linux",
     "languages",   # redundant: strict keyset subset of supported_languages
     # store art / client plumbing already sourced elsewhere
 }
+# NOT dropped (was, until the store-art fix): `header_image`. The old rationale here
+# claimed store art was "already sourced elsewhere" — it isn't. index.html only ever
+# DERIVED art from the appid ({CDN}/{appid}/header.jpg), which 404s for every game on
+# Steam's store_item_assets scheme, where the path carries a per-asset SHA1 that cannot
+# be computed from the appid. Measured: capsule_231x87.jpg 404s even for games whose
+# header.jpg works, and e.g. Bookshop Simulator (3467040) ships only
+# `<sha1>/header_alt_assets_1.jpg` — no plain header.jpg at all, so it rendered broken.
+# PICS `header_image` is a per-language dict of ready-to-use "<sha1>/<file>" or bare
+# "<file>" values, which is exactly what we need; summarize picks one (see `hdr`).
 
 # --- Steam Deck compatibility nested-trim (spec §3, evidence: 41% of payload) ---
 # Keep the filterable top-level scalars; drop the ~1.4 KB of per-test display

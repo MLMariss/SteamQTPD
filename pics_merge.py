@@ -51,6 +51,7 @@ FRONTEND_KEYS = frozenset({
     "state",                               # released / prerelease
     "released", "mc",                      # scalars
     "ea", "adult", "vr_only",              # derived filter flags (pics_v2)
+    "art",                                 # store header path; index.html builds the URL
 })
 
 

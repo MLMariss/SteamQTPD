@@ -1295,8 +1295,19 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const CDN = "https://cdn.cloudflare.steamstatic.com/steam/apps";
+// Modern store art lives under a per-asset SHA1 that is NOT derivable from the appid.
+const ASSET_CDN = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps";
 const capsuleUrl = a => `${CDN}/${a}/capsule_231x87.jpg`;
 const headerUrl  = a => `${CDN}/${a}/header.jpg`;
+// PICS-sourced header path (games.json `art`, via pics_summarize.pick_art). Two shapes:
+//   "e9047d8e…/header.jpg"  -> modern store_item_assets scheme, hash in the path
+//   "header.jpg"            -> legacy scheme, same place the derived URL points
+// The "/" is the discriminator. This is the ONLY way to reach art for games that ship
+// no plain header.jpg (e.g. 3467040 Bookshop Simulator -> "<sha1>/header_alt_assets_1.jpg"),
+// which previously rendered as a broken thumb because every derived URL 404s.
+const artUrl = (a, art) => !art ? null
+  : art.includes("/") ? `${ASSET_CDN}/${a}/${art}`
+  : `${CDN}/${a}/${art}`;
 
 // --- Thumbnail fallback with CONTENT verification (T6) ---------------------- //
 // Steam's CDN sometimes answers a missing capsule with a 200 + a blank/degenerate
@@ -1318,8 +1329,15 @@ const isAdult = g => {
   }
   return (g.tags||[]).some(t => ADULT_TAGS.has(t));   // pre-PICS fallback
 };
-// Build the ordered source list once per appid.
-const imgChain = a => [capsuleUrl(a), headerUrl(a)];
+// Build the ordered source list. The PICS-sourced `art` path goes FIRST when present:
+// it's the only entry that is authoritative rather than guessed, and it's the sole way
+// to reach art for games with no plain header.jpg. The two derived URLs stay behind it
+// as fallbacks for games PICS hasn't covered yet (coverage is still filling), and are
+// deduped out when `art` already resolves to the same legacy URL.
+const imgChain = (a, art) => {
+  const first = artUrl(a, art);
+  return [first, capsuleUrl(a), headerUrl(a)].filter((u, i, xs) => u && xs.indexOf(u) === i);
+};
 // onerror / onload handler shared by table thumb and popup. Reads the appid and the
 // current step from data-* attrs on the <img>, advances to the next source, and stops
 // at the end (leaving the last-attempted src in place).
@@ -1328,7 +1346,7 @@ function stepThumb(img, hardError){
   if(!hardError && img.naturalWidth > 1) return;   // genuine image -> keep it
   const a = img.getAttribute("data-appid");
   let step = (+img.getAttribute("data-step") || 0) + 1;
-  const chain = imgChain(a);
+  const chain = imgChain(a, img.getAttribute("data-art"));
   if(step < chain.length){
     img.setAttribute("data-step", step);
     img.src = chain[step];
@@ -1849,9 +1867,9 @@ function render(){
     return `<tr>
       <td data-label="Game"><div class="gamecell">
           <button class="hidebtn" data-hide="${g.appid}" title="Hide this game for this session" aria-label="Hide ${esc(g.title)}">×</button>
-          <span class="thumb${isAdult(g) ? ' adult' : ''}" data-appid="${g.appid}">
-            <img loading="lazy" src="${capsuleUrl(g.appid)}" alt="" referrerpolicy="no-referrer"
-                 data-appid="${g.appid}" data-step="0"
+          <span class="thumb${isAdult(g) ? ' adult' : ''}" data-appid="${g.appid}" data-art="${esc(g.art || "")}">
+            <img loading="lazy" src="${imgChain(g.appid, g.art)[0]}" alt="" referrerpolicy="no-referrer"
+                 data-appid="${g.appid}" data-art="${esc(g.art || "")}" data-step="0"
                  onerror="stepThumb(this,true)" onload="stepThumb(this,false)" />
             <span class="pop"><img alt="" referrerpolicy="no-referrer" /></span>
           </span>
@@ -1936,14 +1954,21 @@ document.body.addEventListener("mouseover", e => {
   if(thumb.classList.contains("adult") && !thumb.classList.contains("revealed")) return;
   const pop = thumb.querySelector(".pop"), img = pop.querySelector("img");
   if(!img.src){
-    // Same content-verified chain as the table thumb. Popup starts at the header
-    // (larger art), then would fall back per the chain; set data-* so stepThumb works.
+    // Same content-verified chain as the table thumb. Prefer the PICS `art` URL (real
+    // header art, correct even for alt-asset games); otherwise start at the derived
+    // header, which is larger than the capsule and better suited to the 380px popup.
+    // Step index is looked up rather than hardcoded — the chain length now varies with
+    // whether `art` is present and whether it dedupes against the derived header.
     const a = thumb.dataset.appid;
+    const art = thumb.dataset.art || "";
+    const chain = imgChain(a, art);
+    const start = artUrl(a, art) || headerUrl(a);
     img.setAttribute("data-appid", a);
-    img.setAttribute("data-step", "1");            // header is index 1 in imgChain
+    img.setAttribute("data-art", art);
+    img.setAttribute("data-step", String(Math.max(0, chain.indexOf(start))));
     img.onerror = () => stepThumb(img, true);
     img.onload  = () => stepThumb(img, false);
-    img.src = headerUrl(a);
+    img.src = start;
   }
   const r = thumb.getBoundingClientRect();
   let top = r.bottom + 8; if(top + 178 > window.innerHeight) top = r.top - 178 - 8;
@@ -3323,6 +3348,9 @@ Promise.all([
         game.deck_cat = (p.deck.cat != null) ? p.deck.cat : null;  // 1 Unsup /2 Play /3 Verified
       }
       game.pics_state = p.state || null;  // "released" | "prerelease"
+      // Store header path. Authoritative art location; imgChain prefers it over the
+      // appid-derived URLs, which 404 for games on the store_item_assets scheme.
+      if(p.art) game.art = p.art;
     }
     if(recentMap && recentMap[key]){
       const r = recentMap[key];

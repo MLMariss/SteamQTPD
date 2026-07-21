@@ -1075,6 +1075,7 @@ a lean, index-friendly record storing **IDs, not names** (Option B, see spec
 | `mc` | `metacritic_score` | 3.3% | scalar |
 | `released`, `orig_released` | `steam_release_date`, `original_release_date` | 98.7% / 9.1% | unix ts scalars |
 | `state` | `releasestate` | 98.8% | `released` / `prerelease` — live/coming-soon (**not** the EA signal) |
+| `art` | `header_image` | ~100% | store header path: `<sha1>/<file>` (modern) or `<file>` (legacy). Un-prefixed; `index.html` `artUrl()` picks the CDN base by whether a `/` is present. **Only authoritative art source** — appid-derived URLs 404 on the `store_item_assets` scheme. |
 
 **Lookup maps** (`pics_lookups.py` + `build_category_map.py`, refreshed rarely):
 `tags.json` (live from `IStoreService/GetTagList`), `genres.json`,
@@ -1342,14 +1343,21 @@ ratesrc, pt, sort, dir, per, qmin, qmax`) and restored on load, so any view is a
 link. Defaults are omitted from the URL (e.g. `hq` only appears when not `real`, `pt` only
 when not `up`). Pagination is infinite-scroll at 100 / 500 / 2000 per page.
 
-**Thumbnails & hiding.** Capsule art with a hover-enlarge popover; a broken-image fallback
-chain; adult-tagged art is **blurred with an 18+ badge** (permanent until a real age gate
-exists). The 18+ flag is a **client-side heuristic** — a game's tag list is matched against a
-hardcoded `ADULT_TAGS` set — not a Steam-provided age-rating field, so coverage is only as
-good as SteamSpy's tagging. Each row has a slim `[x]` hide button; hidden games can be
-un-hidden, but the hide list is **session-only and deliberately excluded from URL
-serialization** (unlike every other filter/sort choice, §11 *State in the URL* below) — a
-reload or a shared link does not carry hidden games with it.
+**Thumbnails & hiding.** Header art with a hover-enlarge popover, sourced from the PICS
+`art` field (§9.5) and falling back to a content-verified chain of appid-derived URLs for
+games PICS hasn't covered. `art` comes first because it is the only *authoritative* source:
+Steam's `store_item_assets` scheme puts a per-asset SHA1 in the path, which cannot be
+derived from the appid, so derived URLs 404 for those games — including some that ship no
+plain `header.jpg` at all (only `<sha1>/header_alt_assets_1.jpg`), which previously rendered
+as broken images. The chain advances on both a hard error and a "loaded but empty" result,
+because Steam sometimes answers missing art with 200 + a degenerate image rather than a
+clean 404. Adult art is **blurred with an 18+ badge** behind a two-stage reveal (permanent
+until a real age gate exists); the flag is PICS `content_desc` codes 3/4 (Valve-authoritative),
+falling back to the legacy `ADULT_TAGS` heuristic only for games PICS hasn't covered. Each
+row has a slim `[x]` hide button; hidden games can be un-hidden, but the hide list is
+**session-only and deliberately excluded from URL serialization** (unlike every other
+filter/sort choice, §11 *State in the URL* below) — a reload or a shared link does not carry
+hidden games with it.
 
 ---
 

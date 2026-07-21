@@ -136,9 +136,42 @@ Verified against sample; **dropped before archiving** (see §4 trim-at-ingest):
 | `clienticns`, `linuxclienticon` | SHA1 of Mac/Linux client icons. **Unreliable as OS-support signal** — disagreed with `oslist` on 19 (Mac) / 12 (Linux) of 120 games. `oslist` supersedes. |
 | `gameid` | Literal duplicate of appid. |
 | `controllertagwizard` | Internal Valve tagging-wizard flag. No player-facing meaning. |
-| `icon`, `small_capsule`, `header_image`, `library_assets`, `library_assets_full` | Store art already sourced via existing pipeline. |
+| `icon`, `small_capsule`, `library_assets`, `library_assets_full` | Store art we don't currently render. `small_capsule` is the same usable shape as `header_image` and could be un-dropped if a capsule-sized source is ever wanted — but at 231×87 it's barely above the 150px table thumb and too small for the 380px hover popup, so `header_image` alone serves both. |
 | `community_hub_visible`, `community_visible_stats` | Plumbing. |
 | `clienticns`, `name_localized`, `name_linux` | Low value / redundant with `name`. |
+
+**`header_image` — KEPT (was dropped; corrected).** This table previously listed it as
+"store art already sourced via existing pipeline". That was wrong, and it caused visibly
+broken thumbnails. Nothing sourced store art: `index.html` only ever *derived* it from the
+appid as `{CDN}/{appid}/header.jpg`. Steam has since moved store art to
+
+```
+.../store_item_assets/steam/apps/{appid}/{sha1}/{filename}
+```
+
+where the SHA1 is per-asset and **not computable from the appid**. Measured consequences:
+`capsule_231x87.jpg` 404s even for games whose `header.jpg` still resolves (so `imgChain`
+step 0 was dead), and games that ship no plain `header.jpg` at all rendered as a broken
+image — e.g. 3467040 *Bookshop Simulator*, whose only header is
+`<sha1>/header_alt_assets_1.jpg`.
+
+PICS `header_image` is a per-language dict whose values are directly usable:
+
+| Shape | Example | Count (120-game sample) |
+|---|---|---|
+| hash + filename | `e9047d8e…/header.jpg` | 65 |
+| filename only (legacy) | `header.jpg` | 55 |
+
+Present on 120/120 sampled games, always with an `english` key. `pics_summarize.pick_art()`
+stores one value as `art` (English, else first available), verbatim and un-prefixed — the
+constant host/path prefix would cost ~11 MB across 124 k games for zero information.
+`index.html`'s `artUrl()` re-attaches it, selecting the modern or legacy CDN base by
+whether the value contains a `/`.
+
+**The shape does not track release date** — *Elden Ring* (2022) and *GTA V Enhanced* (2025)
+carry no hash, while some 2016 titles do. It must be stored per game, never inferred.
+`library_assets` is *not* needed: no sampled value was a bare hash, so the filename always
+travels with it.
 
 *If ever wrong about a dropped field: re-sweep to recover (accepted worst case).*
 

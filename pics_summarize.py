@@ -48,6 +48,7 @@ FORMAT_DOC = {
     "ea": "Early Access (bool) = genre-70 present. Valve signal, NOT the SteamSpy tag.",
     "adult": "adult gate (bool) = content_desc code 3 or 4. Replaces the ADULT_TAGS heuristic; excludes code 1 (over-flags AAA).",
     "vr_only": "VR Only (bool) = cats category 54.",
+    "art": "store header path: '<sha1>/<file>' (modern) or '<file>' (legacy). Frontend prefixes the CDN base; presence of '/' selects which.",
 }
 
 # Genre / category IDs used by the derived flags (keep in one place).
@@ -120,6 +121,27 @@ def summarize_deck(deck):
     return out or None
 
 
+def pick_art(hdr):
+    """header_image -> one storable path string, or None.
+
+    PICS returns a per-language dict, e.g.
+        {"english": "e9047d8e…/header.jpg", "koreana": "26b96fa9…/header_koreana.jpg"}
+        {"english": "header.jpg"}                       # legacy, no hash
+    English is the canonical art (present in 120/120 of the sample), but we fall back
+    to whatever language is offered rather than dropping art for the rare English-less
+    game. Returned verbatim — the "<sha1>/" prefix is the *signal* the frontend uses to
+    pick the modern vs legacy CDN base, so it must survive intact.
+    """
+    if isinstance(hdr, str):
+        return hdr.strip() or None          # tolerate a flat string, just in case
+    if not isinstance(hdr, dict):
+        return None
+    v = hdr.get("english")
+    if not isinstance(v, str) or not v.strip():
+        v = next((x for x in hdr.values() if isinstance(x, str) and x.strip()), None)
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+
 def _int(v, default=None):
     try:
         return int(v)
@@ -166,6 +188,20 @@ def summarize_game(appid: int, rec: dict) -> dict:
 
     # --- AI disclosure (spec §2.1): 0 none / 1 pre-gen / 2 live-gen ---
     g["ai"] = _int(rec.get("aicontenttype"), 0)
+
+    # --- store header art (store-art fix) ---------------------------------------
+    # PICS gives header_image as {lang: "<sha1>/<file>"} or {lang: "<file>"}. We keep
+    # ONE value as `art`, verbatim and un-prefixed: the host + /store_item_assets/steam/
+    # apps/<appid>/ prefix is constant, so storing it 124k times would waste ~11MB for no
+    # information. The frontend re-attaches it, choosing the modern or legacy base by
+    # whether `art` contains a "/" (see index.html artUrl). Measured on a 120-game
+    # sample: 65 carry a hash, 55 are bare filenames — and the split does NOT track
+    # release date (Elden Ring has none; some 2016 titles do), so the shape must be
+    # stored, never inferred.
+    # NB: named `art`, not `hdr`, because deck.hdr already means HDR support.
+    art = pick_art(rec.get("header_image"))
+    if art:
+        g["art"] = art
 
     # --- derived booleans ---
     g["fse"] = "exfgls" in rec                     # family_share_excluded
