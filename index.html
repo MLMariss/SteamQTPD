@@ -281,7 +281,7 @@
       minmax(80px,  0.50fr)  /* Sale ends  */
       minmax(96px,  0.55fr)  /* Released   */
       minmax(84px,  0.50fr)  /* Updated    */
-      34px                   /* Tags       — collapsed strip; header stays clickable */
+      38px                   /* Tags       — collapsed strip: fits the toggle pill + seam borders */
       minmax(82px,  0.40fr)  /* Playtime   */
       minmax(132px, 0.72fr)  /* HLTB       */
       minmax(132px, 0.64fr); /* QTPD       */
@@ -304,9 +304,25 @@
   thead th.tagsth:hover{color:var(--text)}
   .tagstoggle{font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none; line-height:1}
   thead th.tagsth:hover .tagstoggle{color:var(--text)}
-  /* Collapsed: kill the padding so the 34px track holds the indicator, and center it. */
+  /* Collapsed: the strip is only 34px, so without a visible container the bare "<>" reads
+     as a stray glyph floating between two unrelated columns rather than a control. Give it
+     a bordered pill plus rules on both sides of the track, so it reads as a seam in the
+     table that can be pulled open. */
   body.tags-collapsed:not(.layout-card) thead th.tagsth{
     padding-left:0; padding-right:0; gap:0; justify-content:center;
+    border-left:1px solid var(--line); border-right:1px solid var(--line);
+  }
+  body.tags-collapsed:not(.layout-card) thead th.tagsth .tagstoggle{
+    border:1px solid var(--line); border-radius:5px; padding:3px 4px;
+    background:var(--panel); color:var(--muted); letter-spacing:-.05em;
+  }
+  body.tags-collapsed:not(.layout-card) thead th.tagsth:hover .tagstoggle{
+    color:var(--gold); border-color:var(--gold-deep);
+  }
+  /* Carry the seam down the body rows so the collapsed column reads as one continuous
+     divider instead of a mark that only exists in the header. */
+  body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"]{
+    border-left:1px solid var(--line); border-right:1px solid var(--line);
   }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
