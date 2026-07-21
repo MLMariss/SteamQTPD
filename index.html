@@ -273,18 +273,18 @@
      (e.g. "1281 1464 1670", "▲ 9999h") even when a given filtered view shows dashes. */
   body.tags-collapsed:not(.layout-card){
     --grid-cols:
-      minmax(268px, 3.2fr)   /* Game       — largest single share */
-      minmax(100px, 0.42fr)  /* Reviews    */
-      minmax(48px,  0.24fr)  /* Trend      */
-      minmax(66px,  0.32fr)  /* Weighted   */
-      minmax(96px,  0.42fr)  /* Price/Sale */
-      minmax(80px,  0.34fr)  /* Sale ends  */
-      minmax(96px,  0.38fr)  /* Released   */
-      minmax(84px,  0.34fr)  /* Updated    */
+      minmax(268px, 2.4fr)   /* Game       — biggest single share, but not hoarding it */
+      minmax(100px, 0.60fr)  /* Reviews    */
+      minmax(48px,  0.34fr)  /* Trend      */
+      minmax(66px,  0.46fr)  /* Weighted   */
+      minmax(96px,  0.60fr)  /* Price/Sale */
+      minmax(80px,  0.50fr)  /* Sale ends  */
+      minmax(96px,  0.55fr)  /* Released   */
+      minmax(84px,  0.50fr)  /* Updated    */
       34px                   /* Tags       — collapsed strip; header stays clickable */
-      minmax(82px,  0.26fr)  /* Playtime   */
-      minmax(132px, 0.50fr)  /* HLTB       */
-      minmax(132px, 0.44fr); /* QTPD       */
+      minmax(82px,  0.40fr)  /* Playtime   */
+      minmax(132px, 0.72fr)  /* HLTB       */
+      minmax(132px, 0.64fr); /* QTPD       */
   }
   /* Hide tag chips but keep the <td> as a grid item — display:none would desync the
      header/body track count and shift every following column. */
