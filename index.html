@@ -264,9 +264,49 @@
       minmax(132px, 164px)   /* HLTB       — floor fits "1281 1464 1670" */
       minmax(132px, 144px);  /* QTPD       — floor fits wrapped value+full */
   }
+  /* Tags collapsed: the column shrinks to a narrow clickable strip and its 3fr of growth
+     is handed to Game (2.2fr -> 4.6fr), which is the only other flexible track. That's the
+     point of collapsing — Game is where extra width buys something (bigger thumb, titles
+     on one line) whereas every other column is content-bound and would just gain padding.
+     Slightly raised ceilings on Reviews/Price/Released let the numeric block breathe a
+     little too, since ~700px is more than Game alone needs. */
+  body.tags-collapsed:not(.layout-card){
+    --grid-cols:
+      minmax(268px, 4.6fr)   /* Game       — absorbs the freed Tags growth */
+      minmax(100px, 148px)   /* Reviews    */
+      minmax(48px,  76px)    /* Trend      */
+      minmax(66px,  104px)   /* Weighted   */
+      minmax(96px,  148px)   /* Price/Sale */
+      minmax(80px,  116px)   /* Sale ends  */
+      minmax(96px,  132px)   /* Released   */
+      minmax(84px,  116px)   /* Updated    */
+      34px                   /* Tags       — collapsed strip; header stays clickable */
+      minmax(82px,  82px)    /* Playtime   */
+      minmax(132px, 164px)   /* HLTB       */
+      minmax(132px, 144px);  /* QTPD       */
+  }
+  /* Hide tag chips but keep the <td> as a grid item — display:none would desync the
+     header/body track count and shift every following column. */
+  body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"]{
+    overflow:hidden; padding-left:0; padding-right:0;
+  }
+  body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"] > *{display:none}
+  body.tags-collapsed thead th.tagsth .tagslabel{display:none}
+  /* Bigger art + single-line titles: the payoff for the freed width. Table view only —
+     card view has its own thumb sizing and needs its tags. */
+  body.tags-collapsed:not(.layout-card) .thumb{width:200px; height:76px}
+  body.tags-collapsed:not(.layout-card) .gtitle{font-size:16px; -webkit-line-clamp:1}
+  /* The toggle affordance itself. ">< " when open (click to close), "<>" when collapsed. */
+  thead th.tagsth{cursor:pointer; gap:6px}
+  thead th.tagsth:hover{color:var(--text)}
+  .tagstoggle{font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none}
+  thead th.tagsth:hover .tagstoggle{color:var(--text)}
+  body.tags-collapsed thead th.tagsth{padding-left:0; padding-right:0; justify-content:center}
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
   table{width:100%; margin:0 auto; border-collapse:collapse; min-width:1324px}
+  /* Collapsed drops Tags' 140px floor, so the table stays legible on narrower screens. */
+  body.tags-collapsed:not(.layout-card) table{min-width:1218px}
   colgroup{display:none}                     /* grid tracks size the columns now, not <col> */
   thead,tbody{display:block; width:100%}     /* let rows be the grid containers */
   thead tr,tbody tr{display:grid; grid-template-columns:var(--grid-cols); align-items:center}
@@ -858,6 +898,7 @@ try{
   // Detailed view is a table on desktop, cards on mobile — so layout-card is purely
   // viewport-driven (the Table/Card buttons just relabel the same detailed view per device).
   if(_narrow) document.body.classList.add("narrow");
+  if(localStorage.getItem("qtpd.tagsCollapsed") === "1") document.body.classList.add("tags-collapsed");
   if(_view === "grid") document.body.classList.add("grid-view");
   else if(_narrow) document.body.classList.add("layout-card");
 }catch(e){}
@@ -1180,7 +1221,7 @@ try{
             <th class="sortable center" data-sort="discount_end">Sale ends</th>
             <th class="sortable center" data-sort="release_ts">Released</th>
             <th class="sortable center" data-sort="updated" title="How recently the game was last patched, and how often. The top line is time since the last update; the badge below is the number of updates in the last 90 days (all sizes), with the 365-day count on hover. Sorts by update recency — most recently updated first.">Updated</th>
-            <th>Tags</th>
+            <th class="tagsth" id="tagsTh" title="Collapse the Tags column to give the width to Game (bigger art, full titles)"><span class="tagslabel">Tags</span><span class="tagstoggle" id="tagsToggle">&gt;&lt;</span></th>
             <th class="sortable num pad" data-sort="playtime" title="Median hours played, split by review recommendation. Green ▲ = players who recommended it; red ▼ = players who did not. A long playtime on a 'not recommended' is a credible signal (someone knows the game well and still says skip it). Hover a value for mean, sample size, and spread. Click to sort; choose which side drives the sort with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
             <th class="sortable num pad" data-sort="hltb" title="Main / Main+Extras / Completionist (hours), with average below. Sorts by whichever HLTB metric is selected above.">HLTB · M / E / 100%</th>
             <th class="sortable num pad" data-sort="qtpd">QTPD <span class="arrow" id="qarrow">▼</span></th>
@@ -3115,6 +3156,30 @@ function init(data){
 
   document.querySelectorAll("thead .sortable").forEach(th =>
     th.addEventListener("click", (e) => { e.stopPropagation(); setSort(th.dataset.sort); }));
+
+  // Tags column collapse. Tags isn't sortable and its header does nothing else, so the whole
+  // <th> is the toggle. Collapsing hands the column's 3fr of growth to Game (see the
+  // body.tags-collapsed grid template), which is where the width is actually useful.
+  // Arrows point the way the click will move things: "><" closes, "<>" reopens.
+  (() => {
+    const th = document.getElementById("tagsTh");
+    const ind = document.getElementById("tagsToggle");
+    if(!th || !ind) return;
+    const sync = () => {
+      const off = document.body.classList.contains("tags-collapsed");
+      ind.textContent = off ? "<>" : "><";
+      th.title = off ? "Expand the Tags column"
+                     : "Collapse the Tags column to give the width to Game (bigger art, full titles)";
+      th.setAttribute("aria-expanded", String(!off));
+    };
+    th.addEventListener("click", () => {
+      const off = document.body.classList.toggle("tags-collapsed");
+      try{ localStorage.setItem("qtpd.tagsCollapsed", off ? "1" : "0"); }catch(e){}
+      sync();
+    });
+    sync();   // pre-paint restore already set the class; match the indicator to it
+  })();
+
   // Mobile sort control: picking a field sets that sort with its natural default direction;
   // the ▼/▲ button flips direction. Mirrors the header behavior for the card layout.
   // Bind a <select>+dir pair (mobile top-bar sort AND the desktop grid sort) to the sort state.
