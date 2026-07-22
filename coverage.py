@@ -84,7 +84,7 @@ UPD_NOUPDATE_COOLDOWN_DAYS = 45
 SCRAPER_REFRESH_DAYS = 7
 # games.json / scraper.py age-tiered review refresh: (max_age_days, cooldown_days).
 # Games older than the last tier keep the last_modified-only rule.
-REVIEW_TIERS = [(3, 0.5), (10, 1), (30, 2), (60, 4), (90, 7), (180, 14), (365, 30)]
+REVIEW_TIERS = [(3, 0.25), (10, 0.5), (30, 1), (60, 2), (90, 3.5), (180, 7), (365, 15)]
 # pics_refresh.py (single-window --stale-days gate; default from pics.yml)
 PICS_STALE_DAYS = 14
 # hltb_refresh.py (different shape: static windows + blank backoff)

@@ -674,10 +674,22 @@ prior 30 days had a **median scrape age of 13 days**. Three triggers now feed on
 | 2 | **`REVIEW_TIERS`** — per-game cooldown widening with age since release | review score/count drift on everything under a year old |
 | 3 | **`PICS_REV_DELTA`** — `pics.json`'s `rev` % disagrees with stored `rating_pct` by ≥3 pt | provably-stale scores on games of *any* age |
 
-**`REVIEW_TIERS`** = `(max_age_days, cooldown_days)`: `≤3d→12h`, `≤10d→1d`, `≤30d→2d`,
-`≤60d→4d`, `≤90d→7d`, `≤180d→14d`, `≤365d→30d`. Past a year, trigger 1 + 3 take over. The
+**`REVIEW_TIERS`** = `(max_age_days, cooldown_days)`: `≤3d→6h`, `≤10d→12h`, `≤30d→1d`,
+`≤60d→2d`, `≤90d→3.5d`, `≤180d→7d`, `≤365d→15d`. Past a year, trigger 1 + 3 take over. The
 shape follows where the number actually moves — a day-one score is worthless, a
 six-month-old one barely drifts.
+
+**The queue is rebuilt mid-run for the fast tiers.** `select_work()` runs *once*, at the
+top of a 5.5h run on a 6h cron grid, so a game coming due 20 minutes in would otherwise
+wait for the next cron — a hard ~6h floor under every cooldown, which would make the 6h and
+12h tiers largely cosmetic (a nominal 6h tier delivering 6–12h intervals, averaging ~9h).
+`requeue_due_young()` re-checks every stored game within `REVIEW_LIVE_MAX_AGE_DAYS` (30) of
+release at each checkpoint (~10 min) and splices the newly-due ones to the **front** of the
+refresh queue. That population is precomputed once (~2.6k games), so the re-scan is free
+next to re-scanning all ~124k records. `handled` makes it idempotent within a run — a game
+already scraped this run is never re-queued, so it cannot loop. This is what actually buys
+the near-real-time end of the ladder; without it, halving the cooldowns below 6h would
+change the constant and not the behaviour.
 
 **Trigger 3 is free.** `pics.json` already harvests `rev: [score_1_9, pct]` daily across the
 whole catalog over the CM protocol (§9.6), entirely off the storefront budget, so it costs
@@ -1415,7 +1427,7 @@ something."
 
 | Frontend value(s) | Storage file | Scraper | Per-game staleness key | Refresh rule |
 |---|---|---|---|---|
-| name, appid, release, rating %, review count, `last_update_ts` | `games.json` | `scraper.py` | `scraped_at` | age-tiered by time since release (12h → 30d, `REVIEW_TIERS`); plus Steam `last_modified` and PICS review-drift (§6) |
+| name, appid, release, rating %, review count, `last_update_ts` | `games.json` | `scraper.py` | `scraped_at` | age-tiered by time since release (6h → 15d, `REVIEW_TIERS`, re-checked mid-run under 30d); plus Steam `last_modified` and PICS review-drift (§6) |
 | price, discount, sale-end | `prices.json` | `price_and_sale.py` | `scraped_at` | no cooldown — whole non-free base re-batched ~3h |
 | tags | `tags.json` | `tags_refresh.py` | **none** | fetch-once, **no rescrape** (see Future work) |
 | recent 30d % / count | `recent.json` | `recent_refresh.py` | `recent_scraped_at` | two-track: active 4d / dormant 30d |
@@ -1511,6 +1523,9 @@ Each job's knobs live at the top of its own script:
 - **`NEW_ORDER`** (scraper) — `"newest"` / `"oldest"` appid order for new coverage.
 - **`REVIEW_TIERS`** (scraper, code constant) — age-since-release → refresh-cooldown ladder
   for review score/count (§6). `REVIEW_TIER_REFRESH=0` disables it.
+- **`REVIEW_LIVE_MAX_AGE_DAYS` (30)** (scraper) — games this recently released are re-checked
+  for due-ness at every checkpoint, not just at run start, so cooldowns shorter than the 6h
+  cron grid are real rather than nominal (§6). Raising it widens the mid-run re-scan set.
 - **`PICS_REV_DELTA` (3)** (scraper) — percentage-point disagreement between `pics.json`'s
   `rev` and stored `rating_pct` that queues a corrective re-scrape (§6). `0` disables.
 - **`FORCE_RESERVE_FRAC` (0.5) / `NEW_RESERVE_FRAC` (0.25)** (scraper) — guaranteed minimum
@@ -1557,25 +1572,34 @@ the whole system staying alive.
 
 | age band | cooldown | games in band | refreshes/day | storefront calls/day |
 |---|---|---:|---:|---:|
-| 0–3 d | 12 h | ~204 | 408 | 816 |
-| 3–10 d | 1 d | 356 | 356 | 712 |
-| 10–30 d | 2 d | 1,607 | 804 | 1,607 |
-| 30–60 d | 4 d | 2,051 | 513 | 1,026 |
-| 60–90 d | 7 d | 2,138 | 305 | 611 |
-| 90–180 d | 14 d | 6,419 | 458 | 917 |
-| 180–365 d | 30 d | 11,050 | 368 | 737 |
-| **total** | | **23,825** | **~3,210** | **~6,430** |
+| 0–3 d | 6 h | ~204 | 816 | 1,632 |
+| 3–10 d | 12 h | 725 | 1,450 | 2,900 |
+| 10–30 d | 1 d | 1,607 | 1,607 | 3,214 |
+| 30–60 d | 2 d | 2,048 | 1,024 | 2,048 |
+| 60–90 d | 3.5 d | 2,134 | 610 | 1,219 |
+| 90–180 d | 7 d | 6,417 | 917 | 1,833 |
+| 180–365 d | 15 d | 11,043 | 736 | 1,472 |
+| **total** | | **24,178** | **~7,160** | **~14,320** |
 
-That is **~1.6 h/day** of run time at `STOREFRONT_MIN_INTERVAL=0.9`. For scale: this
+That is **~3.6 h/day** of run time at `STOREFRONT_MIN_INTERVAL=0.9`. For scale: this
 scraper's *proven* peak is **30,809 games in one day** (2026-07-09, during the null-update
-drain = 61.6k calls ≈ 15.4 h), and its window is ~22 h/day, so the ladder is **~10% of
-demonstrated capacity and ~7% of the window**. Steady-state throughput before this change
-was only **~200–500 games/day**. The first pass is a one-time catch-up (~11k games due at
-once against a 6-day-old snapshot, ~5.6 h), which shares the run with the forced drain and
+drain = 61.6k calls ≈ 15.4 h), and its window is ~22 h/day, so the ladder is **~23% of
+demonstrated capacity and ~16% of the window**. Steady-state throughput before this change
+was only **~200–500 games/day**. The first pass is a one-time catch-up (~19.8k games due at
+once against a 6-day-old snapshot, ~9.9 h), which shares the run with the forced drain and
 settles within a day or two. Nothing else changes: the other jobs run on separate runner
-IPs with their own budgets. The reviews-only variant (skip `appdetails`, 1 call/game)
-would halve this to ~0.8 h/day and is the lever to pull **if** the budget ever tightens —
-it was not needed, and it would cost a second per-game timestamp in `games.json`.
+IPs with their own budgets.
+
+**Where the remaining headroom is, if this ever needs to go faster.** Roughly a further 2×
+fits inside the window before the *scraper* becomes the constraint — but the binding limit
+past that is Steam's ~200/5min per-IP soft limit and the resulting 403 cooldowns, not the
+clock, so 403 rates are the number to watch rather than run duration. Two levers, in order
+of preference: (1) a **reviews-only pass** — skip `appdetails`, 1 call/game instead of 2,
+halving the cost of the whole ladder; it needs a second per-game timestamp in `games.json`
+(reusing `scraped_at` would let a light pass mask a genuine `last_modified` refresh) plus
+matching `coverage.py` / doc updates. (2) Below a 6h cooldown the **checkpoint interval**
+(`CHECKPOINT_SECONDS`, 10 min) becomes the real granularity floor, since that's how often
+`requeue_due_young()` runs. Neither is needed today.
 
 **Playtime scale-up (storefront budget reallocation).** Because `scraper.py` now uses so little
 of its window, the shared ~200/5min storefront budget has headroom. The playtime raw pass was
@@ -1624,14 +1648,17 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   on release day was never re-checked. Black Flag Resynced sat at 49% / 2,019 reviews for 13
   days against a true 79% / 19k; the 30-day release cohort had a median scrape age of 13
   days. Two new triggers join `last_modified` in `select_work()`: **`REVIEW_TIERS`**, a
-  cooldown ladder keyed on age since release (`≤3d→12h` … `≤365d→30d`), and
+  cooldown ladder keyed on age since release (`≤3d→6h` … `≤365d→15d`), and
   **`PICS_REV_DELTA`**, which queues a re-scrape whenever `pics.json`'s already-harvested
   `rev` percentage disagrees with our stored one by ≥3 pt — a **free** signal (CM protocol,
   off the storefront budget) that flagged 1,783 stale scores on the first pass. The queue is
   rank-ordered so the fastest-moving cohorts go first (§6), and new coverage gained its own
   `NEW_RESERVE_FRAC` (25%) share of each run so the bigger refresh queue can't delay a
-  just-released game — the failure mode the tiers exist to prevent. Cost: ~3.2k
-  refreshes/day ≈ 1.6 h/day of run time, ~10% of this scraper's proven peak (§14).
+  just-released game — the failure mode the tiers exist to prevent. A game under
+  `REVIEW_LIVE_MAX_AGE_DAYS` (30) is re-checked for due-ness at **every checkpoint**, not
+  just at run start: `select_work()` runs once per 5.5h run on a 6h cron grid, which would
+  otherwise put a ~6h floor under every cooldown and make the fast tiers nominal. Cost:
+  ~7.2k refreshes/day ≈ 3.6 h/day of run time, ~23% of this scraper's proven peak (§14).
   `REVIEW_TIER_REFRESH=0` + `PICS_REV_DELTA=0` restores the old behaviour exactly.
 - **Mobile card redesign + mobile sort (Jul 2026).** The narrow-screen (<1374px) view was
   rebuilt from the old "every `<td>` a label→value line" stack into a **single-column spec-sheet

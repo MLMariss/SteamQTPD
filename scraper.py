@@ -90,15 +90,24 @@ MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:fals
 # Fix 1 — REVIEW_TIERS: a per-game cooldown that widens with age since release, so
 # the score is re-checked hardest exactly when it moves fastest. (max_age_days,
 # cooldown_days); a game older than the last tier keeps the old last_modified-only
-# behaviour. Steady state ~3.2k refreshes/day = ~6.4k storefront calls = ~1.6h/day
-# of run time at STOREFRONT_MIN_INTERVAL — about 10% of this scraper's proven peak
-# (30.8k games in one day) and ~7% of its ~22h/day window. The FIRST pass is a
-# one-time catch-up — ~11k games came due immediately when this was measured
-# (~5.6h), with the rest of the <365d population trickling in as their own
-# cooldowns elapse. It shares the run with the forced drain (FORCE_RESERVE_FRAC)
-# and settles within a day or two.
-REVIEW_TIERS = [(3, 0.5), (10, 1), (30, 2), (60, 4), (90, 7), (180, 14), (365, 30)]
+# behaviour. Steady state ~6.4k refreshes/day = ~12.9k storefront calls = ~3.2h/day
+# of run time at STOREFRONT_MIN_INTERVAL — about 21% of this scraper's proven peak
+# (30.8k games in one day) and ~15% of its ~22h/day window. The FIRST pass is a
+# one-time catch-up, which shares the run with the forced drain
+# (FORCE_RESERVE_FRAC) and settles within a day or two.
+REVIEW_TIERS = [(3, 0.25), (10, 0.5), (30, 1), (60, 2), (90, 3.5), (180, 7), (365, 15)]
 REVIEW_TIER_REFRESH = os.environ.get("REVIEW_TIER_REFRESH", "1") != "0"   # kill-switch
+
+# Tiers at or under this many days since release are re-checked MID-RUN, not just
+# when the run starts. WHY: select_work() builds the queue ONCE, at the top of a
+# 5.5h run on a 6h cron grid, so a game that comes due 20 minutes in waits for the
+# next run. That puts a hard ~6h floor under every cooldown and would make the 6h
+# and 12h tiers partly cosmetic (a nominal 6h tier delivering 6-12h intervals).
+# requeue_due_young() re-checks this population at every checkpoint (~10 min),
+# which is what actually buys the near-real-time end of the ladder. Only the young
+# tiers qualify: they're a small set (~2.2k games) so the re-scan is free, and
+# they're the only ones whose cooldown is shorter than a run.
+REVIEW_LIVE_MAX_AGE_DAYS = float(os.environ.get("REVIEW_LIVE_MAX_AGE_DAYS", "30"))
 
 # Fix 2 — PICS drift: pics.json already carries `rev: [score_1_9, pct]` harvested
 # daily over the WHOLE catalog via the CM protocol, entirely off the storefront
@@ -1013,6 +1022,33 @@ def main():
             return forced_q.popleft(), "refresh"
         return None
 
+    # Young games, precomputed once: [(appid, cooldown_seconds)] for every stored game
+    # within REVIEW_LIVE_MAX_AGE_DAYS of release. Small (~2.2k), so re-checking it every
+    # checkpoint costs nothing, unlike re-scanning all ~124k stored records.
+    young = []
+    if REVIEW_TIER_REFRESH:
+        for k, rec in processed.items():
+            tier = review_tier(rec.get("release_ts"), int(time.time()))
+            if tier is not None and REVIEW_TIERS[tier[0]][0] <= REVIEW_LIVE_MAX_AGE_DAYS:
+                young.append((int(k), tier[1]))
+
+    def requeue_due_young():
+        """Mid-run pickup for the FAST tiers. The queue is built once at the top of a
+        5.5h run, so without this a game coming due 20 minutes in would wait for the
+        next cron — putting a ~6h floor under cooldowns that are supposed to be 6h and
+        12h. Re-checks the precomputed `young` set against live scraped_at and splices
+        whatever is newly due to the FRONT of the refresh queue. `handled` makes it
+        idempotent within a run: a game already scraped this run is never re-queued, so
+        this cannot loop."""
+        now_ = int(time.time())
+        due = [a for a, cooldown in young
+               if a not in handled and a not in queued
+               and (now_ - processed[str(a)].get("scraped_at", 0)) >= cooldown]
+        for a in due:
+            work.appendleft((a, "refresh")); queued.add(a)
+        if due:
+            log(f"  mid-run review refresh: +{len(due)} newly-due young game(s) to front")
+
     def inject_new_seeds():
         """Mid-run pickup: re-read seeds.txt from origin/main and splice any newly-added
         priorities to the FRONT of the queue, so a web edit lands in THIS run instead of
@@ -1085,6 +1121,7 @@ def main():
             save_games(processed); save_catalog(catalog)
             git_checkpoint(f"checkpoint: {len(processed)} games stored")
             inject_new_seeds()              # after the push, pull any seeds.txt edit into this run
+            requeue_due_young()             # ...and any young game that came due mid-run
             last_commit = time.time()
 
     catalog["skipped"] = sorted(skipped)

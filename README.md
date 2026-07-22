@@ -51,9 +51,10 @@ The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Ea
 1. **Enumerates the catalog** via Steam's `IStoreService/GetAppList` — games-only,
    appid-ordered, with a per-app `last_modified` timestamp.
 2. **Refreshes due games first** — a game is due when Steam's `last_modified` moved past
-   when we last scraped it, when its **age-tiered review cooldown** elapsed (12h for a
-   brand-new release, widening to 30d by the one-year mark, so review scores stay honest
-   while they're still moving), or when PICS reports a review percentage that disagrees
+   when we last scraped it, when its **age-tiered review cooldown** elapsed (6h for a
+   brand-new release, widening to 15d by the one-year mark, so review scores stay honest
+   while they're still moving — games under 30 days old are re-checked every ~10 minutes
+   *during* a run, not just when one starts), or when PICS reports a percentage that disagrees
    with our stored one. Then **scrapes new games**, newest appid first — new coverage keeps
    a reserved share of each run so a long refresh queue can't delay a fresh release.
 3. Only stores games that are **actually released**; unreleased ones wait in a
