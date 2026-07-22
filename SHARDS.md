@@ -1,6 +1,6 @@
 # Shard health — `playtime_raw/` · QTPD (SteamQHPP)
 
-_Generated 2026-07-21 09:15 UTC by `shard_health.py`._
+_Generated 2026-07-22 09:14 UTC by `shard_health.py`._
 
 ## Status
 
@@ -12,13 +12,13 @@ _Generated 2026-07-21 09:15 UTC by `shard_health.py`._
 |---|---|
 | Shards | 64 (non-empty 64) |
 | shard_ver | [2] |
-| Total games | 78,767 |
+| Total games | 78,784 |
 | Games/shard | min 1169 · median 1230 · max 1306 (max/mean 1.06) |
 | Size/shard | min 10.53 MB · median 12.18 MB · **max 13.27 MB** |
 | Headroom on biggest | 86.7 MB under the 100 MB limit |
 | Bytes/game | ~10.4 KB |
 | Games-to-100MB (per shard) | ~9,843 |
-| Addressable universe (≥10 reviews) | 78,860 → ~1,232/shard at full coverage |
+| Addressable universe (≥10 reviews) | 78,884 → ~1,232/shard at full coverage |
 | **Projected max shard at full coverage** | **~13 MB** |
 
 ## Per-shard
@@ -36,13 +36,13 @@ _Generated 2026-07-21 09:15 UTC by `shard_health.py`._
 | 08 | 1,221 | 13.08 MB | 13.1% | 2026-07-20 23:35 |
 | 09 | 1,217 | 12.81 MB | 12.8% | 2026-07-21 04:46 |
 | 10 | 1,295 | 12.22 MB | 12.2% | 2026-07-21 08:40 |
-| 11 | 1,176 | 10.64 MB | 10.6% | 2026-07-12 18:49 |
-| 12 | 1,236 | 12.50 MB | 12.5% | 2026-07-12 21:45 |
-| 13 | 1,288 | 11.98 MB | 12.0% | 2026-07-13 00:42 |
-| 14 | 1,213 | 11.59 MB | 11.6% | 2026-07-13 06:16 |
-| 15 | 1,230 | 12.22 MB | 12.2% | 2026-07-13 11:50 |
-| 16 | 1,240 | 11.87 MB | 11.9% | 2026-07-13 18:11 |
-| 17 | 1,193 | 11.37 MB | 11.4% | 2026-07-13 19:43 |
+| 11 | 1,177 | 10.66 MB | 10.7% | 2026-07-21 09:53 |
+| 12 | 1,236 | 12.53 MB | 12.5% | 2026-07-21 12:11 |
+| 13 | 1,293 | 12.05 MB | 12.1% | 2026-07-21 15:29 |
+| 14 | 1,214 | 11.60 MB | 11.6% | 2026-07-21 17:57 |
+| 15 | 1,232 | 12.27 MB | 12.3% | 2026-07-21 20:49 |
+| 16 | 1,245 | 12.14 MB | 12.1% | 2026-07-21 23:26 |
+| 17 | 1,196 | 11.43 MB | 11.4% | 2026-07-22 04:48 |
 | 18 | 1,254 | 12.17 MB | 12.2% | 2026-07-13 22:14 |
 | 19 | 1,199 | 10.55 MB | 10.5% | 2026-07-14 00:43 |
 | 20 | 1,242 | 12.87 MB | 12.9% | 2026-07-14 05:57 |
