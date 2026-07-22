@@ -59,6 +59,7 @@ GAMES_FILE = HERE / "games.json"          # display data + scraped state (commit
 CATALOG_FILE = HERE / "catalog.json"      # tiny state: last_sync, skip list, priority (committed)
 SEEDS_FILE = HERE / "seeds.txt"           # OPTIONAL games to scrape FIRST (human-edited only)
 SEEDS_LOG_FILE = HERE / "seeds_log.txt"   # append-only audit of seed reconciliations (scraper-owned)
+PICS_FILE = HERE / "pics.json"            # READ-ONLY here (owned by pics_merge.py) — review-drift signal
 
 # Free Steam Web API key from https://steamcommunity.com/dev/apikey (GitHub secret
 # STEAM_API_KEY). Without it, falls back to the keyless full list (all app types,
@@ -75,6 +76,39 @@ MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:fals
                                 # before a game is treated as a permanent skip. success:false
                                 # lumps region-locked (cc=us) + transient blips with dead apps,
                                 # so we retry across this many runs before giving up (§3.1).
+
+# --- Review freshness: age-tiered refresh + PICS drift trigger (Jul 2026) ----
+# WHY: Steam's last_modified (GetAppList) tracks store/depot changes, NOT review
+# counts. With an API key set (always, in Actions) `has_lm` is true, so the
+# REFRESH_DAYS fallback timer never fires and a game's ONLY refresh trigger is a
+# store-page change. A game scraped on release day therefore froze at its day-one
+# score forever — the single least representative moment. Assassin's Creed Black
+# Flag Resynced sat at 49% / 2,019 reviews for 13 days while the real figure moved
+# to 79% / 19k. Systemic, not a one-off: games released in the last 30 days had a
+# median scrape age of 13 days.
+#
+# Fix 1 — REVIEW_TIERS: a per-game cooldown that widens with age since release, so
+# the score is re-checked hardest exactly when it moves fastest. (max_age_days,
+# cooldown_days); a game older than the last tier keeps the old last_modified-only
+# behaviour. Steady state ~3.2k refreshes/day = ~6.4k storefront calls = ~1.6h/day
+# of run time at STOREFRONT_MIN_INTERVAL — about 10% of this scraper's proven peak
+# (30.8k games in one day) and ~7% of its ~22h/day window. The FIRST pass is a
+# one-time catch-up — ~11k games came due immediately when this was measured
+# (~5.6h), with the rest of the <365d population trickling in as their own
+# cooldowns elapse. It shares the run with the forced drain (FORCE_RESERVE_FRAC)
+# and settles within a day or two.
+REVIEW_TIERS = [(3, 0.5), (10, 1), (30, 2), (60, 4), (90, 7), (180, 14), (365, 30)]
+REVIEW_TIER_REFRESH = os.environ.get("REVIEW_TIER_REFRESH", "1") != "0"   # kill-switch
+
+# Fix 2 — PICS drift: pics.json already carries `rev: [score_1_9, pct]` harvested
+# daily over the WHOLE catalog via the CM protocol, entirely off the storefront
+# budget. When PICS's percentage disagrees with our stored rating_pct by more than
+# this many points, our number is provably stale — queue a re-scrape regardless of
+# age. Free signal, small volume (~1.7k games on the first pass at 3pt, a few
+# hundred/day after), and it reaches old games no tier ever would. Covers the ~64%
+# of the catalog that has `rev`; PICS carries no review COUNT, so this complements
+# the tiers rather than replacing them. Set to 0 to disable.
+PICS_REV_DELTA = int(os.environ.get("PICS_REV_DELTA", "3"))
 
 # TOP_TAGS / SteamSpy tags moved to tags_refresh.py (it was the slowest per-game call).
 COUNTRY = "us"                  # cc=us => USD prices
@@ -710,6 +744,45 @@ def git_checkpoint(msg):
 
 
 # --------------------------------------------------------------------------- #
+# Review freshness helpers (see REVIEW_TIERS / PICS_REV_DELTA in CONFIG)
+# --------------------------------------------------------------------------- #
+def review_tier(release_ts, now):
+    """(tier_index, cooldown_seconds) for a game's age since release, or None when it
+    is older than the last tier (or has no usable release_ts) — those keep the old
+    last_modified-only behaviour."""
+    if not release_ts or release_ts > now:
+        return None
+    age_days = (now - release_ts) / 86400
+    for i, (max_age, cooldown_days) in enumerate(REVIEW_TIERS):
+        if age_days <= max_age:
+            return i, int(cooldown_days * 86400)
+    return None
+
+
+def load_pics_rev():
+    """{appid: review_percentage} from pics.json — the PICS `rev` field, harvested
+    daily over the whole catalog off the storefront budget (§9.6). READ-ONLY: this
+    script never writes pics.json. Missing/unreadable file is not an error; the drift
+    trigger just goes quiet (the tiers still run)."""
+    if PICS_REV_DELTA <= 0 or not PICS_FILE.exists():
+        return {}
+    try:
+        apps = (json.loads(PICS_FILE.read_text(encoding="utf-8")) or {}).get("apps") or {}
+    except Exception as e:
+        log(f"  pics.json unreadable ({e}); review-drift trigger disabled this run")
+        return {}
+    out = {}
+    for k, rec in apps.items():
+        rev = rec.get("rev")
+        if isinstance(rev, list) and len(rev) >= 2 and rev[1] is not None:
+            try:
+                out[int(k)] = int(rev[1])
+            except (TypeError, ValueError):
+                continue
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Work selection
 # --------------------------------------------------------------------------- #
 def select_work(master, has_lm, processed, catalog):
@@ -721,8 +794,12 @@ def select_work(master, has_lm, processed, catalog):
     Games still sitting unreleased in `pending` are NOT re-queued as fresh work here;
     they're only re-probed once ripe (above) or, for undated/TBA ones, occasionally
     via the catalog's last_modified signal -- so we don't burn probes on them.
-    REFRESH = stored (released) games whose last_modified moved past scraped_at (or on
-    sale), oldest-touched first.
+    REFRESH = stored (released) games due for a re-scrape, ranked by why they're due
+    (see the rank table below) and oldest-touched first within each rank. Three
+    triggers, in the order they were added:
+      * last_modified moved past scraped_at (the original signal — store/depot only),
+      * the game's age-since-release tier cooldown elapsed (REVIEW_TIERS),
+      * PICS's review percentage disagrees with our stored one (PICS_REV_DELTA).
     """
     now = int(time.time())
     skipped = set(catalog["skipped"])
@@ -775,6 +852,21 @@ def select_work(master, has_lm, processed, catalog):
     forced = [int(a) for a in (catalog.get("force_refresh") or []) if str(a) in processed]
     forced_set = set(forced)
 
+    # Review-drift signal from the daily PICS pass — free, no storefront cost.
+    # (Returns {} when PICS_REV_DELTA is 0 or pics.json isn't readable.)
+    pics_rev = load_pics_rev()
+
+    # Refresh queue ordering (lower rank = scraped earlier within this run). Review
+    # freshness on young games is the whole point of the tiers, so they outrank a
+    # store-page edit on an old game; the slow backfill tiers queue behind it, which
+    # keeps the one-time first-pass catch-up from starving genuine last_modified work:
+    #   0,1,2  tiers 0-3d / 3-10d / 10-30d  (reviews move fastest here)
+    #   3      PICS says our stored rating_pct is provably wrong
+    #   4      last_modified moved (a real store-page change)  <- the old sole trigger
+    #   5..8   tiers 30-60d / 60-90d / 90-180d / 180-365d      (slow backfill)
+    RANK_PICS, RANK_LM = 3, 4
+    n_tier = n_pics = n_lm = 0
+
     cands = []
     for k, rec in processed.items():
         aid = int(k); sat = rec.get("scraped_at", 0)
@@ -785,16 +877,42 @@ def select_work(master, has_lm, processed, catalog):
             changed = lm is not None and lm > sat
         else:
             changed = (now - sat) >= REFRESH_DAYS * 86400
-        # Refresh ONLY when Steam's last_modified actually moved (or, without an API key,
-        # the fallback timer elapsed). We deliberately do NOT refresh just because a game
-        # is on sale: prices/discounts/sale-end-dates are owned by price_and_sale.py, which
-        # re-checks every on-sale game cheaply every few hours. Re-scraping on-sale games
-        # here would be pure waste — during a big sale that was ~1k+ needless refreshes per
-        # run, starving the new-game frontier.
+        # last_modified is a STORE/DEPOT change signal — it does not move when review
+        # counts do, which is why the tier + drift triggers below exist. We still
+        # deliberately do NOT refresh just because a game is on sale: prices/discounts/
+        # sale-end-dates are owned by price_and_sale.py, which re-checks every on-sale
+        # game cheaply every few hours. Re-scraping on-sale games here would be pure
+        # waste — during a big sale that was ~1k+ needless refreshes per run, starving
+        # the new-game frontier.
+        rank = RANK_LM if changed else None
         if changed:
-            cands.append((sat, aid))
+            n_lm += 1
+
+        if REVIEW_TIER_REFRESH:
+            tier = review_tier(rec.get("release_ts"), now)
+            if tier is not None:
+                i, cooldown = tier
+                if (now - sat) >= cooldown:
+                    n_tier += 1
+                    tier_rank = i if i <= 2 else i + 2
+                    rank = tier_rank if rank is None else min(rank, tier_rank)
+
+        # Only worth checking when it could actually improve the rank (or queue at all).
+        if PICS_REV_DELTA > 0 and (rank is None or rank > RANK_PICS):
+            stored_pct = rec.get("rating_pct")
+            pct = pics_rev.get(aid)
+            if stored_pct is not None and pct is not None and abs(pct - stored_pct) >= PICS_REV_DELTA:
+                n_pics += 1
+                rank = RANK_PICS if rank is None else min(rank, RANK_PICS)
+
+        if rank is not None:
+            cands.append((rank, sat, aid))   # within a rank: oldest-scraped first
     cands.sort()
-    refresh_ids = forced + [a for _, a in cands]
+    if REVIEW_TIER_REFRESH or PICS_REV_DELTA > 0:
+        log(f"Refresh triggers: {n_tier} age-tier, {n_pics} PICS review-drift "
+            f"(>={PICS_REV_DELTA}pt), {n_lm} last_modified "
+            f"(overlapping; {len(cands)} distinct)")
+    refresh_ids = forced + [a for _, _, a in cands]
     return new_ids, refresh_ids
 
 
@@ -818,8 +936,12 @@ def main():
         f"recheck {len(catalog.get('recheck') or {})} | "
         f"to-do: {len(new_ids)} new, {len(refresh_ids)} refresh")
     log(f"Budget: {RUN_MINUTES} min | storefront pace {STOREFRONT_MIN_INTERVAL}s/call | "
-        f"force-reserve {float(os.environ.get('FORCE_RESERVE_FRAC', '0.5')):.0%} "
-        f"(forced re-scrape drains first, interleaved with changed + new coverage)")
+        f"force-reserve {float(os.environ.get('FORCE_RESERVE_FRAC', '0.5')):.0%} | "
+        f"new-reserve {float(os.environ.get('NEW_RESERVE_FRAC', '0.25')):.0%} "
+        f"(both interleave into the refresh queue)")
+    if REVIEW_TIER_REFRESH:
+        log("Review tiers (age since release -> cooldown): "
+            + ", ".join(f"<={d}d:{c}d" for d, c in REVIEW_TIERS))
 
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})
@@ -845,32 +967,49 @@ def main():
     # the backlog drains steadily regardless of how much other work is pending.
     # Set to 0 to disable (pure priority order). Env-overridable for tuning.
     FORCE_RESERVE_FRAC = float(os.environ.get("FORCE_RESERVE_FRAC", "0.5"))
+
+    # New coverage gets its own reserve for the SAME reason. `work` used to be
+    # "refresh first, then new", which was harmless while the refresh queue was a few
+    # hundred games a day. The age-tiered review refresh (REVIEW_TIERS) makes it
+    # thousands — and ~11k on the first pass — which would push ripe/newly-released
+    # games behind hours of re-scraping. That directly undercuts the point of the
+    # tiers: a game must be *scraped* before it can be kept fresh. Set to 0 for the
+    # old refresh-first-always behaviour.
+    NEW_RESERVE_FRAC = float(os.environ.get("NEW_RESERVE_FRAC", "0.25"))
+
     forced_ids = [a for a in refresh_ids if a in force_set]
     other_refresh = [a for a in refresh_ids if a not in force_set]
     forced_q = deque(forced_ids)           # dedicated drain queue
-    # `work` holds everything NON-forced, in the old order (other refresh, then new).
-    work = deque([(a, "refresh") for a in other_refresh] + [(a, "new") for a in new_ids])
-    queued = {a for a, _ in work} | set(forced_q)   # every appid ever placed in a queue
+    new_q = deque(new_ids)                 # ripe + priority seeds + fresh frontier
+    work = deque((a, "refresh") for a in other_refresh)   # tier / drift / last_modified
+    queued = {a for a, _ in work} | set(forced_q) | set(new_q)  # every appid ever queued
     handled = set()                        # every appid already popped + processed
-    _pop_counter = 0                       # drives the forced-interleave cadence
+    # Reserve accounting: each pop credits every non-empty reserve by its fraction; a
+    # reserve spends a credit to jump the queue. Equivalent to the old modulo cadence
+    # for a single reserve (0.5 -> every 2nd pop) but composes cleanly for two, and an
+    # empty queue accrues nothing, so it can't bank credits and then burst later.
+    _force_credit = _new_credit = 0.0
 
     def next_work():
-        """Pop the next (appid, kind), interleaving the forced drain queue so it gets at
-        least FORCE_RESERVE_FRAC of pops. Falls back to whichever queue is non-empty."""
-        nonlocal _pop_counter
-        take_forced = False
-        if forced_q and FORCE_RESERVE_FRAC > 0:
-            # every ~1/frac pops, take a forced item (e.g. frac=0.5 -> every 2nd pop)
-            cadence = max(1, round(1 / FORCE_RESERVE_FRAC))
-            take_forced = (_pop_counter % cadence == 0) or not work
-        elif forced_q and not work:
-            take_forced = True
-        _pop_counter += 1
-        if take_forced and forced_q:
+        """Pop the next (appid, kind). Forced re-scrapes and new coverage each get at
+        least their reserve share of pops; the rest goes to the refresh queue. Falls
+        back to whichever queue is still non-empty."""
+        nonlocal _force_credit, _new_credit
+        if forced_q:
+            _force_credit += FORCE_RESERVE_FRAC
+        if new_q:
+            _new_credit += NEW_RESERVE_FRAC
+        if forced_q and _force_credit >= 1.0:
+            _force_credit -= 1.0
             return forced_q.popleft(), "refresh"
+        if new_q and _new_credit >= 1.0:
+            _new_credit -= 1.0
+            return new_q.popleft(), "new"
         if work:
             return work.popleft()
-        if forced_q:                       # work drained, forced remain
+        if new_q:                          # refresh drained, new remain
+            return new_q.popleft(), "new"
+        if forced_q:                       # everything else drained, forced remain
             return forced_q.popleft(), "refresh"
         return None
 
@@ -889,14 +1028,14 @@ def main():
         added_forced = [a for a in catalog.get("force_refresh", [])
                         if a not in queued and a not in handled and str(a) in processed]
         for a in reversed(added_new):              # newest priority appids first
-            work.appendleft((a, "new")); queued.add(a)
+            new_q.appendleft(a); queued.add(a)
         for a in added_forced:                     # into the reserved drain queue
             forced_q.append(a); queued.add(a)
         if added_new or added_forced:
             log(f"  mid-run seed pickup: +{len(added_new)} new, "
                 f"+{len(added_forced)} forced re-scrape queued to front")
 
-    while work or forced_q:
+    while work or forced_q or new_q:
         if budget - (time.time() - start) < TIME_BUFFER:
             log("Time budget reached; wrapping up.")
             break
