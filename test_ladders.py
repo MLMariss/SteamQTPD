@@ -100,7 +100,7 @@ check("never-scraped outranks everything",
 check("sub-10-review game is penalised",
       P.priority(stale, NOW - 2*DAY, None, 5, NOW, 200) < p_new)
 
-print("\n== playtime: multi-shard scheduler ==")
+print("\n== playtime: multi-shard staleness sweep ==")
 # Build a synthetic catalog whose hot games are deliberately scattered across shards.
 games = []
 for i in range(2000):
@@ -110,22 +110,70 @@ for i in range(2000):
                   "last_update_ts": NOW - 10*DAY})
 sched = P.build_candidates(games, NOW, 200)
 check("due games are spread across many shards", len(sched) > 20)
-chosen = P.select_buckets(sched, anchor=3)
+check("every shard has due work in this synthetic catalog", len(sched) == P.NSHARDS)
+
+# Deterministic staleness stub (hermetic — no shard files touched): higher bucket id is
+# OLDER (last scraped further in the past), so the sweep must prefer high bucket ids.
+STALE = {b: NOW - b*DAY for b in range(P.NSHARDS)}
+ls = lambda b: STALE[b]
+
+chosen = P.select_buckets(sched, anchor=3, last_scraped=ls)
 check("selects multiple shards per run", len(chosen) > 1)
 check("respects MAX_SHARDS_PER_RUN", len(chosen) <= P.MAX_SHARDS_PER_RUN)
-check("anchor bucket always included (starvation guard)", 3 in chosen)
-check("chosen shards are the hottest",
-      len(sched[chosen[0]]) >= len(sched[chosen[-1]]))
 check("no duplicate shards selected", len(chosen) == len(set(chosen)))
-# Anchor injection must not exceed the cap even when anchor isn't hot.
-cold = P.select_buckets(sched, anchor=999 % P.NSHARDS)
-check("anchor injection still respects the cap", len(cold) <= P.MAX_SHARDS_PER_RUN)
-check("every selected bucket exists in scoring or is the anchor",
-      all(b in sched or b == (999 % P.NSHARDS) for b in cold))
+check("anchor bucket kept as a floor", 3 in chosen)
+# THE FIX: the sweep opens the most-stale shards, NOT the hottest. Anchor b3 is young, so
+# it's injected at the end, displacing the youngest of the stale core.
+oldest = sorted(sched, key=lambda b: ls(b))          # ascending generated_at = oldest first
+expected_core = set(oldest[:P.MAX_SHARDS_PER_RUN - 1])
+check("sweep picks the most-stale shards first, not the hottest",
+      set(b for b in chosen if b != 3) == expected_core)
+# A fresh shard packed with due games must LOSE to older shards — the old bug, inverted.
+freshest = max(sched, key=lambda b: ls(b))           # largest generated_at = most recent
+check("a fresh shard is NOT grabbed over stale ones (old greedy bug inverted)",
+      freshest not in chosen or freshest == 3)
+
+print("\n== playtime: FORCE_SHARDS override ==")
+forced = P.select_buckets(sched, anchor=3, forced=[5, 5, 999], last_scraped=ls)
+check("forced shard is included even though it's young/fresh", 5 in forced)
+check("forced shard is processed FIRST", forced[0] == 5)
+check("out-of-range forced bucket is ignored", 999 not in forced)
+check("forcing still respects the cap", len(forced) <= P.MAX_SHARDS_PER_RUN)
+
+print("\n== playtime: bounded full-sweep guarantee ==")
+# Simulate consecutive runs, marking each run's chosen shards freshly scraped, and confirm
+# EVERY shard is visited within ceil(NSHARDS / MAX_SHARDS_PER_RUN) runs (+ small slack for
+# the anchor). This is the property that fixes the 8-day tail: no shard can starve.
+state = dict(STALE)
+seen, runs_used = set(), 0
+for r in range(P.NSHARDS):
+    ch = P.select_buckets(sched, anchor=r % P.NSHARDS, last_scraped=lambda b: state[b])
+    for b in ch:
+        seen.add(b)
+        state[b] = NOW + r                 # scraped this run -> now the freshest
+    runs_used = r + 1
+    if len(seen) == len(sched):
+        break
+bound = (P.NSHARDS + P.MAX_SHARDS_PER_RUN - 1) // P.MAX_SHARDS_PER_RUN
+check("staleness sweep visits EVERY shard (no permanent starvation)",
+      seen == set(sched))
+check(f"full cycle within ceil({P.NSHARDS}/{P.MAX_SHARDS_PER_RUN})+slack runs (took {runs_used})",
+      runs_used <= bound + 2)
+
 # Sub-floor games must never be scheduled.
 tiny = [{"appid": 500, "review_count": 2, "released_ts": NOW - DAY}]
 check("sub-floor games are excluded from scheduling",
       P.build_candidates(tiny, NOW, 200) == {})
+
+print("\n== playtime: header reader + FORCE_SHARDS env parsing ==")
+import os as _os
+check("missing shard file -> 0 (maximally stale, swept first)",
+      P.shard_last_scraped(9999) == 0)
+_os.environ["FORCE_SHARDS"] = " 27, 5 ,27,999,foo,-1 "
+check("forced_shards() parses CSV, de-dupes, drops junk/out-of-range",
+      P.forced_shards() == [27, 5])
+_os.environ.pop("FORCE_SHARDS")
+check("no FORCE_SHARDS env -> empty (normal path)", P.forced_shards() == [])
 
 print("\n== playtime: shard key sanity ==")
 counts = {}
