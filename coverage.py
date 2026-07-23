@@ -230,7 +230,7 @@ PICS_SUBMETRICS = [
     ("controller support",      lambda r: bool(r.get("controller")),    "full/partial (from cats 28/18)"),
     ("Steam Deck compat",       lambda r: bool(r.get("deck")),          "Deck-rated titles only"),
     ("franchise",               lambda r: bool(r.get("franchise")),     "structured franchise name(s)"),
-    ("content descriptors",     lambda r: bool(r.get("content_desc")),  "mature flags (adult gate = code 4)"),
+    ("content descriptors",     lambda r: bool(r.get("content_desc")),  "mature flags (adult gate = code 3 or 4)"),
     ("Early Access (genre-70)", lambda r: 70 in (r.get("genres") or []), "Valve EA signal (not the SteamSpy tag)"),
     ("AI content disclosure",   lambda r: bool(r.get("ai")),            "aicontenttype 1/2 carriers only"),
     ("custom EULA",             lambda r: bool(r.get("eula")),          "carriers only"),

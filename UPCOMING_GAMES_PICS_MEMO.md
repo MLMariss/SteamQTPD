@@ -19,6 +19,15 @@ concrete future date). The metadata dump did not touch upcoming games. No change
 is being made now; the analysis below is kept so the decision can be picked up
 later without re-deriving it.
 
+> **Re-verified 2026-07-23 (doc audit) — conclusion unchanged.** Counts drift as
+> Steam enumerates new unreleased apps, but the argument does not: `pending` is now
+> **51,911**, of which **51,910 are undated/TBA and exactly ONE carries a concrete
+> future release date** — the same striking ratio the memo was built on. **433** of
+> them (0.83%) appear in `pics.json`. The gate itself is confirmed in code:
+> `pics.yml` runs `pics_refresh.py --catalog games.json`, so PICS inherits the
+> released-only worklist exactly as §1 describes. Nothing here needs revisiting
+> until pre-release discovery becomes a product goal.
+
 ---
 
 ## TL;DR
