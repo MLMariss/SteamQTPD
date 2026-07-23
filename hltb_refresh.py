@@ -66,6 +66,47 @@ RESCRAPE_PARTIAL_DAYS = 14               # entries with 1-2 real raw values
 RESCRAPE_FULL_DAYS = 365                 # complete triples (3 real raw values)
 DAY = 86400
 
+# --- Popularity fast lane (review-count tiered) ------------------------------------ #
+# THE BUG THIS FIXES. The windows above are keyed ONLY on how complete our entry is,
+# which quietly assumes HLTB's data is static. That holds for a 2015 back-catalogue
+# title; it is badly wrong for a big new release. Observed case: Assassin's Creed Black
+# Flag Resynced (released Jul 2026) was first fetched days after launch when HLTB had
+# almost nothing, so we stored a lone `extra` value and nothing else. HLTB has since
+# accumulated a full triple (22.5 / 38.5 / 66.5) from real submissions — but our entry
+# sat on the 14-day partial window, and worse, the moment a re-scrape DOES complete the
+# triple it graduates to the `full` bucket and freezes for a YEAR. So the games most
+# likely to be gaining data are the ones we look at least often.
+#
+# THE SIGNAL. Steam all-time `review_count` is the best proxy we have for "HLTB probably
+# has new submissions": both counts are driven by the same underlying player population,
+# and review_count is already in games.json at zero extra cost. A game with >1k reviews
+# has a live, growing HLTB page; a 40-review indie almost certainly does not.
+#
+# THE OVERRIDE. This tier applies to EVERY bucket including `full` — that is deliberate
+# and is the actual fix. Leaving `full` at 365d would let exactly the Black Flag case
+# recur: complete the triple once, then freeze while the numbers drift for a year. A
+# popular game's "complete" triple is a moving target (early completionist times skew
+# high and settle as the sample grows), so it is worth re-checking a few times a year.
+#
+# Windows are a FLOOR, not a boost: we take min(bucket_window, popularity_window), so
+# this can only ever make an entry refresh sooner, never later. A game that is both
+# popular and partial gets the shorter of the two.
+POPULAR_TIERS = [
+    (1000, 5),      # >1000 all-time reviews -> re-check every 5 days
+    (500, 10),      # >500                   -> every 10 days
+]
+
+# Opportunistic second signal, free with a fetch we already make (see hltb_for): HLTB's
+# own completion-submission count (`count_comp` in the search payload — the "N Beat"
+# figure on the game page). If it has GROWN since our last fetch, the page provably has
+# new data behind it, which is stronger evidence than any review-count proxy. It is
+# stored on the entry as `n_comp` and used only to pull a re-scrape forward. Guarded
+# everywhere: howlongtobeatpy does not map this field, so we read it out of the raw
+# `json_content` and treat absence as "no signal" rather than an error — if HLTB ever
+# renames or drops it, this silently degrades to the review-count ladder alone.
+COMP_GROWTH_DAYS = 5                     # re-check this soon after count_comp grows
+COMP_GROWTH_MIN = 3                      # ignore noise; needs at least this many new submissions
+
 # --- Phase B: eager-but-throttled blank retry + never-idle drain ------------------- #
 # A blank (no-match) is EITHER a genuinely-dead title (shovelware HLTB will never have)
 # OR a real game we lost to title noise / a transient HLTB hiccup during the first pass.
@@ -110,6 +151,62 @@ def blank_window_days(attempts):
     return BLANK_FREEZE_DAYS
 
 
+def popular_window_days(review_count):
+    """Popularity-tiered staleness window, or None when the game isn't popular enough
+    to qualify. Pure; see POPULAR_TIERS for the reasoning."""
+    rc = review_count or 0
+    for floor, days in POPULAR_TIERS:
+        if rc > floor:
+            return days
+    return None
+
+
+def effective_window_days(entry, review_count, bucket):
+    """The staleness window actually applied to an entry, in days.
+
+    Combines three independent signals by taking the SHORTEST — every signal here is a
+    reason to look sooner, never a reason to wait longer, so min() is the correct
+    composition and it's impossible for this function to make an entry staler than the
+    original bucket rules would have:
+
+      1. the bucket's own window (partial 14d / full 365d / blank attempt-scaled curve)
+      2. the popularity tier from Steam review_count (POPULAR_TIERS) — applies to ALL
+         buckets, including `full`
+      3. a recent growth in HLTB's own submission count (COMP_GROWTH_DAYS)
+
+    Pure function — no I/O, unit-testable."""
+    if bucket == "blank":
+        window = blank_window_days(_blank_attempts(entry))
+    elif bucket == "partial":
+        window = RESCRAPE_PARTIAL_DAYS
+    else:
+        window = RESCRAPE_FULL_DAYS
+
+    pop = popular_window_days(review_count)
+    if pop is not None:
+        window = min(window, pop)
+
+    if entry.get("comp_grew"):
+        window = min(window, COMP_GROWTH_DAYS)
+    return window
+
+
+def _comp_count(res):
+    """HLTB's own completion-submission count from a raw search result, or None.
+
+    howlongtobeatpy does not expose this as a typed attribute, so it's read out of the
+    untyped `json_content` payload. Every access is defensive: a missing key, a renamed
+    field, or a non-numeric value all yield None ("no signal"), which the callers treat
+    as neutral. This must never be able to raise — it's a bonus signal, not a dependency."""
+    if not isinstance(res, dict):
+        return None
+    for key in ("count_comp", "count_completed", "comp_count"):
+        v = res.get(key)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0:
+            return int(v)
+    return None
+
+
 def log(msg):
     print(msg, flush=True)
 
@@ -139,8 +236,18 @@ def _search_one(query):
             return None
         return round(v, 1) if v > 0 else None
 
+    # Opportunistic extra signal: HLTB's own completion-submission count, read from the
+    # untyped raw payload (the library doesn't map it). Wrapped because json_content is
+    # whatever HLTB happened to return — never let a bonus signal break a good fetch.
+    n_comp = None
+    try:
+        n_comp = _comp_count(getattr(best, "json_content", None))
+    except Exception:
+        n_comp = None
+
     return {"main": hrs(best.main_story), "extra": hrs(best.main_extra),
-            "complete": hrs(best.completionist), "match": best.game_name}
+            "complete": hrs(best.completionist), "match": best.game_name,
+            "n_comp": n_comp}
 
 
 def hltb_for(title):
@@ -156,7 +263,7 @@ def hltb_for(title):
     every attempted variant errored (and none matched), we return None so the game
     is retried next run rather than frozen as a permanent blank. A clean miss on
     all variants returns the blank."""
-    blank = {"main": None, "extra": None, "complete": None, "match": None}
+    blank = {"main": None, "extra": None, "complete": None, "match": None, "n_comp": None}
     if HowLongToBeat is None:
         return blank
 
@@ -203,20 +310,21 @@ def _blank_attempts(entry):
 def build_rescrape_queue(games, hltb, now):
     """Build the ordered re-scrape work list from games that ALREADY have an entry.
     Priority order (highest expected yield first, §2 → T5): partial -> blank -> full.
-    Within each bucket, oldest fetched_at first so retries spread evenly and no entry
-    is re-hit twice before its peers get one pass. Eligibility is by staleness window;
-    games with no title in games.json can't be re-searched and are skipped.
+    Within each bucket, POPULAR games first (they're likeliest to have gained data),
+    then oldest fetched_at, so retries spread evenly and no entry is re-hit twice
+    before its peers get one pass. Eligibility is by staleness window; games with no
+    title in games.json can't be re-searched and are skipped.
 
-    Phase B change: the BLANK window is no longer a single 60d constant. It scales with
-    the entry's `attempts` counter (blank_window_days): eager for unproven blanks, then
-    backoff, then near-freeze — so real games lost to title noise / transient first-pass
-    failures get retried fast, while genuinely-dead shovelware throttles down instead of
-    being re-hit every run."""
-    title_by_aid = {aid: title for aid, title in games}
-    static_windows = {
-        "partial": RESCRAPE_PARTIAL_DAYS * DAY,
-        "full": RESCRAPE_FULL_DAYS * DAY,
-    }
+    Phase B: the BLANK window scales with the entry's `attempts` counter
+    (blank_window_days) — eager for unproven blanks, then backoff, then near-freeze.
+
+    Popularity fast lane: the window for EVERY bucket is now min()'d against the
+    review-count tier and the HLTB-submission-growth signal (effective_window_days), so
+    a heavily-reviewed game is revisited in days rather than sitting out a 14-day
+    partial or 365-day full window. `games` now carries review counts, so entries are
+    matched against live catalog popularity each run."""
+    title_by_aid = {aid: title for aid, title, _rc in games}
+    rc_by_aid = {aid: rc for aid, _title, rc in games}
     buckets = {"partial": [], "blank": [], "full": []}
     for aid, entry in hltb.items():
         title = title_by_aid.get(aid)
@@ -224,17 +332,16 @@ def build_rescrape_queue(games, hltb, now):
             continue                      # no Steam title to search with -> can't re-scrape
         bucket = rescrape_bucket(entry)
         fetched_at = entry.get("fetched_at") or 0
-        if bucket == "blank":
-            window = blank_window_days(_blank_attempts(entry)) * DAY
-        else:
-            window = static_windows[bucket]
+        rc = rc_by_aid.get(aid) or 0
+        window = effective_window_days(entry, rc, bucket) * DAY
         if now - fetched_at <= window:
             continue                      # refetched recently -> not yet stale enough
-        buckets[bucket].append((fetched_at, aid, title))
+        # Sort key: popular first (negated so it descends), then oldest fetched_at.
+        buckets[bucket].append((-rc, fetched_at, aid, title))
     queue = []
     for bucket in ("partial", "blank", "full"):   # priority order
-        buckets[bucket].sort(key=lambda t: t[0])  # oldest fetched_at first
-        queue.extend((aid, title, bucket) for _ts, aid, title in buckets[bucket])
+        buckets[bucket].sort(key=lambda t: (t[0], t[1]))
+        queue.extend((aid, title, bucket) for _rc, _ts, aid, title in buckets[bucket])
     return queue
 
 
@@ -248,7 +355,7 @@ def build_idle_drain(games, hltb, now, exclude_aids):
     the time budget is still the real gate."""
     if not IDLE_DRAIN_ENABLED:
         return []
-    title_by_aid = {aid: title for aid, title in games}
+    title_by_aid = {aid: title for aid, title, _rc in games}
     candidates = []
     for aid, entry in hltb.items():
         if aid in exclude_aids:
@@ -276,7 +383,15 @@ def load_games():
         return []
     if d.get("sample"):
         return []
-    return [(int(g["appid"]), g.get("title", "")) for g in d.get("games", [])]
+    # (appid, title, review_count) — review_count drives the popularity fast lane
+    # (POPULAR_TIERS). Absent/non-numeric counts become 0, i.e. "not popular", which is
+    # the safe default: it can only leave an entry on its original bucket window.
+    out = []
+    for g in d.get("games", []):
+        rc = g.get("review_count")
+        rc = rc if isinstance(rc, (int, float)) and not isinstance(rc, bool) else 0
+        out.append((int(g["appid"]), g.get("title", ""), int(rc)))
+    return out
 
 
 def load_hltb():
@@ -334,6 +449,28 @@ def store_entry(hltb, aid, res, ratios, now):
       always overwrite; a blank must never wipe existing real data — that's the
       invariant this guard restores."""
     prior = hltb.get(aid) or {}
+
+    # HLTB submission-count tracking. `n_comp` is HLTB's own count of completion
+    # submissions; growth since our last fetch is direct evidence the page gained data,
+    # so we flag it to pull the NEXT re-scrape forward (effective_window_days). Absent
+    # on either side -> no signal, flag cleared. Purely additive: if HLTB stops
+    # returning the field this degrades to the review-count ladder with no error.
+    new_comp = res.get("n_comp")
+    prior_comp = prior.get("n_comp")
+    comp_grew = (isinstance(new_comp, int) and isinstance(prior_comp, int)
+                 and new_comp - prior_comp >= COMP_GROWTH_MIN)
+
+    def _stamp_comp(entry):
+        if isinstance(new_comp, int):
+            entry["n_comp"] = new_comp
+        elif isinstance(prior_comp, int):
+            entry["n_comp"] = prior_comp      # keep the last known value
+        if comp_grew:
+            entry["comp_grew"] = True
+        else:
+            entry.pop("comp_grew", None)
+        return entry
+
     is_blank_result = not any(res.get(k) is not None for k in ("main", "extra", "complete"))
     if is_blank_result:
         prior_m, prior_e, prior_c = HE.raw_of(prior)
@@ -342,10 +479,11 @@ def store_entry(hltb, aid, res, ratios, now):
             # immediately re-queued as stale under the "full"/"partial" staleness window.
             log(f"  hltb {aid}: re-scrape came back blank, keeping prior real data")
             prior["fetched_at"] = int(now)
-            hltb[aid] = prior
+            hltb[aid] = _stamp_comp(prior)
             return True
     entry = HE.make_entry(res.get("main"), res.get("extra"),
                           res.get("complete"), res.get("match"), now, ratios)
+    _stamp_comp(entry)
     if entry.get("avg") is not None:
         entry.pop("attempts", None)       # resolved -> counter no longer needed
         hltb[aid] = entry
@@ -378,7 +516,7 @@ def main():
     hltb = load_hltb()
     # First-pass work: games we've never touched (no entry yet). This always takes
     # priority over re-scraping — finish covering the catalog before revisiting.
-    todo = [(aid, title) for aid, title in games if aid not in hltb]
+    todo = [(aid, title) for aid, title, _rc in games if aid not in hltb]
     log(f"Games total {len(games)} | HLTB entries {len(hltb)} | new to resolve {len(todo)}")
 
     budget = RUN_MINUTES * 60
@@ -472,7 +610,10 @@ def main():
             n_bl = sum(1 for _a, _t, b in queue if b == "blank")
             n_fu = sum(1 for _a, _t, b in queue if b == "full")
             log(f"First pass complete. Re-scrape queue: {len(queue)} stale "
-                f"({n_part} partial, {n_bl} blank, {n_fu} full); oldest-first within each.")
+                f"({n_part} partial, {n_bl} blank, {n_fu} full); "
+                f"popular-first then oldest within each "
+                f"(fast lane: >{POPULAR_TIERS[0][0]} reviews -> {POPULAR_TIERS[0][1]}d, "
+                f">{POPULAR_TIERS[1][0]} -> {POPULAR_TIERS[1][1]}d, all buckets).")
             run_rescrape(queue, "rescrape")
         else:
             log("First pass complete. No entries are stale enough to re-scrape yet.")

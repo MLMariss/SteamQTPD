@@ -501,7 +501,7 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `scraper.py`            | `games.json`, `catalog.json` | long runs, off-peak | The only finder of *new* games. |
 | `price_and_sale.py`     | `prices.json`       | frequent         | Fast-changing layer: price, discount, sale end. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
-| `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (1 bucket/run); commits every 30 min + on shutdown. |
+| `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (**up to 12 hottest buckets/run**, hot-first with a round-robin starvation guard — §9); commits every 30 min + per shard. |
 | `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
 | `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
 
@@ -813,6 +813,40 @@ priority re-scrape whose order is **partial entries first** (≥1 real value, re
 below), **full-real last** (re-checked only every `RESCRAPE_FULL_DAYS = 365`, since a complete
 real triple is the least likely to have changed).
 
+**Popularity fast lane (Jul 2026) — the windows above are a ceiling, not the rule.** Those
+buckets key only on how complete *our* entry is, which assumes HLTB's data is static. That
+holds for back-catalogue titles and is badly wrong for big new releases. The case that
+exposed it: *Assassin's Creed Black Flag Resynced* (released Jul 2026) was first fetched days
+after launch when HLTB had almost nothing, storing a lone `extra` value; HLTB has since
+accumulated a full real triple (22.5 / 38.5 / 66.5) while our entry sat on the 14-day partial
+window — and worse, the moment a re-scrape completes that triple the entry graduates to `full`
+and freezes for a **year**. The games most likely to be gaining data were the ones checked
+least often.
+
+The fix adds a review-count tier that is min()'d against the bucket window, so it can only
+ever pull a re-scrape *forward*, never delay one:
+
+| Steam `review_count` | window | applies to |
+|---|---:|---|
+| > 1000 | 5 d | **all buckets** incl. `full` |
+| > 500  | 10 d | **all buckets** incl. `full` |
+| ≤ 500  | bucket default | partial 14 d / blank curve / full 365 d |
+
+Overriding `full` is the load-bearing part: leaving it at 365 d would let the Black Flag case
+recur indefinitely. Steam `review_count` is the proxy — both it and HLTB submissions are driven
+by the same player population, and it's already in `games.json` at zero cost. Ordering within
+each bucket is now **most-reviewed first, then oldest `fetched_at`**.
+
+A second, stronger signal rides along free: **`count_comp`**, HLTB's own completion-submission
+count (the "N Beat" figure on a game page). `howlongtobeatpy` doesn't map it, so it's read
+defensively out of the untyped `json_content` payload and stored as `n_comp`; growth of
+`COMP_GROWTH_MIN = 3` or more since the last fetch sets `comp_grew`, pulling the next re-scrape
+to `COMP_GROWTH_DAYS = 5`. Every access is guarded — a missing or renamed field degrades
+silently to the review-count ladder rather than erroring. *Note: HLTB's page-visible `Updated:`
+timestamp was evaluated as the ideal signal and rejected — it is rendered only on the HTML
+detail page and absent from the search API this pipeline uses; fetching it would mean a second
+request per game.*
+
 **Fixed data-loss edge case (2026-07).** Re-scraping a partial or full entry used to carry a
 sharp edge: `store_entry` built each entry fresh from the current fetch via
 `HE.make_entry(...)` with **no merge** against the prior entry's `raw`. `hltb_for` can
@@ -953,6 +987,34 @@ so it loads/commits only ~18 MB and rotates through all 64 buckets over ~64 runs
 splits the legacy monolith and `git rm`s it; if `shard_of()` ever changes it reshards in place
 (a plain file upload is all it takes); otherwise it's a fast no-op.
 
+**Multi-shard hot-first scheduling (Jul 2026) — supersedes one-bucket-per-run.** Processing
+exactly one bucket per run capped *any* game's refresh cadence at once per 64 runs — ~8 days at
+8 runs/day — regardless of how hot it was. That made the age-tier ladder below unreachable in
+practice: a game due for a 1-day refresh sat in a shard that only opened every 8th day. The
+shard key is a hash of `appid`, uncorrelated with release date or popularity, so hot games are
+spread uniformly across all 64 buckets — the worst case for one-bucket-per-run.
+
+The constraint was never *one shard per run*; it is **one writer per file**, and that still
+holds exactly: the `steam-playtime-raw` concurrency group guarantees no two raw runs overlap, so
+a single run can open, mutate and commit as many shards as its budget allows with no other job
+ever touching them. A run now works up to `MAX_SHARDS_PER_RUN` (12) buckets:
+
+1. **Schedule (no shard bodies read).** The whole catalog is scored against the ladder from
+   `games.json` alone — which already carries release date, `review_count` and `last_update_ts`
+   — and due games are grouped by shard. Reading no bodies is the point: choosing among 64 ×
+   ~18 MB files must not cost ~1.1 GB of I/O. This over-counts slightly (a game whose stored
+   record is already fresh still scores as due), which is fine — it only affects *ranking*.
+2. **Select.** Buckets rank by due-game count, since a shard open (~18 MB read + a commit) is
+   the expensive unit and the hottest shard clears the most backlog per open. The
+   `GITHUB_RUN_NUMBER % 64` bucket is **always included** as a starvation guard, preserving the
+   old rotation's guarantee that every shard is visited at least every 64 runs.
+3. **Execute.** Shards are loaded, worked and committed **one at a time**, so peak memory stays
+   at ~one shard and an interrupted run has already persisted every completed shard. The exact
+   eligibility gate is re-applied per shard once its bodies are in hand.
+
+At 12 shards × 8 runs/day that's ~96 shard-visits/day against 64 shards — every shard reachable
+~1.5×/day, versus once per ~8 days before.
+
 **Robust commit.** Each shard commit hard-resets to `origin/main` and re-applies only this
 run's shard before pushing — since only this job writes a given shard, that can never conflict
 or wedge a rebase (the old `git rebase --autostash` + `check=False` path could stick mid-rebase
@@ -973,6 +1035,34 @@ out anyway. The gate is applied at candidate selection against the **live `revie
 `games.json`**, so it's "skip for now," not permanent exclusion — a game re-qualifies the moment
 its review count crosses 10. In practice this removes ~41k unusable games from the queue (~44%),
 leaving the full request budget for the ~52k games that can actually yield data.
+
+**Refresh ladder (Jul 2026) — replaces the flat 7 d / 30 d cooldown.** The old gate treated a
+game released yesterday the same as one from 2019, but review playtime moves fastest exactly
+where that gate was slowest: a new release accumulates its whole review corpus in the first
+days, and each reviewer's `playtime_forever` is still climbing. Waiting 7 days there meant the
+medians shown for the most-searched games on the site were the stalest data held. The cooldown
+now scales with **release age**, deliberately coarser than the 7-tier review ladder (§6) because
+playtime costs ~2–20 requests/game versus 2 for a review refresh:
+
+| release age | cooldown | with > 1000 reviews |
+|---|---:|---:|
+| 0–7 d   | 1 d  | 12 h (floor) |
+| 7–30 d  | 3 d  | 1.5 d |
+| 30–90 d | 7 d  | 3.5 d |
+| older   | 30 d | 15 d |
+
+The **review-count boost** halves every tier for games over `HOT_REVIEWS_BOOST = 1000` all-time
+reviews — the games with both the most churn and the most site traffic — keeping a popular
+perennial fresher than a dead new release. `MIN_COOLDOWN_HOURS = 12` floors the whole ladder so
+nothing is re-walked twice a day. Games with **no parsed release date** fall back to the legacy
+`last_update_ts` behaviour (7 d if patched within 90 d, else 30 d): unknown age is treated as the
+conservative case, never as brand-new.
+
+Within a shard, ordering is driven by **overdue ratio** (`age ÷ own cooldown`) rather than raw
+age, which makes the ladder self-balancing — a 1-day-cooldown release 2 days stale outranks a
+30-day-cooldown title 40 days stale, because it's proportionally further behind the promise the
+ladder makes about it. Raw age would invert that and let ancient dormant games crowd out the
+fast lane permanently.
 
 **Sentiment split.** Data is split by the **thumbs-up/down recommendation** — ▲ recommended
 (green) vs ▼ not-recommended (red) — tied to the rating system itself, not persona labels
@@ -1640,6 +1730,35 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Playtime refresh ladder + multi-shard scheduling (Jul 2026).** Two coupled changes that
+  only work together. (1) `playtime_refresh.py` replaced its flat `COOLDOWN_DAYS=7` /
+  `NOUPDATE_COOLDOWN_DAYS=30` gate with a 4-tier **release-age ladder** (0–7 d → 1 d, 7–30 d →
+  3 d, 30–90 d → 7 d, else 30 d), **halved** for games over 1,000 all-time reviews and floored at
+  12 h; games without a parsed release date keep the legacy `last_update_ts` behaviour.
+  Within-shard ordering moved from raw staleness to **overdue ratio** (`age ÷ own cooldown`) so
+  the ladder is self-balancing. (2) The ladder was unreachable under one-bucket-per-run
+  scheduling — `GITHUB_RUN_NUMBER % 64` capped every game at one refresh per ~8 days, and hot
+  games are spread uniformly across all 64 shards — so a run now works **up to
+  `MAX_SHARDS_PER_RUN=12` buckets**, ranked by due-game count, scheduled from `games.json` with
+  **no shard bodies read** (scoring 64 × ~18 MB files would cost ~1.1 GB of I/O), with the
+  round-robin bucket always included as a starvation guard. Shards are loaded/worked/committed
+  one at a time, so peak memory is ~one shard and one-writer-per-file is untouched (the
+  `steam-playtime-raw` concurrency group already prevents overlapping runs). Net: every shard
+  reachable ~1.5×/day instead of once per ~8 days (§9, §4).
+- **HLTB popularity fast lane (Jul 2026).** Re-scrape windows keyed only on entry completeness
+  assumed HLTB data is static — true for back-catalogue, false for new releases. *AC Black Flag
+  Resynced* held a lone `extra` value from a launch-week fetch while HLTB had since filled a
+  full real triple (22.5 / 38.5 / 66.5), and completing that triple would have frozen the entry
+  for 365 days. Windows are now `min()`'d against a **review-count tier** (>1k → 5 d, >500 →
+  10 d) that overrides **every bucket including `full`** — overriding `full` is the actual fix —
+  and can only pull a re-scrape forward, never delay one. Queue ordering within each bucket is
+  now most-reviewed-first, then oldest. A free second signal rides along: HLTB's own
+  `count_comp` submission count, read defensively from the untyped `json_content` (the library
+  doesn't map it), stored as `n_comp`; growth ≥3 sets `comp_grew` and pulls the next check to
+  5 days. HLTB's page-visible `Updated:` timestamp was evaluated and **rejected** — it exists
+  only on the HTML detail page, not the search API, so using it would double the request count
+  per game (§8).
 
 - **Review freshness: age-tiered refresh + PICS drift trigger (Jul 2026).** Fixes new
   releases freezing at their day-one review score. `last_modified` — until now the scraper's
