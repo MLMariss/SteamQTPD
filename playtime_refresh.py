@@ -211,6 +211,38 @@ HOT_REVIEWS_BOOST = 1000           # >this many all-time reviews halves the cool
 HOT_BOOST_FACTOR = 0.5
 MIN_COOLDOWN_HOURS = 12            # floor: never re-walk the same game twice in 12h
 
+# POPULARITY FLOOR — aligns playtime cadence with the HLTB fast lane (hltb_refresh.py
+# POPULAR_TIERS / ARCHITECTURE §8). The age ladder above keys on RELEASE AGE, so a
+# popular perennial (>1k reviews, years old) lands on the 30-day back-catalogue tier —
+# even halved that is 15 days. But HLTB re-checks those exact games every 5 days, and
+# both signals are driven by the same live player population: if HLTB submissions are
+# worth a 5-day look, the reviewers' `playtime_forever` is churning just as fast. Left
+# alone this is the very "most-viewed games refreshed least often" anti-pattern the HLTB
+# fix was built to kill — playtime just inherited it on the old tiers.
+#
+# So each game's age-tier cooldown is min()'d against a review-count tier, IDENTICAL in
+# shape to HLTB's. min() semantics mean it can only ever pull a refresh FORWARD, never
+# delay one: it bites only where the age ladder is too slow for a high-traffic game (the
+# 30-90d and older tiers), and leaves the aggressive fresh-release fast lane (halved to
+# 12h-1.5d) untouched — those are already faster than the floor. Net effect is a
+# REDISTRIBUTION toward hot back-catalogue games within the same rate envelope (the
+# overdue-ratio priority keeps genuinely-new releases ahead of them), not more requests.
+POPULAR_FLOOR_TIERS = [
+    (1000, 5),      # >1000 all-time reviews -> refresh at least every 5 days  (HLTB: 5d)
+    (500, 10),      # >500                   -> at least every 10 days         (HLTB: 10d)
+]
+
+
+def popular_floor_days(review_count):
+    """The popularity-tier cooldown FLOOR (in days) for a game, or None when it isn't
+    popular enough to qualify. Mirrors hltb_refresh.popular_window_days so the two jobs
+    re-check the same hot games on the same cadence. Strict `>` matches the HLTB edge."""
+    rc = review_count or 0
+    for edge, days in POPULAR_FLOOR_TIERS:
+        if rc > edge:
+            return days
+    return None
+
 
 def cooldown_days(released_ts, last_update_ts, review_count, now):
     """The refresh cooldown (in DAYS, may be fractional) for one game.
@@ -220,9 +252,11 @@ def cooldown_days(released_ts, last_update_ts, review_count, now):
     legacy last_update_ts behaviour so those games are never treated as brand-new and
     hammered — unknown age is the conservative case, not the eager one.
 
-    The >1k-review boost halves whichever tier applies, floored at MIN_COOLDOWN_HOURS
-    so no game can be re-walked more than twice a day even at the top of the ladder.
-    Pure function — unit-testable, no I/O."""
+    The >1k-review boost halves whichever tier applies; the popularity FLOOR then
+    min()'s that against a review-count tier (aligning with HLTB), so a popular
+    back-catalogue game can't sit on the slow older tiers. Both are bounded below by
+    MIN_COOLDOWN_HOURS so no game can be re-walked more than twice a day even at the top
+    of the ladder. Pure function — unit-testable, no I/O."""
     base = None
     if released_ts:
         age_days = (now - released_ts) / 86400.0
@@ -239,6 +273,13 @@ def cooldown_days(released_ts, last_update_ts, review_count, now):
         base = COOLDOWN_DAYS if actively_updated else NOUPDATE_COOLDOWN_DAYS
     if (review_count or 0) > HOT_REVIEWS_BOOST:
         base *= HOT_BOOST_FACTOR
+    # Popularity floor: only ever pulls the cooldown FORWARD (min), keeping high-traffic
+    # games on the same cadence HLTB re-checks them. Applies on ANY axis (age-tier or the
+    # legacy no-release-date path), so a popular game with no parsed release date is
+    # rescued from the 30-day dormant cooldown too.
+    pop = popular_floor_days(review_count)
+    if pop is not None:
+        base = min(base, pop)
     return max(base, MIN_COOLDOWN_HOURS / 24.0)
 
 
@@ -748,7 +789,7 @@ def main():
         + ", ".join(f"b{b:02d}(~{len(sched.get(b, []))})" for b in chosen))
     log(f"Budget: {RUN_MINUTES} min · {mode}/game · cap {PER_GAME_CAP} · delay {STEAM_DELAY}s · "
         f"ladder 0-7d/1d · 7-30d/3d · 30-90d/7d · else {AGE_TIER_FALLBACK_DAYS}d "
-        f"(>{HOT_REVIEWS_BOOST} reviews: halved)")
+        f"(>{HOT_REVIEWS_BOOST} reviews: halved; popularity floor >1k/5d, >500/10d — HLTB-aligned)")
 
     budget = RUN_MINUTES * 60
     grand_done = grand_added = grand_refreshed = 0

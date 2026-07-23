@@ -40,12 +40,27 @@ check("released 400d ago -> 30d cooldown",
       P.cooldown_days(NOW - 400*DAY, None, 50, NOW) == 30)
 check(">1k reviews halves the tier (20d old: 3d -> 1.5d)",
       P.cooldown_days(NOW - 20*DAY, None, 5000, NOW) == 1.5)
-check(">1k reviews on old game (30d -> 15d)",
-      P.cooldown_days(NOW - 400*DAY, None, 5000, NOW) == 15)
-check("exactly 1000 reviews does NOT boost (strict >)",
-      P.cooldown_days(NOW - 400*DAY, None, 1000, NOW) == 30)
+check(">1k reviews on old game: popularity floor pulls 15d -> 5d (HLTB-aligned)",
+      P.cooldown_days(NOW - 400*DAY, None, 5000, NOW) == 5)
+check("exactly 1000 reviews: no halving (strict >), but >500 floor applies -> 10d",
+      P.cooldown_days(NOW - 400*DAY, None, 1000, NOW) == 10)
 check("floor: hot new release never below 12h",
       P.cooldown_days(NOW - 1*DAY, None, 999999, NOW) >= 0.5)
+
+print("\n== playtime: popularity floor (HLTB alignment) ==")
+check(">1000 reviews -> 5d floor", P.popular_floor_days(5000) == 5)
+check(">500 reviews -> 10d floor", P.popular_floor_days(700) == 10)
+check("500 exactly -> no floor (strict >, matches HLTB edge)",
+      P.popular_floor_days(500) is None)
+check("low reviews -> no floor", P.popular_floor_days(50) is None)
+check("mid-popular old game: 30d -> 10d floor",
+      P.cooldown_days(NOW - 400*DAY, None, 700, NOW) == 10)
+check("floor only pulls FORWARD: fresh popular release keeps its faster 12h, not 5d",
+      P.cooldown_days(NOW - 1*DAY, None, 5000, NOW) == 0.5)
+check("floor rescues a popular game with NO release date from the 30d dormant tier",
+      P.cooldown_days(None, None, 5000, NOW) == 5)
+check("unpopular game is untouched by the floor (old 30d stays 30d)",
+      P.cooldown_days(NOW - 400*DAY, None, 50, NOW) == 30)
 check("no release date + recent patch -> legacy 7d",
       P.cooldown_days(None, NOW - 5*DAY, 50, NOW) == P.COOLDOWN_DAYS)
 check("no release date + no patch -> legacy 30d",
@@ -67,7 +82,7 @@ check("new release scraped 10d ago IS due",
       P.is_eligible(stale, NOW - 2*DAY, None, 50, NOW, 200))
 check("old dormant game scraped 10d ago is NOT due (30d cooldown)",
       not P.is_eligible(stale, NOW - 400*DAY, None, 50, NOW, 200))
-check("old but POPULAR game scraped 20d ago IS due (30d->15d)",
+check("old but POPULAR game scraped 20d ago IS due (30d->5d popularity floor)",
       P.is_eligible(dict(fresh, scraped_at=NOW - 20*DAY),
                     NOW - 400*DAY, None, 5000, NOW, 200))
 check("incomplete corpus is eligible regardless of cooldown",
@@ -128,6 +143,15 @@ check(">1000 reviews -> 5d", H.popular_window_days(5000) == 5)
 check(">500 reviews -> 10d", H.popular_window_days(700) == 10)
 check("500 exactly -> no tier (strict >)", H.popular_window_days(500) is None)
 check("low reviews -> no tier", H.popular_window_days(50) is None)
+
+print("\n== hltb <-> playtime: same hot games, same cadence ==")
+check("playtime >1k floor matches HLTB >1k window (5d)",
+      P.popular_floor_days(5000) == H.popular_window_days(5000) == 5)
+check("playtime >500 floor matches HLTB >500 window (10d)",
+      P.popular_floor_days(700) == H.popular_window_days(700) == 10)
+check("both share the strict-> edge at 1000 and 500",
+      P.popular_floor_days(1000) == H.popular_window_days(1000) and
+      P.popular_floor_days(500) == H.popular_window_days(500))
 
 print("\n== hltb: effective window (the Black Flag fix) ==")
 check("unpopular full entry keeps 365d",

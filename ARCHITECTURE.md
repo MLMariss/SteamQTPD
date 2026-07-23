@@ -1044,12 +1044,12 @@ medians shown for the most-searched games on the site were the stalest data held
 now scales with **release age**, deliberately coarser than the 7-tier review ladder (§6) because
 playtime costs ~2–20 requests/game versus 2 for a review refresh:
 
-| release age | cooldown | with > 1000 reviews |
-|---|---:|---:|
-| 0–7 d   | 1 d  | 12 h (floor) |
-| 7–30 d  | 3 d  | 1.5 d |
-| 30–90 d | 7 d  | 3.5 d |
-| older   | 30 d | 15 d |
+| release age | cooldown | with > 1000 reviews | after popularity floor |
+|---|---:|---:|---:|
+| 0–7 d   | 1 d  | 12 h (floor) | 12 h |
+| 7–30 d  | 3 d  | 1.5 d | 1.5 d |
+| 30–90 d | 7 d  | 3.5 d | 3.5 d |
+| older   | 30 d | 15 d | **5 d** |
 
 The **review-count boost** halves every tier for games over `HOT_REVIEWS_BOOST = 1000` all-time
 reviews — the games with both the most churn and the most site traffic — keeping a popular
@@ -1057,6 +1057,29 @@ perennial fresher than a dead new release. `MIN_COOLDOWN_HOURS = 12` floors the 
 nothing is re-walked twice a day. Games with **no parsed release date** fall back to the legacy
 `last_update_ts` behaviour (7 d if patched within 90 d, else 30 d): unknown age is treated as the
 conservative case, never as brand-new.
+
+**Popularity floor — HLTB alignment (Jul 2026).** The halving alone still left the worst case
+un-fixed: a popular perennial (>1k reviews, years old) sat on the *older* tier at 15 d even after
+halving — while the HLTB re-scraper (§8) re-checks those exact games every **5 d**. Both signals
+ride the same live player population, so that split made no sense: if HLTB submissions are worth a
+5-day look, the reviewers' `playtime_forever` on the same title is churning just as fast. It was
+the same *"most-viewed games refreshed least often"* anti-pattern §8's fast lane was built to
+kill, quietly re-inherited on playtime's slow tiers. So each game's cooldown is now `min()`'d
+against a review-count floor identical in shape to HLTB's `POPULAR_TIERS`:
+
+| Steam `review_count` | floor | HLTB window |
+|---|---:|---:|
+| > 1000 | 5 d  | 5 d |
+| > 500  | 10 d | 10 d |
+| ≤ 500  | — (age ladder unchanged) | 365 d full / 14 d partial |
+
+`min()` semantics mean the floor can only ever pull a refresh **forward**, never delay one, so it
+bites only where the age ladder is too slow for a high-traffic game (the *30–90 d* and *older*
+tiers) and leaves the aggressive fresh-release fast lane (12 h – 1.5 d) untouched. It applies on
+the legacy no-release-date path too, rescuing a popular game with no parsed release from the 30-day
+dormant cooldown. Net effect is a **redistribution** of the fixed request budget toward hot
+back-catalogue games (the overdue-ratio ordering keeps genuinely-new releases ahead of them), not
+an increase — mirroring §8's own "work redistributed, not increased" property.
 
 Within a shard, ordering is driven by **overdue ratio** (`age ÷ own cooldown`) rather than raw
 age, which makes the ladder self-balancing — a 1-day-cooldown release 2 days stale outranks a
@@ -1746,6 +1769,15 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   one at a time, so peak memory is ~one shard and one-writer-per-file is untouched (the
   `steam-playtime-raw` concurrency group already prevents overlapping runs). Net: every shard
   reachable ~1.5×/day instead of once per ~8 days (§9, §4).
+- **Playtime popularity floor — HLTB alignment (Jul 2026).** The release-age ladder above still
+  left popular perennials (>1k reviews, years old) on the *older* tier at 15 d even after halving,
+  while the HLTB re-scraper re-checks those same games every 5 d — the same "most-viewed refreshed
+  least often" split §8 was built to kill, re-inherited on playtime's slow tiers. Each game's
+  cooldown is now `min()`'d against a review-count floor matching HLTB's `POPULAR_TIERS` (>1k → 5 d,
+  >500 → 10 d), so a popular back-catalogue title drops 15 d → **5 d** and a mid-popular one 30 d →
+  10 d. `min()` only pulls a refresh **forward**: the fresh-release fast lane (12 h – 1.5 d) is
+  untouched, and the change redistributes the fixed budget toward hot games rather than adding
+  requests (§9).
 - **HLTB popularity fast lane (Jul 2026).** Re-scrape windows keyed only on entry completeness
   assumed HLTB data is static — true for back-catalogue, false for new releases. *AC Black Flag
   Resynced* held a lone `extra` value from a launch-week fetch while HLTB had since filled a
