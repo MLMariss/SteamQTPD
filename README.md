@@ -25,7 +25,9 @@ extras / completionist / avg) feeds the formula.
 
 > For the full engineering deep-dive — architecture rationale, every script explained,
 > data schemas, the HLTB estimation system, and the playtime / weighted-rating pipeline —
-> see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+> see **[ARCHITECTURE.md](ARCHITECTURE.md)**. For what's planned, parked, or deliberately
+> not being built, see **[ROADMAP.md](ROADMAP.md)**. Live data coverage is in the generated
+> **[COVERAGE.md](COVERAGE.md)**.
 
 ## How it works
 
@@ -46,6 +48,16 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 | `ratings_summarize.py`  | `ratings.json`       | Playtime-weighted review rating (2×-median-capped). Chained step of the playtime job; pure local recompute, no Steam calls. |
 | `updates_refresh.py`    | `updates_raw/NN.json` | Per-game update-event history (major/regular/minor via Steam `event_type`), keyed by event `gid`. **Sharded** like playtime. On the storefront budget, so its own out-of-band job. |
 | `updates_summarize.py`  | `updates.json`       | Lean summary: last major/regular/minor timestamps + windowed big/small counts (month/3mo/6mo/year/over-year). Chained step of the updates job; pure local recompute. |
+| `pics_refresh.py`       | `pics_raw/shard_NN.json` | Steam PICS `common` app-info block, pulled over the **CM protocol** (not the storefront), so it's on its own rate budget. **Sharded** into 64 files. Source of truth for header art, Valve's own tag/genre/feature IDs, Steam Deck rating, AI disclosure, and the review score the main scraper uses as a staleness signal. |
+| `pics_summarize.py`     | `pics/shard_NN.json` | Lean per-game projection storing **IDs, not names** + the derived Early-Access / adult / VR-only flags. Chained step; pure local recompute. |
+| `pics_merge.py`         | `pics.json`          | Flattens the 64 `pics/` shards into the single file the browser downloads, keeping only the keys the frontend reads. Chained step; pure local recompute. |
+| `coverage.py`           | `COVERAGE.md`        | Regenerates the coverage/freshness snapshot from the live files after every scrape. Stdlib-only, no Steam calls. |
+| `shard_health.py`       | `SHARDS.md`          | Daily per-shard size/evenness report for `playtime_raw/`, watching the 100 MB per-file limit. No Steam calls. |
+
+`COVERAGE.md` and `SHARDS.md` are **generated** — read them for current numbers, don't edit
+them. Three tiny static decode maps in `lookups/` (`tags.json`, `genres.json`,
+`categories.json`) turn the PICS IDs back into names in the browser; they're refreshed by hand
+via `pics_lookups.py` / `build_category_map.py`.
 
 The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Each run:
 1. **Enumerates the catalog** via Steam's `IStoreService/GetAppList` — games-only,
@@ -62,10 +74,14 @@ The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Ea
 4. Runs for a **time budget** (`RUN_MINUTES`) and **git-commits every ~10 minutes**, so
    hitting the 6-hour Actions wall never loses work.
 
-The **refreshers** (`hltb`, `tags`, `prices`, `recent`, `playtime`) run on their own
-schedules and just enrich games the scraper already found. HLTB and SteamSpy hit their own
-sites (not Steam), so they don't compete for Steam's rate budget. The two **summarizers**
-read the raw playtime file and rebuild the small frontend files — no Steam access at all.
+The **refreshers** (`hltb`, `tags`, `prices`, `recent`, `playtime`, `updates`, `pics`) run on
+their own schedules and just enrich games the scraper already found. Three of them stay off
+Steam's storefront rate budget entirely: HLTB and SteamSpy hit their own sites, and the PICS
+job talks to Steam's content servers over a different protocol. That leaves prices, recent,
+playtime and updates sharing the storefront budget with the main scraper, which is why they
+run on staggered, off-peak crons. The **summarizers** (`playtime`, `ratings`, `updates`,
+`pics`) read those raw files and rebuild the small frontend files — no Steam access at all,
+so they're chained onto the end of the job that produced their input.
 
 ### The Steam API key (recommended, free)
 `IStoreService/GetAppList` needs a free Steam Web API key:
@@ -79,14 +95,17 @@ timestamps, so refresh reverts to a simple `REFRESH_DAYS` timer instead of
 change-detection.
 
 ## Each game shows
-Title · Steam rating (% positive) + reviews · **playtime-weighted rating** (Weighted
-column) · recent-review trend · store link · **Price / Sale** (full price struck through,
-discounted price below, discount badge inline) · **live** time left on the sale · release
-date · tags · **median playtime** split by recommendation (Playtime column; empty when a game
-has no playtime data) · How Long To Beat (main / main+extras / completionist + avg) · QTPD at
-the sale & full price. HLTB values **estimated** from the typical main/extras/completionist
-ratio (when HLTB only reports 1–2 of the 3 times — computed corpus-wide, not per-genre despite
-the name this used to go by) are shown in blue with a hover tooltip.
+Header art (hover to enlarge) · title · Steam rating (% positive) + reviews ·
+**playtime-weighted rating** (Weighted column) · recent-review trend · store link ·
+**Price / Sale** (full price struck through, discounted price below, discount badge inline) ·
+**live** time left on the sale · release date + age · **last-update recency and patch
+cadence** (Updated column) · tags · **median playtime** split by recommendation (Playtime
+column; empty when a game has no playtime data) · How Long To Beat (main / main+extras /
+completionist + avg) · QTPD at the sale & full price. HLTB values **estimated** from the
+typical main/extras/completionist ratio (when HLTB only reports 1–2 of the 3 times — computed
+corpus-wide, not per-genre despite the name this used to go by) are shown in blue with a hover
+tooltip. Adult games are blurred behind an 18+ tap-to-reveal, and each row has a slim `[x]` to
+hide it for the session.
 
 - **Weighted** — a review rating where each vote is weighted by how long that player
   actually played (capped at 2× the game's median so no single obsessive dominates), shown
@@ -96,24 +115,48 @@ the name this used to go by) are shown in blue with a hover tooltip.
   signal. Hover for the sample size.
 
 ## Frontend filters
-Title search · on-sale-only · minimum rating (any / 60+ / 70+ / 80+ / 90+) · min & max
-price · minimum reviews (0 / 10 / 100 / 1k / 5k+ bands) · review trend (improving /
-stable / declining) · updated-within (any / 1mo / 3mo / 6mo / 1yr / 1yr+) · QTPD range
-(log-scale slider that fits the current results) · tags (click to require, again to
-exclude). Score controls: **QTPD price basis** (Sale / Full), **HLTB metric** (main /
-+extras / 100% / avg), **HLTB data** (all incl. estimates / real only — *real* is the
-default). Sort controls: **Reviews sort by** (all-time / 30-day) and **Playtime sort**
-(▲ recommenders / ▼ non-recommenders — this only *selects* which median a click on the
-Playtime column will sort by; it doesn't reorder on its own). Hover any filter toggle for a
-one-line tooltip explaining it; the tag rail shows a visible `✓ require → ✕ exclude → clear`
-legend, and even rows are lightly shaded for readability. Click the **QTPD logo** to show/hide
-the whole filter bar.
+Filters live in four collapsible sections. Defaults are always the **leftmost** button, and any
+control you move off its default lights up gold, so an open section shows at a glance what
+you've touched.
+
+- **Value** — **QTPD price basis** (Sale / Full) · **HLTB metric** (main / +extras / 100% /
+  avg) · **HLTB data** (real only — the default — / all incl. estimates) · **price type**
+  (All / Full / Sale / Free, independent toggles) · min & max price · **QTPD range**
+  (log-scale slider that fits the current results).
+- **Quality** — minimum rating (any / 60+ / 70+ / 80+ / 90+) · **Reviews sort by** (30-day /
+  all-time) · review trend (improving / stable / declining) · minimum reviews (0 / 10 / 100 /
+  1k / 5k+ bands) · updated-within (any / 1mo / 3mo / 6mo / 1yr / 1yr+) · **Playtime sort**
+  (▲ recommenders / ▼ non-recommenders — this only *selects* which median a click on the
+  Playtime column will sort by; it doesn't reorder on its own).
+- **Flags** — Valve's own metadata, from the PICS layer: **Early Access · AI disclosure ·
+  Adult content · VR-only · Family-share block · Custom EULA**, each an Any / Exclude / Only
+  toggle, plus **Controller** (any / full / partial) and **Steam Deck** (any / verified /
+  playable+ / unsupported).
+- **Tags** — click a tag to require it, again to exclude, again to clear (a visible
+  `✓ require → ✕ exclude → clear` legend says so), plus a **Required tags match: ALL / ANY**
+  toggle. Excludes are always AND-NOT.
+
+Hover any filter toggle for a one-line tooltip explaining it. Click the **QTPD logo** to
+show/hide the whole filter bar; when it's collapsed, your active filters show as clickable
+chips you can edit in place, with a **Reset** shortcut.
+
+**Three views.** **Table** (desktop) and **Card** (mobile) are the same detailed view relabelled
+per device; **Grid** is a box-art grid — tap a card to flip it to price / length / a Steam link.
+Grid is the default on a phone, Table on desktop, and your pick is remembered. Alongside the
+switcher: **Lucky** (jump to a random game from the current results), **CSV** (export the
+filtered set, with a column picker) and **🔗** (copy the current view's link).
 
 Sort by any column incl. QTPD, Weighted, Playtime, rating, price, release date. The **Price /
 Sale** column's header splits into two sort targets — click **Price** to sort by current price,
-**Sale** to sort by discount depth.
+**Sale** to sort by discount depth. The **Tags** column header has a `><` button that folds the
+column away and gives the space to bigger cover art and full titles. Where the header isn't
+visible (Card and Grid), sorting moves to the "sorted by …" chip on the filter summary line.
 Infinite-scroll pagination (100 / 500 / 2000 per page); all filter/sort state lives in the
 URL so views are shareable.
+
+**Free games** normally show no QTPD — you can't divide by a zero price. But filter price type
+down to **Free alone** and the QTPD column switches to ranking them by quality-weighted length
+(hours × rating) instead, so free games can still be compared against each other.
 
 **Wishlist import** — paste your Steam profile in *any* format (profile URL, custom
 `/id/<n>` URL, bare name, SteamID64, `STEAM_0:0:…`, or `[U:1:…]`) to cross-reference the
@@ -179,13 +222,22 @@ catalog, filters, and sorting work exactly the same regardless. See
 Each job's knobs are at the top of its own script. The main ones:
 - **`RUN_MINUTES`** (env, per job) — time budget per run. More frequent **long** runs
   beat many tiny ones, because GitHub's scheduler delays/drops frequent jobs under load.
-- **`STEAM_DELAY` / `STORE_DELAY` / `STEAMSPY_DELAY` / `HLTB_DELAY`** — politeness pacing.
-  Steam storefront is ~200 req/5 min per IP (shared by appdetails + appreviews); SteamSpy
-  ~1 req/sec. Don't lower much, or you'll get 429s / a 5-minute 403 cooldown.
+- **`STOREFRONT_MIN_INTERVAL`** (scraper, env, 0.9s) — the shared limiter every storefront call
+  passes through. This is the scraper's real pacing knob; raise it if you start seeing 403s.
+  (`STEAM_DELAY` in `scraper.py` is **deprecated** and no longer referenced — it survives only
+  as a comment. The other jobs still use their own `STORE_DELAY` / `STEAMSPY_DELAY` /
+  `HLTB_DELAY` / `STEAM_DELAY` constants.)
+- **Politeness pacing generally** — Steam storefront is ~200 req/5 min per IP (shared by
+  appdetails + appreviews); SteamSpy ~1 req/sec. Don't lower much, or you'll get 429s / a
+  5-minute 403 cooldown.
 - **`CHECKPOINT_SECONDS`** — how often each job commits progress mid-run.
 - **`NEW_ORDER`** (scraper) — `"newest"` or `"oldest"` appid order for new coverage.
+- **`REVIEW_TIERS` / `PICS_REV_DELTA`** (scraper) — the age-tiered review-refresh ladder and the
+  PICS review-drift trigger. Set `REVIEW_TIER_REFRESH=0` and `PICS_REV_DELTA=0` to fall back to
+  the old "only re-scrape when Steam's `last_modified` moves" behaviour.
 - **`HLTB_MIN_SIMILARITY`** — HLTB title-match threshold. **`PRICE_BATCH`** — appids per
   batched price call. **`RECENT_COOLDOWN_DAYS`** — how stale a recent score must be to recheck.
+  **`--stale-days`** (pics, 14) — how old a PICS record must be to refetch.
 - **`MIN_REVIEWS_FOR_RATING` / `CONFIDENT_REVIEWS` / `CAP_MULT`** (ratings) — the weighted
   rating's eligibility floor (5), full-color threshold (10), and per-review playtime cap (2×).
 - **`MIN_REVIEWS_FLOOR`** (playtime, 10) — the playtime scraper skips games below this many
@@ -194,35 +246,42 @@ Each job's knobs are at the top of its own script. The main ones:
 
 ## Pace & limits
 The scraper captures very roughly ~1,000–1,200 games/hour (storefront rate limit ÷ 2
-calls/game). The catalog has now reached full coverage (~122k games stored against a ~173k
-app universe), so `scraper.py` finishes a run in ~7 minutes and mostly does incremental
-refreshes; new games are added as they release. To go faster on any job: raise `RUN_MINUTES`,
-or add more off-peak `cron` times. The playtime (review-time) pass is the current backfill
-focus and runs on an expanded schedule — 8 slots/day at a 1.5s delay — using the storefront
-headroom the now-quick main scrape leaves free. Cost stays $0 — Actions is free and unlimited
-on public repos; the only ceiling is the 6-hour per-job limit. (Each daily commit also keeps
-the repo active, which matters — GitHub disables scheduled workflows after 60 days of no
-commits.)
+calls/game). The catalog has now reached full coverage (**124,210 games stored** against a
+~173k app universe), so finding *new* games takes `scraper.py` only ~7 minutes a run; the rest
+of its budget goes to the age-tiered review refresh (~7k re-scrapes/day, about a quarter of
+this scraper's demonstrated peak). To go faster on any job: raise `RUN_MINUTES`, or add more
+off-peak `cron` times. The playtime (review-time) pass runs on an expanded schedule — 8
+slots/day at a 1.5s delay — using the storefront headroom the now-quick main scrape leaves
+free; its backfill is essentially complete (99.9% of the games above its 10-review floor).
+Cost stays $0 — Actions is free and unlimited on public repos; the only ceiling is the 6-hour
+per-job limit. (Each daily commit also keeps the repo active, which matters — GitHub disables
+scheduled workflows after 60 days of no commits.)
+
+**Current coverage lives in [COVERAGE.md](COVERAGE.md)**, regenerated after every scrape —
+per-metric fill rates, refresh backlogs, and which lane each game sits in. Don't trust
+hand-written numbers here or in ARCHITECTURE.md over that file.
 
 ## Known caveats
 - **HLTB** matches by title similarity, so obscure/oddly-named games may not match (shown
-  as `—`). Each game is fetched once; the job is still completing its first full pass, and
-  re-scraping (to retry no-matches and update partials) comes after — see ARCHITECTURE.md.
+  as `—`). The first full pass is **done** — every game has an entry, ~85% of them with real
+  HLTB values and ~15% estimate-filled. The job now runs a priority re-scrape ladder instead:
+  partial entries every 14 days, no-matches on an escalating back-off, complete ones yearly.
 - **HLTB estimates** fill missing main/extras/completionist times from the typical ratio
   so the QTPD-driving `avg` isn't skewed; they're clearly marked (blue + tooltip) and
   replaced automatically once real HLTB data is found.
 - **Weighted rating** needs playtime data (public profiles only) and enough reviews; below
   5 it isn't computed, and 5–9 renders grayed as low-confidence.
-- **Tags** come from SteamSpy; if unavailable for a game, Steam genres are used, so the
-  tag column is never blank.
+- **Tags** come from Valve's own PICS metadata where available, with SteamSpy as a coverage
+  fallback and Steam genres behind that, so the tag column is never blank.
 - **Sale end times** come from Steam's `GetItems`; the frontend detects any expired sale
   offline (no scraping) and actively reverts it — `expireSaleIfEnded()` zeroes `discount_pct`
   and resets `price_final` to `price_initial` in the in-memory record, not just the countdown
   display — so both the price shown and the countdown stay honest between price refreshes.
-- **Dataset size**: the single-`games.json` approach is fine into the tens of thousands of
-  games; far beyond that, consider sharding and loading shards on demand. The `playtime_raw/`
-  and `updates_raw/` shard sets are the largest, and grow with review/update coverage —
-  both are already sharded into 64 files to stay under GitHub's 100 MB per-file limit.
+- **Dataset size**: four per-game working sets (`playtime_raw/`, `updates_raw/`, `pics_raw/`,
+  `pics/`) are each sharded into 64 files to stay under GitHub's 100 MB per-file limit — the
+  biggest shard currently runs ~13 MB, so there's plenty of headroom (`SHARDS.md` watches it).
+  The largest *single* file is now `games.json` at ~62 MB; it grows with the catalog and is the
+  one to watch. Well past that, the fix is sharding it too and loading shards on demand.
 
 ## One-off scripts
 `queue_null_updates.py` (queues every game with a null `last_update_ts` into

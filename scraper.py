@@ -90,9 +90,9 @@ MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:fals
 # Fix 1 — REVIEW_TIERS: a per-game cooldown that widens with age since release, so
 # the score is re-checked hardest exactly when it moves fastest. (max_age_days,
 # cooldown_days); a game older than the last tier keeps the old last_modified-only
-# behaviour. Steady state ~6.4k refreshes/day = ~12.9k storefront calls = ~3.2h/day
-# of run time at STOREFRONT_MIN_INTERVAL — about 21% of this scraper's proven peak
-# (30.8k games in one day) and ~15% of its ~22h/day window. The FIRST pass is a
+# behaviour. Steady state ~7.1k refreshes/day = ~14.1k storefront calls = ~3.5h/day
+# of run time at STOREFRONT_MIN_INTERVAL — about 23% of this scraper's proven peak
+# (30.8k games in one day) and ~16% of its ~22h/day window. The FIRST pass is a
 # one-time catch-up, which shares the run with the forced drain
 # (FORCE_RESERVE_FRAC) and settles within a day or two.
 REVIEW_TIERS = [(3, 0.25), (10, 0.5), (30, 1), (60, 2), (90, 3.5), (180, 7), (365, 15)]
@@ -105,7 +105,7 @@ REVIEW_TIER_REFRESH = os.environ.get("REVIEW_TIER_REFRESH", "1") != "0"   # kill
 # and 12h tiers partly cosmetic (a nominal 6h tier delivering 6-12h intervals).
 # requeue_due_young() re-checks this population at every checkpoint (~10 min),
 # which is what actually buys the near-real-time end of the ladder. Only the young
-# tiers qualify: they're a small set (~2.2k games) so the re-scan is free, and
+# tiers qualify: they're a small set (~2.4k games) so the re-scan is free, and
 # they're the only ones whose cooldown is shorter than a run.
 REVIEW_LIVE_MAX_AGE_DAYS = float(os.environ.get("REVIEW_LIVE_MAX_AGE_DAYS", "30"))
 
@@ -1023,7 +1023,7 @@ def main():
         return None
 
     # Young games, precomputed once: [(appid, cooldown_seconds)] for every stored game
-    # within REVIEW_LIVE_MAX_AGE_DAYS of release. Small (~2.2k), so re-checking it every
+    # within REVIEW_LIVE_MAX_AGE_DAYS of release. Small (~2.4k), so re-checking it every
     # checkpoint costs nothing, unlike re-scanning all ~124k stored records.
     young = []
     if REVIEW_TIER_REFRESH:

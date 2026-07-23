@@ -4,14 +4,21 @@ pics_refresh.py — SteamQTPD PICS metadata scraper (Layer 1 / raw archive)
 
 Opens ONE anonymous Steam CM session, batch-fetches the PICS `common` app-info
 block for a list of appids, trims confirmed-junk fields at ingest, and writes
-the trimmed blocks (plus a per-game fetch timestamp) into 64 raw scratch shards.
+the trimmed blocks (plus a per-game `_ts` fetch timestamp) into the 64 shards of
+pics_raw/ — the PERMANENT Layer 1 archive (PICS_METADATA_PIPELINE.md §4.2), not
+scratch. Everything downstream re-derives from it without re-scraping.
 
-This is the "fetch phase" from PICS_METADATA_PIPELINE.md §4.4:
-  - parallel/batched by CHUNK, NOT by shard
-  - fetchers write raw scratch only; pics_summarize.py does the derived view
+Shape (see spec §4.4, "as built"):
+  - SEQUENTIAL, single-threaded; batched by CHUNK appids per get_product_info
+    call, NOT parallel and NOT partitioned by shard
+  - results accumulate in `pending`, then flush() writes only TOUCHED shards
+    (atomic temp + os.replace) on the checkpoint interval and at the end
   - shard key = (appid // 10) % 64  (existing SteamQTPD invariant)
 
 One-writer-per-file: this script is the sole writer of pics_raw/shard_NN.json.
+It holds trivially — one process, no concurrency. The spec's older two-phase
+"fetchers write scratch, a partition step writes shards" design was never built;
+it would only be needed if fetching ever goes parallel.
 
 Env / deps (see spec §8):
   pip install steam gevent gevent-eventemitter "protobuf<3.21"

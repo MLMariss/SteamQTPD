@@ -1,9 +1,14 @@
 # PICS Metadata Pipeline — Design Spec
 
-**Status:** SHIPPED — full-library sweep complete (123,560 games in `pics_raw/`
-and `pics/` as of 2026-07-16). §2 coverage figures below updated from the
-original 120-game probe to live full-library numbers; the authoritative live
-figures regenerate into `COVERAGE.md` on every pass.
+**Status:** SHIPPED — full-library sweep complete (**124,120** games in `pics_raw/`
+and `pics/` as of the 2026-07-22 `COVERAGE.md` snapshot; 123,560 at the original
+2026-07-16 write-up). §2 coverage figures below were updated from the original
+120-game probe to live full-library numbers, but they are a **point-in-time
+snapshot and drift by a few tenths of a percent as the sweep re-runs** — the
+authoritative live figures regenerate into `COVERAGE.md` on every pass. **Read
+`COVERAGE.md` for any number you intend to act on**; the figures here are for
+sense of scale and for the sample-vs-live comparison, which is the point they
+were recorded to make.
 **Author:** MLMariss + Claude working session
 **Scope:** New SteamQTPD data pipeline harvesting the Steam PICS `common`
 app-info block via anonymous CM session. Adds AI-content disclosure plus a
@@ -56,9 +61,11 @@ Small int enum stored as a string:
 | `"2"` | Live-generated AI content (runtime generation) | DREAMIO (ChatGPT + Stable Diffusion + TTS) |
 
 - `"3"` (both) is plausible but no carrier seen; handle gracefully.
-- **Live coverage (full sweep, 123,560 games): 12,653 ≈ 10.2%** — 12,247
-  pre-generated, 406 live-generated. (Original 120-game probe read 13/120 ≈ 11%,
-  which held up well.)
+- **Live coverage (full sweep, 124,120 games): 12,892 ≈ 10.4%** — 12,481
+  pre-generated, 411 live-generated. (Original 120-game probe read 13/120 ≈ 11%,
+  which held up well. Earlier revision of this line read 12,653 ≈ 10.2% over a
+  123,560-game sweep — the figure creeps as the sweep re-runs; `COVERAGE.md` is
+  authoritative.)
 - The **free-text disclosure blurb** ("we use TTS for…") is **NOT** in `common` —
   it lives only on the rendered store page. PICS gives the **flag + category only**.
   This is deemed sufficient: a typed flag is more filterable than prose.
@@ -75,14 +82,14 @@ titles; the Live figure is the true real-world incidence.
 | Key | Sample | **Live** | Shape | Why we keep it |
 |---|---|---|---|---|
 | `store_tags` | 99% | **99.9%** | `{"0":"4115","1":"1695",…}` ordered tag-ID list (top ~20, rank order) | Ranked community tags. Hard to get cleanly elsewhere. **Biggest win.** Needs tag-ID→name lookup. |
-| `steam_deck_compatibility` | 97% | **27.2%** | struct: `category`, `steamos_compatibility`, `steam_machine_compatibility`, `test_timestamp`, `tested_build_id`, `tests{}` | Deck verified/playable/unsupported + new Steam Machine compat. Not in appdetails. Sample was AAA-heavy; most of the long tail is simply unrated by Valve. Of 33,658 rated: 8,116 Verified / 19,401 Playable / 6,141 Unsupported. |
+| `steam_deck_compatibility` | 97% | **27.3%** | struct: `category`, `steamos_compatibility`, `steam_machine_compatibility`, `test_timestamp`, `tested_build_id`, `tests{}` | Deck verified/playable/unsupported + new Steam Machine compat. Not in appdetails. Sample was AAA-heavy; most of the long tail is simply unrated by Valve. Of 33,853 rated: 8,156 Verified / 19,527 Playable / 6,170 Unsupported. (Only `category`, the three compat scalars and `test_timestamp` survive ingest — `tests{}` is nested-trimmed away, §4.1.) |
 | `review_score` | 99% | **64.0%** | `"1"`–`"9"` bucket | Valve's canonical review bucket. Live figure tracks the review-floor (games with too few reviews carry no bucket). |
 | `review_percentage` | 99% | **64.0%** | `"0"`–`"100"` | Canonical % positive. |
 | `review_score_bombs` / `review_percentage_bombs` | ~10% | **0.1%** | same shapes | **Review-bomb-adjusted** score. Present only on bombed games (just 97 across the library — the sample's ~10% was famous-bombed-title bias). Compare vs raw to *detect* review bombing. |
 | `associations` | 100% | **99.9% dev / 99.6% pub** | `{"0":{"type":"developer","name":"…"},…}` | Structured dev/publisher/franchise. No HTML parsing. |
 | `category` | 100% | **100.0%** (emitted as `cats`) | `{"category_2":"1","category_1":"1",…}` | Feature flags. **Primary source for mode filters** (Single-player 95.9%, Multiplayer 17.8%, Co-op 9.8%, Online Co-op, Split-screen, PvP/Online PvP), **controller support** (cat 28=Full 22.7% / 18=Partial 11.6% — `controller` field is 100% derivable from these), and **VR Only** (cat 54, 4.3%). Trusted over user tags for modes. |
 | `genres` / `primary_genre` | 99% | **99.9% / 100.0%** | `{"0":"3"}` / `"3"` | Genre IDs. Needs genre-ID→name lookup. |
-| `releasestate` | 94% | **98.8%** (emitted as `state`) | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. **SHIPPED to `pics/` as `state`** (122,110 records: 121,640 released, 470 prerelease). Corrects the earlier "not yet emitted" note. |
+| `releasestate` | 94% | **98.8%** (emitted as `state`) | `"released"` / `"prerelease"` / … | Live vs coming-soon filter. **SHIPPED to `pics/` as `state`** (122,670 records: 122,219 released, 451 prerelease). Corrects the earlier "not yet emitted" note. |
 | `supported_languages` | 99% | **99.9%** (langs) / **44.0%** (full-audio) | per-language `{supported, full_audio, subtitles}` | Richer than a flat list. |
 | `steam_release_date` | 95% | **98.7%** | unix ts string | Release date. |
 | `original_release_date` | 15% | **9.1%** | unix ts string | True original date for EA→1.0 games. |
@@ -97,12 +104,12 @@ but not all surfaced in the summarized view yet).
 
 | Key | Sample | **Live** | Decision | Notes |
 |---|---|---|---|---|
-| `exfgls` | ~24% | **0.7%** | **KEEP as family-share-exclusion flag** | See §2.4. Name = "EXclude From Family Library Sharing". Presence ⇒ NOT shareable. Only 838 titles library-wide — the sample's 24% was launcher/DRM-AAA bias. |
-| `eulas` | 60% | **8.9%** | **KEEP as `has_custom_eula` + names** | Presence ⇒ extra agreement(s) to accept. Struct: `{id,name,url,version}`. 10,988 titles library-wide. |
-| `market_presence` | 10% | not in summarized view | keep (cheap) | Steam Market items exist. |
-| `workshop_visible` | 30% | not in summarized view | keep (cheap) | Workshop support. |
-| `parent` | 1-2% | not in summarized view | keep | DLC → base app linkage. |
-| `mastersubs_granting_app` | 1-2% | not in summarized view | keep | Subscription-granting app linkage. |
+| `exfgls` | ~24% | **0.7%** | **KEEP as family-share-exclusion flag** (ships to `pics.json` as `fse`) | See §2.4. Name = "EXclude From Family Library Sharing". Presence ⇒ NOT shareable. Only 821 titles library-wide — the sample's 24% was launcher/DRM-AAA bias. |
+| `eulas` | 60% | **8.9%** | **KEEP as a presence flag** (ships to `pics.json` as `eula`) | Presence ⇒ extra agreement(s) to accept. Struct: `{id,name,url,version}`. 11,020 titles library-wide. Note only the **boolean** ships — the "+ names" half of the original decision was never implemented, and nothing consumes it. |
+| `market_presence` | 10% | raw only | keep (cheap) | Steam Market items exist. **Verified retained in `pics_raw/`** — not in `DROP_KEYS`, so re-derivable without a re-scrape. |
+| `workshop_visible` | 30% | raw only | keep (cheap) | Workshop support. Verified retained in `pics_raw/`. |
+| `parent` | 1-2% | raw only | keep | DLC → base app linkage. Verified retained in `pics_raw/`. |
+| `mastersubs_granting_app` | 1-2% | raw only | keep | Subscription-granting app linkage. Verified retained in `pics_raw/`. |
 
 ### 2.4 `exfgls` — family-share exclusion (verified)
 
@@ -138,7 +145,7 @@ Verified against sample; **dropped before archiving** (see §4 trim-at-ingest):
 | `controllertagwizard` | Internal Valve tagging-wizard flag. No player-facing meaning. |
 | `icon`, `small_capsule`, `library_assets`, `library_assets_full` | Store art we don't currently render. `small_capsule` is the same usable shape as `header_image` and could be un-dropped if a capsule-sized source is ever wanted — but at 231×87 it's barely above the 150px table thumb and too small for the 380px hover popup, so `header_image` alone serves both. |
 | `community_hub_visible`, `community_visible_stats` | Plumbing. |
-| `clienticns`, `name_localized`, `name_linux` | Low value / redundant with `name`. |
+| `name_localized`, `name_linux` | Low value / redundant with `name`. (`clienticns` was listed twice in this table; it belongs to the Mac/Linux client-icon row above.) |
 
 **`header_image` — KEPT (was dropped; corrected).** This table previously listed it as
 "store art already sourced via existing pipeline". That was wrong, and it caused visibly
@@ -245,27 +252,47 @@ the real client-side cost (§3.1: parse 118 ms ≫ decompress 9 ms).
 
 Schema bumped to **`pics_raw_v2`** to mark the shape change.
 
-### 4.2 Two-layer model
+### 4.2 Layer model — **as built there are THREE layers, not two**
 
-**Layer 1 — Raw archive (`pics_raw/`, source of truth, write-once-per-refresh)**
+*The original spec described two layers and called Layer 2 "`pics.json` shards, what
+the site loads." That is not what shipped. A third step (`pics_merge.py`) was added
+because 64 shard fetches from the browser was a worse deal than one file, so the
+summarized shards became an intermediate and `pics.json` became a separate artifact.
+Corrected below; `ARCHITECTURE.md` §9.6 mirrors this.*
+
+**Layer 1 — Raw archive (`pics_raw/shard_NN.json`, source of truth, rewritten per refresh)**
 - The **trimmed** `common` block, stored **verbatim** (compact JSON), sharded 64-way.
-- Per-game **fetch timestamp** stored for incremental refresh.
+- Per-game **fetch timestamp** (`_ts`) stored for incremental refresh.
 - This is the cold store. The frontend does NOT read it.
 - Purpose: adding a future field = re-derive from this archive, **no re-scrape**.
   Satisfies "swap/include/exchange data points whenever" + "future-proof."
 - ~50 MB gzipped @ 100k. ~780 KB/shard.
+- ⚠️ These are **not scratch files** — they are the permanent archive this whole
+  layer model rests on. (`pics_refresh.py`'s docstring called them "raw scratch
+  shards," which contradicted this section; corrected.)
 
-**Layer 2 — Derived `game_meta` view (`pics.json` shards, what the site loads)**
-- Trimmed, **typed, decoded** projection: tags→names, deck→int category,
-  review+bomb fields, `family_share_excluded` bool, `has_custom_eula` bool,
-  AI type, dev/publisher, feature-category booleans.
-- Merged client-side by appid, exactly like `playtime.json` / `ratings.json`.
+**Layer 2 — Summarized view (`pics/shard_NN.json`, `_format: pics_v2`)**
+- A lean, index-friendly projection storing **numeric IDs, not decoded names** —
+  see §4.5, which is the binding decision. *(The original text here said "typed,
+  **decoded** projection: tags→names … feature-category booleans," which is
+  Option A — the alternative §4.5 explicitly rejected. IDs shipped.)*
+- Adds the three **derived filter flags** the frontend actually gates on:
+  `ea` (genre-70), `adult` (content_desc 3 or 4), `vr_only` (cat 54).
+- **Not** loaded by the browser — it is the input to Layer 3.
 - Regenerated from Layer 1 by `pics_summarize.py` — a field change is a
   summarizer edit + regenerate, **never** a scraper change.
-- ~29 MB gzipped @ 100k. ~464 KB/shard.
 
-This is the established SteamQTPD **`*_raw/` → `*_summarize.py` → shards**
-pattern (as used by playtime), extended.
+**Layer 3 — Browser file (`pics.json`, `_format: pics_v2_frontend`)**
+- `pics_merge.py` flattens the 64 Layer-2 shards into **one** file, keeping only
+  the keys in its `FRONTEND_KEYS` set (19 of them; see §11 and ARCHITECTURE §9.6).
+- Everything outside that set — `content_desc`, `orig_released`, dev/pub,
+  `franchise`, languages, review-bomb fields — stays **backend-only in Layer 2**.
+  This is why the browser reads the derived `adult` flag rather than `content_desc`.
+- Merged client-side by appid, exactly like `playtime.json` / `ratings.json`.
+- ~39 MB on disk at 124k games.
+
+This extends the established SteamQTPD **`*_raw/` → `*_summarize.py`** pattern
+(as used by playtime) with one extra flattening step unique to this layer.
 
 ### 4.3 Shard key
 
@@ -295,7 +322,8 @@ operate on*, not file size. IDs win on every axis the user feels:
 
 **MANDATORY implementation rule — index once, filter on IDs, decode only for
 labels.** B is *only* faster if the frontend obeys this. On load:
-1. Parse `pics.json` shards.
+1. Parse `pics.json` (one merged file as built — §4.2 Layer 3; this originally
+   read "shards", from when the browser was to fetch all 64).
 2. For each game, build filter indexes **once** — e.g. convert each game's tag /
    category / genre ID lists into `Set`s (`game._tagSet = new Set(tagIds)`),
    or build inverted indexes (tagId -> Set of appids) for O(1) filtering.
@@ -313,20 +341,62 @@ index-once discipline is what makes it decisively smoother.
 `pics_summarize.py` therefore emits IDs (ranked order preserved for tags), and
 the frontend build must construct the filter index once at load.
 
-### 4.4 Parallelism vs one-writer-per-file (resolved)
+**As built — the rule is followed in spirit, with one deliberate deviation on tags.**
+Storage is IDs throughout, as decided. On the frontend:
 
-PICS fetching is **not** per-shard (a single `get_product_info` call batches
-arbitrary appids across all shards). So we split phases:
+| Field | As built | Follows §4.5? |
+|---|---|---|
+| `cats` | `game.catSet = new Set(p.cats)` built **once** at merge; every mode / controller / VR filter is a set-membership test on IDs | ✅ exactly as specified |
+| `ea` / `adult` / `vr_only` | precomputed as booleans by the **summarizer**, never derived in the browser | ✅ better than specified |
+| `genres` | `game.genre_ids` kept as IDs | ✅ |
+| **`tags`** | **decoded to names once at merge** (`p.tags.map(id => PICS_TAG_LK[id])` → `game.tags`), and the tag rail then filters on **canonicalized names** via `canon()`, not IDs. `game.tag_ids` is retained but unused by the filter path. | ⚠️ deviates |
 
-- **Fetch phase** — parallel by *batch* (chunks of ~100-200 appids per call),
-  NOT by shard. One anonymous session. Writes raw scratch (each worker owns its
-  own scratch file → one-writer-per-file even here).
-- **Write/partition phase** — a single summarize step groups by shard key and
-  writes each shard file exactly once.
+The tag deviation is **decode-once, not decode-per-toggle**, so the anti-pattern this
+section actually forbids — re-joining names on every filter change — does not occur;
+the cost is paid once at load. It exists because the tag rail predates PICS and already
+had a name-based taxonomy (`TAG_GROUPS` / `TAG_CAT` / `CANON_GROUPS`, which collapses
+synonym spellings) that would have to be re-keyed to IDs to switch. Worth doing if tag
+filtering ever measures slow; not worth doing pre-emptively. Recorded here so the next
+reader doesn't assume the rule is uniformly enforced.
 
-**Rule: fetchers never write shard files.** Fetchers write their own scratch;
-the partition step writes shards. This avoids the multi-writer collision class
-(same discipline as the earlier multi-workflow git-push collision fix).
+### 4.4 Parallelism vs one-writer-per-file — **superseded: the simpler design shipped**
+
+*This section planned a two-phase scratch-file architecture. It was never built,
+and the invariant it was protecting is satisfied more cheaply. Recorded honestly
+below: first what shipped, then the original plan and why it isn't needed.*
+
+**As built.** `pics_refresh.py` is **single-threaded and sequential**: one
+anonymous CM session, a `for` loop over chunks of `--chunk` appids
+(`get_product_info` batches them in one call), accumulating results in an
+in-memory `pending` map. On the checkpoint interval — and at the end — `flush()`
+merges `pending` into the in-memory shard maps and calls `write_shard()` for each
+**touched** shard only. `write_shard` is atomic (temp file + `os.replace`).
+
+- There are **no worker threads**, **no scratch files**, and **no separate
+  partition phase**. There is no `Thread` / `Pool` / `concurrent` import in the file.
+- **The fetcher IS the shard writer.** `pics_refresh.py` is the sole writer of
+  `pics_raw/shard_NN.json`; `pics_summarize.py` reads those and is the sole writer
+  of `pics/shard_NN.json`; `pics_merge.py` is the sole writer of `pics.json`.
+- One-writer-per-file therefore holds **by construction** — one process, one
+  writer, no concurrency to coordinate. The scratch layer existed only to make
+  parallel fetch safe, and there is no parallel fetch.
+
+**Why the original plan is moot.** The concern was that a single
+`get_product_info` call returns appids spanning all 64 shards, so parallel
+fetchers would each want to touch every shard file. True — but PICS batches
+*hundreds* of appids per round trip, so the sweep is network-bound on a handful
+of large calls rather than on request count. Sequential chunking already
+completes a full-library pass inside the daily budget, so the parallelism that
+would have required scratch files was never worth its coordination cost.
+
+**If parallel fetch is ever added**, the original rule below becomes binding again
+and the scratch-file phase should be built as specified:
+
+> - **Fetch phase** — parallel by *batch*, NOT by shard. Each worker owns its own
+>   scratch file → one-writer-per-file even here.
+> - **Write/partition phase** — a single step groups by shard key and writes each
+>   shard file exactly once.
+> - **Rule: fetchers never write shard files.**
 
 ---
 
@@ -399,27 +469,29 @@ Actions runner; will NOT run in a restricted/allowlisted sandbox.
 
 ---
 
-## 9. Pipeline components (to build)
+## 9. Pipeline components — **all shipped**
 
-| Component | Role | Pattern match |
+*Written as a build list; every row is now live. Updated to what exists, with the
+two components the original list omitted.*
+
+| Component | Role | Status |
 |---|---|---|
-| `pics_refresh.py` | Anonymous PICS session; batched fetch; write trimmed `common` + fetch-ts to `pics_raw/` scratch shards | analog of `playtime_refresh.py` → `playtime_raw` |
-| `pics_summarize.py` | Read `pics_raw/`; decode via lookup tables; emit typed `game_meta` → `pics.json` shards | analog of `playtime_summarize.py` → `playtime.json` |
-| `pics.yml` | Workflow: schedule fetch + summarize, staggered cron, concurrency guard | analog of playtime/ratings workflows |
-| tag/genre/category lookup JSON | Static decode maps | new, committed |
-| COVERAGE.md rows | Two-axis coverage for the new layer | extends existing coverage.py |
-| ARCHITECTURE.md §N | Field→source→refresh table for PICS layer | extends existing authority doc |
+| `pics_refresh.py` | Anonymous PICS session; sequential batched fetch; writes trimmed `common` + `_ts` to `pics_raw/shard_NN.json` (Layer 1, permanent — **not** scratch) | ✅ live |
+| `pics_summarize.py` | Reads `pics_raw/`; emits **IDs not names** (§4.5) + the derived `ea`/`adult`/`vr_only` flags → `pics/shard_NN.json` (Layer 2) | ✅ live |
+| **`pics_merge.py`** | **Flattens the 64 Layer-2 shards to one `pics.json`, filtered to `FRONTEND_KEYS` (Layer 3 — the file the site loads). Not in the original spec; added when one file beat 64 fetches.** | ✅ live |
+| `pics.yml` | Workflow: `20 3 * * *` daily, runs all three scripts as chained steps, concurrency group `steam-pics` | ✅ live |
+| **`pics_lookups.py` / `build_category_map.py`** | **Build the three static decode maps into `lookups/`. Manual/rare, not on a schedule.** | ✅ live |
+| tag/genre/category lookup JSON | Static decode maps — `lookups/{tags,genres,categories}.json` | ✅ committed |
+| COVERAGE.md rows | Coverage for the new layer, incl. the PICS sub-metric table | ✅ in `coverage.py` |
+| ARCHITECTURE.md §9.6 | Field→source→refresh table for the PICS layer | ✅ written |
 
 ---
 
 ## 10. Open items / deferred
 
-- Confirm `aicontenttype = "3"` (both pre+live) handling when a carrier appears.
-- `exfgls` reason-code meanings (1/3/6/0) are inferred, not certified — safe to
-  ship the binary flag; treat codes as advisory.
-- Incremental-refresh trigger (store_asset_mtime delta vs age cycle) — design in
-  the refresh step; first run is a full sweep.
-- Whether to surface Deck `tests[]` detail or just the top-level `category`.
+*(This section used to open with a list of four open items that was then repeated
+verbatim under "Still open / deferred" below. The duplicate has been removed —
+the authoritative list is the one at the end of this section.)*
 
 ### Shipped since first spec (corrected 2026-07-16)
 
@@ -445,10 +517,20 @@ the summarized view and counted by `coverage.py`:
 ### Still open / deferred
 
 - Confirm `aicontenttype = "3"` (both pre+live) handling when a carrier appears.
+  Still no carrier seen across the full library.
 - `exfgls` reason-code meanings (1/3/6/0) are inferred, not certified — safe to
   ship the binary flag; treat codes as advisory.
-- Incremental-refresh trigger (store_asset_mtime delta vs age cycle).
+- ~~Incremental-refresh trigger (store_asset_mtime delta vs age cycle).~~
+  **Resolved: age cycle.** `pics_refresh.py` takes `--stale-days` and compares it
+  against each game's `_ts`; `pics.yml` passes **14** (the script's own default is
+  `0` = refetch everything). The `store_asset_mtime`-delta variant was not built.
 - Whether to surface Deck `tests[]` detail beyond the top-level `category`.
+  Still deferred — `tests` is dropped at ingest (§4.1), so surfacing it needs a
+  re-sweep, not just a summarizer change.
+- **`supported_languages` lean-list collapse in Layer 2 is still deferred** (§4.1
+  flagged it as "deferred summarizer task"). Languages remain faithful in Layer 1,
+  are emitted to Layer 2, and are dropped at the Layer 3 merge — so the collapse
+  has no frontend consumer waiting on it.
 
 ---
 

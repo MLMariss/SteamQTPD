@@ -5,7 +5,13 @@ Hours Per Price"; the repo, GitHub project, and wishlist worker keep the legacy 
 names*), a static Steam value-hunter that ranks games by quality-adjusted playtime per dollar.
 For the quick overview and setup, see **[README.md](README.md)**; this document explains *why* the
 system is shaped the way it is, every job and data file, and how the frontend turns raw
-JSON into the table.
+JSON into the table. For what might be built *next* — the backlog, deferred items and
+decided-againsts — see **[ROADMAP.md](ROADMAP.md)** (§3, split out of this file).
+
+**Companion docs:** [ROADMAP.md](ROADMAP.md) (plans) · [COVERAGE.md](COVERAGE.md) and
+[SHARDS.md](SHARDS.md) (generated — always current, never hand-edit) ·
+[PICS_METADATA_PIPELINE.md](PICS_METADATA_PIPELINE.md) (the PICS layer's design record) ·
+[UPCOMING_GAMES_PICS_MEMO.md](UPCOMING_GAMES_PICS_MEMO.md) (a parked decision).
 
 ---
 
@@ -39,450 +45,50 @@ one checkpoint's worth of work.
 ## 2. System topology
 
 ```
-                 GitHub Actions (scheduled)                     GitHub Pages
-   ┌───────────────────────────────────────────────┐        ┌──────────────────┐
-   │ scraper.py ─────────────► games.json + catalog │        │                  │
-   │ price_and_sale.py ──────► prices.json          │        │   index.html     │
-   │ hltb_refresh.py ────────► hltb.json            │  read  │  (merges all     │
-   │ tags_refresh.py ────────► tags.json            │ ─────► │   JSON by appid, │
-   │ recent_refresh.py ──────► recent.json          │        │   computes QTPD) │
-   │ playtime_refresh.py ────► playtime_raw/*.json  │        │                  │
-   │        │                                        │        └──────────────────┘
-   │        ├─ playtime_summarize.py ─► playtime.json│
-   │        └─ ratings_summarize.py ──► ratings.json │        ┌──────────────────┐
-   └───────────────────────────────────────────────┘        │ Cloudflare Worker │
-                                                    wishlist  │  (steamid/vanity  │
-                                        index.html ◄────────► │   → wishlist)     │
-                                                              └──────────────────┘
+                    GitHub Actions (scheduled)                        GitHub Pages
+   ┌────────────────────────────────────────────────────┐        ┌──────────────────┐
+   │ scraper.py ──────────────► games.json + catalog.json│        │                  │
+   │ price_and_sale.py ───────► prices.json              │        │   index.html     │
+   │ hltb_refresh.py ─────────► hltb.json                │  read  │  (merges all     │
+   │ tags_refresh.py ─────────► tags.json                │ ─────► │   JSON by appid, │
+   │ recent_refresh.py ───────► recent.json              │        │   computes QTPD) │
+   │ playtime_refresh.py ─────► playtime_raw/NN.json     │        │                  │
+   │        ├─ playtime_summarize.py ─► playtime.json    │        └──────────────────┘
+   │        └─ ratings_summarize.py ──► ratings.json     │
+   │ updates_refresh.py ──────► updates_raw/NN.json      │        ┌──────────────────┐
+   │        └─ updates_summarize.py ──► updates.json     │        │ Cloudflare Worker │
+   │ pics_refresh.py ─────────► pics_raw/shard_NN.json   │wishlist│  (steamid/vanity  │
+   │        ├─ pics_summarize.py ─────► pics/shard_NN    │◄──────►│   → wishlist)     │
+   │        └─ pics_merge.py ─────────► pics.json        │        └──────────────────┘
+   │ coverage.py ─────────────► COVERAGE.md              │
+   │ shard_health.py ─────────► SHARDS.md                │  (generated docs, not read
+   └────────────────────────────────────────────────────┘   by the frontend)
 ```
 
 All scraping is server-side; the browser only reads JSON and (optionally) calls the Worker.
+The frontend fetches **12 files**: the eight data layers above (`games`, `prices`, `hltb`,
+`tags`, `recent`, `playtime`, `ratings`, `updates`), the merged `pics.json`, and the three
+static decode maps in `lookups/` (`tags.json`, `genres.json`, `categories.json`, §9.6).
+`catalog.json`, the `*_raw/` shard sets, `pics/`, and the two generated `.md` files are
+never served to the browser.
 
 ---
 
-## 3. Community feedback & future work
+## 3. Community feedback & future work → **[ROADMAP.md](ROADMAP.md)**
 
-A backlog of ideas raised by users, recorded here as the single resumption point for
-planning. **Nothing in this section is committed or verified** — each item still needs
-feasibility confirmation (is there a real data source?), impact assessment, and a complexity
-estimate before it earns a job, a file, or a frontend control. Items are grouped by the part
-of the system they touch. Comments are captured anonymously; only the substance is kept.
+Moved out. Everything proposed, deferred, decided-against or half-shipped — the user-feedback
+backlog (§3.1 data sources, §3.2 frontend/UX, §3.3 nice-to-have), the Lorenzo as-built record
+(§3.4), and the loose ends collected from across this document (§3.5) — now lives in
+**[ROADMAP.md](ROADMAP.md)**.
 
-The load-bearing constraints any item must respect: **one writer per file** (§1) — a new
-data source is always a *new* file + a *new* job, never a change to an existing job's file —
-and **static-first** (§1): anything needing a live cross-origin call routes through the
-Cloudflare Worker (§12), it does not become a server.
+**Why:** this document is the reference for *what exists*; the backlog is the plan for *what
+might*. Interleaving them meant a planning session had to read the architecture and an
+architecture lookup had to scroll past a backlog. Splitting cut ~450 lines from here.
 
-### 3.1 New data sources / metrics (scraper work)
-
-Each of these implies a new scrape and a new JSON file merged by `appid` in the frontend
-(§11). Listed roughly by value-to-effort.
-
-- **Completion rate (achievement-based).** Weight QTPD by how many players actually *finish*
-  a game, not just its length — a 60-hour game most people drop halfway is a worse "hours you
-  will really get" deal than its HLTB number implies. *What to do:* pull global achievement
-  percentages (Steam `ISteamUserStats/GetGlobalAchievementPercentagesForApp`), pick a
-  per-game "main story complete" achievement (the hard part — needs a heuristic or a curated
-  map, since achievement naming is arbitrary), expose a completion-weighted QTPD mode
-  (`hours × completion_rate × rating ÷ price`). *Highest-value new metric; medium effort,
-  gated on the achievement-selection heuristic.*
-
-- **Region-specific pricing.** Take the price (and therefore QTPD) from a user-chosen Steam
-  region/currency rather than one fixed region — most-requested item by headcount. *What to
-  do:* decide between (a) scraping prices for N regions into `prices.json` (N× the price
-  scrape and storage) vs (b) an on-demand per-region fetch through the Worker at view time.
-  Ties into the "isthereanydeal integration" idea below (cross-store / price-history).
-  *High value, high effort; needs an explicit storage-vs-live design decision first.*
-
-- **Developer update cadence & size. [Done — pipeline built; frontend backfill live.]**
-  Beyond the single `last_update_ts` already in `games.json`, surface *how often* and *how
-  substantially* a game is patched. *Done:* built as its own sharded pipeline (§9.5) rather
-  than a News-API heuristic — `updates_refresh.py` → `updates_raw/NN.json` (64 shards) →
-  `updates_summarize.py` → `updates.json`, keyed off Steam's native `event_type` (13/14/12 =
-  major/regular/minor) so "big vs small" is Valve's own taxonomy, not a post-length guess.
-  `updates.json` ships per-tier `last_*_ts`, windowed `counts` (30/90/180/365d), and capped
-  `dates` arrays for client-side window recompute. The frontend already loads `updates.json`
-  and uses `last_any_ts` to backfill null `last_update_ts` (News-API stays primary for now).
-  *Update (2026-07): the dedicated **Updated column** is now shipped — a standalone
-  sortable column (between Released and Tags) showing last-update recency plus a
-  patch-cadence badge (`N · 90d` / `N · 1y`, summed across tiers from `updates.json` counts),
-  degrading to nothing where updates.json has no coverage yet. Sort is by update recency.*
-  *Still open (tracked in §9.5): the **precedence switch** — flip the event-based layer from
-  fallback to primary once shard coverage is broad enough to beat the News-API's ~42% null
-  `last_update_ts`. Trigger: leave News-API primary (the column still sorts by it) until the
-  event layer covers materially more games than News-API does, then invert the precedence in
-  `index.html`. **Live coverage is now tracked in `COVERAGE.md` (Axis 1, `updates.json` /
-  `updates_raw/` rows) — read the current figure there rather than any hand-written count.**
-  (As of 2026-07 the rotation had advanced well past its start — tens of shards populated, not
-  the "1/64" this note used to claim — which is exactly the drift that motivated adding the
-  updates layer to coverage tracking; see §11.5.)*
-
-- **Mod support & mod count.** Flag whether a game is moddable and roughly how large its mod
-  scene is — especially relevant to the survival-craft audience. *What to do:* query the
-  Steam Workshop for published-file counts per app into a new file; expose as a filter/column.
-  *Medium value, medium effort; Workshop count is retrievable, "quality" of mods is not.*
-
-- **Co-op max player count.** For co-op games, show/filter by the maximum supported players.
-  *What to do:* read store-page category flags (co-op / online co-op / shared-screen); note
-  that a concrete max-player *number* is inconsistently exposed, so expect partial coverage.
-  *Medium value, low-medium effort, partial-coverage caveat.*
-
-- **Anti-cheat type (not cheater volume).** Show *which* anti-cheat a multiplayer game uses so
-  users can avoid kernel-level / invasive systems. *What to do:* scrape the store page's tech
-  list / DRM-and-anti-cheat notes into a new file; classify by AC name. *Note:* the related
-  "number of *active cheaters*" request has **no reliable public source** and is not pursued.
-  *Low-medium value, medium effort; "invasive or not" is a judgment call to encode.*
-
-- **Soften the `success:false` permanent-skip (robustness, not a new metric). [Done —
-  2026-07.]** `build_record` used to permanently skip any app whose Steam `appdetails`
-  returned `success:false`, which lumped genuinely-dead/delisted apps together with
-  **region-locked (cc=us)** titles and transient `success:false` blips — so a handful of
-  legitimate games were dropped forever (≈731 were on the skip list, an unknown fraction
-  recoverable). *Done:* `success:false` now returns a new **`"recheck"`** sentinel instead of
-  `"skip"` (the confirmed-non-game `type != "game"` path keeps its permanent `"skip"`). A
-  bounded `catalog["recheck"]` map (`{appid: strikes}`) retries the app across runs —
-  `select_work` re-queues it as fresh work because it's neither stored nor skipped — and only
-  after **`MAX_RECHECK` (=4, env-overridable)** strikes is it promoted to a permanent skip. A
-  success or pending result clears its strikes; each run also prunes entries no longer in
-  Steam's app list (delisted-and-removed apps), so nothing lingers in limbo. See §5. *Low
-  impact (small count), low effort; safe quick win.*
-
-### 3.2 Frontend / UX (no new scraping)
-
-Works off data already collected. Several are cheap and high-impact.
-
-- **Mobile / narrow-screen layout — highest-frequency complaint. [Done.]** The old
-  `table-layout: fixed` grid overflowed small screens, titles truncated, and the sale badge +
-  discount % wasted a column. *Fixed in stages:* the desktop table became **fluid** (`auto`
-  layout, per-column min/max — §11); the old fixed-1556px conflict this item called out is
-  **resolved**; **Price and Discount** merged into one `Price / Sale` column with a **split
-  header** whose halves sort independently (Price by current price, Sale by discount depth). Then
-  (2026-07) the narrow-screen view was **rebuilt into a proper card** (§11 *Responsive*). Below
-  1374px each row is now a **single-column spec-sheet card**: a **thumbnail + title header**, the
-  **QTPD** value + meter as the headline metric, then one metric per line (fixed **label gutter**
-  + value) in a **logical order** — name → QTPD → price → ratings → length → release → updates →
-  tags — set by CSS **`order`**, independent of the table's column order. Column names are
-  relabeled to plain words on mobile (Reviews→**Rating**, HLTB→**Length**, Price / Sale→**Price**)
-  and **no-data cells are dropped** (`:has()`) so cards carry no dead "—" lines. Crucially,
-  because the sortable `<thead>` is hidden in card mode, a **native `<select>` Sort control +
-  direction toggle** was added to the bar — **sorting on a phone was previously impossible**.
-  *Still open (optional):* progressive disclosure — folding secondary fields behind a per-card
-  tap. *Known caveat:* CSS `order` reorders visually only, so screen-reader / tab order still
-  follows the table's DOM column order.
-
-- **Hover tooltips on filter controls. [Done.]** Top-of-page filters (HLTB especially) were
-  opaque to new users. *Done:* most filter toggles already carried `title` tooltips; added them
-  to the two that needed them most — the **HLTB metric** toggle (Main / +Extras / 100% / Avg,
-  spelled out as HowLongToBeat categories) and the **Reviews-sort** toggle (matching the adjacent
-  Playtime-sort). *Optional remainder:* Min-rating and Updated-within buttons are self-evident and
-  were left untouched.
-
-- **Exclude-genres discoverability. [Done.]** Genre *exclusion* already existed (click a tag in
-  the rail → require → exclude → clear) but was only explained in the rail's hover `title`, which
-  is itself undiscoverable. *Done:* added a **visible legend** above the rail
-  (`✓ require → ✕ exclude → clear`) that reuses the real `.chip.inc`/`.chip.exc` styles, so the
-  swatches can't drift from the actual state colors.
-
-- **Column-add safety. [Done — premise was stale; verified empirically.]** The note assumed a
-  `table-layout: auto` table, but the layout actually moved further: it's now **CSS Grid applied
-  at the row level** (`thead tr` / `tbody tr` are each `display:grid` sharing one `--grid-cols`
-  track template — §11, ~line 202), and the `<colgroup>` is inert (`colgroup{display:none}` — it
-  only documents column order; adding or omitting a `<col>` has **zero** layout effect). *Tested
-  (Playwright, 1700px): forcing a 12th cell into both header and body **without** a matching 12th
-  track keeps header and body perfectly aligned (identical cell right-edges) — grid auto-places
-  the extra cell into the same implicit track for both rows.* So the old failure mode (table
-  collapses / header drifts from body) **can no longer happen**; the worst case is a
-  cosmetically-mis-sized new column, not a broken layout. *To add a column now:* (1) add a
-  `minmax()` track to `--grid-cols` at the right index, (2) add the `<th>` and the matching
-  `<td>` (and the card-layout row) at the same index. The `<col>` is optional and inert. §11's
-  regression note updated to match.
-
-- **Min-review filter: re-filters on change. [Done — verified, not a bug.]** The reported
-  "changing the selection doesn't refresh the list" could not be reproduced: the band toggles
-  flip `state.revBands` and re-run the filter pass on every click, and the list updates. No fix
-  needed.
-
-- **Min-review picker: single-select vs multi-select — open design conflict.** A request to
-  make min-reviews a single choice (can't tick both 1k and 5k+) directly contradicts the
-  current *deliberate* design: independent bands with gaps allowed (§11). *What to do:*
-  **decision required** — keep the intentional multi-band model (and just document why), or
-  switch to single-select. Do not change silently.
-
-- **Sort by review count. [Done — implemented.]** The Reviews column only sorted by *score*
-  (the top All-time/30-day toggle chose which score); review *count* wasn't sortable. *Done:* the
-  Reviews header is now a **split header** (`.th-split`, reusing the Price/Sale pattern) with two
-  independent sort buttons — **Score** (`data-sort="rating_pct"`) and **Count**
-  (`data-sort="review_count"`). The two controls are **orthogonal**: the top All-time/30-day
-  toggle picks the *period*, the header picks the *dimension*, together covering all four values
-  (all-time score/count, 30-day score/count). Count sorting mirrors the score's period logic via
-  a new `countVal()` comparator — `recent_count` when 30-day is active, `review_count` when
-  all-time — and the period toggle now re-renders when either `rating_pct` **or** `review_count`
-  is the active sort. Unlike the score fall-back, a 0/absent `recent_count` is treated as a real
-  0 (no recent reviews), not borrowed from the all-time total. Verified with Playwright: DESC/ASC
-  ordering, direction flip, and period switch all correct; no JS errors.
-
-- **Visual polish. [Mostly done — original note is stale.]** The "2009 admin panel" feedback
-  predates the current design, which already has a real type pairing (IBM Plex Sans + Mono, loaded
-  via Google Fonts) and a **semantic** palette (gold = labels, blue = links, coral/red =
-  discount/negative, teal/green = free/positive) — so the note's "one accent color" is actively
-  wrong: those colors carry meaning and must not be flattened. Padding is already reasonable.
-  *Done:* added the one genuinely-missing piece, **subtle alternating row shading** (translucent
-  `rgba(127,160,230,.035)` on even rows so the card gradient shows through; declared before
-  `:hover` so hover wins; reset to transparent in card mode). *Tuning knob:* the zebra alpha is a
-  single value if it needs to be stronger/weaker after eyeballing on a real display.
-
-- **Rename QHPP → QTPD. [Done.]** "QHPP" was unfriendly to type/say. *Done:* the public
-  metric is now **QTPD (Quality Time Per Dollar)** — clearer and rolls off the tongue better.
-  Renamed across the frontend end-to-end: page title, logo wordmark, tagline, column header,
-  every tooltip, the filter labels (QTPD price basis / HLTB metric for QTPD / QTPD range), the
-  formula help text, the internal sort key + CSS classes, and the URL `sort` param value. Left
-  intentionally as legacy identifiers: the repo/GitHub name **SteamQHPP** and the wishlist
-  worker subdomain **qhpp-wishlist** (renaming those would break the deploy + the live proxy).
-  Old shared `?sort=qhpp` links fall back to the default sort. *Pure product call, minimal risk.*
-
-### 3.3 Nice-to-have / still to be evaluated
-
-Lower priority, weaker sourcing, or off the core "value hunter" mission. Recorded so they
-aren't lost, but each needs a source-feasibility check before it's worth scoping.
-
-- **isthereanydeal integration.** Cross-store pricing and price history. *Overlaps with
-  region-pricing (§3.1); evaluate together.* Needs an API/ToS review.
-
-- **Sequel / franchise linkage — "what has a sequel and what it is."** ~~Steam exposes no
-  structured franchise graph; would need an external DB.~~ **Partly solved by PICS:** the
-  `associations` block yields a structured `franchise` name, now shipped to `pics/` at **23.5%**
-  (29,067 titles) — no external DB needed for franchise *grouping*. What PICS does **not** give
-  is an ordered sequel graph (which title is the sequel of which); that ordering would still need
-  heuristics or an external DB. *Franchise grouping: available now (parked, backend-only). Ordered
-  sequel graph: still open.*
-
-- **Correlate dev teams across games.** "Made by the same people who made X." **PICS `dev`/`pub`
-  (99.9% / 99.6%, structured) makes same-developer grouping directly available** — no external DB
-  for the grouping itself. Parked backend-only for now (no frontend). *Was "harder than franchise
-  linkage"; now the easy half is a shipped field.*
-
-- **"Talked about vs actually playing" metric.** Buzz-vs-engagement. Needs a social/mentions
-  data source cross-referenced with playtime. *No clear source; vague; park it.*
-
-- **Steam Trading Cards resale helper.** "How many trading cards would I sell to afford this
-  game." Self-contained but niche; needs card market-price data. *Low priority.*
-
-- **Studio-health signals (layoffs / employee turnover %).** Suggested as a publisher-health
-  angle. Only viable source floated was LinkedIn scraping, which is a **ToS problem** and far
-  off-mission. *Recorded but not recommended.*
-
-### 3.4 Lorenzo list — filter/view patterns (comparison-sourced 2026-07; **SHIPPED**)
-
-Ideas lifted from a **side-by-side with Lorenzo Stanco's Steam Wishlist Filters tool**
-(<https://www.lorenzostanco.com/lab/steam/wishlist/>), reviewed from its two view modes
-(**Detailed list** and **Cool grid**). Context: his tool is a **wishlist organizer** — filters
-by tags / features / platforms / languages, light on metrics; QTPD is a **value-analysis
-engine** over the whole catalog. So we borrowed his **filter *organization* and view modes**,
-not his features. All frontend / UX only (no new scraping) — see §3.2.
-
-**Status: L1–L5 all built, tested, and merged to `main` (PR #6, 2026-07). Two follow-up
-polish passes then shipped (R2, R3 — see "Refinements" below).** This section is now an
-**as-built record**: each item marks what shipped, the decisions taken (resolving the earlier
-open questions), and anything **decided against**. See the *Implementation reference* subsection
-for the concrete state/URL/CSS contract, and *Future work* for what's still open.
-
-- **L1. Accordion filter sections — ✅ SHIPPED.** The flat `bar-filters` wall was split into
-  **independently collapsible `.filter-section` accordions**, each with a header showing an
-  **"N active" count badge**. **As-built grouping** (started as 4 sections; R3 merged Activity
-  into Quality → **3 sections**):
-  - **Value** — QTPD price basis, HLTB metric, HLTB data, price range, on-sale, QTPD range.
-  - **Quality & Activity** — min rating, reviews-sort, review trend, min reviews, updated-within,
-    playtime-sort.
-  - **Tags** — click-cycle legend, tag rail, and the **ALL/ANY match toggle** (see L-tags below).
-  - *Decisions:* open/closed state **persists in `localStorage["qtpd.sections"]`** (not the URL —
-    keeps shared links clean). **Defaults:** Value + Quality open, **Tags folded**. The planned
-    "weighted" control under Quality was **not added** (there is only a Weighted *column*, no such
-    filter). The wishlist import row stays outside the accordions (global action) — clicking its
-    dead space folds the whole bar instead. See "Fold zones" in the changelog for what folds a
-    section: the header, plus any dead space in its row.
-
-- **L2. Collapsed-bar filter summary + inline editors — ✅ SHIPPED.** Rejected the permanent
-  sentence (space waste); instead `#filterSummary` renders **only when the nav bar is compact**
-  (`.topbar.compact`). It lists the currently-picked filters as clickable `.sumf` chips plus a
-  trailing sort chip. *Decisions:* clicking a chip opens an **inline popover** (`#popHost`) that
-  **drives the real hidden controls** (`.click()` on the actual buttons — zero duplicated state
-  logic); segmented/toggle/multi/sort filters get an in-popover editor, while **complex filters
-  (search, price, QTPD range, tags) deep-link** into the expanded section instead.
-
-- **L3 / L5. View switcher (Table · Card · Grid) + cool grid — ✅ SHIPPED.** Switcher lives in the
-  `.bar-tools` cluster (right of the bar). **Grid** = Steam **header art** (`header.jpg`, capsule
-  fallback) + a **QTPD badge overlay** + discount flag + coloured status border (on-sale = gold).
-  **Tap a card to expand** → shows QTPD / price / rating / length and **`Steam ↗` / `Close ✕`**
-  actions. *Decisions:* layout is **class-driven** — `body.layout-card` (stacked spec-sheet),
-  `body.grid-view` (grid), `body.narrow` — set by `applyLayout()` + a tiny inline FOUC script.
-  The **"detailed" view is one thing relabelled per device**: **Table = desktop-only, Card =
-  mobile-only** (the off-device button is dimmed and shows a hint toast). View persists in
-  `localStorage["qtpd.view"]`. Breakpoint = **1374px** (the table's real floor) via `matchMedia`.
-
-- **L4. Utility actions — ✅ SHIPPED** (in `.bar-tools`).
-  - **Random** — picks from the **current filtered list**, grows the page until the pick is
-    rendered, then **scrolls to + flashes** its row/card. *Decision:* went with **option (b)** —
-    surface the pick **within QTPD** (not open Steam), since the grid card now *is* a detail view.
-  - **CSV export** — a **column-picker popover** (15 columns; defaults: name, Steam URL, QTPD,
-    price, rating). Exports the whole filtered set, honouring the basis/metric toggles; BOM + CRLF.
-  - **Copy link** — one-click copy of the current (already state-encoding) URL to the clipboard.
-
-**Refinements — Round 2 (mobile polish, 2026-07).** ✅ SHIPPED.
-  - Mobile card **group-separator lines** chunk the tall spec-sheet into price · ratings ·
-    length/playtime · dates · tags.
-  - **Per-page selector hidden on mobile** (meaningless on an infinite-scroll list).
-  - **Table = desktop-only / Card = mobile-only** device-aware disabling (see L3).
-  - **Wishlist import demoted** to the bottom of the mobile filter panel so quick filters lead.
-
-**Refinements — Round 3 (declutter + tags, 2026-07).** ✅ SHIPPED.
-  - **Activity merged into "Quality & Activity"** — one fewer section/header, no wasted whitespace.
-  - **Default-option-on-left theme** (repo-wide convention): the default value is the leftmost
-    button. Applied: HLTB data → **Real**, All; Reviews sort → **30-day**, All-time.
-  - **Tagline trimmed** to "quality time per dollar" (dropped "· steam value hunter").
-  - **View tools never reflow** when switching Table↔Grid: the top-bar sort shows on **mobile
-    only**; **desktop grid gets its own `#gridSort`**, so `bar-main` is identical across desktop
-    table/grid. `body.narrow` splits the two sort controls; `bindSortControl()` wires both and
-    `setSort()`/`syncMobileSort()` keep them in step.
-  - **Tag AND/OR match mode** — `state.tagMode` (`"and"` default / `"or"`), toggled by the
-    prominent **"Required tags match: ALL / ANY"** control that sits **on one line with the
-    click-cycle legend** (right-aligned) in the Tags section — the legend's base `flex-basis:100%`
-    is overridden inside `.tagmode-bar` so the toggle doesn't wrap to a second, empty row. Required
-    (✓) tags combine with AND or OR; **exclude (✕) is always AND-NOT**. Serialized as `tagmode=or`.
-  - **Grid card expand fix** — an open card originally *grew to fit* its info so the `Steam ↗`/
-    `Close ✕` actions weren't clipped on tiny mobile cells. **Superseded by R4's fixed-height cards.**
-
-**Refinements — Round 4 (grid sizing + tag mini, 2026-07).** ✅ SHIPPED.
-  - **Fixed-height grid cards** — cards use a fixed height (`--gh`: 188px desktop / 176px phone)
-    instead of an aspect ratio, so a card is the **exact same size collapsed or expanded** — clicking
-    never resizes it and the grid never reflows (the deliberate "bigger cards, one height" trade;
-    replaces R3's grow-to-fit). The box art fills via `object-fit:cover` (centre-cropped); `--gh` is
-    sized to fit the expanded KPIs + actions, with `.ginfo{overflow-y:auto}` as a safety net.
-    **Superseded by R5** — the fixed height cropped the art and clipped titles; R5 sizes the art by
-    aspect ratio and drops `--gh`.
-  - **Collapsed-Tags mini chips** — when the Tags section is folded, the currently-picked tags render
-    as chips in the header's otherwise-empty middle band (`.tag-mini` / `#tagMini`, built by
-    `buildTagMini()` from `buildTagRail()`). The overlay is `pointer-events:none` (clicking the empty
-    area still opens the section) while the chips are `pointer-events:auto` and reuse the normal
-    `[data-tag]` cycle handler (require → exclude → clear). Hidden when the section is open or empty.
-
-**Refinements — Round 5 (grid card rebuild + inline tag chips, 2026-07).** ✅ SHIPPED.
-  - **Grid cards rebuilt "art on top, info below"** — *replaces R4's fixed-height cover-crop.* The
-    art frame is sized by **`aspect-ratio:460/215`** (the exact Steam header ratio) with
-    `object-fit:cover`, so header art fills it with **no crop and no letterbox matte** at any column
-    width. Below it sits a **solid, darker (`#080b12`) info panel**: a stats line with **QTPD (left)
-    and the best-available rating (right)** over the title. The on-art QTPD badge is gone (moved into
-    the panel); the discount stays as a corner flag. Card height = art + panel (no fixed `--gh`);
-    columns share width so each row stays even. Tap flips to a slimmed details overlay
-    (**price / length / `Steam ↗`**). Rating uses a fallback chain **playtime-weighted (`wr`) →
-    recent 30-day (`recent_pct`) → all-time (`rating_pct`)**, colour-coded via `ratingColor()`, with
-    a `wtd`/`30d`/`all` source tag + review-count tooltip — **superseded by R6** (now the plain
-    Steam all-time %).
-  - **Compact summary: tags are inline cycle-chips.** `renderSummary()` no longer emits a single
-    `tags +2 −1` chip that deep-links into the bar (the old L2 behaviour). The interacted tags now
-    render as their **own `.chip` inc/exc cycle-chips at the end of the line** (shared with the
-    collapsed Tags header via `interactedTagChipsHTML()`), each re-cyclable in place; an **`all`/
-    `any`** chip (`data-sumf="tagmode"`) trails when >1 tag is required and opens its own popover. So
-    **every** summarized filter now edits in place or via a small popover — only the input-heavy
-    search / price / QTPD-range chips still deep-link into the expanded bar.
-  - **Tag linger + fade (mis-click undo).** Cycling a tag back to neutral no longer removes its chip
-    instantly: it **holds full opacity ~3s, then fades to 0 over ~3s** (JS-driven opacity via
-    `state.tagLinger` map + `startLingerTicker()`, robust to re-renders), then is dropped so the line
-    may collapse. Re-cycling the chip during the window cancels the fade. Applies to both the summary
-    line and the collapsed Tags mini-rail.
-  - **Folded filter bar tidy-up.** `.bar-filters` vertical padding → 0; the wishlist row gets its own
-    balanced vertical space and is centred; the divider between the wishlist row and Value is dropped
-    so the input isn't sandwiched between two lines (desktop only — mobile keeps the reordered
-    wishlist row and its separator).
-  - **QTPD range control** — the current value moved **onto the label line** (`QTPD range 0 to ∞`)
-    and the `(log scale, fits current results)` note demoted to a **hover tooltip** on the label.
-
-**Refinements — Round 6 (mobile overhaul, 2026-07).** ✅ SHIPPED.
-  - **Grid is the default view on mobile** — `init()`: no saved `qtpd.view` + `isNarrow()` ⇒ `grid`
-    (desktop still defaults to Table; a saved choice always wins).
-  - **Leaner mobile top bar that fits the screen.** The dedicated top-bar **Sort** control is gone on
-    mobile (`#mobileSort` hidden everywhere) — sorting lives on the summary line's "sorted by …" chip.
-    **Per-page** is now hidden on mobile **grid** too (was only hidden in card layout); infinite scroll
-    loads 100/page. The `meta` count line is hidden in the compact browsing nav (dupes the summary).
-    Bar gaps/padding tightened so nothing runs off the right edge.
-  - **Sticky filter bar (mobile / `body.narrow`).** While browsing (compact), the nav is
-    `position:sticky; top:0` so filters are always one tap away. When the panel is **open**, the
-    **"Hide filters" bar is `position:sticky; bottom:0`** — pinned to the viewport bottom so the close
-    control is never scrolled off-screen, releasing to scroll up at the panel's end. Needs a
-    non-clipping ancestor, so `.barwrap` drops `overflow:hidden` on mobile (rounded corners moved to
-    the first/last child).
-  - **Random hidden until filtered** — `#randomBtn` shows only when ≥1 non-default filter is active
-    (toggled in `renderSummary()` from the `active` flag; applies on all screen sizes).
-  - **Scroll-collapsed sticky nav** — once scrolled >24px on mobile, `body.nav-scrolled` (a passive
-    scroll listener) hides the logo/search/view/tools row (`.bar-main`) inside the sticky compact
-    nav, leaving just the filter summary + the Show-filters bar; scrolling back to the top or opening
-    the filters restores it. Keyed on `body.narrow` so **Card and Grid behave identically**.
-  - **Warning-styled Reset on the summary line** — a coral, uppercase **`Reset`** floats to the line's
-    top-right whenever filters are active (`.sumreset` / `data-reset`, reuses the real `#clear`),
-    replacing a trip into the panel for "Reset all filters".
-  - **Leaner tools cluster labels** (all screens, keeps the mobile bar from overflowing once Random
-    appears): Random renamed **`Lucky`** (no dice icon), **CSV** keeps letters only (no ⬇), and Copy
-    link is **icon-only `🔗`** (with `title` + `aria-label="Copy link"`).
-  - **Grid card rating simplified** to the **plain Steam all-time review %** (number + `%`, no
-    source letter) — supersedes R5's weighted→recent→all-time fallback; `bestRating()` removed.
-  - **Grid card info panel finalised** — *supersedes R5's "stats line over the title".* The **title
-    leads on top**; the **Steam rating shares the title's line, right-aligned** (`.gmeta-top` =
-    `.gname` flex:1 + truncate, `.grate` flex:none); **QTPD sits on its own line below**. Reads
-    title-first with the rating at a glance and QTPD as the standout metric underneath.
-
-**Implementation reference (as-built).** For a future session touching this UI (`index.html`):
-  - **State additions** (on `state`): `view` (`"table"|"card"|"grid"`), `tagMode` (`"and"|"or"`),
-    `tagLinger` (Map `tag → clearedAt` ms, for the summary/mini chip fade — R5).
-  - **localStorage keys:** `qtpd.view`, `qtpd.sections` (JSON `{value,quality,tags:bool}`).
-  - **Body classes** (set by `applyLayout()` + inline FOUC script): `layout-card`, `grid-view`,
-    `narrow`. Breakpoint `matchMedia("(max-width:1374px)")`; phone tier `@media (max-width:560px)`.
-  - **URL params:** existing set + **`tagmode`** (see §2/§ URL-state; `syncURL`/`loadFromURL`).
-  - **Key functions:** view — `applyLayout` / `setView` / `updateViewButtons` / `gridCardHTML`
-    (+ `bestRating` for the card's rating fallback — R5);
-    accordions — `applySections` / `toggleSection` / `sectionActiveCounts` / `updateSectionCounts`
-    / `markChangedControls` (per-control gold highlight);
-    summary+popover — `renderSummary` / `openSummaryEditor` / `buildOptionPopover` /
-    `buildSortPopover` / `showPopover`; tag chips + fade (R5) — `interactedTagChipsHTML` /
-    `tagChipHTML` / `buildTagMini` / `startLingerTicker` / `applyLingerOpacities`;
-    utilities — `randomPick` / `openExportPopover` / `doExportCSV` (`CSV_COLS`) / `copyLink`;
-    sort — `bindSortControl` / `syncMobileSort`.
-  - **Shared-class gotcha — `.gmeta` is used by BOTH views.** In the table it's the title cell
-    (`min-width:136px; flex:1`); in a grid card it's the dark info panel (`background:#080b12`).
-    The grid rule **must** be scoped `.gcard .gmeta`, not bare `.gmeta`, or the near-black panel
-    background bleeds behind table-view titles as an ugly black block. (Regression fixed post-R6.)
-  - **"Changed from default" = gold (single source of truth).** A control at its default reads
-    neutral (blue-ish, grey pressed state); a control the user has *manually adjusted* lights up
-    gold, so an opened accordion shows at a glance what's been touched (mirrors the header's
-    `N active` badge, one level down). `markChangedControls()` (called from `renderMeta` after
-    `updateSectionCounts`) adds `.changed` to the pressed button(s) of any non-default group.
-    Its default definitions **must** stay in lockstep with `sectionActiveCounts()` — both read the
-    same `state` fields against the same defaults (`qBasis:"after"`, `hltbMetric:"main"`,
-    `hltbQuality:"real"`, `minScore:0`, `ratingSource:"recent"`, `revBands:[1,2,3,4]`, full trend
-    set, `updatedWithin:"any"`, `ptMetric:"up"`; price bounds `null`; `qRangeTouched:false`). CSS
-    hooks: `.seg button[aria-pressed="true"].changed`, `.numinput.changed` (price boxes),
-    `.rangelabel.changed` (QTPD range). The old blanket `.seg.metric [aria-pressed]` gold was
-    removed — it lit "Main" gold even untouched, defeating the whole signal. Sale/Wishlist toggles
-    are gold whenever pressed (pressed == changed for them); **tag chips keep their own green/red
-    include/exclude colours** and are deliberately left out of the gold convention.
-  - **Test harness:** `.claude/launch.json` "sample" config serves a copy of `index.html` with no
-    JSON so the app falls back to its 6-game `SAMPLE` — fast, deterministic UI testing.
-
-**Future work / still open.**
-  - **Short-link encoder for filter URLs — ⏳ NOT DONE (design pending).** QTPD packs full
-    filter/sort state into the querystring, so shared links are long. Encode into a short code
-    that expands back. *Architecture tension (see §1 static-first, §12 Worker):* a **true**
-    shortener needs persistent storage. Two routes: **(1)** client-side reversible compression
-    (LZ-string / bitfield in the URL fragment — 100% static, no storage/abuse surface, but only
-    "shorter", not "a few digits"); **(2)** Worker + KV `{shortcode → state}` (truly short random
-    codes, but adds a stateful write path with abuse/expiry concerns — departs from static-first).
-    **Recommendation: evaluate (1) first;** reach for (2) only if genuinely-short codes are a hard
-    requirement.
-  - **Mobile progressive disclosure (per-card fold, §3.2 / §11)** — partially addressed by the
-    grid tap-to-expand; the spec-sheet **card** view still shows all fields at once.
-
-**Decided against (do NOT re-add without cause).** Permanent L2 summary sentence (space waste →
-collapsed-only); a "weighted" *filter* control (only a column exists); per-page selector on mobile
-(removed as noise); forcing the "Card" view on desktop / "Table" on mobile (they render identically
-per device, so the off-device button is disabled instead).
+**Cross-references still work.** The subsection numbers were deliberately preserved: a `§3.1`
+/ `§3.2` / `§3.4` citation anywhere in this repo now resolves to ROADMAP.md, and every other
+`§N` still means this file. ROADMAP.md opens with a **status index** of the genuinely-open
+items, so you no longer have to scan for `[Done]` tags to find them.
 
 ---
 
@@ -494,6 +100,32 @@ preserves the credential-persistence behavior the `fetch → rebase → push` co
 depends on; v6/v7 changed it. Every writer job has `permissions: contents: write` and a
 `concurrency` group so a job never overlaps itself.
 
+**Naming scheme.** Workflow `name:` fields carry a tier prefix so the Actions sidebar sorts by
+pipeline hierarchy:
+
+| Prefix | Meaning | Workflows |
+|---|---|---|
+| `0.` | **Publish** — puts the site live; the one job a user actually sees the output of | `pages.yml` |
+| `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
+| `2.x` | Refreshers — enrich games the scraper already found | prices, recent, playtime-raw, updates, hltb, tags, pics |
+| `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary, playtime-ratings |
+| `4.x` | Monitors / generated docs | shard-health, coverage |
+| `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
+
+**14 workflow files, 13 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. Numbering is cosmetic — nothing keys off
+it — with one exception: `coverage.yml`'s `workflow_run` trigger matches the scrape workflow's
+**exact `name:` string**, so renaming `scrape.yml` silently breaks it (see the callout below).
+
+> **A 15th workflow appears in the Actions sidebar that is not in this repo:
+> `pages-build-deployment`.** GitHub injects it automatically whenever **Settings → Pages →
+> Source** is set to *"Deploy from a branch."* It cannot be renamed, numbered, or deleted from
+> `.github/workflows/` — it is not a file. Its presence means the Pages source was **never
+> switched to "GitHub Actions"**, which is exactly the condition `pages.yml`'s own header
+> warns about: the branch build keeps firing on *every* push to `main` — i.e. on every scraper
+> checkpoint commit, ~50+ rebuilds/day — alongside the scheduled deploy. Switching the source
+> to **GitHub Actions** retires it and is the whole point of `pages.yml` existing. See §16.
+
 **Steam-facing scrapers** (compete for the storefront rate budget only where noted):
 
 | Workflow / script       | Owns file           | Cadence          | Notes |
@@ -501,9 +133,12 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `scraper.py`            | `games.json`, `catalog.json` | long runs, off-peak | The only finder of *new* games. |
 | `price_and_sale.py`     | `prices.json`       | frequent         | Fast-changing layer: price, discount, sale end. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
-| `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (1 bucket/run); commits every 30 min + on shutdown. |
-| `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
-| `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
+| `playtime_refresh.py`   | `playtime_raw/NN.json` | `23 1,4,7,10,13,16,19,22 * * *` (8×/day) | Per-review playtime, sharded (1 bucket/run); commits every 30 min + on shutdown. |
+| `updates_refresh.py`    | `updates_raw/NN.json` | `53 2,8,14,20 * * *` (4×/day) | Store **events** endpoint (`event_type` → major/regular/minor, §9.5). Sharded, 1 bucket/run, quiet cron slots at `STORE_DELAY=1.6` so it can't starve prices/catalog. |
+| `updates_summarize.py`  | `updates.json`      | chained step in `updates.yml` | Pure local recompute from `updates_raw/`; no Steam calls. |
+| `pics_refresh.py`     | `pics_raw/shard_NN.json` (64) | `20 3 * * *` (daily), time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days 14` incremental drain, checkpoint-commits every 15 min. |
+| `pics_summarize.py`   | `pics/shard_NN.json` (64) | chained step in `pics.yml` | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
+| `pics_merge.py`       | `pics.json`              | chained step in `pics.yml` | Flattens the 64 `pics/` shards to one slim browser file, keeping only `FRONTEND_KEYS` (§9.6). |
 
 **Non-Steam scrapers** (hit their own sites, so no Steam-budget contention):
 
@@ -530,9 +165,13 @@ its one file with the standard `fetch → rebase → push` pattern.
 
 *History:* these were previously two standalone workflows (`playtime-summary.yml` :47, and
 `playtime-ratings.yml` :51, both `*/4`), which ran the summarizers every 4h independent of the
-raw scrape. Folding them into `playtime-raw.yml` made those two workflows redundant, so **both
-were retired** — the chained steps supersede them and guarantee the summarize-right-after-scrape
-ordering the split schedule couldn't.
+raw scrape. Folding them into `playtime-raw.yml` made those standalone schedules redundant, so
+**both `schedule:` triggers were removed** — the chained steps supersede them and guarantee the
+summarize-right-after-scrape ordering the split schedule couldn't. **The two `.yml` files still
+exist** as `workflow_dispatch`-only escape hatches, named `3.1 Playtime medians [2.3 / manual]`
+and `3.2 Playtime-weighted ratings [2.3 / manual]` — the `[2.3 / manual]` tag marks that job 2.3
+is now their sole *scheduled* trigger. (An earlier revision of this paragraph said the two
+workflows had been deleted; they were cron-stripped and renamed, not removed — see §16.)
 
 **Generated-doc workflows** (recompute a Markdown file from the live data; no Steam calls,
 each single-writes its `.md`):
@@ -570,7 +209,9 @@ is the current live one-off — it force-queues every null-`last_update_ts` game
 the News-API fix (§16); deletable once the queue drains. The earlier HLTB-estimation backfill
 (`backfill-hltb.yml` / `hltb_backfill.py`) and `backfill_updates.py` were also run-once utilities
 of this kind; they have since been **run and removed**, which is the intended lifecycle for these
-once their one-time job is done.
+once their one-time job is done. The three `[DELETE]`-tagged IGDB workflows followed the same
+lifecycle in Jul 2026 — tagged when Phase C was retired, then actually deleted (§8.1, §16).
+**The tag is a standing instruction, not decoration: a `[DELETE]` workflow is meant to go.**
 
 ---
 
@@ -578,37 +219,62 @@ once their one-time job is done.
 
 All frontend files are compact JSON (minified, `ensure_ascii=False`). Lean summaries use
 **positional arrays** with a `_format` key in the meta so the frontend can read by index.
+Nearly every file carries a `generated_at` + `count` envelope around its payload key; the
+shapes below are verified against the live files (2026-07-22).
 
-**`games.json`** — `{ "games": [ { appid, title, url, release_ts, rating_pct, review_count,
-tags/genres, last_update_ts, … } ] }`. The catalog the frontend iterates.
+**`games.json`** — `{ generated_at, count, "games": [ { appid, title, url, release_date,
+release_ts, rating_pct, review_count, tags, last_update_ts, scraped_at, is_free,
+price_initial, price_final, discount_pct } ] }`. The catalog the frontend iterates, and the
+**only array-shaped** data file (everything else is keyed by appid). Note it carries its own
+price snapshot from the initial scrape: `prices.json` overrides it, but a game scraped before
+the price job reaches it still renders a price. `scraped_at` is the staleness key every
+refresh trigger in §6 compares against, and `is_free` lives **here**, not in `prices.json`.
 
-**`catalog.json`** — the scraper's own state: what's been seen, the `pending` room of
-unreleased games waiting on their release date, cursor/enumeration bookkeeping. Not read by
-the frontend. Notable keys: `skipped` (permanent — confirmed non-games), `pending` (`{appid:
-release_ts|null}`), `force_refresh`, `seeds_ledger`, and **`recheck`** (`{appid: strikes}` —
-apps whose `appdetails` returned `success:false`, retried across runs until they resolve or
-hit `MAX_RECHECK`, then moved to `skipped`; §3.1). Ints in memory, string keys on disk.
+**`catalog.json`** — the scraper's own state; not read by the frontend. Seven keys:
+`last_sync` (enumeration watermark), `skipped` (permanent — confirmed non-games), `pending`
+(`{appid: release_ts|null}` — the unreleased waiting room), `priority` (rebuilt each run from
+the active seeds, §6), `force_refresh` (the drained-first forced queue), `seeds_ledger`
+(`{seed_key: {kind, resolved_ts, ids, forced_applied}}`), and **`recheck`** (`{appid:
+strikes}` — apps whose `appdetails` returned `success:false`, retried across runs until they
+resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1). Ints in memory, string keys on
+disk.
 
-**`prices.json`** — `{ "prices": { "<appid>": { price_initial, price_final, discount_pct,
-discount_end, is_free } } }`. The fast-changing layer; `discount_end` drives the live
-countdown.
+**`prices.json`** — `{ generated_at, country, count, "prices": { "<appid>": { price_initial,
+price_final, discount_pct, discount_end, scraped_at } } }`. The fast-changing layer;
+`discount_end` drives the live countdown. There is **no `is_free` here** — free games are
+simply absent (the job tracks only the non-free base) and the flag lives in `games.json`.
+Because `price_and_sale.py` rebuilds the whole set each run rather than patching it, a
+mid-run checkpoint legitimately holds a **partial** set — a count well below the ~106k
+non-free base is a pass in progress, not data loss.
 
-**`hltb.json`** — `{ "<appid>": { hltb_main, hltb_extra, hltb_complete, hltb_avg,
-raw: {…}, hltb_est: ["extra", …], fetched_at } }`. `raw` holds the ground-truth values as
-returned by HLTB; the top-level values may include estimates filled from the typical
+**`hltb.json`** — `{ generated_at, count, "hltb": { "<appid>": { main, extra, complete, avg,
+match, fetched_at, raw: { main, extra, complete }, est?: ["extra", …], attempts?: N } } }`.
+The four time fields are **unprefixed** (`main`, not `hltb_main`). `raw` holds the ground-truth
+values as returned by HLTB; the top-level values may include estimates filled from the typical
 main/extras/completionist ratio (§8 — corpus-wide, magnitude-bucketed, not genre-based despite
-the name this feature used to go by). `hltb_est` lists which of the three were estimated
-(drives the blue flag). `fetched_at`
-is groundwork for the priority re-scrape.
+the name this feature used to go by). Three keys are conditional or easy to miss:
+- **`est`** (present on 18,829 entries) lists which of the three legs were estimated — this is
+  what drives the blue flag. It is `est`, not `hltb_est`; reading the wrong name is what
+  produced an old "0 estimated" claim in COVERAGE.md (§8).
+- **`attempts`** (present on 90,704 entries — every blank) is the miss counter that drives
+  Phase B's attempt-scaled blank-retry curve (§8.1). Incremented on a miss, cleared on a match.
+- **`match`** is the HLTB title actually matched (or `null`), useful for auditing a bad match.
 
-**`tags.json`** — `{ "tags": { "<appid>": ["Roguelike", …] } }`. SteamSpy user tags; the
-frontend falls back to Steam genres when a game is absent, so the column is never blank.
+`fetched_at` drives the priority re-scrape ordering.
 
-**`recent.json`** — `{ "recent": { "<appid>": { recent_pct, recent_count,
-recent_scraped_at } } }`. The 30-day score; staleness gates the trend arrow.
+**`tags.json`** — `{ generated_at, count, "tags": { "<appid>": ["Roguelike", …] },
+"store_checked": [appid, …] }`. SteamSpy user tags. `store_checked` is the ledger of appids
+already tried against the Steam store-page tag fallback, so a game that SteamSpy can't serve
+isn't re-fetched from the store every run. PICS `store_tags` is now the frontend's primary tag
+source with this file as the coverage fallback (§9.6), and Steam genres behind that, so the
+column is never blank.
+
+**`recent.json`** — `{ generated_at, window_days, count, "recent": { "<appid>": { recent_pct,
+recent_count, recent_scraped_at } } }`. The 30-day score; staleness gates the trend arrow.
 
 **`playtime_raw/NN.json`** (64 shards) — the big working set, owned by `playtime_refresh.py`.
-Each shard: `{ "bucket": N, "nshards": 64, "shard_ver": V, "games": { "<appid>": { "reviews":
+Each shard: `{ generated_at, per_game_cap, "bucket": N, "nshards": 64, "shard_ver": V, count,
+"games": { "<appid>": { "reviews":
 { "<recommendationid>": { playtime, voted_up, … } }, "summary": {…} } } }`, holding only games
 where `(appid // 10) % 64 == N`. Reviews are keyed by **`recommendationid`** (identity, not
 cursor position) so re-runs catch new reviews and updated playtimes without duplication. Kept
@@ -617,10 +283,11 @@ because one file would blow past GitHub's 100 MB limit (§9).
 
 **`playtime.json`** — lean frontend summary, owned by `playtime_summarize.py`:
 ```
-{ "generated_at", "count",
+{ "generated_at", "per_game_cap", "min_segment", "count",
   "_format": ["median_up_min", "median_down_min", "n_up", "n_down"],
   "playtime": { "<appid>": [ median_up_min, median_down_min, n_up, n_down ] } }
 ```
+`min_segment` (3) is echoed from the summarizer so the threshold below is self-describing.
 `median_up` = recommenders' median playtime (minutes), `median_down` = non-recommenders'.
 Games with **fewer than 3 reviews on a side** get no median for that side; games with no
 trustworthy median at all are omitted entirely.
@@ -637,6 +304,38 @@ trustworthy median at all are omitted entirely.
   "playtime_ratings": { "<appid>": [ steam_pct, raw_pct, capped_pct, n ] } }
 ```
 See §10 for what the three percentages mean and why.
+
+**`updates_raw/NN.json`** (64 shards) — owned by `updates_refresh.py`:
+`{ "bucket": N, "nshards": 64, "shard_ver": 1, generated_at, "games": { "<appid>": {
+"events": { "<gid>": { ts, type, et } }, scraped_at } } }`. `type` is the resolved tier
+(`major`/`regular`/`minor`), `et` the raw Steam `event_type` int it came from (§9.5).
+Note the `shard_ver` here is versioned **independently** of playtime's.
+
+**`updates.json`** — lean frontend summary, owned by `updates_summarize.py`:
+```
+{ "generated_at", "windows": [30,90,180,365], "tiers": ["major","regular","minor"],
+  "games": { "<appid>": {
+    last_major_ts, last_regular_ts, last_minor_ts, last_any_ts,
+    "counts": { "30d"|"90d"|"180d"|"365d"|"over365": {major, regular, minor} },
+    "dates":  { major: [ts,…], regular: […], minor: […] } } } }
+```
+The `dates` arrays are capped at `DATES_CAP` (60) per tier and exist so the **frontend
+recomputes windows against the live clock** — stored counts would rot daily (§9.5).
+
+**`pics_raw/shard_NN.json`** (64 shards) — `{ "_schema": "pics_raw_v2", "_shard": N,
+"_updated", "apps": { "<appid>": { …trimmed PICS `common` block…, "_ts": fetched_at } } }`.
+Source of truth; `_ts` is the per-game staleness key `--stale-days` compares against.
+
+**`pics/shard_NN.json`** (64 shards) — `{ "_format": "pics_v2", "_shard": N, "_doc": {…},
+"apps": {…} }`. The summarized projection; `_doc` is a self-describing field glossary.
+Note both PICS shard sets use `shard_NN.json`, **not** the bare `NN.json` of the other two.
+
+**`pics.json`** — `{ "_format": "pics_v2_frontend", "count", "apps": { "<appid>": {…} } }`.
+The merged browser file, restricted to `pics_merge.py`'s `FRONTEND_KEYS` (§9.6). Read by
+`index.html` and — read-only — by `scraper.py` for the review-drift trigger (§6).
+
+**`lookups/{tags,genres,categories}.json`** — small static ID→name maps for decoding the PICS
+IDs client-side. Committed, refreshed manually via `pics_lookups.py` / `build_category_map.py`.
 
 ---
 
@@ -685,7 +384,8 @@ wait for the next cron — a hard ~6h floor under every cooldown, which would ma
 12h tiers largely cosmetic (a nominal 6h tier delivering 6–12h intervals, averaging ~9h).
 `requeue_due_young()` re-checks every stored game within `REVIEW_LIVE_MAX_AGE_DAYS` (30) of
 release at each checkpoint (~10 min) and splices the newly-due ones to the **front** of the
-refresh queue. That population is precomputed once (~2.6k games), so the re-scan is free
+refresh queue. That population is precomputed once (**2,421 games** at the 2026-07-22
+snapshot — the ladder's first three bands), so the re-scan is free
 next to re-scanning all ~124k records. `handled` makes it idempotent within a run — a game
 already scraped this run is never re-queued, so it cannot loop. This is what actually buys
 the near-real-time end of the ladder; without it, halving the cooldowns below 6h would
@@ -889,15 +589,23 @@ small to justify a standing scheduled job and its maintenance surface (an overla
 also showed IGDB and HLTB disagree per-game, sometimes >10×, often because one source has junk
 data — e.g. HLTB had RAGE at 0.6h, The Walking Dead at 0.5h). Decision: drop it.
 
-**Current dormant state:** `igdb.yml` has its `schedule:` trigger removed (`workflow_dispatch`
-only — it will not run on its own; a manual dispatch is the only way to fire it). The frontend
-merge was **reverted** — `index.html` no longer fetches `hltb_igdb.json` and is clean HLTB-only.
-The Phase C self-check (`check_phase_c`) was **removed** from `hltb_selfcheck.py`. Left in-repo
-but unreferenced: `hltb_igdb.py`, `hltb_igdb.json` (stale blank-heavy data), `igdb_wipe.py` +
-`igdb-wipe.yml`, and the diagnostics `igdb_probe.py` / `igdb_probe2.py` + `igdb-probe.yml` (a
-manual dropdown workflow; probe2's TEST 5 is what measured the 8,829-record ceiling). Nothing
-reads any of these. To fully revive: restore the `external_game_source` query (already correct
-in the file), re-add the schedule, re-add the frontend merge, and re-add the self-check.
+**Current dormant state (workflows deleted 2026-07).** All three `[DELETE]`-tagged IGDB
+workflows — `igdb.yml`, `igdb-wipe.yml`, `igdb-probe.yml` — have now been **removed from
+`.github/workflows/`**, so IGDB has no entry point at all: not scheduled, not
+manually-dispatchable. They are recoverable from git history if ever needed. The frontend merge
+was **reverted** — `index.html` no longer fetches `hltb_igdb.json` and is clean HLTB-only. The
+Phase C self-check (`check_phase_c`) was **removed** from `hltb_selfcheck.py`.
+
+**Still in-repo but now fully orphaned** (no workflow, no import, nothing reads them):
+`hltb_igdb.py`, `hltb_igdb.json` (~34 MB of stale blank-heavy data), `igdb_wipe.py`, and the
+diagnostics `igdb_probe.py` / `igdb_probe2.py` (probe2's TEST 5 is what measured the
+8,829-record ceiling). Keeping them costs a one-time ~34 MB in git history that deleting them
+would **not** reclaim, so deletion is cosmetic — they are retained as the evidence trail behind
+the retirement decision.
+
+**To fully revive:** restore the `external_game_source` query (already correct in the file),
+**write a new workflow file** (the old ones are gone — recover from git history or start
+fresh), re-add the frontend merge, and re-add the self-check.
 
 **IGDB implementation notes (for a future revival).** `hltb_igdb.py` batches appid lookups at
 `BATCH = 200` per `external_games` query, paced at `IGDB_DELAY = 0.30`s. It reuses
@@ -907,7 +615,8 @@ equivalent, so it's **always** left for the shared estimator to fill, never sour
 `main` itself has a quiet fallback: `times_from_ttb` uses IGDB's "normally" completion time
 when present, but silently substitutes the much-shorter "hastily" (speed-run) time when
 "normally" is absent — worth knowing before trusting an IGDB-sourced `main` figure at face
-value. `igdb_wipe.py` (manual-dispatch-only, typed-confirmation-gated `igdb-wipe.yml`) resets
+value. `igdb_wipe.py` (formerly manual-dispatch-only via the typed-confirmation-gated
+`igdb-wipe.yml`, now deleted) resets
 `hltb_igdb.json` to an empty `{"igdb": {}}`; it exists because the original deprecated-filter
 bug (`category = 1`) poisoned ~110k entries with fresh-timestamp blanks the worklist would
 otherwise have skipped for 90 days, and a clean wipe was the only way to give the fixed query a
@@ -938,17 +647,18 @@ and walking deeper into unseen ones. Because a single end-of-run commit would ma
 scrape fragile to runner interruption, it commits **every 30 minutes plus on graceful
 shutdown**.
 
-**Sharded storage (the 100 MB wall).** The per-review set is too big for one file: at
-~15 KB/game the full addressable set is ~1.1 GB, and GitHub **hard-rejects any single file
-over 100 MB**. A monolithic `playtime_raw.json` hit that ceiling at ~6,850 games (98 MB) —
+**Sharded storage (the 100 MB wall).** The per-review set is too big for one file: at the
+~10.4 KB/game it actually measures (`SHARDS.md`) the full addressable set is ~820 MB, and
+GitHub **hard-rejects any single file over 100 MB**. A monolithic `playtime_raw.json` hit that ceiling at ~6,850 games (98 MB) —
 every push was rejected, and because the old commit code swallowed the error the runs went
 *green with nothing committed*, silently freezing the pipeline for ~2 days. So the raw set is
 split into **64 shards under `playtime_raw/NN.json`**, keyed by
 `shard_of(appid) = (appid // 10) % 64`. The `// 10` is load-bearing: Steam appids are ~100%
 multiples of 10, so a plain `appid % 64` piles every game into the *even* buckets (odd buckets
 get ~nothing) — dividing by 10 first strips that factor and spreads them evenly (measured
-max/mean ~1.05 vs ~2.07). Each run processes **one bucket**, chosen by `GITHUB_RUN_NUMBER % 64`,
-so it loads/commits only ~18 MB and rotates through all 64 buckets over ~64 runs.
+max/mean 1.06). Each run processes **one bucket**, chosen by `GITHUB_RUN_NUMBER % 64`,
+so it loads/commits only ~12 MB (measured median; max 13.27 MB — see `SHARDS.md`) and rotates
+through all 64 buckets over ~64 runs.
 `ensure_sharding()` is idempotent and version-gated by `SHARD_KEY_VER`: on the first run it
 splits the legacy monolith and `git rm`s it; if `shard_of()` ever changes it reshards in place
 (a plain file upload is all it takes); otherwise it's a fast no-op.
@@ -971,8 +681,10 @@ the scrape queue at all. Below the floor there aren't enough reviews to survive 
 ≥3-per-side split, so scraping them would spend storefront budget for a median that gets nulled
 out anyway. The gate is applied at candidate selection against the **live `review_count` from
 `games.json`**, so it's "skip for now," not permanent exclusion — a game re-qualifies the moment
-its review count crosses 10. In practice this removes ~41k unusable games from the queue (~44%),
-leaving the full request budget for the ~52k games that can actually yield data.
+its review count crosses 10. Measured at the 2026-07-22 snapshot: the floor removes **45,312**
+games (~36% of the 124,210 catalog), leaving an addressable set of **78,898** — of which raw
+playtime already covers **78,796 (99.9% of addressable)**. The backfill is effectively done; the
+job's remaining work is re-walking covered games on their two-track cooldown, not filling.
 
 **Sentiment split.** Data is split by the **thumbs-up/down recommendation** — ▲ recommended
 (green) vs ▼ not-recommended (red) — tied to the rating system itself, not persona labels
@@ -1033,7 +745,8 @@ that blew past the 100 MB wall for playtime, so `updates_raw/NN.json` is sharded
 10), one bucket per run rotated by `GITHUB_RUN_NUMBER`, `shard_ver`-gated reshard hook for any
 future key change. (It's far lighter than playtime — timestamps, not review objects — so the
 100 MB ceiling is distant. NOTE: `shard_health.py` currently monitors only `playtime_raw/`;
-pointing it at `updates_raw/` too is a cheap future add if these shards ever grow.)
+pointing it at `updates_raw/` too is a cheap future add if these shards ever grow — tracked in
+[ROADMAP.md](ROADMAP.md) §3.5.)
 
 **Fixed: the reshard path didn't used to commit (2026-07).** `updates_refresh.py`'s
 `ensure_sharding()` → `reshard_all()` (triggered whenever the stamped `shard_ver` doesn't match
@@ -1074,56 +787,90 @@ News-API `last_update_ts` is null, it backfills from `last_any_ts` (max of the t
 timestamps); and (b) as the source for the **Updated column's cadence badge** — `upd_c90` /
 `upd_c365` summed across tiers from the `counts` windows (§11). The standalone **sortable
 Updated column** (between Released and Tags) is now shipped, sorting by update recency and
-showing the cadence badge where covered. One step remains: **the precedence flip** — make the
-event-based layer primary and News-API the fallback. It is **gated on shard coverage**, not on
-code: today only 1/64 `updates_raw/` shards are populated (rotation just started; full sweep
-every ~16 days at 4×/day), so `updates.json` covers far fewer games than the News-API's ~58%
-non-null `last_update_ts`. Keep News-API primary (the column sorts by it for now) until the
-shards cover materially more games, then flip precedence. See §3.1.
+showing the cadence badge where covered.
+
+**The precedence flip — still not done, but for a different reason than first written.** The
+plan was to make the event layer primary and News-API the fallback once shard coverage caught
+up. The original gate ("only 1/64 shards populated, rotation just started") **has been met and
+is no longer the blocker**: as of the 2026-07-22 snapshot all **64/64 `updates_raw/` shards are
+populated**, holding 78,663 games (63.3% of catalog). The real limiter is now structural:
+
+- `updates_refresh.py` gates on `MIN_REVIEWS_FLOOR = 10`, so ~45k sub-floor games are **never**
+  event-scraped. Raw coverage is therefore capped near 63% — and it has already reached that
+  ceiling (78,663 scraped vs a 78,898-game addressable set).
+- `updates.json` only carries games with **≥1 stored update event**, so it lands at **51,065
+  games (41.1%)** — the other ~27.6k scraped games genuinely have no qualifying events.
+- The News-API `last_update_ts` has **no review floor** and covers **76,666 games (61.7%)**.
+
+So a global precedence flip would *lose* recency data on ~25k games. The event layer currently
+fills only **886** of the News-API's nulls. The honest conclusion: **keep News-API primary**,
+and if the flip is ever wanted it has to be **per-game** ("prefer `last_any_ts` where present,
+else `last_update_ts`") rather than a blanket swap — or `updates_refresh.py`'s review floor has
+to drop first. See §3.1.
 
 ---
 
 ## 9.6 PICS metadata layer (AI disclosure, tags, Deck, reviews, family-share)
 
-A two-layer pipeline harvesting the Steam PICS `common` app-info block via an
+A **three**-layer pipeline harvesting the Steam PICS `common` app-info block via an
 anonymous CM session (`ValvePython/steam`). Full design + decision record in
-`PICS_METADATA_PIPELINE.md`.
+`PICS_METADATA_PIPELINE.md`. All three layers run as chained steps of the one
+daily `pics.yml` job.
 
-**Layer 1 — `pics_raw/` (source of truth).** `pics_refresh.py` batch-fetches the
-`common` block, trims junk + nested-trims `steam_deck_compatibility` at ingest
+**Layer 1 — `pics_raw/shard_NN.json` (source of truth).** `pics_refresh.py` batch-fetches
+the `common` block, trims junk + nested-trims `steam_deck_compatibility` at ingest
 (schema `pics_raw_v2`), and writes 64 shards keyed by the existing
 `(appid // 10) % 64`. One writer per shard file. Per-game `_ts` enables
-incremental refresh. Time-budgeted with periodic checkpoint flush (playtime
-pattern).
+incremental refresh via `--stale-days` (the script's own default is **0** = refetch
+everything; `pics.yml` passes **14**, overridable per dispatch). Time-budgeted with
+periodic checkpoint flush (playtime pattern).
 
-**Layer 2 — `pics/` (frontend view).** `pics_summarize.py` projects each game to
-a lean, index-friendly record storing **IDs, not names** (Option B, see spec
-§4.5). The frontend loads three static maps once (`tags.json`, `genres.json`,
-`categories.json`) and builds filter indexes from the IDs — filter on IDs
-(fast set-membership), decode to names only for visible labels.
+**Layer 2 — `pics/shard_NN.json` (summarized view).** `pics_summarize.py` projects each
+game to a lean, index-friendly record (format `pics_v2`) storing **IDs, not names**
+(Option B, see spec §4.5), and precomputes the three derived filter flags (`ea`,
+`adult`, `vr_only`). The frontend loads three static maps once (`lookups/tags.json`,
+`genres.json`, `categories.json`) and builds filter indexes from the IDs — filter on
+IDs (fast set-membership), decode to names only for visible labels.
 
-**Field → source → refresh:**
+**Layer 3 — `pics.json` (the browser file).** `pics_merge.py` flattens the 64 `pics/`
+shards into one file (format `pics_v2_frontend`) keeping **only the keys in its
+`FRONTEND_KEYS` set**. Everything else stays backend-only in `pics/`. The 19 keys that
+reach the browser are: `name`, `type`, `tags`, `genres`, `pgenre`, `cats`, `rev`,
+`deck`, `ai`, `fse`, `eula`, `controller`, `state`, `released`, `mc`, `ea`, `adult`,
+`vr_only`, `art`.
 
-| Field (pics.json) | From `common` key | Coverage | Meaning |
-|---|---|---:|---|
-| `tags` | `store_tags` | 99.9% | ranked tag IDs (decode via `tags.json`) |
-| `genres`, `pgenre` | `genres`, `primary_genre` | 99.9% / 100% | genre IDs (decode via `genres.json`); **EA = genre-70** |
-| `cats` | `category` | 100% | feature IDs (decode via `categories.json`) — modes, controller, VR |
-| `rev` | `review_score`, `review_percentage` | 64.0% | `[score_1_9, pct]` |
-| `rev_bomb`, `review_bombed` | `review_score_bombs`, `review_percentage_bombs` | 0.1% | de-bombed score; present only when divergent. **Backend only — not surfaced.** |
-| `deck` | `steam_deck_compatibility` | 27.2% | `{cat, os, machine, tested_ts, online_solo?, hdr?}` — cat 1=Unsupported/2=Playable/3=Verified |
-| `controller` | `category` (28/18) | 34.2% | `full` / `partial` — 100% derivable from `cats` |
-| `content_desc` | `content_descriptors` | 22.7% | int list; 1=violence 2=gore 3=mature 4=nudity/sexual **5=container (not adult)** |
-| `ai` | `aicontenttype` | 10.2% | 0 none / 1 pre-generated / 2 live-generated |
-| `fse` | `exfgls` (presence) | 0.7% | family-share excluded |
-| `eula` | `eulas` (presence) | 8.9% | has custom EULA |
-| `dev`/`pub` | `associations` | 99.9% / 99.6% | structured names. **Backend only (parked).** |
-| `franchise` | `associations` | 23.5% | structured franchise name(s). **Backend only (parked).** |
-| `langs`/`audio` | `supported_languages` | 99.9% / 44.0% | supported + full-audio codes. **Backend only (parked).** |
-| `mc` | `metacritic_score` | 3.3% | scalar |
-| `released`, `orig_released` | `steam_release_date`, `original_release_date` | 98.7% / 9.1% | unix ts scalars |
-| `state` | `releasestate` | 98.8% | `released` / `prerelease` — live/coming-soon (**not** the EA signal) |
-| `art` | `header_image` | ~100% | store header path: `<sha1>/<file>` (modern) or `<file>` (legacy). Un-prefixed; `index.html` `artUrl()` picks the CDN base by whether a `/` is present. **Only authoritative art source** — appid-derived URLs 404 on the `store_item_assets` scheme. |
+**Field → source → refresh.** The **Layer** column says how far each field travels:
+`pics.json` = shipped to the browser; `pics/` = summarized but dropped at the merge
+(backend-only); `pics_raw/` = never summarized.
+
+| Field | Layer | From `common` key | Coverage | Meaning |
+|---|---|---|---:|---|
+| `tags` | `pics.json` | `store_tags` | 99.9% | ranked tag IDs (decode via `lookups/tags.json`) |
+| `genres`, `pgenre` | `pics.json` | `genres`, `primary_genre` | 99.9% / 100% | genre IDs (decode via `lookups/genres.json`); **EA = genre-70** |
+| `cats` | `pics.json` | `category` | 100% | feature IDs (decode via `lookups/categories.json`) — modes, controller, VR |
+| `rev` | `pics.json` | `review_score`, `review_percentage` | 63.9% | `[score_1_9, pct]`. Also read by `scraper.py` as the review-drift refresh trigger (§6). |
+| `deck` | `pics.json` | `steam_deck_compatibility` | 27.3% | `{cat, os, machine, tested_ts, online_solo?, hdr?}` — cat 1=Unsupported/2=Playable/3=Verified |
+| `controller` | `pics.json` | `category` (28/18) | 34.2% | `full` / `partial` — 100% derivable from `cats` |
+| `ai` | `pics.json` | `aicontenttype` | 10.4% | 0 none / 1 pre-generated / 2 live-generated |
+| `fse` | `pics.json` | `exfgls` (presence) | 0.7% | family-share excluded |
+| `eula` | `pics.json` | `eulas` (presence) | 8.9% | has custom EULA |
+| `mc` | `pics.json` | `metacritic_score` | 3.3% | scalar |
+| `released` | `pics.json` | `steam_release_date` | 98.7% | unix ts scalar |
+| `state` | `pics.json` | `releasestate` | 98.8% | `released` / `prerelease` — live/coming-soon (**not** the EA signal) |
+| `art` | `pics.json` | `header_image` | ~100% | store header path: `<sha1>/<file>` (modern) or `<file>` (legacy). Un-prefixed; `index.html` `artUrl()` picks the CDN base by whether a `/` is present. **Only authoritative art source** — appid-derived URLs 404 on the `store_item_assets` scheme. |
+| **`ea`** | `pics.json` | *derived* — `genres` contains 70 | 9.5% | **Early Access** filter flag, precomputed by `pics_summarize.py` |
+| **`adult`** | `pics.json` | *derived* — `content_desc` has 3 **or** 4 | 6.3% | **Adult gate** flag (blur + 18+ badge), precomputed |
+| **`vr_only`** | `pics.json` | *derived* — `cats` contains 54 | 4.3% | **VR-Only** filter flag, precomputed |
+| `content_desc` | `pics/` | `content_descriptors` | 22.7% | int list; 1=violence 2=gore 3=mature 4=nudity/sexual **5=container (not adult)**. Dropped at merge — the browser reads the derived `adult` flag instead. |
+| `orig_released` | `pics/` | `original_release_date` | 9.0% | unix ts (EA→1.0 carriers only) |
+| `rev_bomb`, `review_bombed` | `pics/` | `review_score_bombs`, `review_percentage_bombs` | 0.1% | de-bombed score; present only when divergent. **Backend only — not surfaced.** |
+| `dev`/`pub` | `pics/` | `associations` | 99.9% / 99.6% | structured names. **Backend only (parked).** |
+| `franchise` | `pics/` | `associations` | 23.5% | structured franchise name(s). **Backend only (parked).** |
+| `langs`/`audio` | `pics/` | `supported_languages` | 99.9% / 44.0% | supported + full-audio codes. **Backend only (parked).** |
+
+*(Coverage figures are live as of the 2026-07-22 `COVERAGE.md` snapshot, measured over all
+124,120 summarized records — they supersede the 120-game probe sample in
+`PICS_METADATA_PIPELINE.md §2` and are regenerated by `coverage.py` on every scrape.)*
 
 **Lookup maps** (`pics_lookups.py` + `build_category_map.py`, refreshed rarely):
 `tags.json` (live from `IStoreService/GetTagList`), `genres.json`,
@@ -1166,9 +913,15 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
     positive exclusion signal *only*: absence does not prove shareability (PUBG,
     Destiny 2 restrict at the account layer with no flag). So Exclude means "no
     known block", and the tooltip says exactly that.
-  - **URL:** `flags=` lists the `only` keys and `noflags=` the `hide` keys. Each
-    list sets only the keys it names, so the two never clobber each other, and
-    `flags=` keeps its pre-tri-state meaning — old shared links still resolve.
+  - **URL (as built — the two lists don't cover all six).** `flags=` lists the
+    `only` keys and `noflags=` the `hide` keys, but only for the **four** tokens in
+    the `TRI` table: `ea`, `eula`, `fse`, `vr`. Each list sets only the keys it
+    names, so the two never clobber each other, and `flags=` keeps its
+    pre-tri-state meaning — old shared links still resolve. The remaining two
+    presence flags get **their own params** — **`ai=hide|only`** and
+    **`adult=hide|only`** — as do the two graded controls, **`ctrl=full|partial`**
+    and **`deck=verified|playable|unsupported`**. All six are still one *UI*
+    schema; only the serialization splits.
   - Flags is the widest cluster in the bar (8 groups / ~23 buttons), so it alone
     trims 3px of horizontal button padding to hold ONE row; it wraps to two below
     ~1870px, which is fine.
@@ -1259,10 +1012,18 @@ into one object per game (one O(n) pass — important at ~68k+ games), then rend
 and sorts entirely client-side. Until real JSON exists it renders bundled `SAMPLE` data.
 
 **QTPD computation.** `computeQ(game, basis)` = `(selected HLTB hours × rating%) ÷ price`,
-where *basis* picks the **Sale** (after-discount) or **Full** price, and the selected HLTB
-hours follow the **HLTB metric** toggle (main / +extras / 100% / avg). Null for free games
-and games with no usable HLTB value. The score is recomputed on toggle, never stored.
-(Internal sort key: `qtpd`.)
+where *basis* picks the **Sale** (after-discount, the default) or **Full** price, and the
+selected HLTB hours follow the **HLTB metric** toggle (main — the default — / +extras / 100% /
+avg). Null for free games and games with no usable HLTB value. The score is recomputed on
+toggle, never stored. (Internal sort key: `qtpd`.)
+
+**Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
+But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
+exactly `{free}`), the QTPD column switches to **`freeScore()`** = `hours × rating%` with no
+price division, so free games can at least be ranked *against each other* by quality-weighted
+length. `colValue()` is the single accessor the column, the sort, the value-meter and the QTPD
+range slider all read, so the swap is consistent everywhere. Any other price-type selection
+uses the normal price-based score.
 
 **The table (12 columns).** In order: Game · Reviews · Trend · **Weighted** · Price / Sale ·
 Sale ends · Released · **Updated** · Tags · **Playtime** · HLTB · QTPD. (**Trend** sits directly
@@ -1333,6 +1094,26 @@ after Reviews — it's derived from them — and **Price + Discount are merged**
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
   neutral color, so a full-price value is never mistaken for a discount deal.
 
+**Collapsible Tags column (desktop table only).** The Tags header carries a `><` toggle
+(`#tagsToggle`) that folds the whole column away, setting `body.tags-collapsed` and persisting
+the choice in `localStorage["qtpd.tagsCollapsed"]`. Tags is the widest low-density column, so
+folding it is the cheapest way to buy width for the content that benefits most: the reclaimed
+space goes to **Game**, whose thumbnail grows from **150×57 to 180×68** and whose title gets
+more room before truncating. The table's `min-width` drops **1324 → 1218px** to match (the
+Tags track's own minimum), so the horizontal-overflow floor moves with it. Scoped
+`:not(.layout-card)` throughout — the toggle is meaningless in Card and Grid, where there is no
+column grid to reclaim.
+
+**Three views, not two.** `VIEWS = ["table", "card", "grid"]`, chosen from the switcher in
+`.bar-tools` and persisted in `localStorage["qtpd.view"]`. **Table and Card are the same
+"detailed" view relabelled per device** — Table is desktop-only, Card is mobile-only, and
+`setView()` coerces one to the other across the 1374px breakpoint (the off-device button is
+dimmed). **Grid** is the third, device-independent view: a box-art grid of `gridCardHTML()`
+cards (Steam header art at `aspect-ratio:460/215` over a dark info panel with title + Steam
+rating on one line and QTPD below; tap to flip to a price/length/`Steam ↗` overlay). **Grid is
+the default on mobile**, Table on desktop; a saved choice always wins. Full as-built record,
+including the six refinement rounds, in **§3.4**.
+
 **Responsive / card layout (single-column spec sheet, 2026-07 redesign).** The table is for the
 desktop width range; a **fluid table alone cannot fit a phone** (twelve columns at legible
 minimums sum to ~1324px). So below **1374px** `<thead>` hides and each row becomes a
@@ -1344,27 +1125,55 @@ release → updates → tags) driven by CSS **`order`**, decoupled from the tabl
 Long/technical headers are **relabeled** on mobile (Reviews→**Rating**, HLTB→**Length**,
 Price / Sale→**Price**), and cells whose value is only "no data" (no active sale, no weighted
 rating, no trend, no playtime) are **dropped via `:has()`** so no dead "—" lines clutter the card.
-A **~560px** breakpoint tightens type and spacing. Because the sortable `<thead>` is hidden here,
-sorting is exposed through a **native `<select>` Sort control** (plus a direction toggle) in the
-bar — the mobile stand-in for clicking a column header; it drives the same `sortKey`/`sortDir`
-state and is kept in sync by `syncMobileSort()` on header clicks and URL restore. *(This
-superseded the earlier "every `<td>` a label→value line" card and its ~560px HLTB-priority tweak
-— both gone.)* The one caveat: CSS `order` changes visual order only, so assistive-tech reads
-cells in table (DOM) order; progressive disclosure of secondary fields behind a tap is the
-remaining open item (§3.2).
+A **~560px** breakpoint tightens type and spacing. *(This superseded the earlier "every `<td>` a
+label→value line" card and its ~560px HLTB-priority tweak — both gone.)* The one caveat: CSS
+`order` changes visual order only, so assistive-tech reads cells in table (DOM) order;
+progressive disclosure of secondary fields behind a tap is the remaining open item
+([ROADMAP.md](ROADMAP.md) §3.2 / §3.4).
 
-**Filters & controls.** Title search · on-sale-only · min rating (any/60+/70+/80+/90+) ·
-min & max price · min-reviews bands (0/10/100/1k/5k+, independent toggles, gaps allowed) ·
-review-trend multi-toggle · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **QTPD range**
-log-slider that fits current results · **tag rail** (click to require → exclude → clear,
-with live per-tag counts, two-tier with a "+N more" expander). The rail groups tags into three
-fixed categories — **Players & Mode / Genre / Style, Theme & Feel** — via a hardcoded
-`TAG_GROUPS`/`TAG_CAT` taxonomy, plus a `CANON_GROUPS` synonym map that canonicalizes
-near-duplicate tags (e.g. different "co-op" spellings collapse to one chip) before counting
-and display. Score controls: **QTPD price
-basis** (Sale/Full) and **HLTB metric** (main/+extras/100%/avg) both feed `computeQ`;
-**HLTB data** (all incl. estimates / real only) — **real is the default** (estimates hidden
-and not used for the selected metric).
+**Sorting without a `<thead>` (superseding the "mobile `<select>`" design).** Because the
+sortable header is hidden in Card and Grid, sorting needed another entry point. It was first
+solved with a **native `<select>` Sort control** (`#mobileSort`) in the bar — that control is
+**still in the markup but hidden on every screen size** (R6). Sorting is now reached two ways:
+on mobile via the **`sorted by …` chip** on the compact filter-summary line (which opens a sort
+popover), and in **desktop Grid** via its own **`#gridSort`** bar — split so `bar-main` never
+reflows when switching Table↔Grid on desktop. Both are wired by `bindSortControl()`, and
+`setSort()` / `syncMobileSort()` keep every entry point, the header arrow, and the URL in step.
+
+**Filters & controls.** All of it lives in **four collapsible accordion sections** whose
+open/closed state persists in `localStorage["qtpd.sections"]` (§3.4 L1). Defaults per group are
+**leftmost** (repo convention, §3.4 R3), and any control moved off its default lights up **gold**
+via `markChangedControls()`.
+
+- **Value** — **QTPD price basis** (Sale *(default)* / Full) · **HLTB metric** (Main *(default)*
+  / +Extras / 100% / Avg) · **HLTB data** (Real *(default)* / All incl. estimates) ·
+  **price type** (All / Full / Sale / Free — an independent multi-toggle, URL `pc`; this
+  **replaced the old boolean on-sale-only filter**) · min & max price · **QTPD range**
+  log-slider that fits current results.
+- **Quality** — min rating (any/60+/70+/80+/90+) · **Reviews sort by** (30-day *(default)* /
+  All-time) · review-trend multi-toggle · min-reviews bands (0/10/100/1k/5k+, independent
+  toggles, gaps allowed) · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **Playtime sort**
+  (▲ *(default)* / ▼).
+- **Flags** — the PICS cluster (§9.6): six tri-state Any/Exclude/Only presence flags (Early
+  Access · AI disclosure · Adult content · VR-only · Family-share block · Custom EULA) plus
+  two graded controls (Controller, Steam Deck). Folded by default; no-ops behind the `HAS_PICS`
+  guard when `pics.json` is empty.
+- **Tags** — the **tag rail** (click to require → exclude → clear, with live per-tag counts,
+  two-tier with a "+N more" expander) plus the **`Required tags match: ALL / ANY`** toggle
+  (`state.tagMode`, URL `tagmode`; ALL is the default, and **exclude is always AND-NOT**
+  regardless). The rail groups tags into three fixed categories — **Players & Mode / Genre /
+  Style, Theme & Feel** — via a hardcoded `TAG_GROUPS`/`TAG_CAT` taxonomy, plus a
+  `CANON_GROUPS` synonym map that canonicalizes near-duplicate tags (e.g. different "co-op"
+  spellings collapse to one chip) before counting and display. Folded by default; while
+  folded, the picked tags render as mini cycle-chips in the header band (§3.4 R4).
+
+Outside the accordions: the **title search**, the **wishlist import** row (a global action,
+§12), and — when the bar is collapsed — the **filter summary line** of clickable chips with
+inline popover editors, a **`Reset`** chip, and the **`sorted by …`** chip that is how sorting
+is reached on mobile (§3.4 L2, R5, R6). The `.bar-tools` cluster holds the **view switcher**
+(Table · Card · Grid) and **`Lucky`** (random pick from the filtered set, shown only once a
+filter is active), **`CSV`** (column-picker export of the whole filtered set) and **`🔗`**
+(copy the current state URL).
 
 The **QTPD logo wordmark doubles as a filter toggle** — clicking it opens/closes the whole
 filter nav (identical to the "Show / Hide filters" collapse handle, which stays). The logo is a
@@ -1385,11 +1194,28 @@ Two selector toggles live in the filter bar and do **not** sort on their own:
   **only if** Playtime is already the active sort. It uses the neutral segmented-control
   styling — the green/red lives in the header and cells (semantic), not on the toggle.
 
-**State in the URL.** Every filter/sort choice is serialized to the querystring
-(`q, inc, exc, sale, basis, hltb, hq, minscore, rev, pmin, pmax, trend, upd, wishonly,
-ratesrc, pt, sort, dir, per, qmin, qmax`) and restored on load, so any view is a shareable
-link. Defaults are omitted from the URL (e.g. `hq` only appears when not `real`, `pt` only
-when not `up`). Pagination is infinite-scroll at 100 / 500 / 2000 per page.
+**State in the URL.** Every filter/sort choice is serialized to the querystring by `syncURL()`
+and restored by `loadFromURL()`, so any view is a shareable link. Defaults are omitted (e.g.
+`hq` only appears when not `real`, `pt` only when not `up`), which keeps shared links short and
+means a bare URL is the default view. **The full set is 28 params:**
+
+| Group | Params |
+|---|---|
+| Search & tags | `q`, `inc`, `exc`, `tagmode` |
+| Value | `pc`, `basis`, `hltb`, `hq`, `pmin`, `pmax`, `qmin`, `qmax` |
+| Quality | `minscore`, `rev`, `trend`, `upd`, `ratesrc`, `pt` |
+| Flags (PICS, §9.6) | `flags`, `noflags`, `ai`, `adult`, `ctrl`, `deck` |
+| Sort & paging | `sort`, `dir`, `per` |
+| Wishlist | `wishonly` |
+
+Two things are deliberately **not** serialized: the **hidden-games list** (session-only, see
+*Thumbnails & hiding*) and the three `localStorage` preferences — `qtpd.view`,
+`qtpd.sections`, `qtpd.tagsCollapsed` — which are per-device chrome, not the query a link is
+meant to reproduce. The `qmin`/`qmax` range is written only once the slider is manually moved
+(`qRangeTouched`), since it otherwise auto-fits the result set. Pagination is infinite-scroll
+at 100 / 500 / 2000 per page (the selector is hidden on mobile). *(Historical note: the boolean
+`sale` param was removed when the on-sale-only toggle became the three-way `pc` price-type
+filter; old links carrying `sale` are simply ignored.)*
 
 **Thumbnails & hiding.** Header art with a hover-enlarge popover, sourced from the PICS
 `art` field (§9.5) and falling back to a content-verified chain of appid-derived URLs for
@@ -1429,12 +1255,14 @@ something."
 |---|---|---|---|---|
 | name, appid, release, rating %, review count, `last_update_ts` | `games.json` | `scraper.py` | `scraped_at` | age-tiered by time since release (6h → 15d, `REVIEW_TIERS`, re-checked mid-run under 30d); plus Steam `last_modified` and PICS review-drift (§6) |
 | price, discount, sale-end | `prices.json` | `price_and_sale.py` | `scraped_at` | no cooldown — whole non-free base re-batched ~3h |
-| tags | `tags.json` | `tags_refresh.py` | **none** | fetch-once, **no rescrape** (see Future work) |
+| tags | `tags.json` | `tags_refresh.py` | **none** | fetch-once, **no rescrape** ([ROADMAP.md](ROADMAP.md) §3.5) |
 | recent 30d % / count | `recent.json` | `recent_refresh.py` | `recent_scraped_at` | two-track: active 4d / dormant 30d |
 | HLTB main/extra/complete/avg + `est` | `hltb.json` | `hltb_refresh.py` | `fetched_at` | partial 14d / full 365d; blank backoff 3→30→180d |
 | median playtime ↑/↓ + n | `playtime.json` ← `playtime_raw/` | `playtime_refresh.py` → `playtime_summarize.py` | **none per-game** (proxy: newest review `ts`) | two-track: active 7d / dormant 30d; floor 10 reviews |
 | weighted rating (steam/raw/capped + n) | `ratings.json` ← `playtime_raw/` | `ratings_summarize.py` | inherits `playtime_raw/` | derived on every raw pass |
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
+| header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | single flat window: `--stale-days` (14), daily cron; **no review floor** |
+| tag-name / genre / category decode maps | `lookups/*.json` | `pics_lookups.py`, `build_category_map.py` | **none** | committed static, refreshed manually |
 
 ### Axis 1 — total coverage
 
@@ -1470,7 +1298,8 @@ reported as inline fresh/overdue lines rather than table rows.
 no recent reviews reads as overdue even if freshly walked, so its `overdue` figure is an
 **upper bound** (marked `†` in the table), not exact backlog — unlike Update events, which has
 a real per-game `scraped_at`. An exact figure needs a per-game `scraped_at` added to the shard
-records (Future work). **Tags** have no timestamp at all and are Axis-1-only until one is added.
+records. **Tags** have no timestamp at all and are Axis-1-only until one is added. Both are
+tracked in [ROADMAP.md](ROADMAP.md) §3.5.
 
 ### Invariants
 
@@ -1531,9 +1360,47 @@ Each job's knobs live at the top of its own script:
 - **`FORCE_RESERVE_FRAC` (0.5) / `NEW_RESERVE_FRAC` (0.25)** (scraper) — guaranteed minimum
   share of each run's pops for the forced-re-scrape drain and for new coverage, so neither
   can be starved by a large refresh queue. Both `0` = pure priority order.
-- **`HLTB_MIN_SIMILARITY`** — HLTB title-match threshold.
-- **`PRICE_BATCH`** — appids per batched price call.
-- **`RECENT_COOLDOWN_DAYS`** — staleness before a recent score is re-checked.
+- **`STOREFRONT_MIN_INTERVAL` (0.9, env)** (scraper) — the shared storefront rate limiter every
+  `appdetails` / `appreviews` / search call passes through (`storefront_pace()`). This, not the
+  now-deprecated `STEAM_DELAY`, is the scraper's real pacing knob; raise it if 403 rates spike
+  (§16 revert plan).
+- **`MAX_RECHECK` (4, env)** (scraper) — how many runs an app whose `appdetails` returns
+  `success:false` is retried before moving to `skipped`. `success:false` lumps region-locked and
+  transient blips in with dead apps, hence the retries (§5, `catalog["recheck"]`).
+- **`SEED_RESOLVE_TTL` (24h)** (scraper) — how often a term/URL seed is live-re-resolved, so a
+  search term keeps catching newly-released matches (§6).
+- **`HLTB_MIN_SIMILARITY` (0.65)** — HLTB title-match threshold.
+- **`RESCRAPE_PARTIAL_DAYS` (14) / `RESCRAPE_FULL_DAYS` (365)** (hltb) — re-check windows for
+  partial vs complete real triples. **`BLANK_EAGER_DAYS` (3) / `BLANK_BACKOFF_DAYS` (30) /
+  `BLANK_FREEZE_DAYS` (180)** with **`BLANK_EAGER_ATTEMPTS` (3) / `BLANK_BACKOFF_ATTEMPTS` (6)**
+  — the attempt-scaled blank-retry curve (§8.1 Phase B). **`IDLE_DRAIN_MAX` (4000) /
+  `IDLE_DRAIN_SKIP_FROZEN` (True)** — the never-idle drain's per-run cap and frozen-tier skip.
+- **`PRICE_BATCH` (100) / `GETITEMS_BATCH` (50)** — appids per batched `appdetails` price call
+  and per `IStoreBrowseService/GetItems` sale-end call.
+- **`RECENT_COOLDOWN_DAYS` (4)** — staleness before a recent score is re-checked. Its two-track
+  partner is **`NOUPDATE_COOLDOWN_DAYS` (30)**; **`MIN_AGE_DAYS` (45)** skips games too new for
+  Steam to show a recent score at all, and **`RECENT_MIN_COUNT` (10)** is the count below which
+  Steam suppresses it.
+- **Two-track cooldowns (the shared shape).** `recent_refresh.py`, `playtime_refresh.py` and
+  `updates_refresh.py` each classify a game as *active* or *dormant* on
+  **`UPDATE_ACTIVE_DAYS` (90, all three)** — whether `last_update_ts` is within that window —
+  then apply **`COOLDOWN_DAYS` / `NOUPDATE_COOLDOWN_DAYS`**: recent **4 / 30**, playtime
+  **7 / 30**, updates **7 / 45**. `coverage.py` copies all six verbatim so Axis 2 can't drift
+  from the real gates (§11.5).
+- **`TARGET_REVIEWS` (200, env) / `PER_GAME_CAP` (1000) / `SEEN_STREAK_STOP` (50)** (playtime) —
+  how many reviews to aim for per game, the hard per-game ring-buffer ceiling, and the
+  already-seen streak that ends a walk early. `updates_refresh.py` has its own
+  **`PER_GAME_CAP` (200)** and **`EVENTS_COUNT` (50)** per fetch.
+- **`WINDOWS` ([30, 90, 180, 365]) / `DATES_CAP` (60)** (`updates_summarize.py`) — the count
+  windows shipped in `updates.json` and the per-tier cap on the client-recomputable `dates`
+  arrays (§9.5).
+- **`--stale-days`** (CLI, `pics_refresh.py`) — per-game `_ts` age that makes a PICS record due
+  again. The script defaults to **0** (refetch everything); the daily `pics.yml` passes **14**
+  and exposes it as a `workflow_dispatch` input, so 14 is the effective production value and
+  `coverage.py` copies it as `PICS_STALE_DAYS` (§9.6, §11.5).
+- **`QNU_MIN_REVIEWS` (10) / `QNU_LOW_TRICKLE` (3000)** (env, `queue_null_updates.py`) — the
+  high/low review split for the one-off null-`last_update_ts` drain and the per-run cap on the
+  low tier (§16).
 - **`MIN_REVIEWS_FLOOR` (10)** (playtime) — scraper-side eligibility gate: games below this
   many all-time reviews are skipped (can't clear the summarizer's ≥3-per-side split). Checked
   against live `review_count`, so it's skip-for-now, not permanent. Distinct from the ratings
@@ -1559,27 +1426,34 @@ Each job's knobs live at the top of its own script:
 ## 14. Pace, limits, cost
 
 The scraper captures ~1,000–1,200 games/hour (storefront limit ÷ ~2 calls/game). The catalog
-has since reached full coverage — **~122.7k stored** against a ~173k app universe, with the
-fresh frontier essentially exhausted — so `scraper.py` now finishes a run in **~7 minutes** and
-mostly does `last_modified`-triggered refreshes. Faster = raise `RUN_MINUTES` or add off-peak
+has since reached full coverage — **124,210 stored** (2026-07-22 `COVERAGE.md` snapshot)
+against a ~173k app universe, with the fresh frontier essentially exhausted — so `scraper.py`
+now finishes a run in **~7 minutes** of *new-coverage* work and spends the rest of its budget on
+the refresh ladder below. Faster = raise `RUN_MINUTES` or add off-peak
 `cron` times. Cost is **$0** — Actions is free/unlimited on public repos; the only ceiling is
 the 6-hour per-job limit. Each daily commit also keeps the repo active — **GitHub disables
 scheduled workflows after 60 days of no commits**, so the steady commits are load-bearing for
 the whole system staying alive.
 
 **Sizing the age-tiered review refresh (§6).** Measured against the real cohort sizes in
-`games.json` (~68 new released games/day):
+`games.json` (~68 new released games/day); re-counted 2026-07-23 against the live 124,210-game
+file, which is the "live" column:
 
-| age band | cooldown | games in band | refreshes/day | storefront calls/day |
+| age band | cooldown | games in band (live) | refreshes/day | storefront calls/day |
 |---|---|---:|---:|---:|
-| 0–3 d | 6 h | ~204 | 816 | 1,632 |
-| 3–10 d | 12 h | 725 | 1,450 | 2,900 |
-| 10–30 d | 1 d | 1,607 | 1,607 | 3,214 |
-| 30–60 d | 2 d | 2,048 | 1,024 | 2,048 |
-| 60–90 d | 3.5 d | 2,134 | 610 | 1,219 |
-| 90–180 d | 7 d | 6,417 | 917 | 1,833 |
-| 180–365 d | 15 d | 11,043 | 736 | 1,472 |
-| **total** | | **24,178** | **~7,160** | **~14,320** |
+| 0–3 d | 6 h | 188 | 752 | 1,504 |
+| 3–10 d | 12 h | 708 | 1,416 | 2,832 |
+| 10–30 d | 1 d | 1,525 | 1,525 | 3,050 |
+| 30–60 d | 2 d | 2,228 | 1,114 | 2,228 |
+| 60–90 d | 3.5 d | 2,042 | 583 | 1,166 |
+| 90–180 d | 7 d | 6,499 | 928 | 1,857 |
+| 180–365 d | 15 d | 11,004 | 734 | 1,467 |
+| **total** | | **24,194** | **~7,052** | **~14,104** |
+
+Cohort sizes drift a few percent day to day as releases age through the bands; the totals are
+stable to within ~2%, so treat this as a sizing estimate rather than a live figure. The
+`young` set that `requeue_due_young()` re-scans at each checkpoint is the first three bands —
+**2,421 games** at this snapshot.
 
 That is **~3.6 h/day** of run time at `STOREFRONT_MIN_INTERVAL=0.9`. For scale: this
 scraper's *proven* peak is **30,809 games in one day** (2026-07-09, during the null-update
@@ -1590,16 +1464,12 @@ once against a 6-day-old snapshot, ~9.9 h), which shares the run with the forced
 settles within a day or two. Nothing else changes: the other jobs run on separate runner
 IPs with their own budgets.
 
-**Where the remaining headroom is, if this ever needs to go faster.** Roughly a further 2×
-fits inside the window before the *scraper* becomes the constraint — but the binding limit
-past that is Steam's ~200/5min per-IP soft limit and the resulting 403 cooldowns, not the
-clock, so 403 rates are the number to watch rather than run duration. Two levers, in order
-of preference: (1) a **reviews-only pass** — skip `appdetails`, 1 call/game instead of 2,
-halving the cost of the whole ladder; it needs a second per-game timestamp in `games.json`
-(reusing `scraped_at` would let a light pass mask a genuine `last_modified` refresh) plus
-matching `coverage.py` / doc updates. (2) Below a 6h cooldown the **checkpoint interval**
-(`CHECKPOINT_SECONDS`, 10 min) becomes the real granularity floor, since that's how often
-`requeue_due_young()` runs. Neither is needed today.
+**Where the remaining headroom is.** Roughly a further 2× fits inside the window before the
+*scraper* becomes the constraint — but the binding limit past that is Steam's ~200/5min
+per-IP soft limit and the resulting 403 cooldowns, **not the clock**, so 403 rates are the
+number to watch rather than run duration. The two levers for spending that headroom (a
+reviews-only pass at 1 call/game, and the `CHECKPOINT_SECONDS` granularity floor below a 6h
+cooldown) are written up in [ROADMAP.md](ROADMAP.md) §3.5. Neither is needed today.
 
 **Playtime scale-up (storefront budget reallocation).** Because `scraper.py` now uses so little
 of its window, the shared ~200/5min storefront budget has headroom. The playtime raw pass was
@@ -1613,8 +1483,11 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 15. Operational notes & caveats
 
-- **HLTB** matches by title similarity; misses show `—`. First full pass is still completing;
-  the priority re-scrape (partials → blanks → full-real) comes after (§8).
+- **HLTB** matches by title similarity; misses show `—`. **The first full pass is complete** —
+  `hltb.json` now holds an entry for 124,166 of 124,210 games (100.0%), of which **105,337
+  (84.8%) carry real values** and 18,829 (15.2%) are estimate-filled. The job's steady state is
+  now the priority re-scrape ladder (partials 14d → blanks on the attempt-scaled curve →
+  full-real 365d) plus the never-idle drain, not first-pass coverage (§8, §8.1).
 - **HLTB estimates** are clearly marked (blue + tooltip) and auto-replaced once real data
   arrives; they never train the ratio.
 - **Weighted rating** needs public playtime and enough reviews: none below 5, grayed 5–9.
@@ -1623,23 +1496,124 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   zeroes `discount_pct` and resets `price_final` to `price_initial` in the merged in-memory
   record once `discount_end` has passed, not just the countdown UI, so the displayed price
   stays honest between price refreshes.
-- **Dataset size** — the per-review working set is **sharded** (`playtime_raw/NN.json`, 64
-  buckets) because one file would exceed GitHub's 100 MB limit; shards run ~18 MB at full
-  coverage, and `SHARDS.md` monitors headroom (§9). Every other file is single and comfortably
-  under the limit (`games.json` is next-largest at ~59 MB and grows with the catalog — worth an
-  eye, but far from the wall). Adding one weighted-rating number to `playtime.json` is negligible.
+- **Dataset size** — the two per-game working sets are **sharded** (`playtime_raw/NN.json` and
+  `updates_raw/NN.json`, 64 buckets each) because one file would exceed GitHub's 100 MB limit.
+  Measured (`SHARDS.md`, 2026-07-22): the biggest `playtime_raw/` shard is **13.27 MB**, median
+  12.18 MB — ~87 MB of headroom, and the projection at full coverage is still only ~13 MB, so
+  the wall is no longer a near-term concern. `pics_raw/` and `pics/` are sharded 64-ways too.
+  The **largest single file is now `games.json` at 62 MB**, ahead of `pics.json` (39 MB) and
+  `hltb.json` (35 MB) — it grows with the catalog and is the one to keep an eye on, though it
+  is still comfortably clear of the limit. Note `SHARDS.md` monitors **only `playtime_raw/`**;
+  pointing `shard_health.py` at the other three shard sets is a cheap open item (§9.5,
+  [ROADMAP.md](ROADMAP.md) §3.5).
 - **Sandbox limitation** (for maintenance): the dev environment can't reach Steam domains, so
   Steam-dependent code is unit-tested against documented response shapes and verified by
   running it live in Actions.
-- **Table sizing** — column `min-width` floors are reliable, but `max-width` on `<col>` under
-  `table-layout: auto` is best-effort (§11); on an extreme ultrawide a slim column could exceed
-  its ceiling. Firm fix (if ever needed) is a CSS-Grid table with `minmax()` tracks. Whether
-  adding a new column still needs a matching `<col>` under the fluid model is **unconfirmed**
-  and flagged to test (§3.2).
+- **Table sizing — resolved, no longer a caveat.** This entry used to warn that `max-width` on
+  `<col>` under `table-layout: auto` was best-effort and that adding a column might still need a
+  matching `<col>`. Both were answered when the table moved to **CSS Grid `minmax()` tracks**
+  (§11): `minmax()` enforces floor *and* ceiling, so a slim column cannot exceed its max even on
+  an extreme ultrawide, and the `<colgroup>` is now `display:none` and inert — a cell with no
+  matching `<col>` is auto-placed into the same implicit track in header and body, so the layout
+  can't collapse (Playwright-verified at 1700px). §11's *Adding a column* recipe is authoritative.
 
 ---
 
 ## 16. Recent changes
+
+- **Workflow inventory tidied (Jul 2026).** Three changes to the Actions sidebar, plus one
+  finding that needs a repo *setting* changed, not code.
+  1. **The three `[DELETE]` IGDB workflows are gone** — `igdb.yml`, `igdb-wipe.yml`,
+     `igdb-probe.yml` deleted. They had been dispatch-only and unreferenced since Phase C was
+     retired (§8.1); the tag was the standing intent. IGDB now has no entry point at all. The
+     orphaned `.py` files and `hltb_igdb.json` stay as the evidence trail (§8.1).
+  2. **`pics.yml` numbered `2.7`.** It shipped after the renumbering pass and never got a
+     prefix, so it sorted to the bottom of the sidebar despite being a standing daily job. It
+     is a refresher, so it joins the `2.x` block after `2.6 SteamSpy tags`.
+  3. **`pages.yml` numbered `0.`** — it publishes the site, which sits *before* the data
+     pipeline in importance rather than inside its tiers. Sidebar order is now a clean
+     `0 → 1 → 2.x → 3.x → 4.x`, with `[ONE-OFF]` deliberately outside it.
+  - ⚠️ **`pages-build-deployment` is not ours and cannot be renamed.** GitHub injects it
+    automatically while **Settings → Pages → Source** is *"Deploy from a branch."* Its presence
+    in the sidebar means that switch was never flipped — so the branch build is still rebuilding
+    Pages on **every** push to `main`, including every scraper checkpoint commit (~50+/day,
+    each interrupting the last). That is precisely the problem `pages.yml` was written to fix,
+    and it is still unfixed: today the two run *in parallel*. **Action required (UI only, no
+    code): Settings → Pages → Build and deployment → Source → GitHub Actions.** Once switched,
+    `pages-build-deployment` stops firing and disappears from the active list. See §4.
+
+- **Roadmap split out of this file (Jul 2026).** §3 "Community feedback & future work" — the
+  user-feedback backlog, the Lorenzo as-built record, and the nice-to-have list — was ~450
+  lines of *planning* sitting in the middle of a *reference* document, so a planning session
+  had to read the architecture and an architecture lookup had to scroll past a backlog. Moved
+  verbatim to **[ROADMAP.md](ROADMAP.md)**, which gained a **status index** of the
+  genuinely-open items (previously you had to scan every bullet for a `[Done]` tag) and a new
+  **§3.5** collecting the loose ends that had been recorded inline across this document rather
+  than in the backlog — the `shard_health.py` coverage gap, the missing `tags.json` and
+  `playtime_raw/` timestamps, the scraper throughput levers, and the uniform-refresh question.
+  Each of those sites now carries a pointer back to §3.5. **Subsection numbering was preserved
+  deliberately** (§3.1–§3.5), so the ~22 existing `§3.x` citations across the repo still
+  resolve — they now point into ROADMAP.md, while every other `§N` still means this file.
+
+- **Full code-vs-docs audit (Jul 2026).** Every Python script (26), workflow (17) and
+  `index.html` was read against README + ARCHITECTURE and the docs reconciled to the code. No
+  behaviour changed; the corrections worth knowing:
+  - **§4 was missing the whole update-events job.** `updates_refresh.py` / `updates_summarize.py`
+    were documented in §9.5 but absent from the job inventory, as was `pics_merge.py` (the third
+    PICS layer and the actual owner of `pics.json`). Added, with real crons.
+  - **§4 claimed `playtime-summary.yml` / `playtime-ratings.yml` were "retired."** They still
+    exist as `workflow_dispatch`-only workflows — cron-stripped and renamed, not deleted (§16's
+    workflow-renumbering entry already said so; §4 had never been updated to match).
+  - **§9.5's precedence-flip gate was stale and its conclusion is now different.** It said only
+    1/64 `updates_raw/` shards were populated; all 64 are, and the raw layer has hit its
+    review-floor ceiling. The event layer still covers *less* than the News API (41.1% vs
+    61.7%) because of that floor, so a blanket flip would lose data — rewritten to say the flip
+    must be per-game or the floor must drop first.
+  - **§5's schemas had wrong field names and four missing files.** `hltb.json` was documented
+    as `hltb_main`/`hltb_extra`/`hltb_complete`/`hltb_avg`/`hltb_est`; the real keys are
+    unprefixed (`main`, `extra`, `complete`, `avg`) and the estimate flag is **`est`** — the
+    very misreading §8 blames for an old "0 estimated" COVERAGE claim was baked into the schema
+    doc itself. Also missing: `attempts` (the blank-retry counter §8.1's Phase B depends on) and
+    `match`. `prices.json` was documented with an `is_free` field it doesn't have (that lives in
+    `games.json`). `updates.json`, `updates_raw/`, `pics.json`, the two PICS shard sets and
+    `lookups/` had **no schema entry at all**. All verified against the live files and rewritten.
+  - **§9.6's field table conflated `pics/` with `pics.json`.** Eight listed fields never reach
+    the browser (`pics_merge.py` drops them), and the three derived flags the Flags filters
+    actually read (`ea`, `adult`, `vr_only`) weren't listed at all. Table now has a Layer column.
+    The "`flags=`/`noflags=` carry the six presence flags" claim was also wrong — they carry
+    four; `ai` and `adult` serialize as their own params.
+  - **§11 had drifted furthest.** The `sale` boolean filter has been the three-way `pc`
+    price-type toggle for some time; the URL list was missing 8 params; the mobile `<select>`
+    sort it described is hidden on every screen (R6 moved sorting to the summary chip and
+    `#gridSort`); the third **Grid** view, the four accordion sections, the collapsible **Tags
+    column**, and **free-only `freeScore()` mode** were undocumented outside §3.4.
+  - **§15's table-sizing caveat was superseded** by the CSS-Grid `minmax()` migration (both of
+    its open questions are answered in §11), and its HLTB "first pass still completing" line was
+    wrong — HLTB is at 100% entry coverage / 84.8% real.
+  - **Counts refreshed from live data** throughout (catalog 122.7k → 124,210; shard sizes ~18 MB
+    → 13.3 MB max; playtime floor/addressable; §14's ladder table re-counted).
+  - **`PICS_METADATA_PIPELINE.md` audited too** (it is the authority §9.6 defers to, and it had
+    the same layer-count error plus a worse one). §4.2 "Two-layer model" is really **three**
+    layers — `pics_merge.py` was never added to the spec — and its Layer 2 description
+    ("typed, **decoded** projection: tags→names … feature-category booleans") was **Option A**,
+    the alternative §4.5 explicitly rejected and which never shipped. §4.4 specified a
+    parallel-fetch + per-worker-scratch-file architecture that **was never built**:
+    `pics_refresh.py` is single-threaded, has no scratch layer, and writes the shards itself —
+    so "fetchers never write shard files" was exactly inverted. §9's component table was still
+    future-tense and omitted `pics_merge.py` and the lookup builders; §10 repeated its
+    open-items list verbatim twice. All corrected, with the unbuilt design kept as a
+    conditional note for whoever adds parallel fetch. §4.5's "MANDATORY filter-on-IDs" rule
+    turns out to be followed for `cats` and the derived flags but **not for tags** (decoded to
+    names once at merge, then filtered by canonical name) — recorded rather than silently
+    implied. `pics_refresh.py`'s own docstring, which called the permanent Layer-1 archive
+    "raw scratch shards," was corrected to match §4.2.
+  - **`UPCOMING_GAMES_PICS_MEMO.md` re-verified** — parked and still sound. Its load-bearing
+    finding holds exactly: of 51,911 pending games, **exactly one** has a concrete future
+    release date.
+  - **Four code comments corrected** to match: `scraper.py`'s ladder cost estimate (a stale
+    intermediate from the halving commit) and its `young`-set size, a `coverage.py` note
+    that described the adult gate as content-descriptor code 4 when the code gates on 3 **or** 4,
+    and `pics_refresh.py`'s scratch-shard docstring above.
 
 - **Review freshness: age-tiered refresh + PICS drift trigger (Jul 2026).** Fixes new
   releases freezing at their day-one review score. `last_modified` — until now the scraper's
