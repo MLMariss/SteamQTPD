@@ -104,8 +104,10 @@ column; empty when a game has no playtime data) · How Long To Beat (main / main
 completionist + avg) · QTPD at the sale & full price. HLTB values **estimated** from the
 typical main/extras/completionist ratio (when HLTB only reports 1–2 of the 3 times — computed
 corpus-wide, not per-genre despite the name this used to go by) are shown in blue with a hover
-tooltip. Adult games are blurred behind an 18+ tap-to-reveal, and each row has a slim `[x]` to
-hide it for the session.
+tooltip. Adult games are blurred behind an **18+ gate** — click once and it asks "18+?", click
+again to reveal. Revealing only reveals: it never opens the store, because the title beside the
+art is the Steam link. **Right-click undoes** — from the "18+?" prompt or from revealed art it
+goes straight back to hidden. Each row also has a slim `[x]` to hide that game for the session.
 
 - **Weighted** — a review rating where each vote is weighted by how long that player
   actually played (capped at 2× the game's median so no single obsessive dominates), shown
