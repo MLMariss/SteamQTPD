@@ -1901,9 +1901,21 @@ derived from the appid, so derived URLs 404 for those games — including some t
 plain `header.jpg` at all (only `<sha1>/header_alt_assets_1.jpg`), which previously rendered
 as broken images. The chain advances on both a hard error and a "loaded but empty" result,
 because Steam sometimes answers missing art with 200 + a degenerate image rather than a
-clean 404. Adult art is **blurred with an 18+ badge** behind a two-stage reveal (permanent
+clean 404. Adult art is **blurred with an 18+ badge** behind a **three-stage gate** (permanent
 until a real age gate exists); the flag is PICS `content_desc` codes 3/4 (Valve-authoritative),
-falling back to the legacy `ADULT_TAGS` heuristic only for games PICS hasn't covered. Each
+falling back to the legacy `ADULT_TAGS` heuristic only for games PICS hasn't covered.
+
+**The 18+ gate (`adultStage` / `adultSetStage`, shared by the table thumb and the grid card).**
+Stage 1 blurred + `18+` → stage 2 `.confirm` shows `18+?` → stage 3 `.revealed` unblurs.
+**Revealing never navigates.** Stage 3 used to *also* `window.open()` the store, so the
+confirming click unblurred the art and immediately threw you out to Steam — you could never
+look at the image you had just agreed to see. Opening the store is a separate intent with its
+own control: the **title beside the art** is the `<a>` link (and in the grid, the expanded
+card's `Steam ↗`). Art reveals; links navigate. **Right-click undoes**, mirroring the tag
+chips' forward/backward cycle: stage 2 → 1 ("no, I'm not 18") and stage 3 → 1 (re-hide);
+at stage 1 there is nothing to undo, so the browser's own context menu opens untouched.
+Re-hiding also closes the hover-popover, which otherwise only re-checks `revealed` on
+mouseenter and would leave a large un-blurred still on screen. Each
 row has a slim `[x]` hide button; hidden games can be un-hidden, but the hide list is
 **session-only and deliberately excluded from URL serialization** (unlike every other
 filter/sort choice, §11 *State in the URL* below) — a reload or a shared link does not carry

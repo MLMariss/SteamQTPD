@@ -388,10 +388,11 @@
   .thumb .pop{position:fixed; z-index:60; width:380px; height:178px; border-radius:8px; overflow:hidden;
         border:1px solid var(--line); box-shadow:0 14px 40px #000b; display:none; pointer-events:none; background:#0b0f18}
   .thumb .pop img{width:100%; height:100%; object-fit:cover}
-  /* Adult games (PICS content_desc 3/4): blur the art with a two-stage reveal.
-     Stage 0 (default): blurred + "18+" badge, whole thumb is a button.
-     Stage 1 (.confirm): tap once -> "18+?" confirmation prompt.
-     Stage 2 (.revealed): tap again -> unblur + the title link opens the store. */
+  /* Adult games (PICS content_desc 3/4): blur the art behind a three-stage reveal.
+     Stage 1 (default):   blurred + "18+" badge, whole thumb is a button.
+     Stage 2 (.confirm):  click once -> "18+?" confirmation prompt.
+     Stage 3 (.revealed): click again -> unblur. It does NOT navigate — the store link is
+                          the title beside the art. Right-click undoes (see adultSetStage). */
   .thumb.adult img{filter:blur(8px); transform:scale(1.08); transition:filter .18s ease}
   .thumb.adult .pop img{filter:blur(16px); transform:scale(1.06)}
   .thumb.adult{cursor:pointer}
@@ -2108,22 +2109,43 @@ document.body.addEventListener("mouseout", e => {
   if(thumb && !thumb.contains(e.relatedTarget)) thumb.querySelector(".pop").style.display = "none";
 });
 
-// Two-stage 18+ reveal for adult thumbs (PICS content_desc 3/4).
-//   click 1  -> .confirm  ("18+?")
-//   click 2  -> .revealed (unblur) AND open the store page (the intent of the 2nd tap)
-// Non-adult thumbs are unaffected. Revealed thumbs behave normally (hover-enlarge works).
+// ── Three-stage 18+ gate for adult art (PICS content_desc 3/4) ────────────────────────
+// Shared by the table thumbnail and the grid card, so both gates behave identically.
+//   stage 1  blurred + "18+"       (default)
+//   stage 2  .confirm  -> "18+?"   (left click asks)
+//   stage 3  .revealed -> unblurred (left click confirms)
+// REVEALING NEVER NAVIGATES. Stage 3 used to also window.open() the store page, so the
+// confirming click both unblurred the art and threw you out to Steam — you could never
+// actually look at the picture you had just agreed to see. Opening the store is a separate
+// intent and already has its own control: the TITLE beside the art is the `<a>` link (and
+// in the grid, the expanded card's "Steam ↗" action). Art reveals; links navigate.
+//
+// Right-click UNDOES, mirroring the tag chips' forward/backward cycle:
+//   stage 1 -> nothing to undo, so the browser's own context menu opens as usual
+//   stage 2 -> stage 1  ("no, I'm not 18")
+//   stage 3 -> stage 1  (re-hide art that's already been revealed)
+const adultStage = el => el.classList.contains("revealed") ? 3
+                       : el.classList.contains("confirm")  ? 2 : 1;
+function adultSetStage(el, stage){
+  el.classList.toggle("confirm",  stage === 2);
+  el.classList.toggle("revealed", stage === 3);
+  // Re-hiding while the hover-popover is open would leave a big un-blurred still on screen
+  // (the popover only re-checks `revealed` on mouseenter), so close it on the way down.
+  if(stage === 1){ const pop = el.querySelector(".pop"); if(pop) pop.style.display = "none"; }
+}
 document.body.addEventListener("click", e => {
   const thumb = e.target.closest(".thumb.adult");
-  if(!thumb || thumb.classList.contains("revealed")) return;
+  if(!thumb || thumb.classList.contains("revealed")) return;   // revealed -> normal behaviour
   e.preventDefault(); e.stopPropagation();
-  if(!thumb.classList.contains("confirm")){
-    thumb.classList.add("confirm");                 // stage 1: ask
-  } else {
-    thumb.classList.remove("confirm");
-    thumb.classList.add("revealed");                // stage 2: reveal
-    const a = thumb.dataset.appid;
-    if(a) window.open("https://store.steampowered.com/app/" + a, "_blank", "noopener");
-  }
+  adultSetStage(thumb, adultStage(thumb) === 1 ? 2 : 3);
+});
+// Undo for BOTH surfaces. Registered here rather than next to the grid's click handler so
+// the two gates can never drift apart.
+document.body.addEventListener("contextmenu", e => {
+  const el = e.target.closest(".thumb.adult, .gcard.adult");
+  if(!el || adultStage(el) === 1) return;      // stage 1: leave the native menu alone
+  e.preventDefault(); e.stopPropagation();
+  adultSetStage(el, 1);
 });
 
 // ----- tag rail: stable membership (full counts), contextual badges -----
@@ -3338,16 +3360,13 @@ function init(data){
   $("#gridview").addEventListener("click", e => {
     const card = e.target.closest(".gcard"); if(!card) return;
     if(e.target.closest("a")) return;                                   // let the Steam link open
-    // Two-stage 18+ reveal takes precedence over expand on an unrevealed adult card.
+    // The 18+ gate takes precedence over expand on an unrevealed adult card. Same three
+    // stages and the same "reveal never navigates" rule as the table thumb — see the
+    // adultSetStage block. The store stays reachable through the expanded card's "Steam ↗".
     if(card.classList.contains("adult") && !card.classList.contains("revealed")
         && e.target.closest(".gart")){
       e.preventDefault(); e.stopPropagation();
-      if(!card.classList.contains("confirm")){ card.classList.add("confirm"); }
-      else {
-        card.classList.remove("confirm"); card.classList.add("revealed");
-        const a = card.dataset.gappid;
-        if(a) window.open("https://store.steampowered.com/app/" + a, "_blank", "noopener");
-      }
+      adultSetStage(card, adultStage(card) === 1 ? 2 : 3);
       return;
     }
     if(e.target.closest("[data-gclose]")){ card.classList.remove("open"); return; }
