@@ -323,6 +323,10 @@
      divider instead of a mark that only exists in the header. */
   body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"]{
     border-left:1px solid var(--line); border-right:1px solid var(--line);
+    /* Same grid-centring trap as the header (see `thead th`): the cell's chips are hidden,
+       so its content height is ~0 and the seam rendered as a short stub floating in the
+       middle of the row instead of a full-height divider. Stretch it to the row. */
+    align-self:stretch;
   }
   .tablescroll{overflow-x:visible; overflow-y:visible}
   .tablecard{scroll-margin-top:8px}
@@ -334,7 +338,15 @@
   thead tr,tbody tr{display:grid; grid-template-columns:var(--grid-cols); align-items:center}
   thead th{font-family:var(--mono); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
         color:var(--muted); text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none;
-        display:flex; align-items:center; min-width:0}   /* min-width:0 lets cells shrink to their track */
+        display:flex; align-items:center; min-width:0;   /* min-width:0 lets cells shrink to their track */
+        /* The row is a grid with align-items:center, so by default each cell is only as tall
+           as its OWN content and is centred in the track — which puts every header's
+           border-bottom at a different height. Invisible while all headers are plain text,
+           but the collapsed Tags header holds a bordered pill (taller), so its underline sat
+           BELOW its neighbours' and the seam didn't meet the header rule. Stretching every
+           header to the full track height makes the bottom border one continuous line, and
+           the sort arrow (absolutely positioned at the bottom) anchor consistently too. */
+        align-self:stretch}
   thead{position:sticky; top:0; z-index:30; background:#141c2c}   /* whole header sticks; opaque bg so rows don't show through */
   thead th.sortable{cursor:pointer}
   thead th.sortable:hover{color:var(--text)}
@@ -575,8 +587,15 @@
      safe and only genuinely empty space folds. Guards against near-miss clicks. */
   .filter-section.open > .section-body .field,
   .filter-section.open > .section-body .taglegend,
+  .filter-section.open > .section-body .tagsearch,
   .filter-section.open > .section-body .tagmode,
   .filter-section.open > .section-body .grouplabel{cursor:auto; padding:6px; margin:-6px}
+  /* ...but the match-mode control is right-aligned, and the `margin:-6px` shorthand above
+     silently overrode the `margin-left:auto` on .tagmode (specificity 0,4,0 vs 0,1,0) —
+     which is why it used to sit mid-row instead of at the far right. Restore just the left
+     margin here, after the shorthand, keeping the fold-safe negative margins on the other
+     three sides. */
+  .filter-section.open > .section-body .tagmode{margin-left:auto}
   /* The tag rail packs chips 7px apart, where padding+negative margins would make
      neighbouring hit boxes overlap. A ::after ring extends each chip's hit box by 4px
      (>7px gap once both sides count) with zero layout effect — the click still targets
@@ -758,6 +777,23 @@
   .tagmode-bar .taglegend{flex-basis:auto; margin-bottom:0}
   .tagmode{display:flex; align-items:center; gap:9px; margin-left:auto}
   .tagmode-lbl{font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.05em; text-transform:uppercase}
+  /* Tag search — narrows WHICH TAGS ARE OFFERED in the rail, not which games are listed.
+     Sits in the space the match-mode control vacated when it moved right. Sized to the
+     row's existing height so adding it costs no vertical space. */
+  .tagsearch{position:relative; display:flex; align-items:center; flex:0 1 250px; min-width:140px}
+  .tagsearch input{width:100%; appearance:none; background:var(--panel); border:1px solid var(--line);
+        border-radius:9px; color:var(--text); font-family:var(--mono); font-size:12px;
+        padding:6px 24px 6px 24px; outline:none}
+  .tagsearch input::placeholder{color:var(--muted-2)}
+  .tagsearch input:focus{border-color:var(--gold-deep)}
+  .tagsearch .ts-ico{position:absolute; left:8px; color:var(--muted-2); font-size:12px; line-height:1; pointer-events:none}
+  /* Clear (✕) appears only once there's something to clear, so the empty state stays quiet. */
+  .tagsearch .ts-x{position:absolute; right:5px; display:none; appearance:none; background:transparent;
+        border:0; padding:3px; cursor:pointer; color:var(--muted-2); font-size:11px; line-height:1}
+  .tagsearch .ts-x:hover{color:var(--coral)}
+  .tagsearch.has-q .ts-x{display:block}
+  .tagsearch.has-q input{border-color:var(--gold-deep)}   /* gold = changed from default */
+  .tagempty{font-family:var(--mono); font-size:12px; color:var(--muted-2); padding:6px 2px}
   .tagmode .seg button{padding:8px 16px; font-weight:600}
   .tagmode .seg button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
 
@@ -1219,6 +1255,14 @@ try{
             <span class="chip exc"><span class="mk">✕</span>exclude</span>
             <span class="tl-arrow">→ again: clear</span>
           </span>
+          <div class="tagsearch" id="tagSearchBox"
+               title="Filter the tag list by name — typing 'strategy' narrows it to Strategy, Grand Strategy, Turn-Based Strategy, … so you can pick from a shortlist. This filters which tags are OFFERED here; it does not filter the game list. Clear it (✕) to get the full list back.">
+            <span class="ts-ico" aria-hidden="true">⌕</span>
+            <input id="tagSearch" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="Filter tags…" aria-label="Filter the tag list by name">
+            <button class="ts-x" id="tagSearchClear" type="button"
+                    title="Clear — show the full tag list again" aria-label="Clear tag filter">✕</button>
+          </div>
           <div class="tagmode" title="How required (✓) tags combine: ALL = a game must have every required tag; ANY = a game with at least one required tag matches.">
             <span class="tagmode-lbl">Required tags match</span>
             <div class="seg" role="group" aria-label="Required-tag match mode">
@@ -1350,7 +1394,7 @@ const bandOf = rc => {
 };
 
 // ----- state -----
-const state = { data:null, q:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
+const state = { data:null, q:"", tagQuery:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", hltbMetric:"main", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
                 trendSet:new Set(["up","flat","down"]), updatedWithin:"any",
                 qMinVal:0, qMaxVal:0, qMaxUnbounded:true, qDomain:1, qRangeTouched:false,
@@ -2084,6 +2128,11 @@ function computeFullCounts(){
 }
 function buildTagRail(){
   const full = state.fullCounts;
+  // Tag-name search (#tagSearch). Purely a DISPLAY filter over the rail — it never touches
+  // which games are listed, so it is not serialized to the URL and not counted as an
+  // "active" filter. Tag names are stored canonical-lowercase, so a lowercased substring
+  // test is the whole match: "strategy" -> strategy / grand strategy / turn-based strategy.
+  const q = (state.tagQuery || "").trim().toLowerCase();
   // contextual counts over the current (non-range) filtered set
   const ctx = {};
   state.data.games.filter(passNonRange).forEach(g => canonSet(g).forEach(t => ctx[t] = (ctx[t]||0)+1));
@@ -2120,11 +2169,14 @@ function buildTagRail(){
 
   let html = "";
   GROUP_ORDER.forEach(g => {
-    const tags = buckets[g];
+    let tags = buckets[g];
+    if(q) tags = tags.filter(t => t.includes(q));
     if(!tags.length) return;
 
     let foundation, overflow;
-    if(NO_SPLIT.has(g) || tags.length <= TOP_N){
+    // While searching, every match is shown outright — a shortlist you can pick from is the
+    // whole point, so the top-10 / "+N more" split is bypassed rather than burying matches.
+    if(q || NO_SPLIT.has(g) || tags.length <= TOP_N){
       // Show everything, alphabetical. No overflow tier.
       foundation = tags.slice().sort(byName);
       overflow = [];
@@ -2150,7 +2202,8 @@ function buildTagRail(){
     html += `<div class="taggroup" data-group="${esc(g)}"><span class="grouplabel">${g}</span>`
           + `<span class="grouptags">${chips}${moreBtn}</span></div>`;
   });
-  $("#tagrail").innerHTML = html;
+  $("#tagrail").innerHTML = html
+    || (q ? `<div class="tagempty">No tags match “${esc(q)}” — clear the filter (✕) to see them all.</div>` : "");
   buildTagMini();
 }
 // Chips for the currently-interacted tags — required (✓), excluded (✕), plus any just CLEARED and
@@ -3154,6 +3207,24 @@ function init(data){
       document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o === b));
       update();
     }));
+  // Tag-name search. Only the RAIL is rebuilt — the game list is untouched, so this
+  // deliberately does not call update()/render(). Debounced because buildTagRail's
+  // contextual counts are an O(games) pass and we don't want one per keystroke.
+  {
+    const box = $("#tagSearchBox"), inp = $("#tagSearch"), clr = $("#tagSearchClear");
+    let t = null;
+    const apply = v => {
+      state.tagQuery = v;
+      box.classList.toggle("has-q", !!v.trim());
+      clearTimeout(t);
+      t = setTimeout(buildTagRail, 120);
+    };
+    inp.addEventListener("input", () => apply(inp.value));
+    inp.addEventListener("keydown", e => {          // Esc clears without leaving the field
+      if(e.key === "Escape" && inp.value){ e.stopPropagation(); inp.value = ""; apply(""); }
+    });
+    clr.addEventListener("click", () => { inp.value = ""; apply(""); inp.focus(); });
+  }
   $("#qmin").addEventListener("input", () => onRangeInput("min"));
   $("#qmax").addEventListener("input", () => onRangeInput("max"));
 

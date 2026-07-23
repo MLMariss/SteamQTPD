@@ -134,7 +134,10 @@ you've touched.
   playable+ / unsupported).
 - **Tags** — click a tag to require it, again to exclude, again to clear (a visible
   `✓ require → ✕ exclude → clear` legend says so), plus a **Required tags match: ALL / ANY**
-  toggle. Excludes are always AND-NOT.
+  toggle on the right. Excludes are always AND-NOT. A **tag search box** narrows the tag list
+  itself — type `strategy` and you get Strategy, Grand Strategy, Turn-Based Strategy and
+  Strategy RPG to pick from; the ✕ (or Esc) brings the full list back. It only filters which
+  tags are shown, never the games.
 
 Hover any filter toggle for a one-line tooltip explaining it. Click the **QTPD logo** to
 show/hide the whole filter bar; when it's collapsed, your active filters show as clickable
