@@ -501,7 +501,7 @@ depends on; v6/v7 changed it. Every writer job has `permissions: contents: write
 | `scraper.py`            | `games.json`, `catalog.json` | long runs, off-peak | The only finder of *new* games. |
 | `price_and_sale.py`     | `prices.json`       | frequent         | Fast-changing layer: price, discount, sale end. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
-| `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (**up to 12 hottest buckets/run**, hot-first with a round-robin starvation guard — §9); commits every 30 min + per shard. |
+| `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (**up to 24 buckets/run, oldest-scraped first** — a staleness sweep that cycles all 64 shards in ~8 h, §9); commits every 30 min + per shard. |
 | `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
 | `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
 
@@ -987,33 +987,46 @@ so it loads/commits only ~18 MB and rotates through all 64 buckets over ~64 runs
 splits the legacy monolith and `git rm`s it; if `shard_of()` ever changes it reshards in place
 (a plain file upload is all it takes); otherwise it's a fast no-op.
 
-**Multi-shard hot-first scheduling (Jul 2026) — supersedes one-bucket-per-run.** Processing
-exactly one bucket per run capped *any* game's refresh cadence at once per 64 runs — ~8 days at
-8 runs/day — regardless of how hot it was. That made the age-tier ladder below unreachable in
-practice: a game due for a 1-day refresh sat in a shard that only opened every 8th day. The
-shard key is a hash of `appid`, uncorrelated with release date or popularity, so hot games are
-spread uniformly across all 64 buckets — the worst case for one-bucket-per-run.
+**Multi-shard staleness-sweep scheduling (Jul 2026) — supersedes hot-first, which superseded
+one-bucket-per-run.** Processing exactly one bucket per run capped *any* game's refresh cadence
+at once per 64 runs — ~8 days at 8 runs/day. The first fix (work many shards, chosen
+**hottest-first** by due-game count) unblocked the fast-lane tiers but **traded one starvation
+for another**: a stable hot core of ~12 shards won the slots every run and stayed fresh (~0.1 d),
+while every shard *not* in that core fell back to the once-per-run anchor — right back to the
+~8-day tail. Measured on `main`: 23 of 64 shards >5 days stale, worst 8.4 days. That tail is
+exactly where *Assassin's Creed Black Flag Resynced* (shard 27) sat un-refreshed for 8 days
+despite being the single most-overdue hot game in the catalog — because ranking was by a shard's
+*total* due-count and one blazing game can't lift a shard whose total is below the core's.
 
 The constraint was never *one shard per run*; it is **one writer per file**, and that still
 holds exactly: the `steam-playtime-raw` concurrency group guarantees no two raw runs overlap, so
 a single run can open, mutate and commit as many shards as its budget allows with no other job
-ever touching them. A run now works up to `MAX_SHARDS_PER_RUN` (12) buckets:
+ever touching them. A run now works up to `MAX_SHARDS_PER_RUN` (**24**) buckets:
 
 1. **Schedule (no shard bodies read).** The whole catalog is scored against the ladder from
    `games.json` alone — which already carries release date, `review_count` and `last_update_ts`
    — and due games are grouped by shard. Reading no bodies is the point: choosing among 64 ×
    ~18 MB files must not cost ~1.1 GB of I/O. This over-counts slightly (a game whose stored
-   record is already fresh still scores as due), which is fine — it only affects *ranking*.
-2. **Select.** Buckets rank by due-game count, since a shard open (~18 MB read + a commit) is
-   the expensive unit and the hottest shard clears the most backlog per open. The
-   `GITHUB_RUN_NUMBER % 64` bucket is **always included** as a starvation guard, preserving the
-   old rotation's guarantee that every shard is visited at least every 64 runs.
+   record is already fresh still scores as due), which is fine — it only affects *which shards
+   have work*, not the sweep order.
+2. **Select — oldest-scraped first (the sweep).** Buckets are ordered by their stored
+   `generated_at` (read from a ~200-byte file *header*, never the body), oldest first, so every
+   run drains whatever has waited longest. This bounds the full cycle to
+   `ceil(NSHARDS / (shards_per_run × runs_per_day))` — every shard swept on a predictable
+   schedule instead of a hot core hogging the budget. Ties break by due-count (clear the most
+   backlog per open). The `GITHUB_RUN_NUMBER % 64` anchor is kept only as a **floor** for the
+   degenerate case where headers are unreadable; `FORCE_SHARDS` pins specific buckets on demand.
+   **Per-game priority is not lost — it moved to the layer where it can't starve anyone:** the
+   overdue-ratio ladder still orders games *within* a shard, so hot games are served first once
+   their shard opens; the sweep only decides *which shards* open, and guarantees none is skipped.
 3. **Execute.** Shards are loaded, worked and committed **one at a time**, so peak memory stays
    at ~one shard and an interrupted run has already persisted every completed shard. The exact
    eligibility gate is re-applied per shard once its bodies are in hand.
 
-At 12 shards × 8 runs/day that's ~96 shard-visits/day against 64 shards — every shard reachable
-~1.5×/day, versus once per ~8 days before.
+The cap is 24, not 12, because it was free: measured runs cleared 12 shards in ~23 of their
+180-minute budget — 87% idle. At 24 shards × 8 runs/day = 192 shard-visits/day against 64 shards,
+a full sweep of *every* shard completes in **~8 h worst-case**, versus the old ~8-day tail, with
+the time budget still far from binding (raise the cap further for a faster cycle).
 
 **Robust commit.** Each shard commit hard-resets to `origin/main` and re-applies only this
 run's shard before pushing — since only this job writes a given shard, that can never conflict
@@ -1778,6 +1791,17 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   10 d. `min()` only pulls a refresh **forward**: the fresh-release fast lane (12 h – 1.5 d) is
   untouched, and the change redistributes the fixed budget toward hot games rather than adding
   requests (§9).
+- **Playtime staleness sweep — fixes the hot-first tail (Jul 2026).** Hot-first shard selection
+  (rank by due-count) kept a stable ~12-shard core fresh but starved every other shard back to the
+  once-per-run anchor — a ~8-day tail (measured: 23/64 shards >5 d stale, worst 8.4 d). *Black Flag
+  Resynced* (shard 27) sat 8 days stale despite being the most-overdue hot game, because one game
+  can't lift a shard ranked on its *total* due-count. Selection now sweeps **oldest-scraped shards
+  first** (staleness read from a ~200-byte header, not the 18 MB body), bounding the full cycle to
+  `ceil(64 / (shards_per_run × runs_per_day))`. Per-game priority still lives *within* a shard (the
+  overdue-ratio ladder), so hot games are served first once their shard opens — priority moved to
+  the layer where it can't starve anyone. `MAX_SHARDS_PER_RUN` was raised 12 → **24** (runs were
+  idling 87% of their 180-min budget), giving a ~8 h full-sweep cycle; the anchor is retained only
+  as a floor and `FORCE_SHARDS` pins buckets on demand (§9).
 - **HLTB popularity fast lane (Jul 2026).** Re-scrape windows keyed only on entry completeness
   assumed HLTB data is static — true for back-catalogue, false for new releases. *AC Black Flag
   Resynced* held a lone `extra` value from a launch-week fetch while HLTB had since filled a

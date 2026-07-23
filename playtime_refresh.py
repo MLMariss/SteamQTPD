@@ -71,6 +71,7 @@ Do NOT co-schedule it with the other storefront jobs without re-tuning delays.
 import json
 import os
 import random
+import re
 import statistics
 import subprocess
 import sys
@@ -115,40 +116,91 @@ def shard_path(bucket):
     return SHARD_DIR / f"{bucket:02d}.json"
 
 def rotation_bucket():
-    """The round-robin bucket for this run, by CI run number. Retained as the
-    STARVATION GUARD anchor: whatever the hot-first scheduler picks, this bucket is
-    always included so every shard is still guaranteed a visit every ~64 runs even if
-    it never scores hot. Local / manual runs (no GITHUB_RUN_NUMBER) default to 0."""
+    """The round-robin bucket for this run, by CI run number. Kept as a belt-and-braces
+    FLOOR under the staleness sweep: the sweep already guarantees the oldest shards are
+    served first, but if header timestamps are ever unreadable (all equal), this bucket
+    still forces a rotating visit so no shard can be skipped indefinitely. Local / manual
+    runs (no GITHUB_RUN_NUMBER) default to 0."""
     try:
         return int(os.environ.get("GITHUB_RUN_NUMBER", "0")) % NSHARDS
     except ValueError:
         return 0
 
 
-# --- multi-shard, hot-first scheduling ------------------------------------- #
+def shard_last_scraped(bucket):
+    """The shard's LOGICAL last-write time — its stored `generated_at` — read cheaply from
+    just the file header, so the staleness sweep never parses 18 MB x 64. Returns 0 when
+    the shard file doesn't exist yet (a never-written shard is maximally stale -> swept
+    first). Filesystem mtime is deliberately NOT used: a fresh CI checkout stamps every
+    file with the checkout time, erasing the real cadence — only the persisted
+    `generated_at` survives across runners. `generated_at` is written as the first key of
+    each shard (compact JSON), so the first ~200 bytes always contain it."""
+    p = shard_path(bucket)
+    if not p.exists():
+        return 0
+    try:
+        with p.open("rb") as fh:
+            head = fh.read(200).decode("utf-8", "ignore")
+    except OSError:
+        return 0
+    m = re.search(r'"generated_at"\s*:\s*(\d+)', head)
+    return int(m.group(1)) if m else 0
+
+
+def forced_shards():
+    """Buckets pinned into this run via the FORCE_SHARDS env (e.g. '27' or '27,5,60'),
+    processed before the sweep. De-duped, in the order given; out-of-range or non-numeric
+    tokens are dropped. Empty when the env is unset — the normal path."""
+    out = []
+    for tok in os.environ.get(FORCE_SHARDS_ENV, "").replace(" ", "").split(","):
+        if not tok:
+            continue
+        try:
+            b = int(tok)
+        except ValueError:
+            continue
+        if 0 <= b < NSHARDS and b not in out:
+            out.append(b)
+    return out
+
+
+# --- multi-shard, STALENESS-SWEEP scheduling ------------------------------- #
 # WHY THIS EXISTS. The original design processed exactly ONE shard per run
 # (GITHUB_RUN_NUMBER % 64), which capped any individual game's refresh cadence at
-# "once per 64 runs" — ~8 days at 8 runs/day — no matter how hot it was. That made
-# the age-tier ladder below (0-7d -> 1d cooldown) unreachable in practice: a game due
-# for a daily refresh sat in a shard that only opened every 8th day. Hot games are
-# scattered uniformly across all 64 buckets (the shard key is a hash of appid, which
-# has nothing to do with release date or popularity), so a hot backlog is ALWAYS
-# spread thin across every shard — exactly the worst case for one-bucket-per-run.
+# "once per 64 runs" — ~8 days at 8 runs/day — no matter how hot it was. So a run was
+# made to work MANY shards, but chosen HOTTEST-FIRST (most due games per shard). That
+# swapped one starvation for another: a stable hot core of ~12 shards won the slots
+# every run and stayed fresh (~0.1d), while every shard NOT in that core fell back to
+# the once-per-run anchor — i.e. right back to the ~8-day tail. Measured on main: 23 of
+# 64 shards >5 days stale, worst 8.4 days. That tail is where Black Flag Resynced
+# (shard 27) sat un-refreshed for 8 days even though it was the single most-overdue hot
+# game in the catalog — because select ranked by a shard's TOTAL due-count, and one
+# blazing game can't lift a shard whose total is below the core's.
 #
-# THE FIX: a run now works MANY shards, chosen hottest-first. The load-bearing
-# invariant was never "one shard per run" — it is ONE WRITER PER FILE, which still
-# holds exactly: the `steam-playtime-raw` concurrency group guarantees no two raw runs
-# overlap, so within a run we can open, mutate and commit as many shards as the time
-# budget allows and no other job ever touches them.
+# THE FIX: select shards by STALENESS, oldest-scraped first — a fair sweep, not a greedy
+# grab. Every run drains the shards that have waited longest, so the whole set cycles on
+# a BOUNDED schedule (max wait = ceil(NSHARDS / (shards_per_run * runs_per_day))) instead
+# of a hot core monopolising the budget. Per-game priority is NOT lost — it just lives at
+# the right layer: the overdue-ratio ladder still orders games WITHIN a shard once it is
+# open, so hot games are served first; the sweep only decides which shards open, and
+# guarantees none is skipped. Because runs finish their shards in ~2 min each and were
+# idling ~87% of the 180-min budget, MAX_SHARDS_PER_RUN is also raised well above 12 —
+# the time was always there, the cap was leaving it unused.
 #
-# SCORING IS HEADER-ONLY. Scoring must not read shard bodies (~18 MB each, ~1.1 GB
-# total — minutes of I/O before a single request goes out). Instead we score from
-# games.json alone, which already carries everything the ladder needs (release date,
-# review_count, last_update_ts) and is loaded once anyway. A shard's score is the count
-# of DUE-BY-LADDER games mapping into it. The only per-shard disk touch during
-# scheduling is a tiny header read (`count`), and even that is optional.
-MAX_SHARDS_PER_RUN = int(os.environ.get("MAX_SHARDS_PER_RUN", "12"))
+# The load-bearing invariant is unchanged: ONE WRITER PER FILE. The `steam-playtime-raw`
+# concurrency group guarantees no two raw runs overlap, so a run may open/mutate/commit
+# as many shards as the time budget allows and no other job ever touches them.
+#
+# SCORING IS HEADER-ONLY. Choosing shards must not read shard bodies (~18 MB each, ~1.1 GB
+# total). Due-counts come from games.json alone (loaded once); shard staleness comes from
+# a ~200-byte header read per shard (`generated_at`, the first key in each file) — not the
+# body. So the sweep stays O(catalog) + 64 tiny reads, never gigabytes.
+MAX_SHARDS_PER_RUN = int(os.environ.get("MAX_SHARDS_PER_RUN", "24"))
 SHARD_MIN_HOT = int(os.environ.get("SHARD_MIN_HOT", "1"))   # skip shards with fewer due games than this
+# Optional manual override, e.g. FORCE_SHARDS="27" or "27,5,60": pin specific buckets into
+# this run (processed FIRST), for pushing a known game through on demand without waiting for
+# the sweep to reach it. Out-of-range / non-numeric entries are ignored.
+FORCE_SHARDS_ENV = "FORCE_SHARDS"
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (appreviews is keyless)
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))
@@ -741,19 +793,34 @@ def build_candidates(games, now, target, raw_by_bucket=None, buckets=None):
     return out
 
 
-def select_buckets(due_by_bucket, anchor):
-    """Choose which shards this run works, hottest-first.
+def select_buckets(due_by_bucket, anchor, forced=(), last_scraped=None):
+    """Choose which shards this run works — a STALENESS SWEEP, not a greedy hot-first grab.
 
-    Ranking is by DUE-GAME COUNT: the shard holding the most overdue games clears the
-    most backlog per shard-open, and shard opens are the expensive unit here (an ~18 MB
-    read + a commit each). `anchor` — the round-robin bucket for this run number — is
-    ALWAYS included regardless of score. That is the starvation guard: without it a
-    shard that never scores hot could go unvisited indefinitely, and its games would
-    rot no matter what the ladder says. With it, every shard is still guaranteed a
-    visit at least every NSHARDS runs, exactly as under the old rotation."""
-    ranked = sorted(due_by_bucket.items(), key=lambda kv: -len(kv[1]))
-    chosen = [b for b, items in ranked if len(items) >= SHARD_MIN_HOT][:MAX_SHARDS_PER_RUN]
-    if anchor not in chosen:
+    Order of assembly:
+      1. `forced` buckets (FORCE_SHARDS) go first, unconditionally — a manual override.
+      2. then the shards with due work, OLDEST-SCRAPED FIRST, so every run drains whatever
+         has waited longest. Ties (equal staleness) break by more due games, to clear the
+         most backlog per open. This is the fairness guarantee: with S shards/run over R
+         runs/day no shard waits longer than ceil(NSHARDS / (S*R)) — a bounded cycle —
+         instead of a hot core hogging the slots and starving the tail to the anchor's
+         ~8-day rotation (the bug that left shard 27 / Black Flag 8 days stale).
+      3. `anchor` is kept as a floor: if header timestamps are ever unreadable and the sort
+         degenerates, the rotating anchor still forces a visit so nothing is skipped forever.
+
+    Per-game priority is intentionally NOT here — the overdue-ratio ladder orders games
+    WITHIN a shard once it is loaded, so hot games are still served first; the sweep only
+    decides which shards open. Shards with fewer than SHARD_MIN_HOT due games are skipped
+    (no point opening an 18 MB file with nothing to do). `last_scraped` is injectable purely
+    so the scheduler is unit-testable without shard files on disk; it defaults to the real
+    header reader."""
+    if last_scraped is None:
+        last_scraped = shard_last_scraped
+    forced = [b for b in dict.fromkeys(forced) if 0 <= b < NSHARDS]
+    eligible = [b for b, items in due_by_bucket.items()
+                if len(items) >= SHARD_MIN_HOT and b not in forced]
+    eligible.sort(key=lambda b: (last_scraped(b), -len(due_by_bucket[b])))
+    chosen = (forced + eligible)[:MAX_SHARDS_PER_RUN]
+    if anchor not in chosen and anchor in due_by_bucket:
         chosen = chosen[:max(0, MAX_SHARDS_PER_RUN - 1)] + [anchor]
     return chosen
 
@@ -773,20 +840,24 @@ def main():
     now = int(time.time())
     target = effective_target()
     anchor = rotation_bucket()
+    forced = forced_shards()
 
     # --- Phase 1: SCHEDULE (no shard bodies read) --------------------------- #
     # Score the whole catalog against the ladder purely from games.json, group the due
-    # games by shard, and pick the hottest shards. Reading no shard bodies here is the
-    # point: choosing among 64 x ~18 MB files must not cost 1.1 GB of I/O.
+    # games by shard, then pick shards OLDEST-SCRAPED FIRST (staleness sweep). Reading no
+    # shard bodies here is the point: choosing among 64 x ~18 MB files must not cost 1.1 GB
+    # of I/O — only a ~200-byte header read per shard for its generated_at timestamp.
     sched = build_candidates(games, now, target)
-    chosen = select_buckets(sched, anchor)
+    chosen = select_buckets(sched, anchor, forced)
     total_due = sum(len(v) for v in sched.values())
 
     mode = f"DEEPEN to {target}" if DEEPEN_TARGET else f"target {target}"
     log(f"Catalog {len(games)} | due by ladder: ~{total_due} across {len(sched)} shard(s)")
-    log(f"Working {len(chosen)} shard(s) this run (max {MAX_SHARDS_PER_RUN}, "
-        f"anchor b{anchor:02d} always included): "
-        + ", ".join(f"b{b:02d}(~{len(sched.get(b, []))})" for b in chosen))
+    forced_note = f" · forced {[f'b{b:02d}' for b in forced]}" if forced else ""
+    log(f"Working {len(chosen)}/{MAX_SHARDS_PER_RUN} shard(s) this run, oldest-scraped first "
+        f"(anchor b{anchor:02d} floor{forced_note}): "
+        + ", ".join(f"b{b:02d}(~{len(sched.get(b, []))}due,{(now-shard_last_scraped(b))//86400}d)"
+                    for b in chosen))
     log(f"Budget: {RUN_MINUTES} min · {mode}/game · cap {PER_GAME_CAP} · delay {STEAM_DELAY}s · "
         f"ladder 0-7d/1d · 7-30d/3d · 30-90d/7d · else {AGE_TIER_FALLBACK_DAYS}d "
         f"(>{HOT_REVIEWS_BOOST} reviews: halved; popularity floor >1k/5d, >500/10d — HLTB-aligned)")
