@@ -47,7 +47,6 @@ they aren't re-proposed. Sorted roughly by value-to-effort within each group.
 | Mobile progressive disclosure | §3.2 / §3.4 | Nothing; partly addressed by Grid's tap-to-expand |
 | Short-link encoder for filter URLs | §3.4 | Choosing client-side compression vs a stateful Worker+KV |
 | Playtime ladder ceiling 3,000 → 5,000 | §3.5 | Git-growth appetite (shipped at 3,000) |
-| Capped games absorb only ~100 new reviews/visit | §3.5 | Care around the first-touch stop condition |
 | `shard_health.py` covers only `playtime_raw/` | §3.5 | Nothing — cheap add |
 | `tags.json` has no timestamp or rescrape cadence | §3.5 | Needs a per-entry `scraped_at` first |
 | Exact playtime staleness (per-game `scraped_at`) | §3.5 | Needs a shard-record field added |
@@ -562,12 +561,12 @@ pointer back to this section.
     are rewritten whole per commit, so raw storage would go 777 MB → ~1.6 GB rather than
     ~1.3 GB). Revisit only if the minority-side medians still look shaky at 3,000 — it is a
     one-line change to `DEPTH_LADDER`.
-  - **A game at its rung absorbs only ~100 new reviews per visit** (the walk breaks as soon as
-    `len >= target`). Pre-existing, not introduced by the ladder, and mostly benign — the
-    window's top stays current, so the sample is time-stratified rather than stale — but a game
-    earning thousands of reviews a week is not fully captured between visits. A fix would let
-    the walk continue while `seen_streak == 0`, which needs care not to break the first-touch
-    stop condition.
+  - ~~**A game at its rung absorbs only ~100 new reviews per visit**, and positions 100–3,000
+    freeze their playtimes.~~ **✅ FIXED (Jul 2026) — the ceiling deep re-walk.** A game at the
+    ceiling now gets a full-window refresh every `REWALK_DAYS` (30) since its last full walk, or
+    when its review count grew by `REWALK_DELTA` (1000) — whichever first, spread per game via
+    each game's own `walk_at` anchor (no batch, no extra visits). See ARCHITECTURE §9 *Ceiling
+    staleness* / §16.
   - **Summarizer parse cost roughly doubles.** `playtime_summarize.py` and `ratings_summarize.py`
     read all 64 shards on every raw pass (~8×/day). Worth watching the raw job's runtime against
     its `timeout-minutes: 330` as the ladder fills.

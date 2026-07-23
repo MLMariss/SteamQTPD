@@ -1297,11 +1297,39 @@ of the daily budget.
 > of the bytes. Secondary: both summarizers read all 64 shards on every raw pass (~8×/day), so
 > their parse time roughly doubles too.
 
-*Known limitation (pre-existing, unchanged by the ladder):* a game sitting at its rung absorbs
-at most **one page (100) of new reviews per visit**, because the walk breaks as soon as
-`len >= target`. The window's top always stays current, so the sample is effectively
-time-stratified rather than stale — but a game earning thousands of reviews a week is not fully
-captured between visits.
+**Ceiling staleness — the periodic full re-walk.** A game pinned at the 3,000 ceiling otherwise
+refreshes only its **top ~100 playtimes per visit** (the walk breaks as soon as `len >= target`),
+so positions 100–3,000 **freeze** — and since `playtime_forever` keeps growing, a long-tenured
+game would report ever-staler playtimes. Two triggers force a **deep re-walk** (every held
+playtime refreshed + all new reviews caught up), whichever fires first:
+
+- **Time backstop — `REWALK_DAYS` (30).** The load-bearing one, because playtime staleness is
+  **clock-driven, not review-count-driven**: a beloved back-catalogue game earning ~50 reviews a
+  year never trips a churn threshold, yet its reviewers keep playing. Measured against the last
+  *full* walk (`walk_at`), not the last visit — shallow top-ups don't reset it, so the countdown
+  actually elapses.
+- **Churn accelerator — `REWALK_DELTA` (1000).** Brings the deep walk *forward* for a trending
+  game whose review count grew by ≥1,000 since its last full walk, catching it sooner than 30
+  days. Floored at `REWALK_MIN_DAYS` (7) so a mega-game earning thousands of reviews a week can't
+  thrash a deep pass every visit — its newest-3,000 window is the freshest slice already and does
+  not need constant deep passes.
+
+**It is spread per game, never a synchronized sweep.** Each game carries its own `walk_at` /
+`rc_at_walk` anchors, stamped when it last did a full walk — which for most games is the moment
+the **depth ladder first filled them**, an event already staggered across the shard rotation. So
+due-dates scatter across the calendar; there is no once-a-month batch. It also adds **no
+visits** — a ceiling game is already visited every cooldown to catch new reviews, and this
+merely makes roughly every 30-days-worth of those visits a deep one. **Cold start** (a ceiling
+game with no anchor yet) only *initializes* the clocks — no forced walk — so the first backstops
+land ~30 days out rather than all at once on the deploy. The deep walk stops at exactly the
+window depth (`target // PER_PAGE` pages) and no deeper: walking past it would start adding
+reviews *older* than the window and evict just-refreshed recent ones, drifting the sample
+backwards.
+
+*Cost:* ~4,228 games sit at the ceiling; each deep pass is ~30 pages (~45 s), and at a 30-day
+cadence that is **~2 h/day (~8% of the playtime budget)** — affordable because the backfill
+frontier is essentially drained. Set `REWALK_DAYS=0` **or** `REWALK_DELTA=0` to disable a
+trigger; both off restores the pure top-100 behaviour.
 
 **Sentiment split.** Data is split by the **thumbs-up/down recommendation** — ▲ recommended
 (green) vs ▼ not-recommended (red) — tied to the rating system itself, not persona labels
@@ -2009,6 +2037,12 @@ Each job's knobs live at the top of its own script:
   returns the first rung strictly above what a game already holds, so a first touch fills to
   1000 and releases the game, and each later visit climbs one rung. Raising the ceiling is a
   one-line edit to `DEPTH_LADDER`. See §9 *Depth ladder* for the sizing evidence.
+- **`REWALK_DAYS` (30, env) / `REWALK_DELTA` (1000, env) / `REWALK_MIN_DAYS` (7)** (playtime) —
+  ceiling-staleness triggers. A game pinned at the ceiling gets a **deep re-walk** (every held
+  playtime refreshed) when `REWALK_DAYS` have passed since its last full walk (`walk_at`) **or**
+  its review count grew by `REWALK_DELTA` (floored at `REWALK_MIN_DAYS` between firings). Either
+  knob at `0` disables that trigger; both `0` restores pure top-100 refresh. See §9 *Ceiling
+  staleness*.
 - **`TARGET_REVIEWS` (200, env) / `SEEN_STREAK_STOP` (50)** (playtime) — the run-wide *floor*
   target (the ladder raises it per game) and the consecutive-already-seen streak that ends a
   walk early. `DEEPEN_TARGET` (env, one-off) still forces a deeper pass for a whole run.
@@ -2143,6 +2177,24 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Playtime ceiling staleness: periodic deep re-walk (Jul 2026).** Closes the residual left by
+  the depth ladder below. A game pinned at the 3,000 ceiling refreshed only its **top ~100
+  playtimes per visit**, so positions 100–3,000 froze while `playtime_forever` kept growing —
+  ever-staler playtimes on the catalogue's most popular games. Now a **deep re-walk** (whole
+  window's playtimes refreshed + all new reviews caught up) fires when **`REWALK_DAYS` (30)** have
+  elapsed since the last full walk **or** review count grew by **`REWALK_DELTA` (1000)**
+  (floored at 7 days so mega-games can't thrash). The time backstop is the load-bearing trigger —
+  playtime staleness is clock-driven, so a slow-churn back-catalogue game that never trips the
+  count threshold still refreshes every 30 days. **Spread, not batched:** each game's own
+  `walk_at` / `rc_at_walk` anchors (stamped when the ladder first filled it, already staggered)
+  give it an independent due-date, and it adds **no visits** — it just makes ~every 30-days-worth
+  of the existing cooldown visits deep. Cold start only initializes the clocks (no forced walk),
+  so the deploy doesn't stampede. Cost ~2 h/day (~8% of the playtime budget) across ~4,228 ceiling
+  games; storage and git growth are unchanged (still capped at 3,000). Verified with a stubbed
+  Steam: shallow until the 30-day mark, then a 30-page deep pass refreshing all ~3,000; churn
+  gated by the 7-day floor; cold start initializes without walking; two games last-walked 20 days
+  apart come due 20 days apart (independent clocks). Disable via `REWALK_DAYS=0` / `REWALK_DELTA=0`.
 
 - **Playtime depth ladder: 1000 → 2000 → 3000 (Jul 2026).** `PER_GAME_CAP` was a flat 1,000,
   so **7,702 games (9.7% of coverage) sat pinned at the cap**, holding 1,000 of a median 3,034

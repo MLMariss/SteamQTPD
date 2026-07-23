@@ -247,6 +247,11 @@ Each job's knobs are at the top of its own script. The main ones:
   first visit fills to 1,000 and moves on (so new games get covered fast); each later visit
   climbs one rung, up to 3,000. Only the ~10% of games with more than 1,000 reviews ever climb,
   and it rides the normal refresh schedule rather than adding extra work.
+- **`REWALK_DAYS` / `REWALK_DELTA`** (playtime, 30 days / +1,000 reviews) — keeps popular games
+  from going stale. A game sitting at the 3,000 ceiling gets its whole review window's playtimes
+  re-fetched every 30 days, or sooner if it gained 1,000+ reviews. Spread out per game (each on
+  its own clock, not a monthly batch), and it deepens visits that already happen rather than
+  adding new ones.
 
 ## Pace & limits
 The scraper captures very roughly ~1,000–1,200 games/hour (storefront rate limit ÷ 2
