@@ -46,6 +46,8 @@ they aren't re-proposed. Sorted roughly by value-to-effort within each group.
 | Min-reviews: single- vs multi-select | §3.2 | **A decision from you** — the request contradicts the current deliberate design |
 | Mobile progressive disclosure | §3.2 / §3.4 | Nothing; partly addressed by Grid's tap-to-expand |
 | Short-link encoder for filter URLs | §3.4 | Choosing client-side compression vs a stateful Worker+KV |
+| Playtime ladder ceiling 3,000 → 5,000 | §3.5 | Git-growth appetite (shipped at 3,000) |
+| Capped games absorb only ~100 new reviews/visit | §3.5 | Care around the first-touch stop condition |
 | `shard_health.py` covers only `playtime_raw/` | §3.5 | Nothing — cheap add |
 | `tags.json` has no timestamp or rescrape cadence | §3.5 | Needs a per-entry `scraped_at` first |
 | Exact playtime staleness (per-game `scraped_at`) | §3.5 | Needs a shard-record field added |
@@ -547,6 +549,28 @@ pointer back to this section.
   (active 4–7d / dormant 30–45d) deliberately front-loads budget onto games whose data actually
   moves; a uniform target only makes sense once no backlog is competing for that budget.
   (`COVERAGE.md` *Future work*.)
+
+- **Playtime depth ladder — ✅ SHIPPED (Jul 2026), with two residuals.** The flat
+  `PER_GAME_CAP = 1000` pinned 7,702 games (9.7% of coverage) at 1,000 of a median 3,034 real
+  reviews. Replaced with `DEPTH_LADDER = 1000 → 2000 → 3000`, climbing one rung per visit on the
+  existing cooldown (ARCHITECTURE §9 *Depth ladder*). Measured justification: the sample is
+  nearly unbiased (1.03×), so the win is **noise** (51% of games >10% off their true median at
+  newest-200, 24% at 600) and above all the **minority sentiment side** (median 158 reviews on
+  capped games). Still open on top of it:
+  - **Ceiling could go to 5,000.** Costs +12.6 MB/shard and ~71 h one-time instead of
+    +7.8 MB / ~44 h. Deliberately not taken: **git growth** is the binding constraint (shards
+    are rewritten whole per commit, so raw storage would go 777 MB → ~1.6 GB rather than
+    ~1.3 GB). Revisit only if the minority-side medians still look shaky at 3,000 — it is a
+    one-line change to `DEPTH_LADDER`.
+  - **A game at its rung absorbs only ~100 new reviews per visit** (the walk breaks as soon as
+    `len >= target`). Pre-existing, not introduced by the ladder, and mostly benign — the
+    window's top stays current, so the sample is time-stratified rather than stale — but a game
+    earning thousands of reviews a week is not fully captured between visits. A fix would let
+    the walk continue while `seen_streak == 0`, which needs care not to break the first-touch
+    stop condition.
+  - **Summarizer parse cost roughly doubles.** `playtime_summarize.py` and `ratings_summarize.py`
+    read all 64 shards on every raw pass (~8×/day). Worth watching the raw job's runtime against
+    its `timeout-minutes: 330` as the ladder fills.
 
 - **IGDB revival (decided against, but the path is recorded).** Phase C was built, evaluated and
   retired — IGDB's `game_time_to_beats` table holds only ~8,829 records total, yielding 1,471

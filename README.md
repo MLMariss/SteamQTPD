@@ -243,6 +243,10 @@ Each job's knobs are at the top of its own script. The main ones:
 - **`MIN_REVIEWS_FLOOR`** (playtime, 10) — the playtime scraper skips games below this many
   all-time reviews, since they can't produce a usable sentiment-split median. Re-checked each
   run against live review counts, so it's skip-for-now, not a permanent exclusion.
+- **`DEPTH_LADDER`** (playtime, `1000 → 2000 → 3000`) — how many reviews are kept per game. The
+  first visit fills to 1,000 and moves on (so new games get covered fast); each later visit
+  climbs one rung, up to 3,000. Only the ~10% of games with more than 1,000 reviews ever climb,
+  and it rides the normal refresh schedule rather than adding extra work.
 
 ## Pace & limits
 The scraper captures very roughly ~1,000–1,200 games/hour (storefront rate limit ÷ 2

@@ -1249,6 +1249,60 @@ age, which makes the ladder self-balancing — a 1-day-cooldown release 2 days s
 ladder makes about it. Raw age would invert that and let ancient dormant games crowd out the
 fast lane permanently.
 
+**Depth ladder (`DEPTH_LADDER = 1000 → 2000 → 3000`).** How many reviews we keep per game is a
+**rung**, not a flat cap. `cap_for(held)` returns the first rung strictly above what a game
+already holds, so:
+
+| visit | rung | what happens |
+|---|---:|---|
+| 1st touch | 1,000 | fills and **releases** the game — the fill frontier keeps draining fast |
+| 2nd | 2,000 | walks ~10 pages deeper |
+| 3rd | 3,000 | reaches the ceiling |
+| 4th+ | 3,000 | stops on `SEEN_STREAK_STOP` after absorbing new reviews — back to today's cost |
+
+**It piggybacks on the existing cooldown — no extra visits.** Deepening deliberately does *not*
+feed `is_eligible()`: `held < cap_for(held)` is true by construction, so using it there would
+mark every game permanently due. A game climbs only when it comes round on its normal
+refresh cadence, which means the full climb completes in ~3 weeks by itself. The ladder needs
+**no new per-game state** either — `len(reviews)` *is* the rung pointer.
+
+*Why the `len >= target` guard is load-bearing:* on a re-visit the first ~10 pages are all
+already-known reviews, so `seen_streak` hits 50 almost immediately. Without that guard the walk
+would stop there and a game could never climb past rung 1.
+
+**Why deepen at all — it is a noise fix, not a bias fix.** Measured against 779 games holding
+their *full* uncapped history, the newest-N sample is close to unbiased (median 1.03× vs the
+true median). What shallow sampling costs is **per-game stability**:
+
+| sample depth | median vs true | games >10% off | >25% off |
+|---|---|---:|---:|
+| newest 200 | 1.035× | **51.1%** | 21.2% |
+| newest 400 | 1.037× | 39.5% | 13.1% |
+| newest 600 | 1.027× | 24.0% | 5.6% |
+
+The sharpest win is the **minority sentiment side**, which on capped games has a median of just
+**158 reviews** (61% under 200, 27% under 100). That thin side is exactly what the inversion
+signal — "played it a long time, still says skip it" — is computed from, so it is the number
+that most deserves more samples.
+
+**Sizing (measured 2026-07).** Only **8,386 games (10.6% of coverage)** hold >1000 reviews, so
+the ladder touches a small, high-value slice. At ~**50 B/review** the ceiling costs
+**+7.8 MB/shard → ~21 MB max**, nowhere near GitHub's 100 MB per-file limit. The one-time climb
+is ~**44 h** of scrape time, which spread across the 7-day cooldown lands in ~3 weeks at ~10%
+of the daily budget.
+
+> **The binding cost is git growth, not file size.** Shards are rewritten whole on every commit,
+> so raw storage roughly doubles (777 MB → ~1.3 GB) and every shard write pushes a full copy into
+> history. **3000 was chosen over 5000 for exactly this reason** — ~70% of the benefit for ~60%
+> of the bytes. Secondary: both summarizers read all 64 shards on every raw pass (~8×/day), so
+> their parse time roughly doubles too.
+
+*Known limitation (pre-existing, unchanged by the ladder):* a game sitting at its rung absorbs
+at most **one page (100) of new reviews per visit**, because the walk breaks as soon as
+`len >= target`. The window's top always stays current, so the sample is effectively
+time-stratified rather than stale — but a game earning thousands of reviews a week is not fully
+captured between visits.
+
 **Sentiment split.** Data is split by the **thumbs-up/down recommendation** — ▲ recommended
 (green) vs ▼ not-recommended (red) — tied to the rating system itself, not persona labels
 like "fans/detractors."
@@ -1950,10 +2004,16 @@ Each job's knobs live at the top of its own script:
   then apply **`COOLDOWN_DAYS` / `NOUPDATE_COOLDOWN_DAYS`**: recent **4 / 30**, playtime
   **7 / 30**, updates **7 / 45**. `coverage.py` copies all six verbatim so Axis 2 can't drift
   from the real gates (§11.5).
-- **`TARGET_REVIEWS` (200, env) / `PER_GAME_CAP` (1000) / `SEEN_STREAK_STOP` (50)** (playtime) —
-  how many reviews to aim for per game, the hard per-game ring-buffer ceiling, and the
-  already-seen streak that ends a walk early. `updates_refresh.py` has its own
-  **`PER_GAME_CAP` (200)** and **`EVENTS_COUNT` (50)** per fetch.
+- **`DEPTH_LADDER` (`1000 → 2000 → 3000`) / `PER_GAME_CAP` (3000 = the ladder's last rung)**
+  (playtime) — the per-game storage ceiling is a **ladder**, not a flat number: `cap_for(held)`
+  returns the first rung strictly above what a game already holds, so a first touch fills to
+  1000 and releases the game, and each later visit climbs one rung. Raising the ceiling is a
+  one-line edit to `DEPTH_LADDER`. See §9 *Depth ladder* for the sizing evidence.
+- **`TARGET_REVIEWS` (200, env) / `SEEN_STREAK_STOP` (50)** (playtime) — the run-wide *floor*
+  target (the ladder raises it per game) and the consecutive-already-seen streak that ends a
+  walk early. `DEEPEN_TARGET` (env, one-off) still forces a deeper pass for a whole run.
+  `updates_refresh.py` has its own unrelated **`PER_GAME_CAP` (200)** and **`EVENTS_COUNT`
+  (50)** per fetch — same name, different pipeline.
 - **`WINDOWS` ([30, 90, 180, 365]) / `DATES_CAP` (60)** (`updates_summarize.py`) — the count
   windows shipped in `updates.json` and the per-tier cap on the client-recomputable `dates`
   arrays (§9.5).
@@ -2083,6 +2143,23 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Playtime depth ladder: 1000 → 2000 → 3000 (Jul 2026).** `PER_GAME_CAP` was a flat 1,000,
+  so **7,702 games (9.7% of coverage) sat pinned at the cap**, holding 1,000 of a median 3,034
+  real reviews. It is now a **ladder** (`DEPTH_LADDER`): `cap_for(held)` returns the first rung
+  above what a game holds, so the first touch still fills to 1,000 and *releases* the game —
+  keeping the fill frontier draining — while each later visit climbs one rung to a 3,000
+  ceiling. **No new per-game state** (`len(reviews)` is the rung pointer) and **no extra
+  visits** — it piggybacks on the normal cooldown, so the climb completes in ~3 weeks by itself.
+  Evidence and the 3,000-vs-5,000 call are in §9 *Depth ladder*: the newest-N sample is nearly
+  unbiased (1.03×), so this buys **noise reduction** — and above all a thicker **minority
+  sentiment side**, median just 158 reviews on capped games, which is the exact number the
+  "played long, still says skip it" inversion signal rests on. Cost ~44 h one-time and
+  +7.8 MB/shard; the binding constraint is **git growth**, not the 100 MB file limit, which is
+  why the ceiling is 3,000. Verified end-to-end against a stubbed Steam: fresh game → 1,000 in
+  10 pages; climbs to 2,000 then 3,000 on successive visits; holds exactly 3,000 at the ceiling
+  with the ring buffer sliding the window forward; small (350) and mid (1,500) games stop
+  correctly at `exhausted` with no wasted pages.
 
 - **Playtime refresh ladder + multi-shard scheduling (Jul 2026).** Two coupled changes that
   only work together. (1) `playtime_refresh.py` replaced its flat `COOLDOWN_DAYS=7` /

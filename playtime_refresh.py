@@ -43,10 +43,19 @@ near the top) stay current at no extra request cost.
 ------------------------------------------------------------------------------
 GUARDRAILS (keep the in-repo file from ballooning)
 ------------------------------------------------------------------------------
-G1 — per-game cap: store at most PER_GAME_CAP (1000) reviews per game. When full
-     and new reviews arrive, drop the OLDEST stored reviews (ring-buffer by
-     timestamp) to make room. 1000 reviews is far more than a median needs; the
-     cap bounds the file to a known ceiling no matter how popular a game gets.
+G1 — per-game cap, laddered: a game's ceiling is not one flat number but a RUNG
+     of DEPTH_LADDER (1000 -> 2000 -> 3000), picked from how many reviews it
+     already holds. The first touch fills to 1000 and moves on, so the frontier
+     drains fast; each later visit — on the game's normal cooldown, no extra
+     visits — walks one rung deeper. Only the ~10% of games with >1000 reviews
+     ever climb. When at its rung and new reviews arrive, the OLDEST stored are
+     dropped (ring-buffer by timestamp) so the window slides forward.
+     WHY DEEPEN AT ALL: the newest-N sample is nearly unbiased (measured 1.03x vs
+     full history), so this is not a bias fix — it is a NOISE fix. At newest-200,
+     51% of games sit >10% off their true median; at 600 that falls to 24%. The
+     sharpest win is the MINORITY sentiment side, which on capped games has a
+     median of just 158 reviews (61% under 200) — and that thin side is exactly
+     what the "played long, still says skip it" signal is computed from.
 G2 — low commit churn: this script commits each shard periodically DURING the
      run (every ~30 min) plus once when that shard is finished, rather than on
      every checkpoint.
@@ -222,8 +231,39 @@ PER_PAGE = 100                    # appreviews hard max is 100/page
 # target for THIS run and prefers games below it. Capped by PER_GAME_CAP.
 DEEPEN_TARGET = int(os.environ.get("DEEPEN_TARGET", "0"))
 
-# --- G1: per-game hard cap ------------------------------------------------- #
-PER_GAME_CAP = 1000               # max reviews stored per game (ring-buffer when full)
+# --- G1: per-game cap, as a DEPTH LADDER ----------------------------------- #
+# Rungs a game climbs one step per visit, chosen by how many it already holds.
+# 1000 stays the FIRST touchpoint so a fresh game is filled and released quickly
+# (the frontier keeps draining); 3000 is the absolute ceiling.
+#
+# Sizing (measured against the live corpus, 2026-07):
+#   * only 8,386 games (10.6% of coverage) have >1000 reviews, so the ladder
+#     touches a small, high-value slice — the popular titles people actually open;
+#   * at ~50 B/review, 3000 costs +7.8 MB/shard -> ~21 MB max vs GitHub's 100 MB
+#     per-file limit, so file size is nowhere near binding;
+#   * the one-time climb is ~44 h of scrape time. Spread over the normal 7-day
+#     cooldown it lands in ~3 weeks at ~10% of the daily budget, then falls back
+#     to roughly today's cost (a game at its rung stops on SEEN_STREAK_STOP).
+# The real long-term cost is git growth, not file size: shards are rewritten whole
+# on every commit, so raw storage roughly doubles (777 MB -> ~1.3 GB). 3000 was
+# chosen over 5000 for exactly that reason — ~70% of the benefit for ~60% of the
+# bytes. Raising the ceiling later is a one-line change to DEPTH_LADDER.
+DEPTH_LADDER = (1000, 2000, 3000)
+PER_GAME_CAP = DEPTH_LADDER[-1]   # absolute ceiling; no game ever exceeds this
+
+
+def cap_for(held):
+    """This visit's depth rung for a game currently holding `held` reviews.
+
+    Returns the first rung strictly above `held`, so a game climbs exactly one step
+    per visit and then stops: 0-999 -> 1000, 1000-1999 -> 2000, 2000+ -> 3000.
+    Deliberately NOT used for eligibility — `held < cap_for(held)` is true by
+    construction, which would make every game permanently due. Deepening piggybacks
+    on the normal cooldown instead, so it costs no extra visits (see is_eligible)."""
+    for rung in DEPTH_LADDER:
+        if held < rung:
+            return rung
+    return DEPTH_LADDER[-1]
 
 # --- stop-on-seen tuning --------------------------------------------------- #
 # When growing, stop after this many CONSECUTIVE already-known reviews (a small
@@ -447,9 +487,10 @@ def scrape_game(appid, stored_reviews, target):
     exhausted = False
     cursor = "*"
     pages = 0
-    # Absolute page ceiling so a pathological loop can't run forever. Cap governs
-    # total stored; this governs total *walked* in one run.
-    max_pages = (PER_GAME_CAP // PER_PAGE) + 5
+    # Absolute page ceiling so a pathological loop can't run forever. Scales with
+    # THIS visit's rung (`target`), not the global ceiling, so a first touch still
+    # costs ~15 pages while a rung-3 deepen is allowed the ~35 it needs.
+    max_pages = (target // PER_PAGE) + 5
 
     while pages < max_pages:
         data = get(f"https://store.steampowered.com/appreviews/{appid}",
@@ -476,8 +517,8 @@ def scrape_game(appid, stored_reviews, target):
                     refreshed += 1
                 seen_streak += 1
             else:
-                # New review -> add, enforcing the cap (drop oldest if full).
-                if len(stored_reviews) >= PER_GAME_CAP:
+                # New review -> add, enforcing THIS visit's rung (drop oldest if full).
+                if len(stored_reviews) >= target:
                     _evict_oldest(stored_reviews)
                 stored_reviews[rid] = rec
                 added += 1
@@ -487,10 +528,14 @@ def scrape_game(appid, stored_reviews, target):
         # Once we've caught all the new reviews (a solid streak of known ids) and
         # we already hold enough for a stable median, there's no reason to keep
         # walking deeper on a routine run.
-        if seen_streak >= SEEN_STREAK_STOP and len(stored_reviews) >= min(target, PER_GAME_CAP):
+        # NOTE the `len >= target` guard is what makes deepening possible: on a
+        # re-visit the first ~10 pages are all already-known reviews, so seen_streak
+        # hits 50 almost immediately. Without the guard the walk would stop there and
+        # a game could never climb past rung 1.
+        if seen_streak >= SEEN_STREAK_STOP and len(stored_reviews) >= target:
             break
-        if len(stored_reviews) >= PER_GAME_CAP:
-            break                      # cap reached; ring-buffer holds newest CAP
+        if len(stored_reviews) >= target:
+            break                      # this visit's rung reached; ring-buffer holds newest
 
         next_cursor = data.get("cursor")
         pages += 1
@@ -851,7 +896,8 @@ def main():
     chosen = select_buckets(sched, anchor, forced)
     total_due = sum(len(v) for v in sched.values())
 
-    mode = f"DEEPEN to {target}" if DEEPEN_TARGET else f"target {target}"
+    mode = (f"DEEPEN to {target}" if DEEPEN_TARGET
+            else f"floor {target}, ladder {'/'.join(str(r) for r in DEPTH_LADDER)}")
     log(f"Catalog {len(games)} | due by ladder: ~{total_due} across {len(sched)} shard(s)")
     forced_note = f" · forced {[f'b{b:02d}' for b in forced]}" if forced else ""
     log(f"Working {len(chosen)}/{MAX_SHARDS_PER_RUN} shard(s) this run, oldest-scraped first "
@@ -900,7 +946,11 @@ def main():
             aids = str(aid)
             rec = raw.get(aids, {})
             reviews = dict(rec.get("reviews") or {})     # mutate a copy, store on success
-            added, refreshed, exhausted = scrape_game(aid, reviews, target)
+            # Per-game depth rung (G1 ladder). `target` here is the run-wide floor
+            # (TARGET_REVIEWS, or DEEPEN_TARGET on a one-off deep pass); the ladder
+            # raises it for games that already hold a full rung. Never above the ceiling.
+            game_target = min(max(cap_for(len(reviews)), target), PER_GAME_CAP)
+            added, refreshed, exhausted = scrape_game(aid, reviews, game_target)
             summary = summarize_game(reviews)
             raw[aids] = {"reviews": reviews, "summary": summary,
                          "exhausted": exhausted, "scraped_at": int(time.time())}
