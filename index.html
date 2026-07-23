@@ -778,21 +778,27 @@
   .tagmode{display:flex; align-items:center; gap:9px; margin-left:auto}
   .tagmode-lbl{font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.05em; text-transform:uppercase}
   /* Tag search — narrows WHICH TAGS ARE OFFERED in the rail, not which games are listed.
-     Sits in the space the match-mode control vacated when it moved right. Sized to the
-     row's existing height so adding it costs no vertical space. */
-  .tagsearch{position:relative; display:flex; align-items:center; flex:0 1 250px; min-width:140px}
+     Sits in the space the match-mode control vacated when it moved right.
+     Same input language as the header game-search and the wishlist box: var(--panel) fill,
+     1px var(--line) border, 9px radius, and the SAME magnifier SVG as the header (.search).
+     Mono 13px matches the wishlist input and the surrounding filter controls.
+     Vertical padding is deliberately tighter than those two so the control lands at the tag
+     row's EXISTING height — the row is 34px (set by the match-mode control) and must not grow. */
+  .tagsearch{position:relative; display:flex; align-items:center; flex:0 1 250px; min-width:150px}
   .tagsearch input{width:100%; appearance:none; background:var(--panel); border:1px solid var(--line);
-        border-radius:9px; color:var(--text); font-family:var(--mono); font-size:12px;
-        padding:6px 24px 6px 24px; outline:none}
+        border-radius:9px; color:var(--text); font-family:var(--mono); font-size:13px;
+        padding:8px 26px 8px 32px; outline:none}
   .tagsearch input::placeholder{color:var(--muted-2)}
-  .tagsearch input:focus{border-color:var(--gold-deep)}
-  .tagsearch .ts-ico{position:absolute; left:8px; color:var(--muted-2); font-size:12px; line-height:1; pointer-events:none}
-  /* Clear (✕) appears only once there's something to clear, so the empty state stays quiet. */
-  .tagsearch .ts-x{position:absolute; right:5px; display:none; appearance:none; background:transparent;
+  .tagsearch input:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  .tagsearch svg{position:absolute; left:11px; top:50%; transform:translateY(-50%);
+        color:var(--muted-2); pointer-events:none}
+  /* Clear (✕) appears only once there's something to clear, so the empty state stays quiet.
+     Deliberately NOT gold-on-active: gold means "a filter is changed from its default" and
+     this control doesn't filter the results at all (§11), so it stays neutral. */
+  .tagsearch .ts-x{position:absolute; right:6px; display:none; appearance:none; background:transparent;
         border:0; padding:3px; cursor:pointer; color:var(--muted-2); font-size:11px; line-height:1}
   .tagsearch .ts-x:hover{color:var(--coral)}
   .tagsearch.has-q .ts-x{display:block}
-  .tagsearch.has-q input{border-color:var(--gold-deep)}   /* gold = changed from default */
   .tagempty{font-family:var(--mono); font-size:12px; color:var(--muted-2); padding:6px 2px}
   .tagmode .seg button{padding:8px 16px; font-weight:600}
   .tagmode .seg button[aria-pressed="true"]{background:var(--gold-soft); color:var(--gold)}
@@ -1257,7 +1263,7 @@ try{
           </span>
           <div class="tagsearch" id="tagSearchBox"
                title="Filter the tag list by name — typing 'strategy' narrows it to Strategy, Grand Strategy, Turn-Based Strategy, … so you can pick from a shortlist. This filters which tags are OFFERED here; it does not filter the game list. Clear it (✕) to get the full list back.">
-            <span class="ts-ico" aria-hidden="true">⌕</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
             <input id="tagSearch" type="text" autocomplete="off" spellcheck="false"
                    placeholder="Filter tags…" aria-label="Filter the tag list by name">
             <button class="ts-x" id="tagSearchClear" type="button"
