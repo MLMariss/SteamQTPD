@@ -1833,7 +1833,15 @@ via `markChangedControls()`.
     **not counted** in the section's "N active" badge — it changes nothing about the result
     set. Only `buildTagRail()` re-runs, never `render()`; the input is **debounced 120 ms**
     because the rail's contextual counts are an O(games) pass and one per keystroke would be
-    wasteful at 124k games.
+    wasteful at 124k games. For the same reason it is **not gold when active** — gold means
+    "a filter is changed from its default", and this one filters nothing.
+  - **Styling is borrowed, not invented:** same `--panel` fill / `--line` border / 9px radius
+    as the header game-search and the wishlist box, the same mono 13px as the wishlist input,
+    and literally the same 24-viewBox magnifier SVG as `.search` (at 14px). Its vertical
+    padding is 1px tighter than the wishlist's so the control lands at **exactly 34.4px — the
+    tag row's existing height** — because the match-mode control sets that height and the row
+    must not grow. (It therefore reads ~2px shorter than the wishlist box; that is the
+    deliberate trade for zero row growth.)
 
 Outside the accordions: the **title search**, the **wishlist import** row (a global action,
 §12), and — when the bar is collapsed — the **filter summary line** of clickable chips with
