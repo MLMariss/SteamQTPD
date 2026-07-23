@@ -1739,6 +1739,17 @@ after Reviews — it's derived from them — and **Price + Discount are merged**
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
   neutral color, so a full-price value is never mistaken for a discount deal.
 
+**Grid rows stretch their cells, deliberately.** `thead tr` / `tbody tr` are grids with
+`align-items:center`, which sizes each cell to its **own content** and centres it in the track —
+so a cell's borders span only that content, not the row. This silently broke two things once the
+collapsed Tags column added borders: every header's `border-bottom` sat at a slightly different
+height (**measured 217px vs 219px** — the header rule was stepped, not straight, because the
+collapsed `<>` pill is taller than plain text), and the collapsed Tags **body** seam rendered as a
+**10px stub floating in a 79px row** rather than a full-height divider. `thead th` and the
+collapsed Tags `<td>` therefore carry **`align-self:stretch`**, which fills the track without
+changing row height (content stays centred by each cell's own flex). Any future full-height rule
+on a cell needs the same.
+
 **Collapsible Tags column (desktop table only).** The Tags header carries a `><` toggle
 (`#tagsToggle`) that folds the whole column away, setting `body.tags-collapsed` and persisting
 the choice in `localStorage["qtpd.tagsCollapsed"]`. Tags is the widest low-density column, so
@@ -1804,13 +1815,25 @@ via `markChangedControls()`.
   two graded controls (Controller, Steam Deck). Folded by default; no-ops behind the `HAS_PICS`
   guard when `pics.json` is empty.
 - **Tags** — the **tag rail** (click to require → exclude → clear, with live per-tag counts,
-  two-tier with a "+N more" expander) plus the **`Required tags match: ALL / ANY`** toggle
-  (`state.tagMode`, URL `tagmode`; ALL is the default, and **exclude is always AND-NOT**
-  regardless). The rail groups tags into three fixed categories — **Players & Mode / Genre /
-  Style, Theme & Feel** — via a hardcoded `TAG_GROUPS`/`TAG_CAT` taxonomy, plus a
-  `CANON_GROUPS` synonym map that canonicalizes near-duplicate tags (e.g. different "co-op"
-  spellings collapse to one chip) before counting and display. Folded by default; while
-  folded, the picked tags render as mini cycle-chips in the header band (§3.4 R4).
+  two-tier with a "+N more" expander) plus a **tag-name search** and the **`Required tags
+  match: ALL / ANY`** toggle (`state.tagMode`, URL `tagmode`; ALL is the default, and
+  **exclude is always AND-NOT** regardless). The rail groups tags into three fixed categories —
+  **Players & Mode / Genre / Style, Theme & Feel** — via a hardcoded `TAG_GROUPS`/`TAG_CAT`
+  taxonomy, plus a `CANON_GROUPS` synonym map that canonicalizes near-duplicate tags (e.g.
+  different "co-op" spellings collapse to one chip) before counting and display. Folded by
+  default; while folded, the picked tags render as mini cycle-chips in the header band (§3.4 R4).
+  - **Tag search (`#tagSearch`)** narrows *which tags are offered*, not which games are listed:
+    typing `strategy` reduces the rail to Strategy / Grand Strategy / Turn-Based Strategy /
+    Strategy RPG so a related family can be picked from a shortlist. Tag names are stored
+    canonical-lowercase, so the match is a plain lowercased substring test. While a query is
+    active the **"+N more" split is bypassed** and every match is shown outright — burying
+    matches behind an expander would defeat the point. A ✕ (shown only when non-empty, Esc
+    also works) clears it and restores the full rail.
+  - It is a **display filter only**, so it is deliberately **not serialized to the URL** and
+    **not counted** in the section's "N active" badge — it changes nothing about the result
+    set. Only `buildTagRail()` re-runs, never `render()`; the input is **debounced 120 ms**
+    because the rail's contextual counts are an O(games) pass and one per keystroke would be
+    wasteful at 124k games.
 
 Outside the accordions: the **title search**, the **wishlist import** row (a global action,
 §12), and — when the bar is collapsed — the **filter summary line** of clickable chips with
@@ -2177,6 +2200,26 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Tag search + tag-row alignment fixes (Jul 2026).** Three frontend fixes, no data changes.
+  1. **`Required tags match` never actually moved right.** `.tagmode` has carried
+     `margin-left:auto` since it shipped, but the fold-zones work later added
+     `.filter-section.open > .section-body .tagmode{padding:6px; margin:-6px}` — and that
+     shorthand (specificity 0,4,0 vs 0,1,0) silently reset the auto margin, leaving the control
+     mid-row. Restored with a following `margin-left:auto` at equal specificity, keeping the
+     fold-safe negative margins on the other three sides. *Confirmed in-browser: computed
+     `margin-left` was `-6px`, now resolves to the free space and the control sits flush right.*
+  2. **New tag-name search** in the space the match-mode control vacated (§11 *Filters*):
+     narrows which tags the rail offers (`strategy` → Strategy / Grand Strategy / Turn-Based
+     Strategy / Strategy RPG), bypassing the "+N more" split so every match is visible, with a
+     ✕ / Esc to restore the full rail. Display-only — not in the URL, not an "active" filter,
+     never re-renders the game list; debounced 120 ms.
+  3. **Collapsed Tags column alignment.** Grid rows use `align-items:center`, so cells are only
+     as tall as their own content — which put the header underlines at **two different heights
+     (217px and 219px)** and rendered the collapsed body seam as a **10px stub in a 79px row**.
+     Fixed with `align-self:stretch` on `thead th` and the collapsed Tags `<td>`; verified by
+     measuring before/after in the live DOM (header bottoms collapse to a single 219px, seam
+     goes 10px → 78px).
 
 - **Playtime ceiling staleness: periodic deep re-walk (Jul 2026).** Closes the residual left by
   the depth ladder below. A game pinned at the 3,000 ceiling refreshed only its **top ~100
