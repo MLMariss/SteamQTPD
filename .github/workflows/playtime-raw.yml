@@ -6,9 +6,19 @@ on:
     # AGGRESSIVE 8-slot pass (was 4× at :23 of 2,8,14,20). Now :23 every 3h — hours
     # 1,4,7,10,13,16,19,22 — i.e. near-continuous playtime scraping (~23h/day, up from
     # ~12h/day) to backfill review times faster now that scrape.py finishes in ~7 min.
-    # Each run processes ONE shard bucket, chosen by GITHUB_RUN_NUMBER % 64 (set
-    # automatically by Actions), so it rotates through all 64 buckets over ~64 runs and
-    # commits stay small. The :23 offset starts each run AFTER the :07 prices slot
+    # Each run processes MANY shard buckets (up to MAX_SHARDS_PER_RUN), chosen by a
+    # STALENESS SWEEP: oldest-scraped shards first, so the whole 64-shard set cycles on a
+    # bounded schedule and no shard can starve. The earlier hot-first selection (rank by
+    # due-count) let a stable hot core monopolise the slots and stay fresh while every
+    # other shard fell back to the once-per-run anchor — i.e. the ~8-day tail that left
+    # Black Flag Resynced (shard 27) un-refreshed for 8 days. The GITHUB_RUN_NUMBER % 64
+    # anchor is retained only as a floor. Per-game priority still lives WITHIN a shard
+    # (the overdue-ratio ladder), so hot games are served first once their shard opens.
+    # Runs were finishing 12 shards in ~23 of 180 min, so the cap was raised 12 -> 24
+    # (the time was always there); at 24/run x 8 runs/day a full sweep completes in ~8 h.
+    # FORCE_SHARDS="27" (or a CSV) can pin specific buckets into a manual run to push a
+    # known game through on demand. Shards are loaded, worked and committed ONE AT A TIME,
+    # so commits stay small and peak memory stays at ~one shard. The :23 offset starts each run AFTER the :07 prices slot
     # (60-min runs) has wound down. NOTE: the ~200/5min storefront budget is nominally
     # shared with prices (:07 every 3h, 60min), recent (:41 of 4,10,16,22, 180min) and
     # scrape. With STEAM_DELAY now 1.5s (200/5min, no headroom) this leans on the budget
@@ -52,6 +62,18 @@ jobs:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional (appreviews is keyless)
           RUN_MINUTES: "180"
           TARGET_REVIEWS: "200"        # reviews aimed for per game on a normal pass
+          # Max shard buckets one run may open, oldest-scraped first (staleness sweep).
+          # Each open costs an ~18 MB read + a commit, but measured runs cleared 12 shards
+          # in ~23 of 180 min — 87% of the budget was idle — so the cap is 24, not 12.
+          # 24 × 8 runs/day = 192 shard-visits/day against 64 shards, so a full sweep of
+          # every shard completes in ~8 h (worst-case staleness), versus the old 8-day
+          # tail. Raise further (runs still finish well inside RUN_MINUTES) if you want a
+          # faster cycle; lower only if 403s show the storefront budget is the bottleneck.
+          MAX_SHARDS_PER_RUN: "24"
+          SHARD_MIN_HOT: "1"           # skip shards with fewer due games than this
+          # FORCE_SHARDS: "27"         # manual override: pin bucket(s) into this run,
+          #                            # processed first (CSV ok, e.g. "27,5"); for pushing
+          #                            # a specific game through without waiting for the sweep.
           # One-off DEEP pass: run this workflow manually and set a higher target
           # (capped at PER_GAME_CAP=1000 in the script). It resumes each game by
           # review identity, catching new reviews AND walking deeper into unseen ones.

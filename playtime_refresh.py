@@ -47,8 +47,9 @@ G1 — per-game cap: store at most PER_GAME_CAP (1000) reviews per game. When fu
      and new reviews arrive, drop the OLDEST stored reviews (ring-buffer by
      timestamp) to make room. 1000 reviews is far more than a median needs; the
      cap bounds the file to a known ceiling no matter how popular a game gets.
-G2 — low commit churn: this script commits the big file periodically DURING the
-     run (every ~30 min) plus once at run-end, rather than on every checkpoint.
+G2 — low commit churn: this script commits each shard periodically DURING the
+     run (every ~30 min) plus once when that shard is finished, rather than on
+     every checkpoint.
      Committing during the run (not only at the end) matters because GitHub runners
      are ephemeral: a single end-of-run commit means a cancelled / timed-out /
      evicted 3-hour job loses ALL its work when the runner's disk is destroyed.
@@ -70,6 +71,7 @@ Do NOT co-schedule it with the other storefront jobs without re-tuning delays.
 import json
 import os
 import random
+import re
 import statistics
 import subprocess
 import sys
@@ -91,9 +93,12 @@ RAW_FILE = HERE / "playtime_raw.json"            # LEGACY monolith — split int
 # the error, runs went green with nothing committed and the whole pipeline silently
 # froze. The full addressable set (~78k games) would be ~1.1 GB in one file, so the
 # per-review working set is split into shards under playtime_raw/NN.json, keyed by
-# appid % NSHARDS. Each shard tops out ~18 MB at full coverage (raise NSHARDS to shrink
-# further). One run processes ONE bucket (rotated by GITHUB_RUN_NUMBER), so commits stay
-# small and only a single writer ever touches a given shard.
+# (appid // 10) % NSHARDS. Each shard tops out ~18 MB at full coverage (raise NSHARDS to
+# shrink further). A run processes SEVERAL buckets, chosen hottest-first by how many of
+# their games are due under the refresh ladder, with the run-number bucket always
+# included as a starvation guard (see MAX_SHARDS_PER_RUN below). Each shard is loaded,
+# worked and committed one at a time, so commits stay small, peak memory stays at ~one
+# shard, and only a single writer ever touches a given shard.
 NSHARDS = 64
 SHARD_DIR = HERE / "playtime_raw"                # directory of NN.json shards (replaces the monolith)
 # Shard-key version. Bump this whenever shard_of() changes — ensure_sharding() reads the
@@ -110,13 +115,92 @@ def shard_of(appid):
 def shard_path(bucket):
     return SHARD_DIR / f"{bucket:02d}.json"
 
-def bucket_for_run():
-    """Rotate through all buckets by CI run number so every shard is revisited in turn.
-    Local / manual runs (no GITHUB_RUN_NUMBER) default to bucket 0."""
+def rotation_bucket():
+    """The round-robin bucket for this run, by CI run number. Kept as a belt-and-braces
+    FLOOR under the staleness sweep: the sweep already guarantees the oldest shards are
+    served first, but if header timestamps are ever unreadable (all equal), this bucket
+    still forces a rotating visit so no shard can be skipped indefinitely. Local / manual
+    runs (no GITHUB_RUN_NUMBER) default to 0."""
     try:
         return int(os.environ.get("GITHUB_RUN_NUMBER", "0")) % NSHARDS
     except ValueError:
         return 0
+
+
+def shard_last_scraped(bucket):
+    """The shard's LOGICAL last-write time — its stored `generated_at` — read cheaply from
+    just the file header, so the staleness sweep never parses 18 MB x 64. Returns 0 when
+    the shard file doesn't exist yet (a never-written shard is maximally stale -> swept
+    first). Filesystem mtime is deliberately NOT used: a fresh CI checkout stamps every
+    file with the checkout time, erasing the real cadence — only the persisted
+    `generated_at` survives across runners. `generated_at` is written as the first key of
+    each shard (compact JSON), so the first ~200 bytes always contain it."""
+    p = shard_path(bucket)
+    if not p.exists():
+        return 0
+    try:
+        with p.open("rb") as fh:
+            head = fh.read(200).decode("utf-8", "ignore")
+    except OSError:
+        return 0
+    m = re.search(r'"generated_at"\s*:\s*(\d+)', head)
+    return int(m.group(1)) if m else 0
+
+
+def forced_shards():
+    """Buckets pinned into this run via the FORCE_SHARDS env (e.g. '27' or '27,5,60'),
+    processed before the sweep. De-duped, in the order given; out-of-range or non-numeric
+    tokens are dropped. Empty when the env is unset — the normal path."""
+    out = []
+    for tok in os.environ.get(FORCE_SHARDS_ENV, "").replace(" ", "").split(","):
+        if not tok:
+            continue
+        try:
+            b = int(tok)
+        except ValueError:
+            continue
+        if 0 <= b < NSHARDS and b not in out:
+            out.append(b)
+    return out
+
+
+# --- multi-shard, STALENESS-SWEEP scheduling ------------------------------- #
+# WHY THIS EXISTS. The original design processed exactly ONE shard per run
+# (GITHUB_RUN_NUMBER % 64), which capped any individual game's refresh cadence at
+# "once per 64 runs" — ~8 days at 8 runs/day — no matter how hot it was. So a run was
+# made to work MANY shards, but chosen HOTTEST-FIRST (most due games per shard). That
+# swapped one starvation for another: a stable hot core of ~12 shards won the slots
+# every run and stayed fresh (~0.1d), while every shard NOT in that core fell back to
+# the once-per-run anchor — i.e. right back to the ~8-day tail. Measured on main: 23 of
+# 64 shards >5 days stale, worst 8.4 days. That tail is where Black Flag Resynced
+# (shard 27) sat un-refreshed for 8 days even though it was the single most-overdue hot
+# game in the catalog — because select ranked by a shard's TOTAL due-count, and one
+# blazing game can't lift a shard whose total is below the core's.
+#
+# THE FIX: select shards by STALENESS, oldest-scraped first — a fair sweep, not a greedy
+# grab. Every run drains the shards that have waited longest, so the whole set cycles on
+# a BOUNDED schedule (max wait = ceil(NSHARDS / (shards_per_run * runs_per_day))) instead
+# of a hot core monopolising the budget. Per-game priority is NOT lost — it just lives at
+# the right layer: the overdue-ratio ladder still orders games WITHIN a shard once it is
+# open, so hot games are served first; the sweep only decides which shards open, and
+# guarantees none is skipped. Because runs finish their shards in ~2 min each and were
+# idling ~87% of the 180-min budget, MAX_SHARDS_PER_RUN is also raised well above 12 —
+# the time was always there, the cap was leaving it unused.
+#
+# The load-bearing invariant is unchanged: ONE WRITER PER FILE. The `steam-playtime-raw`
+# concurrency group guarantees no two raw runs overlap, so a run may open/mutate/commit
+# as many shards as the time budget allows and no other job ever touches them.
+#
+# SCORING IS HEADER-ONLY. Choosing shards must not read shard bodies (~18 MB each, ~1.1 GB
+# total). Due-counts come from games.json alone (loaded once); shard staleness comes from
+# a ~200-byte header read per shard (`generated_at`, the first key in each file) — not the
+# body. So the sweep stays O(catalog) + 64 tiny reads, never gigabytes.
+MAX_SHARDS_PER_RUN = int(os.environ.get("MAX_SHARDS_PER_RUN", "24"))
+SHARD_MIN_HOT = int(os.environ.get("SHARD_MIN_HOT", "1"))   # skip shards with fewer due games than this
+# Optional manual override, e.g. FORCE_SHARDS="27" or "27,5,60": pin specific buckets into
+# this run (processed FIRST), for pushing a known game through on demand without waiting for
+# the sweep to reach it. Out-of-range / non-numeric entries are ignored.
+FORCE_SHARDS_ENV = "FORCE_SHARDS"
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (appreviews is keyless)
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))
@@ -146,9 +230,121 @@ PER_GAME_CAP = 1000               # max reviews stored per game (ring-buffer whe
 # cushion absorbs minor reordering at the boundary without walking the whole list).
 SEEN_STREAK_STOP = 50
 
-COOLDOWN_DAYS = 7                 # don't re-walk a game's reviews younger than this
+COOLDOWN_DAYS = 7                 # legacy flat cooldown (kept as the ladder's fallback)
 NOUPDATE_COOLDOWN_DAYS = 30       # dormant games: refresh far less often
 UPDATE_ACTIVE_DAYS = 90           # "recently updated" = patched within this many days
+
+# --- age-tiered refresh ladder (ported from the review-refresh ladder, ARCHITECTURE §6) --- #
+# A flat 7d/30d cooldown treats a game released yesterday the same as one from 2019.
+# But review playtime moves fastest exactly where the flat gate is slowest: a brand-new
+# release accumulates its entire review corpus in the first days, and each reviewer's
+# `playtime_forever` is still climbing. Waiting 7 days there means the medians the
+# frontend shows for the most-searched games on the site are the stalest data we hold.
+#
+# So the cooldown now scales with RELEASE AGE, coarsely (4 tiers, not the 7-tier review
+# ladder — playtime costs ~2-20 requests/game vs 2 for a review refresh, so a finer
+# ladder at the top would blow the storefront budget for little gain):
+#
+#   released  0-7d   -> 1d    the corpus is still forming; refresh daily
+#   released  7-30d  -> 3d    still moving, but the shape is set
+#   released 30-90d  -> 7d    matches the old "actively updated" cooldown
+#   older            -> 30d   matches the old dormant cooldown
+#
+# REVIEW-COUNT BOOST: a game with >1k all-time reviews has both the most churn and the
+# most site traffic, so each tier's cooldown is HALVED for it. This is what keeps a
+# popular older game (a perennial like a Souls title) fresher than a dead new release.
+AGE_TIER_DAYS = [
+    (7,   1),      # released within 7 days   -> 1-day cooldown
+    (30,  3),      # within 30 days           -> 3-day
+    (90,  7),      # within 90 days           -> 7-day
+]
+AGE_TIER_FALLBACK_DAYS = 30        # older than the last edge
+HOT_REVIEWS_BOOST = 1000           # >this many all-time reviews halves the cooldown
+HOT_BOOST_FACTOR = 0.5
+MIN_COOLDOWN_HOURS = 12            # floor: never re-walk the same game twice in 12h
+
+# POPULARITY FLOOR — aligns playtime cadence with the HLTB fast lane (hltb_refresh.py
+# POPULAR_TIERS / ARCHITECTURE §8). The age ladder above keys on RELEASE AGE, so a
+# popular perennial (>1k reviews, years old) lands on the 30-day back-catalogue tier —
+# even halved that is 15 days. But HLTB re-checks those exact games every 5 days, and
+# both signals are driven by the same live player population: if HLTB submissions are
+# worth a 5-day look, the reviewers' `playtime_forever` is churning just as fast. Left
+# alone this is the very "most-viewed games refreshed least often" anti-pattern the HLTB
+# fix was built to kill — playtime just inherited it on the old tiers.
+#
+# So each game's age-tier cooldown is min()'d against a review-count tier, IDENTICAL in
+# shape to HLTB's. min() semantics mean it can only ever pull a refresh FORWARD, never
+# delay one: it bites only where the age ladder is too slow for a high-traffic game (the
+# 30-90d and older tiers), and leaves the aggressive fresh-release fast lane (halved to
+# 12h-1.5d) untouched — those are already faster than the floor. Net effect is a
+# REDISTRIBUTION toward hot back-catalogue games within the same rate envelope (the
+# overdue-ratio priority keeps genuinely-new releases ahead of them), not more requests.
+POPULAR_FLOOR_TIERS = [
+    (1000, 5),      # >1000 all-time reviews -> refresh at least every 5 days  (HLTB: 5d)
+    (500, 10),      # >500                   -> at least every 10 days         (HLTB: 10d)
+]
+
+
+def popular_floor_days(review_count):
+    """The popularity-tier cooldown FLOOR (in days) for a game, or None when it isn't
+    popular enough to qualify. Mirrors hltb_refresh.popular_window_days so the two jobs
+    re-check the same hot games on the same cadence. Strict `>` matches the HLTB edge."""
+    rc = review_count or 0
+    for edge, days in POPULAR_FLOOR_TIERS:
+        if rc > edge:
+            return days
+    return None
+
+
+def cooldown_days(released_ts, last_update_ts, review_count, now):
+    """The refresh cooldown (in DAYS, may be fractional) for one game.
+
+    Primary axis is release age via AGE_TIER_DAYS. When `released_ts` is missing (a
+    sizeable slice of the catalog has no parsed release date), we fall back to the
+    legacy last_update_ts behaviour so those games are never treated as brand-new and
+    hammered — unknown age is the conservative case, not the eager one.
+
+    The >1k-review boost halves whichever tier applies; the popularity FLOOR then
+    min()'s that against a review-count tier (aligning with HLTB), so a popular
+    back-catalogue game can't sit on the slow older tiers. Both are bounded below by
+    MIN_COOLDOWN_HOURS so no game can be re-walked more than twice a day even at the top
+    of the ladder. Pure function — unit-testable, no I/O."""
+    base = None
+    if released_ts:
+        age_days = (now - released_ts) / 86400.0
+        if age_days >= 0:                       # guard against future-dated releases
+            for edge, days in AGE_TIER_DAYS:
+                if age_days < edge:
+                    base = days
+                    break
+            if base is None:
+                base = AGE_TIER_FALLBACK_DAYS
+    if base is None:
+        # No usable release date -> legacy behaviour keyed off patch activity.
+        actively_updated = last_update_ts and (now - last_update_ts) <= UPDATE_ACTIVE_DAYS * 86400
+        base = COOLDOWN_DAYS if actively_updated else NOUPDATE_COOLDOWN_DAYS
+    if (review_count or 0) > HOT_REVIEWS_BOOST:
+        base *= HOT_BOOST_FACTOR
+    # Popularity floor: only ever pulls the cooldown FORWARD (min), keeping high-traffic
+    # games on the same cadence HLTB re-checks them. Applies on ANY axis (age-tier or the
+    # legacy no-release-date path), so a popular game with no parsed release date is
+    # rescued from the 30-day dormant cooldown too.
+    pop = popular_floor_days(review_count)
+    if pop is not None:
+        base = min(base, pop)
+    return max(base, MIN_COOLDOWN_HOURS / 24.0)
+
+
+def _released_ts(g):
+    """Best-effort release timestamp from a games.json record. The catalog has carried
+    a few different key spellings over its life, so we probe them in order rather than
+    hard-coding one and silently returning None for older rows. Non-numeric or absent
+    -> None, which cooldown_days() treats as 'unknown age' (conservative)."""
+    for key in ("released_ts", "release_ts", "release_date_ts", "released_at"):
+        v = g.get(key)
+        if isinstance(v, (int, float)) and v > 0:
+            return int(v)
+    return None
 MIN_SEGMENT_FOR_MEDIAN = 3        # below this many samples, a segment median is null
 # Hard eligibility floor: a sentiment-split median needs a usable sample. Games
 # with fewer than this many all-time reviews can't produce one (they'd null out at
@@ -498,13 +694,16 @@ def effective_target():
     return min(PER_GAME_CAP, max(TARGET_REVIEWS, DEEPEN_TARGET) if DEEPEN_TARGET else TARGET_REVIEWS)
 
 
-def is_eligible(rec, last_update_ts, review_count, now, target):
+def is_eligible(rec, released_ts, last_update_ts, review_count, now, target):
     """Eligible if never scraped; OR holding fewer than target AND not exhausted
-    (more to gather); OR past cooldown (to catch NEW reviews + refresh drift).
+    (more to gather); OR past its LADDER cooldown (to catch NEW reviews + refresh drift).
 
     Gated by MIN_REVIEWS_FLOOR: games below the floor can't produce a usable
     sentiment-split median, so they're skipped regardless of the above until their
-    live review_count crosses the floor (re-checked every run — not permanent)."""
+    live review_count crosses the floor (re-checked every run — not permanent).
+
+    The cooldown is no longer the flat 7d/30d pair — it comes from cooldown_days(),
+    which tiers by release age and halves for >1k-review games (see the ladder above)."""
     if (review_count or 0) < MIN_REVIEWS_FLOOR:
         return False
     if not rec:
@@ -513,27 +712,117 @@ def is_eligible(rec, last_update_ts, review_count, now, target):
     if held < target and not rec.get("exhausted"):
         return True
     age = now - rec.get("scraped_at", 0)
-    actively_updated = last_update_ts and (now - last_update_ts) <= UPDATE_ACTIVE_DAYS * 86400
-    cooldown = COOLDOWN_DAYS if actively_updated else NOUPDATE_COOLDOWN_DAYS
-    return age >= cooldown * 86400
+    return age >= cooldown_days(released_ts, last_update_ts, review_count, now) * 86400
 
 
-def priority(rec, last_update_ts, all_time_count, now, target):
+def priority(rec, released_ts, last_update_ts, all_time_count, now, target):
+    """Ordering score WITHIN a shard. Higher = worked first.
+
+    The dominant term is now OVERDUE RATIO — how many multiples of its own cooldown a
+    game is past due (age / cooldown). That makes the ladder self-balancing: a
+    1-day-cooldown new release 2 days stale outranks a 30-day-cooldown back-catalogue
+    game 40 days stale, because the former is proportionally further behind the promise
+    the ladder makes about it. Using a raw age here (the old behaviour) would do the
+    opposite and let ancient dormant games crowd out the fast lane forever."""
     score = 0.0
     if not rec:
-        score += 1000
+        score += 1000                       # never scraped -> always first
     else:
         held = len((rec.get("reviews") or {}))
         if held < target and not rec.get("exhausted"):
-            score += 500
-    if last_update_ts:
-        days = (now - last_update_ts) / 86400
-        score += 300 if days <= 30 else 150 if days <= 90 else 50 if days <= 365 else 0
+            score += 500                    # incomplete corpus -> still filling
+
+    cd = cooldown_days(released_ts, last_update_ts, all_time_count, now)
+    if rec:
+        age_days = (now - rec.get("scraped_at", 0)) / 86400.0
+        overdue_ratio = age_days / cd if cd > 0 else 0
+        score += min(400, overdue_ratio * 100)    # capped so it can't swamp the flags above
+
+    # Fast-lane bonuses: recent release and/or high review volume.
+    if released_ts:
+        rel_days = (now - released_ts) / 86400.0
+        if 0 <= rel_days < 7:
+            score += 300
+        elif rel_days < 30:
+            score += 150
+        elif rel_days < 90:
+            score += 50
+    if (all_time_count or 0) > HOT_REVIEWS_BOOST:
+        score += 120                        # popular -> more churn, more site traffic
     if all_time_count is not None and all_time_count < 10:
         score -= 300
-    if rec:
-        score += min(200, (now - rec.get("scraped_at", 0)) / 86400)
     return score
+
+
+def build_candidates(games, now, target, raw_by_bucket=None, buckets=None):
+    """Score every catalog game against the ladder and group DUE ones by shard.
+
+    Returns {bucket: [(score, appid, released_ts, last_update_ts, review_count), ...]}
+    with each bucket's list sorted hottest-first.
+
+    Called in two modes:
+      * SCHEDULING (raw_by_bucket=None): shard bodies are NOT loaded, so `rec` is
+        unknown and treated as {}. That over-counts slightly — a game whose shard record
+        is already fresh still scores as due — but it's a header-free O(catalog) pass
+        over data already in memory, which is the whole point: picking which shards to
+        open must never require opening them. The exact per-game gate is re-applied for
+        real once a shard is loaded.
+      * EXECUTION (raw_by_bucket supplied): the true eligibility test, with each game's
+        stored record in hand.
+    `buckets`, when given, restricts scoring to those shard ids."""
+    out = {}
+    for g in games:
+        aid = g["appid"]
+        b = shard_of(aid)
+        if buckets is not None and b not in buckets:
+            continue
+        rc = g.get("review_count")
+        if (rc or 0) < MIN_REVIEWS_FLOOR:
+            continue                        # cheap reject before any further work
+        rel = _released_ts(g)
+        lu = g.get("last_update_ts")
+        rec = {}
+        if raw_by_bucket is not None:
+            rec = (raw_by_bucket.get(b) or {}).get(str(aid), {})
+        if not is_eligible(rec, rel, lu, rc, now, target):
+            continue
+        out.setdefault(b, []).append(
+            (priority(rec, rel, lu, rc, now, target), int(aid), rel, lu, rc))
+    for b in out:
+        out[b].sort(key=lambda t: -t[0])
+    return out
+
+
+def select_buckets(due_by_bucket, anchor, forced=(), last_scraped=None):
+    """Choose which shards this run works — a STALENESS SWEEP, not a greedy hot-first grab.
+
+    Order of assembly:
+      1. `forced` buckets (FORCE_SHARDS) go first, unconditionally — a manual override.
+      2. then the shards with due work, OLDEST-SCRAPED FIRST, so every run drains whatever
+         has waited longest. Ties (equal staleness) break by more due games, to clear the
+         most backlog per open. This is the fairness guarantee: with S shards/run over R
+         runs/day no shard waits longer than ceil(NSHARDS / (S*R)) — a bounded cycle —
+         instead of a hot core hogging the slots and starving the tail to the anchor's
+         ~8-day rotation (the bug that left shard 27 / Black Flag 8 days stale).
+      3. `anchor` is kept as a floor: if header timestamps are ever unreadable and the sort
+         degenerates, the rotating anchor still forces a visit so nothing is skipped forever.
+
+    Per-game priority is intentionally NOT here — the overdue-ratio ladder orders games
+    WITHIN a shard once it is loaded, so hot games are still served first; the sweep only
+    decides which shards open. Shards with fewer than SHARD_MIN_HOT due games are skipped
+    (no point opening an 18 MB file with nothing to do). `last_scraped` is injectable purely
+    so the scheduler is unit-testable without shard files on disk; it defaults to the real
+    header reader."""
+    if last_scraped is None:
+        last_scraped = shard_last_scraped
+    forced = [b for b in dict.fromkeys(forced) if 0 <= b < NSHARDS]
+    eligible = [b for b, items in due_by_bucket.items()
+                if len(items) >= SHARD_MIN_HOT and b not in forced]
+    eligible.sort(key=lambda b: (last_scraped(b), -len(due_by_bucket[b])))
+    chosen = (forced + eligible)[:MAX_SHARDS_PER_RUN]
+    if anchor not in chosen and anchor in due_by_bucket:
+        chosen = chosen[:max(0, MAX_SHARDS_PER_RUN - 1)] + [anchor]
+    return chosen
 
 
 # --------------------------------------------------------------------------- #
@@ -548,74 +837,102 @@ def main():
 
     ensure_sharding()                     # one-time: split monolith and/or reshard on key change; no-op afterwards
 
-    bucket = bucket_for_run()             # this run owns exactly ONE shard
-    raw = load_shard(bucket)
     now = int(time.time())
     target = effective_target()
+    anchor = rotation_bucket()
+    forced = forced_shards()
 
-    cands = []
-    for g in games:
-        aid = g["appid"]
-        if shard_of(aid) != bucket:       # only candidates that live in this bucket
-            continue
-        aids = str(aid)
-        rec = raw.get(aids, {})
-        lu = g.get("last_update_ts")
-        if is_eligible(rec, lu, g.get("review_count"), now, target):
-            cands.append((priority(rec, lu, g.get("review_count"), now, target),
-                          int(aid), lu))
-    cands.sort(reverse=True)
+    # --- Phase 1: SCHEDULE (no shard bodies read) --------------------------- #
+    # Score the whole catalog against the ladder purely from games.json, group the due
+    # games by shard, then pick shards OLDEST-SCRAPED FIRST (staleness sweep). Reading no
+    # shard bodies here is the point: choosing among 64 x ~18 MB files must not cost 1.1 GB
+    # of I/O — only a ~200-byte header read per shard for its generated_at timestamp.
+    sched = build_candidates(games, now, target)
+    chosen = select_buckets(sched, anchor, forced)
+    total_due = sum(len(v) for v in sched.values())
 
     mode = f"DEEPEN to {target}" if DEEPEN_TARGET else f"target {target}"
-    log(f"Bucket {bucket:02d}/{NSHARDS} | catalog {len(games)} | shard has {len(raw)} | "
-        f"eligible now: {len(cands)}")
+    log(f"Catalog {len(games)} | due by ladder: ~{total_due} across {len(sched)} shard(s)")
+    forced_note = f" · forced {[f'b{b:02d}' for b in forced]}" if forced else ""
+    log(f"Working {len(chosen)}/{MAX_SHARDS_PER_RUN} shard(s) this run, oldest-scraped first "
+        f"(anchor b{anchor:02d} floor{forced_note}): "
+        + ", ".join(f"b{b:02d}(~{len(sched.get(b, []))}due,{(now-shard_last_scraped(b))//86400}d)"
+                    for b in chosen))
     log(f"Budget: {RUN_MINUTES} min · {mode}/game · cap {PER_GAME_CAP} · delay {STEAM_DELAY}s · "
-        f"cooldown {COOLDOWN_DAYS}d (dormant {NOUPDATE_COOLDOWN_DAYS}d)")
+        f"ladder 0-7d/1d · 7-30d/3d · 30-90d/7d · else {AGE_TIER_FALLBACK_DAYS}d "
+        f"(>{HOT_REVIEWS_BOOST} reviews: halved; popularity floor >1k/5d, >500/10d — HLTB-aligned)")
 
     budget = RUN_MINUTES * 60
-    last_commit = time.time()
-    done = tot_added = tot_refreshed = 0
-    for _score, aid, _lu in cands:
-        if budget - (time.time() - start) < TIME_BUFFER:
-            # Graceful time-budget stop. Commit what we have before breaking so a
-            # long run always persists its work even if it never exhausts the queue
-            # (belt-and-suspenders alongside the periodic commit below).
-            log("Time budget reached; committing and wrapping up.")
-            save_shard(bucket, raw)
-            git_commit_shard(bucket, f"playtime raw b{bucket:02d}: budget stop, {done} games this run "
-                             f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
-            last_commit = time.time()
+    grand_done = grand_added = grand_refreshed = 0
+    shards_touched = 0
+
+    def time_left():
+        return budget - (time.time() - start)
+
+    # --- Phase 2: EXECUTE, one shard at a time ------------------------------ #
+    # Each shard is loaded, worked, and committed before the next is opened, so peak
+    # memory stays at ~one shard (never 64) and an interrupted run has already
+    # persisted every completed shard. One writer per file is untouched: this job is
+    # still the sole writer of playtime_raw/, and the concurrency group means no other
+    # run of it is alive at the same time.
+    for bucket in chosen:
+        if time_left() < TIME_BUFFER:
+            log("Time budget reached; stopping before opening another shard.")
             break
-        aids = str(aid)
-        rec = raw.get(aids, {})
-        reviews = dict(rec.get("reviews") or {})     # mutate a copy, store on success
-        added, refreshed, exhausted = scrape_game(aid, reviews, target)
-        summary = summarize_game(reviews)
-        raw[aids] = {"reviews": reviews, "summary": summary,
-                     "exhausted": exhausted, "scraped_at": int(time.time())}
-        done += 1; tot_added += added; tot_refreshed += refreshed
-        mu, md = summary["median_up"], summary["median_down"]
-        mu_h = f"{mu/60:.1f}h" if mu is not None else "—"
-        md_h = f"{md/60:.1f}h" if md is not None else "—"
-        log(f"  {aid:>8}: fans {mu_h} (n={summary['n_up']}) · det {md_h} (n={summary['n_down']})"
-            f" · +{added} new, ~{refreshed} refreshed, held {summary['n_all']}")
+        raw = load_shard(bucket)
+        # Re-score THIS shard's games for real, now that we hold their stored records.
+        # The scheduling pass deliberately guessed (no bodies); this is the exact gate.
+        cands = build_candidates(games, now, target,
+                                 raw_by_bucket={bucket: raw}, buckets={bucket}).get(bucket, [])
+        if not cands:
+            log(f"  b{bucket:02d}: nothing actually due once the shard was read; skipping.")
+            continue
+        shards_touched += 1
+        log(f"[b{bucket:02d}] shard holds {len(raw)} games · {len(cands)} due")
 
-        # G2 (revised): commit to GIT periodically — not just to ephemeral disk —
-        # so an interrupted run persists its progress to the repo (see COMMIT_SECONDS).
-        if time.time() - last_commit > COMMIT_SECONDS:
-            save_shard(bucket, raw)
-            git_commit_shard(bucket, f"playtime raw b{bucket:02d}: checkpoint, {done} games so far "
-                             f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
-            last_commit = time.time()
+        last_commit = time.time()
+        done = tot_added = tot_refreshed = 0
+        hit_budget = False
+        for _score, aid, _rel, _lu, _rc in cands:
+            if time_left() < TIME_BUFFER:
+                hit_budget = True
+                break
+            aids = str(aid)
+            rec = raw.get(aids, {})
+            reviews = dict(rec.get("reviews") or {})     # mutate a copy, store on success
+            added, refreshed, exhausted = scrape_game(aid, reviews, target)
+            summary = summarize_game(reviews)
+            raw[aids] = {"reviews": reviews, "summary": summary,
+                         "exhausted": exhausted, "scraped_at": int(time.time())}
+            done += 1; tot_added += added; tot_refreshed += refreshed
+            mu, md = summary["median_up"], summary["median_down"]
+            mu_h = f"{mu/60:.1f}h" if mu is not None else "—"
+            md_h = f"{md/60:.1f}h" if md is not None else "—"
+            log(f"  {aid:>8}: fans {mu_h} (n={summary['n_up']}) · det {md_h} (n={summary['n_down']})"
+                f" · +{added} new, ~{refreshed} refreshed, held {summary['n_all']}")
 
-    # Final commit at run-end (covers the normal case where the loop drains the
-    # queue before the time budget; a no-op commit is skipped inside git_commit_shard
-    # when there's nothing new since the last checkpoint).
-    save_shard(bucket, raw)
-    git_commit_shard(bucket, f"playtime raw b{bucket:02d}: {done} games this run "
-                     f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
-    log(f"\nDone. Bucket {bucket:02d}: {done} games this run: +{tot_added} new reviews, "
-        f"~{tot_refreshed} refreshed. {len(raw)} games in this shard.")
+            # G2: commit to GIT periodically — not just to ephemeral disk — so an
+            # interrupted run persists its progress to the repo (see COMMIT_SECONDS).
+            if time.time() - last_commit > COMMIT_SECONDS:
+                save_shard(bucket, raw)
+                git_commit_shard(bucket, f"playtime raw b{bucket:02d}: checkpoint, {done} games so far "
+                                 f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
+                last_commit = time.time()
+
+        # Always commit this shard before moving to the next one (or exiting), so no
+        # completed shard's work is ever left only on the ephemeral runner disk.
+        save_shard(bucket, raw)
+        tag = "budget stop" if hit_budget else "complete"
+        git_commit_shard(bucket, f"playtime raw b{bucket:02d}: {tag}, {done} games this run "
+                         f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
+        grand_done += done; grand_added += tot_added; grand_refreshed += tot_refreshed
+        log(f"[b{bucket:02d}] done: {done} games (+{tot_added} new, ~{tot_refreshed} refreshed)")
+        if hit_budget:
+            log("Time budget reached; wrapping up.")
+            break
+
+    log(f"\nDone. {shards_touched} shard(s), {grand_done} games this run: "
+        f"+{grand_added} new reviews, ~{grand_refreshed} refreshed.")
     return 0
 
 

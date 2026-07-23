@@ -3,9 +3,14 @@ name: 2.5 HLTB completion times -> hltb.json
 on:
   workflow_dispatch:        # run manually from the Actions tab
   schedule:
-    # HLTB completion times are static, so this just fills in games that don't have an
-    # entry yet and never re-fetches. It's the slow part (scrapes howlongtobeat.com), so
-    # it runs out of band on its own schedule and never blocks the main scrape. It hits
+    # Pass 1 fills games with no entry yet; leftover budget goes to a re-scrape pass over
+    # existing entries on staleness windows (partial 14d / blank attempt-scaled / full
+    # 365d). Those windows are now min()'d against a POPULARITY FAST LANE keyed on Steam
+    # review_count (>1k -> 5d, >500 -> 10d) that overrides EVERY bucket including `full`:
+    # HLTB times are only static for back-catalogue titles, and a big new release keeps
+    # accumulating submissions long after our first lookup. It's the slow part (scrapes
+    # howlongtobeat.com), so it runs out of band on its own schedule and never blocks the
+    # main scrape. It hits
     # howlongtobeat.com (NOT Steam), so it doesn't compete with the storefront rate budget
     # — safe to run near-continuously. Offset to :53 to stagger from the other jobs; own
     # concurrency group (cancel-in-progress:false) queues rather than overlaps.
