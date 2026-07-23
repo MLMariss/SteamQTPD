@@ -43,10 +43,19 @@ near the top) stay current at no extra request cost.
 ------------------------------------------------------------------------------
 GUARDRAILS (keep the in-repo file from ballooning)
 ------------------------------------------------------------------------------
-G1 — per-game cap: store at most PER_GAME_CAP (1000) reviews per game. When full
-     and new reviews arrive, drop the OLDEST stored reviews (ring-buffer by
-     timestamp) to make room. 1000 reviews is far more than a median needs; the
-     cap bounds the file to a known ceiling no matter how popular a game gets.
+G1 — per-game cap, laddered: a game's ceiling is not one flat number but a RUNG
+     of DEPTH_LADDER (1000 -> 2000 -> 3000), picked from how many reviews it
+     already holds. The first touch fills to 1000 and moves on, so the frontier
+     drains fast; each later visit — on the game's normal cooldown, no extra
+     visits — walks one rung deeper. Only the ~10% of games with >1000 reviews
+     ever climb. When at its rung and new reviews arrive, the OLDEST stored are
+     dropped (ring-buffer by timestamp) so the window slides forward.
+     WHY DEEPEN AT ALL: the newest-N sample is nearly unbiased (measured 1.03x vs
+     full history), so this is not a bias fix — it is a NOISE fix. At newest-200,
+     51% of games sit >10% off their true median; at 600 that falls to 24%. The
+     sharpest win is the MINORITY sentiment side, which on capped games has a
+     median of just 158 reviews (61% under 200) — and that thin side is exactly
+     what the "played long, still says skip it" signal is computed from.
 G2 — low commit churn: this script commits each shard periodically DURING the
      run (every ~30 min) plus once when that shard is finished, rather than on
      every checkpoint.
@@ -222,8 +231,67 @@ PER_PAGE = 100                    # appreviews hard max is 100/page
 # target for THIS run and prefers games below it. Capped by PER_GAME_CAP.
 DEEPEN_TARGET = int(os.environ.get("DEEPEN_TARGET", "0"))
 
-# --- G1: per-game hard cap ------------------------------------------------- #
-PER_GAME_CAP = 1000               # max reviews stored per game (ring-buffer when full)
+# --- G1: per-game cap, as a DEPTH LADDER ----------------------------------- #
+# Rungs a game climbs one step per visit, chosen by how many it already holds.
+# 1000 stays the FIRST touchpoint so a fresh game is filled and released quickly
+# (the frontier keeps draining); 3000 is the absolute ceiling.
+#
+# Sizing (measured against the live corpus, 2026-07):
+#   * only 8,386 games (10.6% of coverage) have >1000 reviews, so the ladder
+#     touches a small, high-value slice — the popular titles people actually open;
+#   * at ~50 B/review, 3000 costs +7.8 MB/shard -> ~21 MB max vs GitHub's 100 MB
+#     per-file limit, so file size is nowhere near binding;
+#   * the one-time climb is ~44 h of scrape time. Spread over the normal 7-day
+#     cooldown it lands in ~3 weeks at ~10% of the daily budget, then falls back
+#     to roughly today's cost (a game at its rung stops on SEEN_STREAK_STOP).
+# The real long-term cost is git growth, not file size: shards are rewritten whole
+# on every commit, so raw storage roughly doubles (777 MB -> ~1.3 GB). 3000 was
+# chosen over 5000 for exactly that reason — ~70% of the benefit for ~60% of the
+# bytes. Raising the ceiling later is a one-line change to DEPTH_LADDER.
+DEPTH_LADDER = (1000, 2000, 3000)
+PER_GAME_CAP = DEPTH_LADDER[-1]   # absolute ceiling; no game ever exceeds this
+
+
+def cap_for(held):
+    """This visit's depth rung for a game currently holding `held` reviews.
+
+    Returns the first rung strictly above `held`, so a game climbs exactly one step
+    per visit and then stops: 0-999 -> 1000, 1000-1999 -> 2000, 2000+ -> 3000.
+    Deliberately NOT used for eligibility — `held < cap_for(held)` is true by
+    construction, which would make every game permanently due. Deepening piggybacks
+    on the normal cooldown instead, so it costs no extra visits (see is_eligible)."""
+    for rung in DEPTH_LADDER:
+        if held < rung:
+            return rung
+    return DEPTH_LADDER[-1]
+
+
+# --- Ceiling staleness: periodic FULL re-walk ------------------------------ #
+# THE PROBLEM. Once a game holds the full PER_GAME_CAP, a normal visit only pulls
+# the top ~100 new reviews and refreshes only THOSE 100 playtimes (the walk breaks
+# as soon as len >= target). Positions 100..CAP then FREEZE — but playtime_forever
+# keeps growing, so a game that sits at the ceiling reports ever-staler playtimes.
+#
+# THE FIX (two triggers, whichever fires first). A game at the ceiling gets a DEEP
+# re-walk — every held playtime refreshed, all new reviews caught up — when either:
+#   * REWALK_DAYS since its last full walk (the TIME backstop — playtime staleness
+#     is clock-driven, so this is the load-bearing one; catches slow-churn back-
+#     catalogue that the review-count trigger alone would leave frozen forever), OR
+#   * its review_count grew by REWALK_DELTA since the last full walk (the CHURN
+#     accelerator — catches trending games sooner than the backstop would).
+#
+# NOT A BATCH. Each game carries its own `walk_at` / `rc_at_walk` anchors, stamped
+# when it last did a full walk — which for most games is when the depth ladder first
+# filled them (staggered across the rotation as it fills now). So due-dates are
+# spread across the calendar per game; there is no synchronised once-a-month sweep.
+# It also adds NO visits: a ceiling game is already visited every cooldown to catch
+# new reviews — this just makes roughly every REWALK_DAYS-th of those visits deep.
+REWALK_DAYS = int(os.environ.get("REWALK_DAYS", "30"))    # time backstop
+REWALK_DELTA = int(os.environ.get("REWALK_DELTA", "1000"))  # +reviews churn accelerator
+# The churn accelerator can't fire more often than this, so a mega-game earning
+# 1000s of reviews a week can't thrash a deep re-walk every visit (its newest-CAP
+# window is already the freshest slice — it does not need constant deep passes).
+REWALK_MIN_DAYS = 7
 
 # --- stop-on-seen tuning --------------------------------------------------- #
 # When growing, stop after this many CONSECUTIVE already-known reviews (a small
@@ -431,7 +499,7 @@ def _parse_review(rv):
 # --------------------------------------------------------------------------- #
 # Scrape one game: grow (new + deeper) + refresh-on-revisit, with the G1 cap
 # --------------------------------------------------------------------------- #
-def scrape_game(appid, stored_reviews, target):
+def scrape_game(appid, stored_reviews, target, deep=False):
     """Walk appreviews newest-first, updating `stored_reviews` (a dict keyed by
     recommendationid) IN PLACE. Returns (added, refreshed, exhausted).
 
@@ -441,15 +509,23 @@ def scrape_game(appid, stored_reviews, target):
       * stop growing when   -> we hit SEEN_STREAK_STOP consecutive known ids AND
                                we already hold >= target (new reviews all caught),
                                OR Steam runs out of reviews, OR we hit the cap.
-    """
+
+    deep=True forces a FULL re-walk of the target window (ceiling staleness — see
+    REWALK_* and the call site): the early stops are suppressed so the walk covers
+    the whole newest-`target` window, refreshing EVERY held playtime and catching up
+    all new reviews. It deliberately stops at exactly the window depth
+    (`target // PER_PAGE` pages) and no deeper — walking past it would start adding
+    reviews OLDER than the window and evict just-refreshed recent ones, drifting the
+    sample backwards in time."""
     added = refreshed = 0
     seen_streak = 0
     exhausted = False
     cursor = "*"
     pages = 0
-    # Absolute page ceiling so a pathological loop can't run forever. Cap governs
-    # total stored; this governs total *walked* in one run.
-    max_pages = (PER_GAME_CAP // PER_PAGE) + 5
+    # Absolute page ceiling so a pathological loop can't run forever. Scales with
+    # THIS visit's rung (`target`), not the global ceiling, so a first touch still
+    # costs ~15 pages while a rung-3 deepen is allowed the ~35 it needs.
+    max_pages = (target // PER_PAGE) + 5
 
     while pages < max_pages:
         data = get(f"https://store.steampowered.com/appreviews/{appid}",
@@ -476,8 +552,8 @@ def scrape_game(appid, stored_reviews, target):
                     refreshed += 1
                 seen_streak += 1
             else:
-                # New review -> add, enforcing the cap (drop oldest if full).
-                if len(stored_reviews) >= PER_GAME_CAP:
+                # New review -> add, enforcing THIS visit's rung (drop oldest if full).
+                if len(stored_reviews) >= target:
                     _evict_oldest(stored_reviews)
                 stored_reviews[rid] = rec
                 added += 1
@@ -487,13 +563,22 @@ def scrape_game(appid, stored_reviews, target):
         # Once we've caught all the new reviews (a solid streak of known ids) and
         # we already hold enough for a stable median, there's no reason to keep
         # walking deeper on a routine run.
-        if seen_streak >= SEEN_STREAK_STOP and len(stored_reviews) >= min(target, PER_GAME_CAP):
-            break
-        if len(stored_reviews) >= PER_GAME_CAP:
-            break                      # cap reached; ring-buffer holds newest CAP
+        # NOTE the `len >= target` guard is what makes deepening possible: on a
+        # re-visit the first ~10 pages are all already-known reviews, so seen_streak
+        # hits 50 almost immediately. Without the guard the walk would stop there and
+        # a game could never climb past rung 1. A DEEP re-walk suppresses both early
+        # stops so it refreshes the whole window rather than bailing on page 1.
+        if not deep:
+            if seen_streak >= SEEN_STREAK_STOP and len(stored_reviews) >= target:
+                break
+            if len(stored_reviews) >= target:
+                break                  # this visit's rung reached; ring-buffer holds newest
 
         next_cursor = data.get("cursor")
         pages += 1
+        if deep and pages >= target // PER_PAGE:
+            break                      # full window depth covered — every held playtime
+                                       # refreshed; going deeper would drift the sample older
         if not next_cursor or next_cursor == cursor:
             exhausted = True           # Steam's end-of-list sentinel
             break
@@ -851,7 +936,8 @@ def main():
     chosen = select_buckets(sched, anchor, forced)
     total_due = sum(len(v) for v in sched.values())
 
-    mode = f"DEEPEN to {target}" if DEEPEN_TARGET else f"target {target}"
+    mode = (f"DEEPEN to {target}" if DEEPEN_TARGET
+            else f"floor {target}, ladder {'/'.join(str(r) for r in DEPTH_LADDER)}")
     log(f"Catalog {len(games)} | due by ladder: ~{total_due} across {len(sched)} shard(s)")
     forced_note = f" · forced {[f'b{b:02d}' for b in forced]}" if forced else ""
     log(f"Working {len(chosen)}/{MAX_SHARDS_PER_RUN} shard(s) this run, oldest-scraped first "
@@ -891,7 +977,7 @@ def main():
         log(f"[b{bucket:02d}] shard holds {len(raw)} games · {len(cands)} due")
 
         last_commit = time.time()
-        done = tot_added = tot_refreshed = 0
+        done = tot_added = tot_refreshed = tot_deep = 0
         hit_budget = False
         for _score, aid, _rel, _lu, _rc in cands:
             if time_left() < TIME_BUFFER:
@@ -900,16 +986,55 @@ def main():
             aids = str(aid)
             rec = raw.get(aids, {})
             reviews = dict(rec.get("reviews") or {})     # mutate a copy, store on success
-            added, refreshed, exhausted = scrape_game(aid, reviews, target)
-            summary = summarize_game(reviews)
-            raw[aids] = {"reviews": reviews, "summary": summary,
-                         "exhausted": exhausted, "scraped_at": int(time.time())}
+            held = len(reviews)
+            # Per-game depth rung (G1 ladder). `target` here is the run-wide floor
+            # (TARGET_REVIEWS, or DEEPEN_TARGET on a one-off deep pass); the ladder
+            # raises it for games that already hold a full rung. Never above the ceiling.
+            game_target = min(max(cap_for(held), target), PER_GAME_CAP)
+
+            # Ceiling staleness: decide whether THIS visit is a deep re-walk (see the
+            # REWALK_* block). Only a game already at the ceiling can be deep-due, and
+            # only once its anchors exist (they're set the first time it fills — the
+            # cold-start init below — so a just-filled game is never instantly deep).
+            deep = False
+            if held >= PER_GAME_CAP and _rc is not None:
+                a_rc, a_ts = rec.get("rc_at_walk"), rec.get("walk_at")
+                if a_rc is not None and a_ts is not None:
+                    # Each trigger is off when its knob is 0 (so REWALK_DAYS=0 disables the
+                    # backstop rather than firing every visit).
+                    aged = REWALK_DAYS > 0 and (now - a_ts) >= REWALK_DAYS * 86400
+                    grew = (REWALK_DELTA > 0 and (_rc - a_rc) >= REWALK_DELTA
+                            and (now - a_ts) >= REWALK_MIN_DAYS * 86400)
+                    deep = aged or grew
+
+            added, refreshed, exhausted = scrape_game(aid, reviews, game_target, deep=deep)
+            now_ts = int(time.time())
+            rec_out = {"reviews": reviews, "summary": summarize_game(reviews),
+                       "exhausted": exhausted, "scraped_at": now_ts}
+            # Anchor the ceiling clocks (rc_at_walk / walk_at). Re-anchor on any FULL
+            # refresh — a deep re-walk, OR the ladder climb that first fills the ceiling
+            # (`held < game_target` means we just walked deep to grow). On cold start
+            # (first time at the ceiling, no anchor yet) we ONLY initialise the clocks —
+            # no forced walk — so the REWALK_DAYS countdown simply starts now and the
+            # first backstop lands ~REWALK_DAYS out, naturally staggered per game rather
+            # than firing for the whole ceiling population at once. On a plain top-up
+            # visit the anchors are preserved so the churn/age deltas keep accumulating.
+            if len(reviews) >= PER_GAME_CAP and _rc is not None:
+                if deep or held < game_target or rec.get("rc_at_walk") is None:
+                    rec_out["rc_at_walk"], rec_out["walk_at"] = _rc, now_ts
+                else:
+                    rec_out["rc_at_walk"], rec_out["walk_at"] = rec.get("rc_at_walk"), rec.get("walk_at")
+            raw[aids] = rec_out
+            summary = rec_out["summary"]
             done += 1; tot_added += added; tot_refreshed += refreshed
+            if deep:
+                tot_deep += 1
             mu, md = summary["median_up"], summary["median_down"]
             mu_h = f"{mu/60:.1f}h" if mu is not None else "—"
             md_h = f"{md/60:.1f}h" if md is not None else "—"
             log(f"  {aid:>8}: fans {mu_h} (n={summary['n_up']}) · det {md_h} (n={summary['n_down']})"
-                f" · +{added} new, ~{refreshed} refreshed, held {summary['n_all']}")
+                f" · +{added} new, ~{refreshed} refreshed, held {summary['n_all']}"
+                f"{' · DEEP re-walk' if deep else ''}")
 
             # G2: commit to GIT periodically — not just to ephemeral disk — so an
             # interrupted run persists its progress to the repo (see COMMIT_SECONDS).
@@ -926,7 +1051,8 @@ def main():
         git_commit_shard(bucket, f"playtime raw b{bucket:02d}: {tag}, {done} games this run "
                          f"(+{tot_added} reviews, ~{tot_refreshed} refreshed; shard {len(raw)})")
         grand_done += done; grand_added += tot_added; grand_refreshed += tot_refreshed
-        log(f"[b{bucket:02d}] done: {done} games (+{tot_added} new, ~{tot_refreshed} refreshed)")
+        log(f"[b{bucket:02d}] done: {done} games (+{tot_added} new, ~{tot_refreshed} refreshed"
+            f"{f', {tot_deep} deep re-walks' if tot_deep else ''})")
         if hit_budget:
             log("Time budget reached; wrapping up.")
             break
