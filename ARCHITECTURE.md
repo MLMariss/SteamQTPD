@@ -147,6 +147,38 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   Steam's app list (delisted-and-removed apps), so nothing lingers in limbo. See §5. *Low
   impact (small count), low effort; safe quick win.*
 
+- **Review-TEXT analysis: keyword / sentiment extraction (a free data source — no new
+  scrape).** *The exception to this section's rule that every item is a new scrape:* we
+  already fetch the **full written review text** on every playtime run and discard it.
+  `playtime_refresh.py` calls `appreviews` with `num_per_page=100, filter=recent,
+  language=all` (~line 455), so Steam returns complete review objects — but `_parse_review`
+  (~lines 410–428) keeps only `{pt, up, ts}` and drops the rest. The same `rv` also carries,
+  at **zero extra request cost**: **`review`** (the text), `votes_up` / `votes_funny` /
+  `weighted_vote_score` (helpfulness), `language`, `steam_purchase`, `received_for_free`,
+  `written_during_early_access`, `comment_count`. (The other two callers are *not*
+  candidates: `scraper.py:rating_from_reviews` asks for `num_per_page=0` = zero bodies, and
+  `recent_refresh.py` reads only the 30-day `query_summary`.) *The real constraint is
+  storage, not fetching:* raw prose for ~1000 reviews × ~78k games is 1 GB+, and the playtime
+  set is **already sharded across 64 files** because it hit GitHub's 100 MB/file cap (§9,
+  SHARDS.md) — so the design must **extract at scrape time and store only aggregates**,
+  exactly like `playtime_summarize.py` does for medians. *What to do (Option A, recommended):*
+  in `_parse_review` also read `review` + `language`; during the existing walk (text already
+  in memory) count hits from a curated lexicon split by ▲recommend / ▼not (e.g. `buggy`,
+  `crash`, `optimiz`, `p2w`, `grindy`, `masterpiece`, `refund`, `unfinished`,
+  `microtransaction`, `addictive`); write only the counts to a **new one-writer
+  `review_keywords.json`** (respecting §1 — new file, not a change to the playtime shards),
+  merged by `appid` in the frontend as a "common praise / complaints" column or tooltip.
+  *Higher-ambition alternatives if A proves useful:* **B** — keep the ~5 most-helpful review
+  texts per game (by `weighted_vote_score`) for representative quotes (bounded text storage,
+  own sharded file); **C** — LLM one-line "what players say" summary per game (highest value,
+  but adds an external-model dependency + cost + batch job, breaking the "runs entirely free
+  on GitHub Actions" model). *Open decisions before coding:* hand-curate the lexicon vs.
+  derive it from a live raw-`appreviews` sample first (recommended — eyeball the text, tune
+  terms); English-only the keyword pass via the `language` field vs. multilingual term lists;
+  and confirm a separate file over piggybacking the playtime shards' `summary` block (leaning
+  separate — keeps one-writer-per-file and doesn't grow the already-capped shards).
+  *Free-to-fetch, low-medium effort, de-risk with Option A before B/C.*
+
 ### 3.2 Frontend / UX (no new scraping)
 
 Works off data already collected. Several are cheap and high-impact.
