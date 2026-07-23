@@ -1758,7 +1758,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   doesn't map it), stored as `n_comp`; growth ≥3 sets `comp_grew` and pulls the next check to
   5 days. HLTB's page-visible `Updated:` timestamp was evaluated and **rejected** — it exists
   only on the HTML detail page, not the search API, so using it would double the request count
-  per game (§8).
+  per game (§8). **Follow-up fix:** the first deploy went red at startup — `load_games()` now
+  yields `(appid, title, review_count)` triples, but `hltb_selfcheck.py`'s idle-drain fixture
+  still built 2-tuples, so `build_idle_drain` raised `ValueError: not enough values to unpack`.
+  The self-check did its job (aborted **before** `hltb.json` was touched — no data damage);
+  fixture updated and a `check_popularity_fast_lane()` case added covering min() semantics,
+  strict-`>` tier boundaries, the frozen-blank interaction, `count_comp` type-strictness, and
+  the Black Flag regression directly.
 
 - **Review freshness: age-tiered refresh + PICS drift trigger (Jul 2026).** Fixes new
   releases freezing at their day-one review score. `last_modified` — until now the scraper's
