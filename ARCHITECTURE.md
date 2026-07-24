@@ -2226,7 +2226,8 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
-- **Custom tooltip layer + tooltip/arrow polish (Jul 2026).** Frontend only, no data changes.
+- **Custom tooltip layer, full filter-tooltip coverage, tags readability, arrow fix (Jul 2026).**
+  Frontend only, no data changes.
   1. **One custom tooltip replaces the native `title` box everywhere.** All ~98 explanations
      (filters, column headers, cell values) are still authored as plain `title` text — kept as
      the accessible, JS-off fallback — but a single event-delegated engine (bottom of
@@ -2254,6 +2255,18 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
      `g.wr_n`, so it tracks the **playtime depth ladder** (1000 → 2000 → 3000, below)
      automatically — now formatted with a thousands separator (`toLocaleString`) and reworded.
      All tooltip copy was tightened for plain-language clarity in the same pass.
+  5. **Full tooltip coverage across the nav bar.** Every filter now carries an explanation, not
+     just the flags: each **field** (QTPD price basis, HLTB metric, HLTB data, price range, price
+     type, QTPD range, min rating, reviews-sort, review trend, min reviews, updated-within,
+     playtime sort) and each **section header** (Value / Quality / Flags / Tags) got a `title`
+     overview drawn from §11/§13, and the option buttons that lacked one (Min rating, Updated
+     within) were filled in. Top-bar controls too — Search, Wishlist + Import, Reset all filters,
+     and the tag rail's group labels and "+N more" expanders. Field titles cover the whole field
+     (label + control); a button's own more-specific tip wins when hovered directly.
+  6. **Tags panel readability.** The legend, per-tag counts, group labels and "+N more" were
+     small and low-contrast. Bumped: `.taglegend` 12→13px on `--muted` (was `--muted-2`) with
+     `.tl-arrow` opacity .5→.8; chips 13→13.5px on `--text` (was `--muted`); the count `.ct`
+     opacity .6→.8; `.grouplabel` to full opacity; `.tagmore` onto `--muted`.
 
 - **Tag search + tag-row alignment fixes (Jul 2026).** Three frontend fixes, no data changes.
   1. **`Required tags match` never actually moved right.** `.tagmode` has carried

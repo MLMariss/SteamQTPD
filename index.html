@@ -106,7 +106,10 @@
   .util-btn[title], .viewseg button[title], .pagesize button[title], .steppers button[title],
   #msortdir[title], #gsortdir[title], .gsort-b[title], .gsort-morebtn[title], .logo[title],
   .field-x[title], .hidebtn[title], [data-tag][title], .sumf[title], .sumreset[title],
-  .unhide-link[title], .seg button[title]{cursor:pointer}
+  .unhide-link[title], .seg button[title], .section-head[title], #wishimport[title],
+  #clear[title], .linkbtn[title]{cursor:pointer}
+  /* Text fields that carry a tip keep the text caret, not the help cursor. */
+  input[title]{cursor:text}
   /* …but the sortable headers (single and split) DO wear the ? — they are the fields this
      redesign is about — even though a click also sorts. */
   thead th.sortable[title], thead th.th-split[title], .th-split .splitsort{cursor:help}
@@ -249,11 +252,11 @@
   /* grouped tag rail (no search; hover tooltip carries the hint) */
   .tagrail-wrap{cursor:default}
   .taggroup{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-bottom:8px}
-  .grouplabel{font-family:var(--mono); font-size:12px; color:var(--gold); letter-spacing:.05em; text-transform:uppercase;
-        flex:none; width:120px; text-align:right; opacity:.85}
+  .grouplabel{font-family:var(--mono); font-size:12.5px; color:var(--gold); letter-spacing:.05em; text-transform:uppercase;
+        flex:none; width:120px; text-align:right; opacity:1}
   .grouptags{display:flex; gap:7px; flex-wrap:wrap; flex:1}
-  .chip{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--muted);
-        font-family:var(--mono); font-size:13px; padding:5px 11px; border-radius:999px; cursor:pointer; white-space:nowrap}
+  .chip{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--text);
+        font-family:var(--mono); font-size:13.5px; padding:5px 11px; border-radius:999px; cursor:pointer; white-space:nowrap}
   .chip:hover{border-color:var(--muted-2); color:var(--text)}
   .chip.dim{opacity:.4}
   .chip.inc{background:#1c3528; border-color:var(--green); color:#9cf0c2; opacity:1}
@@ -262,21 +265,21 @@
      opacity is driven in JS (see tagLinger) so a mis-click can be re-applied before it vanishes. */
   .chip.linger{background:var(--panel); border-style:dashed; border-color:var(--muted-2); color:var(--muted); transition:opacity .12s linear}
   .chip .mk{margin-right:5px; font-weight:600}
-  .chip .ct{opacity:.6; margin-left:5px; display:inline-block; text-align:left; box-sizing:content-box}
+  .chip .ct{opacity:.8; margin-left:5px; display:inline-block; text-align:left; box-sizing:content-box}
   /* T7: per-group overflow tier — hidden until the group's "+ more" is toggled */
   .taggroup .chip.tag-extra{display:none}
   .taggroup.expanded .chip.tag-extra{display:inline-flex}
-  .tagmore{appearance:none; background:transparent; border:1px dashed var(--muted-2); color:var(--muted-2);
-        border-radius:99px; padding:3px 10px; font-family:var(--mono); font-size:12px; cursor:pointer; white-space:nowrap}
+  .tagmore{appearance:none; background:transparent; border:1px dashed var(--muted-2); color:var(--muted);
+        border-radius:99px; padding:3px 10px; font-family:var(--mono); font-size:12.5px; cursor:pointer; white-space:nowrap}
   .tagmore:hover{border-color:var(--gold); color:var(--gold)}
   .taggroup.expanded .tagmore{border-style:solid}
   /* Visible key for the tag click-cycle (the rail's behavior was previously only in a hover
      title). Reuses the real .chip.inc/.chip.exc styles so the swatches can never drift from
      the actual require/exclude colors; pointer-events off so the demo chips aren't clickable. */
   .taglegend{flex-basis:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-        font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-bottom:2px}
-  .taglegend .chip{cursor:default; pointer-events:none; font-size:12px; padding:3px 9px}
-  .taglegend .tl-arrow{opacity:.5}
+        font-family:var(--mono); font-size:13px; color:var(--muted); margin-bottom:2px}
+  .taglegend .chip{cursor:default; pointer-events:none; font-size:13px; padding:3px 10px}
+  .taglegend .tl-arrow{opacity:.8}
 
   /* ---- table ---- */
   /* NOTE: no overflow:hidden here — it would clip the sticky <thead> to the card and stop
@@ -1070,7 +1073,7 @@ try{
         <button class="logo" id="logoToggle" type="button" title="Show / hide filters" aria-label="Toggle filters">Q<b>T</b>PD</button>
         <div class="tagline">quality time per dollar</div>
       </div>
-      <label class="search" id="searchBox">
+      <label class="search" id="searchBox" title="Search — type any part of a game's title to filter the list live. Matches anywhere in the name, case-insensitive.">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
         <button class="field-x" id="qClear" type="button" title="Clear search" aria-label="Clear search">✕</button>
@@ -1118,31 +1121,31 @@ try{
     <div class="bar-filters" id="barFilters">
       <div class="ctl-row">
         <div class="wishrow">
-          <span class="wishlabel">Wishlist</span>
+          <span class="wishlabel" title="Wishlist — load your Steam wishlist, then filter the whole table down to just those games. Your profile's game details must be public for it to load.">Wishlist</span>
           <div class="wishbox" id="wishBox">
-            <input id="steamid" type="text" placeholder="profile URL, name, SteamID64, STEAM_0:… — any format" autocomplete="off" />
+            <input id="steamid" type="text" placeholder="profile URL, name, SteamID64, STEAM_0:… — any format" autocomplete="off" title="Paste any of: your profile URL (/id/name or /profiles/<id>), custom name, 17-digit SteamID64, or a STEAM_0:… / [U:1:…] ID." />
             <button class="field-x" id="steamidClear" type="button" title="Clear" aria-label="Clear input">✕</button>
-            <button id="wishimport" type="button">Import</button>
+            <button id="wishimport" type="button" title="Import — fetch the wishlist for the profile entered on the left.">Import</button>
           </div>
           <button class="toggle wish" id="wishOnly" aria-pressed="false" style="display:none">Wishlist only</button>
           <button class="wishclear" id="wishClear" style="display:none">✕ Clear</button>
         </div>
-        <button class="linkbtn" id="clear" style="margin-left:auto">Reset all filters</button>
+        <button class="linkbtn" id="clear" style="margin-left:auto" title="Reset all filters — clear every filter, the search box, and the sort back to their defaults.">Reset all filters</button>
       </div>
 
       <!-- L1: accordion filter sections. Each folds independently; open/closed persists in
            localStorage. The wishlist row above stays always-visible (it's a global action). -->
       <div class="filter-section" data-section="value">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Value</span><span class="sec-count" data-count="value"></span></button>
+        <button class="section-head" type="button" aria-expanded="false" title="Value — everything that feeds QTPD: which price to divide by, which game-length metric to use, whether estimates are allowed, the price band and type, and the QTPD range itself. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Value</span><span class="sec-count" data-count="value"></span></button>
         <div class="section-body"><div class="ctl-row">
-        <div class="field">
+        <div class="field" title="QTPD price basis — which price Quality Time Per Dollar divides by: the current Sale price, or the Full list price. Only affects games that are on sale right now.">
           <label>QTPD price basis</label>
           <div class="seg" role="group" aria-label="QTPD price basis">
             <button id="qb-after"  aria-pressed="true"  title="Base QTPD on the current discounted (sale) price.">Sale</button>
             <button id="qb-before" aria-pressed="false" title="Base QTPD on the full (non-sale) price.">Full</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="HLTB metric for QTPD — which HowLongToBeat length is the 'hours' side of QTPD: Main story, Main + Extras, 100% completion, or the average of the three.">
           <label>HLTB metric for QTPD</label>
           <div class="seg metric" role="group" aria-label="HLTB metric">
             <button data-metric="main"     aria-pressed="true"  title="Main Story — hours to finish the core game, skipping side content (HowLongToBeat).">Main</button>
@@ -1151,14 +1154,14 @@ try{
             <button data-metric="avg"      aria-pressed="false" title="Average — the Main, +Extras, and 100% times combined.">Avg</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="HLTB data — whether QTPD may use estimated lengths. Real uses only genuine HowLongToBeat times; All fills gaps with an estimate from the typical main / extras / 100% ratio.">
           <label>HLTB data</label>
           <div class="seg" role="group" aria-label="HLTB data quality">
             <button data-hquality="real" aria-pressed="true" title="Real only — use just real HowLongToBeat times. Games missing one for the selected metric show no HLTB or QTPD.">Real</button>
             <button data-hquality="loose" aria-pressed="false" title="All — also use estimated times (from the typical main / extras / 100% ratio) when HowLongToBeat has none.">All</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Price range (USD) — keep only games whose current price sits between these min and max amounts. Leave a box blank for no bound (0 to ∞); free games count as $0.">
           <label>Price range (USD)</label>
           <div style="display:flex; align-items:center; gap:6px">
             <span class="pricesep">min $</span>
@@ -1169,7 +1172,7 @@ try{
               <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Price type — which kinds of pricing to include: full-price, on-sale, and/or free. Independent toggles, so you can mix them; turn one off to hide that kind.">
           <label>Price type</label>
           <div class="seg" id="priceClass" role="group" aria-label="Price type">
             <button data-pc="all"  aria-pressed="true"  title="All — show every game (default). Click to re-enable all types.">All</button>
@@ -1179,7 +1182,7 @@ try{
           </div>
         </div>
         <div class="field rangefield">
-          <label class="rangelabel" title="Log scale — the range auto-fits the current results">QTPD range <span class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></span></label>
+          <label class="rangelabel" title="QTPD range — keep only games within this value band. Log scale, and it auto-fits the ends to whatever the current filters return.">QTPD range <span class="rangevals"><b id="qminv">0</b> to <b id="qmaxv">∞</b></span></label>
           <div class="rangewrap">
             <div class="rangetrack"><div class="rangefill" id="qrangefill"></div></div>
             <input type="range" id="qmin" min="0" max="1000" step="1" value="0" />
@@ -1190,66 +1193,66 @@ try{
       </div>
 
       <div class="filter-section" data-section="quality">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Quality</span><span class="sec-count" data-count="quality"></span></button>
+        <button class="section-head" type="button" aria-expanded="false" title="Quality — narrow by review score, review trend, how many reviews a game has, how recently it was updated, and which playtime median the Playtime column sorts by. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Quality</span><span class="sec-count" data-count="quality"></span></button>
         <div class="section-body"><div class="ctl-row">
-        <div class="field">
+        <div class="field" title="Min rating — hide games below this all-time review score (% of reviews positive). Any keeps everything; 90+ keeps only the highest-rated.">
           <label>Min rating</label>
           <div class="seg" role="group" aria-label="Minimum rating">
-            <button data-minscore="0"  aria-pressed="true">Any</button>
-            <button data-minscore="60" aria-pressed="false">60+</button>
-            <button data-minscore="70" aria-pressed="false">70+</button>
-            <button data-minscore="80" aria-pressed="false">80+</button>
-            <button data-minscore="90" aria-pressed="false">90+</button>
+            <button data-minscore="0"  aria-pressed="true"  title="Any — no review-score floor.">Any</button>
+            <button data-minscore="60" aria-pressed="false" title="At least 60% of reviews positive (all-time).">60+</button>
+            <button data-minscore="70" aria-pressed="false" title="At least 70% of reviews positive (all-time).">70+</button>
+            <button data-minscore="80" aria-pressed="false" title="At least 80% of reviews positive (all-time).">80+</button>
+            <button data-minscore="90" aria-pressed="false" title="At least 90% of reviews positive (all-time).">90+</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Reviews sort by — which score the Score column uses when you click it to sort: the last 30 days or all-time. This picks the sort basis; it doesn't filter anything.">
           <label>Reviews sort by</label>
           <div class="seg" role="group" aria-label="Rating source for the Reviews column sort">
             <button data-ratesrc="recent" aria-pressed="true"  title="Sort the Score column by the last 30 days' review score.">30-day</button>
             <button data-ratesrc="all"    aria-pressed="false" title="Sort the Score column by the all-time review score.">All-time</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Review trend — show games whose recent score is improving (▲), stable (≈), or declining (▼) versus their all-time score. Independent toggles — turn off the trends you don't want.">
           <label>Review trend</label>
           <div class="seg" role="group" aria-label="Review trend">
-            <button data-trend="up" aria-pressed="true" title="Improving: recent score above all-time">▲</button>
-            <button data-trend="flat" aria-pressed="true" title="Stable: recent score near all-time">≈</button>
-            <button data-trend="down" aria-pressed="true" title="Declining: recent score below all-time">▼</button>
+            <button data-trend="up" aria-pressed="true" title="Improving — recent score above all-time.">▲</button>
+            <button data-trend="flat" aria-pressed="true" title="Stable — recent score near all-time.">≈</button>
+            <button data-trend="down" aria-pressed="true" title="Declining — recent score below all-time.">▼</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Min reviews — show only games whose all-time review count lands in an enabled band. Independent toggles with gaps allowed, so you can show e.g. just 100–999 and 5k+.">
           <label>Min reviews</label>
           <div class="seg" role="group" aria-label="Minimum review count">
-            <button data-rev="0" aria-pressed="false" title="0-9 reviews">0</button>
-            <button data-rev="1" aria-pressed="true" title="10-99 reviews">10</button>
-            <button data-rev="2" aria-pressed="true" title="100-999 reviews">100</button>
-            <button data-rev="3" aria-pressed="true" title="1k-4.9k reviews">1k</button>
-            <button data-rev="4" aria-pressed="true" title="5k+ reviews">5k+</button>
+            <button data-rev="0" aria-pressed="false" title="0–9 reviews.">0</button>
+            <button data-rev="1" aria-pressed="true" title="10–99 reviews.">10</button>
+            <button data-rev="2" aria-pressed="true" title="100–999 reviews.">100</button>
+            <button data-rev="3" aria-pressed="true" title="1,000–4,999 reviews.">1k</button>
+            <button data-rev="4" aria-pressed="true" title="5,000 or more reviews.">5k+</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Updated within — show games last patched within this window (based on the last content update on Steam). 1yr+ means no update in over a year — effectively abandoned.">
           <label>Updated within</label>
           <div class="seg" role="group" aria-label="Updated within">
-            <button data-upd="any"  aria-pressed="true">Any</button>
-            <button data-upd="1mo">1mo</button>
-            <button data-upd="3mo">3mo</button>
-            <button data-upd="6mo">6mo</button>
-            <button data-upd="1yr">1yr</button>
-            <button data-upd="1yr+" title="No update in over a year (abandonware)">1yr+</button>
+            <button data-upd="any"  aria-pressed="true" title="Any — no recency limit.">Any</button>
+            <button data-upd="1mo" title="Updated in the last month.">1mo</button>
+            <button data-upd="3mo" title="Updated in the last 3 months.">3mo</button>
+            <button data-upd="6mo" title="Updated in the last 6 months.">6mo</button>
+            <button data-upd="1yr" title="Updated in the last year.">1yr</button>
+            <button data-upd="1yr+" title="No update in over a year — effectively abandoned.">1yr+</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" title="Playtime sort — which median the Playtime column sorts by when clicked: recommenders' hours (▲) or non-recommenders' (▼). This is a selection only; it reorders nothing until you click the column.">
           <label>Playtime sort</label>
           <div class="seg" role="group" aria-label="Which median drives the Playtime column sort">
-            <button data-ptmetric="up"   aria-pressed="true"  title="Sort the Playtime column by recommenders' median playtime">▲ rec</button>
-            <button data-ptmetric="down" aria-pressed="false" title="Sort the Playtime column by non-recommenders' median playtime">▼ not</button>
+            <button data-ptmetric="up"   aria-pressed="true"  title="Sort Playtime by recommenders' median hours.">▲ rec</button>
+            <button data-ptmetric="down" aria-pressed="false" title="Sort Playtime by non-recommenders' median hours.">▼ not</button>
           </div>
         </div>
         </div></div>
       </div>
 
       <div class="filter-section" data-section="flags">
-        <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
+        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, AI content, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
         <div class="section-body"><div class="ctl-row">
         <!-- Presence flags all share ONE toggle schema — Any / Exclude / Only — so the row stays
              narrow and the pattern is learned once. That only works if the LABEL names the thing
@@ -1332,7 +1335,7 @@ try{
 
       <div class="filter-section" data-section="tags">
         <div class="section-head-wrap">
-          <button class="section-head" type="button" aria-expanded="false"><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
+          <button class="section-head" type="button" aria-expanded="false" title="Tags — filter by Steam user tags (genre, mode, theme). Click a tag to require it, again to exclude it, again to clear. Use the search to shortlist tags and the ALL / ANY toggle to set how required tags combine. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Tags</span><span class="sec-count" data-count="tags"></span></button>
           <div class="tag-mini" id="tagMini" aria-hidden="true"></div>
         </div>
         <div class="section-body"><div class="ctl-row">
@@ -2267,7 +2270,7 @@ function buildTagRail(){
     if(state.tagsInc.has(t)){ cls += " inc"; mk = '<span class="mk">✓</span>'; }
     else if(state.tagsExc.has(t)){ cls += " exc"; mk = '<span class="mk">✕</span>'; }
     else if(c === 0){ cls += " dim"; }
-    return `<button class="${cls}" data-tag="${esc(t)}" title="${c} of current results · ${f} total">${mk}${esc(label(t))}<span class="ct" style="min-width:${reserveCh}ch">${countStr}</span></button>`;
+    return `<button class="${cls}" data-tag="${esc(t)}" title="${esc(label(t))} — ${c.toLocaleString()} of the current results carry this tag, out of ${f.toLocaleString()} across the whole catalogue. Click to require it, again to exclude, again to clear.">${mk}${esc(label(t))}<span class="ct" style="min-width:${reserveCh}ch">${countStr}</span></button>`;
   };
   const byName = (a,b) => a.localeCompare(b);
   // Groups small enough to always show in full (no top-10 split). Players & Mode is short.
@@ -2304,9 +2307,9 @@ function buildTagRail(){
     const chips = foundation.map(t => chipHtml(t, false)).join("")
                 + overflow.map(t => chipHtml(t, true)).join("");
     const moreBtn = overflow.length
-      ? `<button class="tagmore" data-more="${esc(g)}">+${overflow.length} more</button>`
+      ? `<button class="tagmore" data-more="${esc(g)}" title="Show ${overflow.length} more ${esc(g)} tag${overflow.length===1?'':'s'} — only the most common are shown by default.">+${overflow.length} more</button>`
       : "";
-    html += `<div class="taggroup" data-group="${esc(g)}"><span class="grouplabel">${g}</span>`
+    html += `<div class="taggroup" data-group="${esc(g)}"><span class="grouplabel" title="${esc(g)} — a group of related Steam tags. The tags below all describe this aspect of a game.">${g}</span>`
           + `<span class="grouptags">${chips}${moreBtn}</span></div>`;
   });
   $("#tagrail").innerHTML = html
