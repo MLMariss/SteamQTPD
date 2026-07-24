@@ -1,4 +1,4 @@
-# QTPD — Steam value hunter
+# QTPD
 
 Finds the best **quality time per dollar** across Steam games. A set of scrapers
 build up a database **over time** (committed to this repo as JSON); a static page
