@@ -1552,7 +1552,8 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
   - Because the buttons are generic, **the label has to name the flag** — it is
     the only thing that says what Exclude/Only act on. Hence "Early Access", not
     "EA only". Per-field `title` tooltips carry the nuance that won't fit in a
-    label (see the `.field[title] > label` dotted-underline affordance).
+    label — advertised by the help (`?`) cursor on the whole field (§16; the old
+    dotted-underline affordance was dropped as too cluttered).
   - **`Family-share block` is labelled for the BLOCK, never inverted into a
     "Shareable" control** — PICS_METADATA_PIPELINE.md §2.4 verified `exfgls` as a
     positive exclusion signal *only*: absence does not prove shareability (PUBG,
@@ -1861,6 +1862,10 @@ real `<button>` (keyboard-focusable, `title`/`aria-label` set) rather than a dec
 special case: it holds **two** sort targets (`<button>`s for `price_final` and `discount_pct`)
 inside one cell, and the arrow anchors under whichever half is active — so the sort machinery
 selects on `.sortable` (matching both the `<th>`s and the inner split buttons), not `th.sortable`.
+For a split header the arrow is inserted **into the sub-button** (not the `<th>`), whose box is
+only as tall as its text, so `.arrow{bottom:1px}` sat on top of the label; `.splitsort > .arrow
+{top:100%}` re-anchors it just beneath the sub-button, matching a single-column header's arrow
+(§16). Score/Count works the same way.
 Two selector toggles live in the filter bar and do **not** sort on their own:
 
 - **Reviews sort by** (all-time / 30-day) — which score the Reviews column sorts on.
@@ -2220,6 +2225,35 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Custom tooltip layer + tooltip/arrow polish (Jul 2026).** Frontend only, no data changes.
+  1. **One custom tooltip replaces the native `title` box everywhere.** All ~98 explanations
+     (filters, column headers, cell values) are still authored as plain `title` text — kept as
+     the accessible, JS-off fallback — but a single event-delegated engine (bottom of
+     `index.html`) draws them in one styled floating box (`.uitip`): **bigger text (13.5px)**,
+     **generous padding**, a raised panel with a border and a real shadow so it no longer blends
+     into the page. It hijacks the native tooltip by **blanking the element's `title` on hover**
+     (attribute kept, so the `[title]` cursor rules still match) and restoring it on leave, so the
+     OS never draws its grey box on top. Delegation means dynamically-rendered rows are covered
+     with zero per-element wiring. **Subtle keyword coloring is automatic** from the plain text —
+     no per-tip markup: the leading subject (before the first `—`/`:`) is gold, numbers /
+     percentages are blue, and a small positive/negative word set picks up the app's teal / coral.
+  2. **Help (`?`) cursor is now the single tooltip affordance.** The old per-field dotted
+     **underline was dropped** — it cluttered the page once every explained field wore one.
+     `[title]{cursor:help}` is the base signal; genuine action buttons (view/CSV/steppers/tags)
+     are overridden back to `pointer`, but the sortable column headers keep the `?` (they are the
+     fields this touches, even though a click also sorts).
+  3. **Split-header sort arrow no longer overlaps its label.** In Score/Count and Price/Sale the
+     arrow is inserted **into the clicked sub-button**, whose box is only as tall as its text, so
+     the shared `.arrow{bottom:1px}` landed on top of the label. `.splitsort > .arrow{top:100%}`
+     re-anchors it just beneath the sub-button — reading below the text like a single-column
+     header, centered under the actual sub-label, adding **no row height** (still absolute, inside
+     the header's padding). *Verified in-browser: arrow top now sits below the button's bottom
+     edge for Score, Count and Sale; thead row height unchanged at 42px.*
+  4. **Weighted tooltip shows the real per-game review count.** The tip already interpolated
+     `g.wr_n`, so it tracks the **playtime depth ladder** (1000 → 2000 → 3000, below)
+     automatically — now formatted with a thousands separator (`toLocaleString`) and reworded.
+     All tooltip copy was tightened for plain-language clarity in the same pass.
 
 - **Tag search + tag-row alignment fixes (Jul 2026).** Three frontend fixes, no data changes.
   1. **`Required tags match` never actually moved right.** `.tagmode` has carried

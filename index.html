@@ -88,10 +88,48 @@
      readable, so this section alone trades 3px of horizontal padding per button to keep the whole
      cluster on ONE row. Vertical padding is untouched, so the row height and hit area hold. */
   .filter-section[data-section="flags"] .seg button{padding-left:9px; padding-right:9px}
-  /* A field carrying an explainer tooltip advertises it on its label — otherwise the hover text
-     is undiscoverable. The tooltip itself covers the whole .field, not just the label. */
-  .field[title] > label{cursor:help; text-decoration:underline dotted var(--muted-2); text-underline-offset:3px}
-  .field[title]:hover > label{color:var(--text); text-decoration-color:var(--muted)}
+  /* A field carrying an explainer tooltip advertises it with the help (?) cursor — the single,
+     uncluttered "there's an explanation here" signal (see the global [title] rule below). The
+     old dotted underline was dropped: once every explained field wore one, the page read as a
+     mess of underlines. The tooltip itself covers the whole .field, not just the label. */
+  .field[title] > label{cursor:help}
+  .field[title]:hover > label{color:var(--text)}
+
+  /* ── Tooltip affordance ────────────────────────────────────────────────────────────────────
+     One consistent cue that a field carries an explanation: the help (?) cursor on hover. It
+     replaces the old per-field dotted underline (too much clutter once everything had a tip).
+     Genuine action buttons keep their pointer — a click is their point, the tip is a bonus —
+     but the sortable column headers, filter fields, and hoverable cell values all advertise
+     their tip with ?. Emptying the native `title` on hover (the JS engine below) keeps the
+     attribute present, so these selectors stay matched while the custom tooltip is shown. */
+  [title]{cursor:help}
+  .util-btn[title], .viewseg button[title], .pagesize button[title], .steppers button[title],
+  #msortdir[title], #gsortdir[title], .gsort-b[title], .gsort-morebtn[title], .logo[title],
+  .field-x[title], .hidebtn[title], [data-tag][title], .sumf[title], .sumreset[title],
+  .unhide-link[title], .seg button[title]{cursor:pointer}
+  /* …but the sortable headers (single and split) DO wear the ? — they are the fields this
+     redesign is about — even though a click also sorts. */
+  thead th.sortable[title], thead th.th-split[title], .th-split .splitsort{cursor:help}
+
+  /* ── Custom tooltip ────────────────────────────────────────────────────────────────────────
+     Every explanation on the page (filters, headers, cell values) is now drawn by one styled
+     floating box instead of the OS's tiny grey native tooltip, so they all look identical and
+     read clearly. Bigger text + generous padding + a raised panel with a border and a real
+     shadow, so it stands off the page instead of blending in. Keyword coloring (below) is
+     applied automatically by the JS engine — no per-tip markup. */
+  .uitip{position:fixed; z-index:9999; left:0; top:0; max-width:340px; pointer-events:none;
+        background:#26324c; color:var(--text); border:1px solid var(--line); border-radius:10px;
+        padding:11px 14px; font-family:var(--sans); font-size:13.5px; line-height:1.5;
+        letter-spacing:.005em; box-shadow:0 8px 26px #000b, 0 0 0 1px #0004;
+        opacity:0; transform:translateY(2px); transition:opacity .09s ease, transform .09s ease}
+  .uitip.show{opacity:1; transform:translateY(0)}
+  /* Subtle keyword coloring — assists the eye without shouting. The leading subject (the "what
+     this is about") is gold; numbers/percentages are blue; positive/negative cues pick up the
+     teal/coral the rest of the app already uses for recommend / not-recommend. */
+  .uitip .tk-key{color:var(--gold); font-weight:600}
+  .uitip .tk-num{color:var(--blue); font-weight:500}
+  .uitip .tk-pos{color:var(--teal); font-weight:500}
+  .uitip .tk-neg{color:var(--coral); font-weight:500}
 
   .seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:9px; overflow:hidden}
   .seg button{appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--mono);
@@ -383,6 +421,12 @@
   thead th{position:relative}
   .arrow{position:absolute; left:0; right:0; bottom:1px; text-align:center; margin:0;
         font-size:10px; line-height:1; color:var(--gold); pointer-events:none}
+  /* Split headers (Score/Count, Price/Sale) insert the arrow INTO the clicked sub-button, whose
+     box is only as tall as its own text — so the shared `.arrow{bottom:1px}` landed on top of
+     the label. Re-anchor it just beneath that button instead, so it reads below the text like a
+     single-column header does, centered under the actual sub-label. Still absolutely positioned,
+     so it adds no row height (it sits inside the header's existing bottom padding). */
+  .splitsort > .arrow{top:100%; bottom:auto; margin-top:1px}
   tbody td{padding:5px 12px; display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden}
   /* cells stack their content vertically (single-child cells are unaffected; Released and
      QTPD have multiple direct children that must stack, not sit side by side). Horizontal
@@ -1063,8 +1107,8 @@ try{
           <button data-view="card"  aria-pressed="false" title="Stacked spec-sheet cards">Card</button>
           <button data-view="grid"  aria-pressed="false" title="Cool grid — Steam box art with a QTPD badge">Grid</button>
         </div>
-        <button class="util-btn" id="randomBtn" title="Lucky pick — jump to a random game from the current filtered results">Lucky</button>
-        <button class="util-btn" id="exportBtn" title="Export the current filtered results to CSV (pick which columns)">CSV</button>
+        <button class="util-btn" id="randomBtn" title="Lucky — jump to a random game from the current results.">Lucky</button>
+        <button class="util-btn" id="exportBtn" title="CSV — export the current results to a spreadsheet (pick the columns).">CSV</button>
         <button class="util-btn" id="shareBtn" title="Copy a shareable link to this filtered view" aria-label="Copy link">🔗</button>
       </div>
     </div>
@@ -1094,24 +1138,24 @@ try{
         <div class="field">
           <label>QTPD price basis</label>
           <div class="seg" role="group" aria-label="QTPD price basis">
-            <button id="qb-after"  aria-pressed="true"  title="Base QTPD on the current discounted (sale) price">Sale</button>
-            <button id="qb-before" aria-pressed="false" title="Base QTPD on the full (non-sale) price">Full</button>
+            <button id="qb-after"  aria-pressed="true"  title="Base QTPD on the current discounted (sale) price.">Sale</button>
+            <button id="qb-before" aria-pressed="false" title="Base QTPD on the full (non-sale) price.">Full</button>
           </div>
         </div>
         <div class="field">
           <label>HLTB metric for QTPD</label>
           <div class="seg metric" role="group" aria-label="HLTB metric">
-            <button data-metric="main"     aria-pressed="true"  title="Main Story: hours to finish the core game, ignoring side content (HowLongToBeat).">Main</button>
-            <button data-metric="extra"    aria-pressed="false" title="Main + Extras: the main story plus most side quests and optional content (HowLongToBeat).">+Extras</button>
-            <button data-metric="complete" aria-pressed="false" title="Completionist: hours to do everything, 100% completion (HowLongToBeat).">100%</button>
-            <button data-metric="avg"      aria-pressed="false" title="Average of the Main, +Extras, and 100% times.">Avg</button>
+            <button data-metric="main"     aria-pressed="true"  title="Main Story — hours to finish the core game, skipping side content (HowLongToBeat).">Main</button>
+            <button data-metric="extra"    aria-pressed="false" title="Main + Extras — the main story plus most side quests (HowLongToBeat).">+Extras</button>
+            <button data-metric="complete" aria-pressed="false" title="Completionist — hours to 100% everything (HowLongToBeat).">100%</button>
+            <button data-metric="avg"      aria-pressed="false" title="Average — the Main, +Extras, and 100% times combined.">Avg</button>
           </div>
         </div>
         <div class="field">
           <label>HLTB data</label>
           <div class="seg" role="group" aria-label="HLTB data quality">
-            <button data-hquality="real" aria-pressed="true" title="Only use real HowLongToBeat values. Estimated times are hidden and not used, so games without a real value for the selected metric show no HLTB/QTPD.">Real</button>
-            <button data-hquality="loose" aria-pressed="false" title="Use estimated HLTB values (filled from the typical main/extras/completionist ratio) when HowLongToBeat is missing a time.">All</button>
+            <button data-hquality="real" aria-pressed="true" title="Real only — use just real HowLongToBeat times. Games missing one for the selected metric show no HLTB or QTPD.">Real</button>
+            <button data-hquality="loose" aria-pressed="false" title="All — also use estimated times (from the typical main / extras / 100% ratio) when HowLongToBeat has none.">All</button>
           </div>
         </div>
         <div class="field">
@@ -1128,10 +1172,10 @@ try{
         <div class="field">
           <label>Price type</label>
           <div class="seg" id="priceClass" role="group" aria-label="Price type">
-            <button data-pc="all"  aria-pressed="true"  title="Show every game (default). Click to re-enable all types.">All</button>
-            <button data-pc="full" aria-pressed="true"  title="Paid games at full price (not discounted)">Full</button>
-            <button data-pc="sale" aria-pressed="true"  title="Paid games with an active discount">Sale</button>
-            <button data-pc="free" aria-pressed="true"  title="Free-to-play games. When shown alone, the QTPD column ranks them by playtime × rating (no price).">Free</button>
+            <button data-pc="all"  aria-pressed="true"  title="All — show every game (default). Click to re-enable all types.">All</button>
+            <button data-pc="full" aria-pressed="true"  title="Full — paid games at full price (not discounted).">Full</button>
+            <button data-pc="sale" aria-pressed="true"  title="Sale — paid games with an active discount.">Sale</button>
+            <button data-pc="free" aria-pressed="true"  title="Free — free-to-play games. Shown alone, QTPD ranks them by playtime × rating (no price).">Free</button>
           </div>
         </div>
         <div class="field rangefield">
@@ -1161,8 +1205,8 @@ try{
         <div class="field">
           <label>Reviews sort by</label>
           <div class="seg" role="group" aria-label="Rating source for the Reviews column sort">
-            <button data-ratesrc="recent" aria-pressed="true"  title="Sort the Reviews column by the past-30-day review score">30-day</button>
-            <button data-ratesrc="all"    aria-pressed="false" title="Sort the Reviews column by the all-time review score">All-time</button>
+            <button data-ratesrc="recent" aria-pressed="true"  title="Sort the Score column by the last 30 days' review score.">30-day</button>
+            <button data-ratesrc="all"    aria-pressed="false" title="Sort the Score column by the all-time review score.">All-time</button>
           </div>
         </div>
         <div class="field">
@@ -1213,7 +1257,7 @@ try{
              ("Early Access", not "EA only"), and Exclude/Only read against it. The nuance that
              doesn't fit in a label lives in the field's tooltip. Controller and Steam Deck keep
              bespoke buttons: they pick among graded values, not the presence of one flag. -->
-        <div class="field" title="Early Access — still in development and sold before a 1.0 release. Uses Valve's official Early Access genre flag, not the user-applied &quot;Early Access&quot; tag, which often lingers for years after a game has actually launched.">
+        <div class="field" title="Early Access — still in development, sold before its 1.0 release. Uses Valve's official flag, not the user 'Early Access' tag (which often lingers for years after launch).">
           <label>Early Access</label>
           <div class="seg" role="group" aria-label="Early Access">
             <button data-flag="ea" data-val="any"  aria-pressed="true">Any</button>
@@ -1221,7 +1265,7 @@ try{
             <button data-flag="ea" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field" title="AI content disclosure — the developer declared generative-AI content, either pre-generated assets or live generation at runtime. Valve has only required this since 2024, so an older listing that was never revised can lack a disclosure even where AI was used: absence is not proof of none.">
+        <div class="field" title="AI disclosure — the developer declared generative-AI content (pre-made assets or live generation). Valve has only required this since 2024, so an older listing can lack it even where AI was used — absence isn't proof of none.">
           <label>AI disclosure</label>
           <div class="seg" role="group" aria-label="AI content disclosure">
             <button data-ai="any"  aria-pressed="true">Any</button>
@@ -1229,7 +1273,7 @@ try{
             <button data-ai="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field" title="Controller support, read from Valve's category flags rather than the store blurb. Full = built for a gamepad end to end. Partial+ widens that to games only partly playable on one — menus or launchers may still need a mouse.">
+        <div class="field" title="Controller support — from Valve's flags, not the store blurb. Full = built for a gamepad end to end. Partial+ also includes games only partly playable on one (menus may still need a mouse).">
           <label>Controller</label>
           <div class="seg" role="group" aria-label="Controller support">
             <button data-ctrl="any"     aria-pressed="true">Any</button>
@@ -1237,7 +1281,7 @@ try{
             <button data-ctrl="partial" aria-pressed="false" title="Full or partial controller support">Partial+</button>
           </div>
         </div>
-        <div class="field" title="Steam Deck compatibility, as rated by Valve. Verified = playable as shipped. Playable+ widens that to titles needing a tweak, such as the touch keyboard for a launcher. Unsupported is Valve's explicit negative rating — most games are simply unrated and match none of these.">
+        <div class="field" title="Steam Deck — Valve's compatibility rating. Verified = plays as shipped. Playable+ also includes games needing a small tweak (like the touch keyboard). Unsupported is Valve's explicit no. Most games are simply unrated.">
           <label>Steam Deck</label>
           <div class="seg" role="group" aria-label="Steam Deck compatibility">
             <button data-deck="any"         aria-pressed="true">Any</button>
@@ -1246,7 +1290,7 @@ try{
             <button data-deck="unsupported" aria-pressed="false" title="Deck Unsupported">Unsupported</button>
           </div>
         </div>
-        <div class="field" title="Adult content — Valve's Adult-Only Sexual and Frequent Nudity/Sexual content descriptors. The milder &quot;Some Nudity/Sexual&quot; descriptor is deliberately not counted: it over-flags mainstream titles such as The Witcher 3, Baldur's Gate 3 and Cyberpunk 2077.">
+        <div class="field" title="Adult content — Valve's Adult-Only Sexual and Frequent Nudity descriptors. The milder 'Some Nudity' one is left out, since it over-flags mainstream games like The Witcher 3, Baldur's Gate 3 and Cyberpunk 2077.">
           <label>Adult content</label>
           <div class="seg" role="group" aria-label="Adult content">
             <button data-adult="any"  aria-pressed="true">Any</button>
@@ -1254,7 +1298,7 @@ try{
             <button data-adult="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field" title="VR-only titles — a headset is required and the game cannot be played on a monitor. Games that merely support VR as an option are not flagged, so Exclude drops only the headset-mandatory ones and leaves optional-VR games in.">
+        <div class="field" title="VR-only — a headset is required; the game can't be played on a monitor. Games that merely support VR as an option aren't flagged, so Exclude drops only the headset-required ones.">
           <label>VR-only</label>
           <div class="seg" role="group" aria-label="VR only">
             <button data-flag="vrOnly" data-val="any"  aria-pressed="true">Any</button>
@@ -1267,7 +1311,7 @@ try{
              positive exclusion signal only — absence does NOT prove a game is shareable (PUBG,
              Destiny 2 restrict at the account layer with no flag), so this must never be inverted
              into a "Shareable" control. The tooltip states that limit outright. -->
-        <div class="field" title="Family-share block — the game is excluded from Steam Family Sharing and cannot be shared out of your library. Typical of launcher-, account- or DRM-bound games. Reliable when present; absence is NOT a guarantee, as some games (PUBG, Destiny 2) block at the account layer with no flag. So Exclude means &quot;no known block&quot;, not &quot;definitely shareable&quot;.">
+        <div class="field" title="Family-share block — can't be shared via Steam Family Sharing. Typical of launcher- or account-bound games. Reliable when present, but some games (PUBG, Destiny 2) block with no flag — so Exclude means 'no known block', not 'definitely shareable'.">
           <label>Family-share block</label>
           <div class="seg" role="group" aria-label="Family-share block">
             <button data-flag="fse" data-val="any"  aria-pressed="true">Any</button>
@@ -1275,7 +1319,7 @@ try{
             <button data-flag="fse" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
-        <div class="field" title="Custom EULA — the publisher makes you accept their own licence agreement on top of the Steam Subscriber Agreement. Often a tell for a third-party account or launcher, extra data collection, or arbitration terms.">
+        <div class="field" title="Custom EULA — you must accept the publisher's own licence on top of Steam's. Often a sign of a third-party launcher, extra data collection, or arbitration terms.">
           <label>Custom EULA</label>
           <div class="seg" role="group" aria-label="Custom EULA">
             <button data-flag="eula" data-val="any"  aria-pressed="true">Any</button>
@@ -1301,14 +1345,14 @@ try{
             <span class="tl-arrow">→ again: clear</span>
           </span>
           <div class="tagsearch" id="tagSearchBox"
-               title="Filter the tag list by name — typing 'strategy' narrows it to Strategy, Grand Strategy, Turn-Based Strategy, … so you can pick from a shortlist. This filters which tags are OFFERED here; it does not filter the game list. Clear it (✕) to get the full list back.">
+               title="Tag filter — type a word (e.g. 'strategy') to shortlist matching tags like Strategy, Grand Strategy, Turn-Based Strategy. This narrows which tags are listed here, not the games. Clear (✕) for the full list.">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
             <input id="tagSearch" type="text" autocomplete="off" spellcheck="false"
                    placeholder="Filter tags…" aria-label="Filter the tag list by name">
             <button class="ts-x" id="tagSearchClear" type="button"
                     title="Clear — show the full tag list again" aria-label="Clear tag filter">✕</button>
           </div>
-          <div class="tagmode" title="How required (✓) tags combine: ALL = a game must have every required tag; ANY = a game with at least one required tag matches.">
+          <div class="tagmode" title="How required (✓) tags combine — ALL: a game needs every required tag; ANY: at least one is enough.">
             <span class="tagmode-lbl">Required tags match</span>
             <div class="seg" role="group" aria-label="Required-tag match mode">
               <button data-tagmode="and" aria-pressed="true"  title="A game must have ALL of the required tags">ALL</button>
@@ -1317,7 +1361,7 @@ try{
           </div>
         </div>
         <div class="tagrail-wrap" id="tagrail" style="flex:1"
-             title="Click a tag to require it · click again to exclude it · once more to clear. Counts update to show how many of the current results have each tag."></div>
+             title="Click a tag to require it · again to exclude it · once more to clear. Counts show how many current results have each tag."></div>
         </div></div>
       </div>
     </div>
@@ -1338,17 +1382,17 @@ try{
         <thead>
           <tr>
             <th class="sortable" data-sort="title">Game</th>
-            <th class="th-split" title="Review score and count. Click 'Score' to sort by the review percentage; click 'Count' to sort by number of reviews. The All-time / 30-day toggle above chooses which period both halves use."><button class="splitsort sortable" data-sort="rating_pct">Score</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="review_count">Count</button></th>
-            <th class="sortable center" data-sort="trend" title="Recent minus all-time — improving, stable, or declining">Trend</th>
-            <th class="sortable num" data-sort="wr" title="Playtime-weighted rating: each review counted by how long that player actually played (capped at 2× the game's median so no single obsessive dominates). A recommendation from someone with 300 hours counts more than a 20-minute one. Compare against Steam's flat % in the tooltip. Grayed when too few reviews to be reliable.">Weighted</th>
-            <th class="th-split" title="Price and discount, combined. Click 'Price' to sort by the current price; click 'Sale' to sort by discount depth."><button class="splitsort sortable" data-sort="price_final">Price</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="discount_pct">Sale</button></th>
-            <th class="sortable center" data-sort="discount_end" title="Time left on the current discount. Sorts by soonest-ending first.">Sale ends</th>
-            <th class="sortable center" data-sort="release_ts" title="Steam release date. Hover a row's value for the exact day.">Released</th>
-            <th class="sortable center" data-sort="updated" title="How recently the game was last patched, and how often. The top line is time since the last update; the badge below is the number of updates in the last 90 days (all sizes), with the 365-day count on hover. Sorts by update recency — most recently updated first.">Updated</th>
-            <th class="tagsth" id="tagsTh" title="Collapse the Tags column to give the width to Game (bigger art, full titles)"><span class="tagslabel">Tags</span><span class="tagstoggle" id="tagsToggle">&gt;&lt;</span></th>
-            <th class="sortable num pad" data-sort="playtime" title="Median hours played, split by review recommendation. Green ▲ = players who recommended it; red ▼ = players who did not. A long playtime on a 'not recommended' is a credible signal (someone knows the game well and still says skip it). Hover a value for mean, sample size, and spread. Click to sort; choose which side drives the sort with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
-            <th class="sortable num pad" data-sort="hltb" title="Main / Main+Extras / Completionist (hours), with average below. Sorts by whichever HLTB metric is selected above.">HLTB · M / E / 100%</th>
-            <th class="sortable num pad" data-sort="qtpd" title="Quality Time Per Dollar — the headline metric. Higher is more game-hours of value per unit of currency.">QTPD <span class="arrow" id="qarrow">▼</span></th>
+            <th class="th-split" title="Review score and count. Click Score to sort by the review %; click Count to sort by number of reviews. The All-time / 30-day toggle above sets the period."><button class="splitsort sortable" data-sort="rating_pct">Score</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="review_count">Count</button></th>
+            <th class="sortable center" data-sort="trend" title="Trend — recent score minus all-time: improving, stable, or declining.">Trend</th>
+            <th class="sortable num" data-sort="wr" title="Weighted rating — each review counts by how long that player actually played, so a 300-hour thumbs-up outweighs a 20-minute one. Capped at 2× the game's median so no single super-fan dominates. Hover a cell to compare it with Steam's flat %. Grayed when too few reviews to trust.">Weighted</th>
+            <th class="th-split" title="Price and discount. Click Price to sort by the current price; click Sale to sort by discount size."><button class="splitsort sortable" data-sort="price_final">Price</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="discount_pct">Sale</button></th>
+            <th class="sortable center" data-sort="discount_end" title="Sale ends — time left on the current discount. Sorts soonest-ending first.">Sale ends</th>
+            <th class="sortable center" data-sort="release_ts" title="Released — the Steam release date. Hover a row's value for the exact day.">Released</th>
+            <th class="sortable center" data-sort="updated" title="Updated — how recently the game was last patched, and how often. Top line: time since the last update. Badge: updates in the last 90 days (hover it for the 365-day count). Sorts most-recently-updated first.">Updated</th>
+            <th class="tagsth" id="tagsTh" title="Collapse the Tags column to give the space to Game — bigger art and full titles."><span class="tagslabel">Tags</span><span class="tagstoggle" id="tagsToggle">&gt;&lt;</span></th>
+            <th class="sortable num pad" data-sort="playtime" title="Playtime — median hours played, split by review. Green ▲ = players who recommended it; red ▼ = players who did not. Long hours on a ▼ is a real signal: someone knows the game well and still says skip. Hover a value for mean, sample size, and spread. Click to sort; pick which side sorts with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
+            <th class="sortable num pad" data-sort="hltb" title="HLTB — Main / Main+Extras / Completionist hours, with the average below. Sorts by the HLTB metric picked above.">HLTB · M / E / 100%</th>
+            <th class="sortable num pad" data-sort="qtpd" title="QTPD — Quality Time Per Dollar, the headline metric. Higher means more game-hours of value per dollar.">QTPD <span class="arrow" id="qarrow">▼</span></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -1890,7 +1934,7 @@ function render(){
 
     const estSet = g.hltb_est || [];
     const realMode = state.hltbQuality === "real";
-    const ESTTIP = "Estimated from the typical ratio between main / extras / completionist times — not reported by HowLongToBeat. Replaced automatically if HLTB data is found later.";
+    const ESTTIP = "Estimated — filled from the typical main / extras / 100% ratio, not a real HowLongToBeat time. Replaced automatically if real data turns up.";
     // HLTB display: 2+ digit hours read fine as whole numbers (the decimal is just noise);
     // only sub-10h values keep one decimal, where the fraction actually matters.
     const fmtHLTB = h => h==null ? '—' : (h >= 10 ? String(Math.round(h)) : (Math.round(h*10)/10).toFixed(1));
@@ -1982,11 +2026,15 @@ function render(){
       const lowConf = (g.wr_n != null && g.wr_n < window.PT_CONFIDENT);
       const delta = (g.wr_steam != null) ? Math.round(g.wr - g.wr_steam) : null;
       const deltaStr = delta == null ? "" : (delta > 0 ? `+${delta}` : `${delta}`);
-      const tip = `Playtime-weighted: ${g.wr}% (from ${g.wr_n} reviews). `
-        + `Steam flat %: ${g.wr_steam==null?'—':g.wr_steam+'%'}`
+      // Review count is per-game and read straight from the data (g.wr_n), so as the scraper
+      // deepens a game's sample the tip tracks it automatically — 1k today, 2k or 3k later.
+      // Formatted with a thousands separator for readability.
+      const nStr = g.wr_n != null ? g.wr_n.toLocaleString() : "?";
+      const tip = `Playtime-weighted: ${g.wr}% — from ${nStr} reviews, each counted by hours played. `
+        + `Steam's flat %: ${g.wr_steam==null?'—':g.wr_steam+'%'}`
         + (delta!=null?` (${deltaStr} pts vs Steam)`:``)
-        + `. Uncapped weighted: ${g.wr_raw==null?'—':g.wr_raw+'%'}.`
-        + (lowConf?` ⚠ Only ${g.wr_n} reviews — low confidence, needs ${window.PT_CONFIDENT}+ to be reliable.`:``);
+        + `. Uncapped: ${g.wr_raw==null?'—':g.wr_raw+'%'}.`
+        + (lowConf?` ⚠ Only ${nStr} reviews — low confidence; needs ${window.PT_CONFIDENT.toLocaleString()}+ to be reliable.`:``);
       wrCell = `<div class="wrcell${lowConf?' lowconf':''}" title="${tip}">`
         + `<span class="wrtop">`
         + `<span class="dot" style="background:${lowConf?'var(--muted-2)':ratingColor(g.wr)}"></span>`
@@ -3739,6 +3787,90 @@ Promise.all([
   });
   init(data);
 });
+
+/* ── Custom tooltip engine ─────────────────────────────────────────────────────────────────────
+   One styled floating box replaces the browser's native `title` tooltip everywhere, so filters,
+   column headers, and cell values all look and read the same. It is fully event-delegated: a
+   single set of document listeners covers every element that has (or later gets) a `title`,
+   including rows rendered on the fly — no per-element wiring, cheap on resources.
+
+   How native suppression works: on hover we blank the element's `title` (keeping the attribute so
+   the `[title]` cursor rules still match) and restore it on leave, so the OS never draws its own
+   grey tooltip on top of ours. The plain title text stays the accessible source of truth and is
+   what shows if JS is ever off.
+
+   Coloring (decorate()) is automatic from the plain text — no per-tip markup to maintain:
+     • the leading subject (before the first — or :) → gold  (what the tip is about)
+     • numbers / percentages / multipliers          → blue
+     • a small set of positive / negative cues       → teal / coral (matching recommend / not). */
+(function(){
+  if(matchMedia && matchMedia("(hover: none)").matches) return;  // touch: no hover tooltips
+  const TIP = document.createElement("div");
+  TIP.className = "uitip"; TIP.setAttribute("role","tooltip");
+  const mount = () => (document.body || document.documentElement).appendChild(TIP);
+  if(document.body) mount(); else addEventListener("DOMContentLoaded", mount);
+
+  let curEl = null, curTitle = null, raf = 0, lastX = 0, lastY = 0;
+
+  const escT = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  // POS skips "recommend…" when it's part of a negative phrase ("not recommended",
+  // "non-recommenders") so those stay coral, not teal.
+  const POS = /(?<!not )(?<!non-)\b(recommend(?:ed|ers)?|reliable|verified|improving)\b/gi;
+  const NEG = /\b(not recommend(?:ed)?|non-recommenders?|low confidence|too few|declining|abandonware|unsupported|blocked?)\b/gi;
+  const NUM = /(\d[\d,]*(?:\.\d+)?(?:\s?[%×])?|\b\d+\+)/g;
+  function decorate(text){
+    let s = escT(text);
+    // Leading subject: text up to the first em-dash or colon (kept short so we don't paint a
+    // whole sentence). Marked first, before number/word passes touch the rest.
+    s = s.replace(/^([^:—]{2,46}?)(\s*[—:])/, '<span class="tk-key">$1</span>$2');
+    // Order matters: NEG before POS so "not recommended" isn't half-painted by the POS pass.
+    s = s.replace(NEG, '<span class="tk-neg">$&</span>');
+    s = s.replace(POS, '<span class="tk-pos">$&</span>');
+    s = s.replace(NUM, '<span class="tk-num">$&</span>');
+    return s;
+  }
+  function place(){
+    const pad = 14, vw = innerWidth, vh = innerHeight;
+    const w = TIP.offsetWidth, h = TIP.offsetHeight;
+    let x = lastX + 16, y = lastY + 18;
+    if(x + w + pad > vw) x = lastX - w - 14;           // flip left near the right edge
+    if(x < pad) x = pad;
+    if(y + h + pad > vh) y = lastY - h - 14;           // flip above near the bottom edge
+    if(y < pad) y = pad;
+    TIP.style.left = x + "px"; TIP.style.top = y + "px";
+  }
+  function show(el, t){
+    if(curEl) restore();
+    curEl = el; curTitle = t;
+    el.setAttribute("title", "");                       // suppress the native tooltip
+    TIP.innerHTML = decorate(t);
+    place();
+    requestAnimationFrame(() => TIP.classList.add("show"));
+  }
+  function restore(){
+    if(curEl && curEl.getAttribute("title") === "") curEl.setAttribute("title", curTitle);
+    curEl = null; curTitle = null;
+  }
+  function hide(){ restore(); TIP.classList.remove("show"); }
+
+  document.addEventListener("mouseover", e => {
+    const el = e.target.closest && e.target.closest("[title]");
+    if(el === curEl) return;
+    const t = el && el.getAttribute("title");
+    if(t){ show(el, t); } else if(curEl){ hide(); }
+  });
+  document.addEventListener("mousemove", e => {
+    lastX = e.clientX; lastY = e.clientY;
+    if(!curEl) return;
+    if(!raf) raf = requestAnimationFrame(() => { raf = 0; place(); });
+  });
+  document.addEventListener("mouseout", e => {
+    if(curEl && !(e.relatedTarget && curEl.contains(e.relatedTarget))) hide();
+  });
+  addEventListener("scroll", hide, true);
+  document.addEventListener("mousedown", hide, true);
+  addEventListener("blur", hide);
+})();
 </script>
 </body>
 </html>
