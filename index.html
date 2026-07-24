@@ -42,10 +42,22 @@
   .tagline{font-family:var(--mono); font-size:13px; color:var(--muted); letter-spacing:.02em}
   .search{flex:1 1 240px; min-width:180px; position:relative}
   .search input{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
-        font-family:var(--sans); font-size:14px; padding:10px 12px 10px 36px; border-radius:9px; outline:none}
+        font-family:var(--sans); font-size:14px; padding:10px 34px 10px 36px; border-radius:9px; outline:none}
   .search input::placeholder{color:var(--muted-2)}
   .search input:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  /* Kill the browser's own (flaky, hover-only) search ✕ — we render our own persistent one. */
+  .search input::-webkit-search-cancel-button{-webkit-appearance:none; appearance:none}
   .search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted-2)}
+  .search .field-x{right:8px}
+
+  /* Shared in-field clear (✕): red like the Reset button so it reads as "remove what's typed",
+     and it stays put whenever the field holds text (no hover-to-reveal). Used by the header
+     search and the wishlist box; the tag-search ✕ (.ts-x) matches the same colour. */
+  .field-x{position:absolute; top:50%; transform:translateY(-50%); display:none;
+        appearance:none; background:transparent; border:0; padding:4px; cursor:pointer;
+        color:var(--coral); font-size:14px; line-height:1}
+  .field-x:hover{color:#ffb0b0}
+  .has-q > .field-x{display:block}
   .meta{font-family:var(--mono); font-size:13px; color:var(--muted); text-align:right; line-height:1.55; flex:none}
   .meta .n{color:var(--text)}
   .preview-badge{display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid var(--gold-deep);
@@ -161,6 +173,12 @@
         font-family:var(--mono); font-size:13px; padding:9px 14px; cursor:pointer; border-radius:0 8px 8px 0}
   .wishbox button:hover{background:#283656}
   .wishbox:focus-within{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33}
+  /* The wishbox is a flex bar, so its clear ✕ sits inline (not absolute) between the field and
+     Import — override the generic .wishbox button chrome back to a bare red glyph. */
+  .wishbox .field-x{position:static; transform:none; background:transparent; border:0; border-radius:0;
+        padding:2px 2px 2px 4px; margin-right:-4px; color:var(--coral); font-size:14px}
+  .wishbox .field-x:hover{background:transparent; color:#ffb0b0}
+  .wishbox.has-q .field-x{display:flex; align-items:center}
   .wishclear{background:var(--panel); border:1px solid var(--line); color:var(--muted); border-radius:9px;
         font-family:var(--mono); font-size:13px; padding:9px 12px; cursor:pointer}
   .wishclear:hover{border-color:var(--coral); color:var(--coral)}
@@ -757,16 +775,33 @@
   .gi-steam{background:var(--gold-soft) !important; border-color:var(--gold-deep) !important; color:var(--gold) !important}
   .gi-actions a:hover,.gi-actions button:hover{border-color:var(--muted-2)}
 
-  /* Grid-only sort control (desktop grid). Reuses the .mobile-sort select/dir styling. */
+  /* Grid-only sort control (desktop grid): the sort fields are laid out as a single row of
+     buttons — one click to switch, no dropdown to open — with overflow collapsing into "More ▾".
+     JS (layoutGridSort) decides the split per screen width so the row never wraps. */
   .gridsort{display:none; align-items:center; gap:8px; padding:14px 14px 0}
   body.grid-view:not(.narrow) .gridsort{display:flex}
-  .gridsort select{appearance:none; -webkit-appearance:none; -moz-appearance:none; background:var(--panel);
-        border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:13px;
-        padding:8px 28px 8px 10px; border-radius:8px; cursor:pointer;
-        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%2394a0c0' stroke-width='1.6'><path d='M1 1l4 4 4-4'/></svg>");
-        background-repeat:no-repeat; background-position:right 10px center}
-  .gridsort select:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33; outline:none}
-  .gridsort #gsortdir{appearance:none; background:var(--panel); border:1px solid var(--line); color:var(--gold);
+  .gsort-btns{display:flex; flex-wrap:nowrap; gap:6px; min-width:0; overflow:hidden}
+  /* A sort field: neutral panel chip; the active one lights gold (app's "this is the live pick"). */
+  .gsort-b{appearance:none; white-space:nowrap; background:var(--panel); border:1px solid var(--line);
+        color:var(--muted); font-family:var(--mono); font-size:13px; line-height:1;
+        padding:8px 11px; border-radius:8px; cursor:pointer}
+  .gsort-b:hover{border-color:var(--gold-deep); color:var(--text)}
+  .gsort-b:focus-visible{border-color:var(--blue); box-shadow:0 0 0 3px #6f9bff33; outline:none}
+  .gsort-b.on{border-color:var(--gold-deep); color:var(--gold); background:var(--gold-soft)}
+  /* Overflow "More ▾" button + its drop menu; the menu re-parents the leftover .gsort-b buttons. */
+  .gsort-more{position:relative; flex:none}
+  .gsort-morebtn.sel{border-color:var(--gold-deep); color:var(--gold); background:var(--gold-soft)}
+  .gsort-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60; display:none;
+        min-width:170px; flex-direction:column; gap:2px; padding:6px;
+        background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+        box-shadow:0 12px 30px #0009}
+  .gsort-more.open .gsort-menu{display:flex}
+  .gsort-more.open .gsort-morebtn{border-color:var(--blue)}
+  /* Buttons moved into the menu stack full-width as list rows. */
+  .gsort-menu .gsort-b{width:100%; text-align:left; border-color:transparent; background:transparent}
+  .gsort-menu .gsort-b:hover{background:var(--panel); border-color:var(--line)}
+  .gsort-menu .gsort-b.on{background:var(--gold-soft); border-color:var(--gold-deep)}
+  .gridsort #gsortdir{appearance:none; flex:none; background:var(--panel); border:1px solid var(--line); color:var(--gold);
         font-family:var(--mono); font-size:14px; line-height:1; padding:8px 11px; border-radius:8px; cursor:pointer}
   .gridsort #gsortdir:hover{border-color:var(--gold-deep)}
 
@@ -794,11 +829,12 @@
   .tagsearch svg{position:absolute; left:11px; top:50%; transform:translateY(-50%);
         color:var(--muted-2); pointer-events:none}
   /* Clear (✕) appears only once there's something to clear, so the empty state stays quiet.
-     Deliberately NOT gold-on-active: gold means "a filter is changed from its default" and
-     this control doesn't filter the results at all (§11), so it stays neutral. */
+     Red (coral) like the Reset button and the header/wishlist clears — a shared "this removes
+     what you typed" cue. Not gold: gold means "a filter changed from default", and this control
+     only clears the field, it doesn't filter the results (§11). */
   .tagsearch .ts-x{position:absolute; right:6px; display:none; appearance:none; background:transparent;
-        border:0; padding:3px; cursor:pointer; color:var(--muted-2); font-size:11px; line-height:1}
-  .tagsearch .ts-x:hover{color:var(--coral)}
+        border:0; padding:3px; cursor:pointer; color:var(--coral); font-size:11px; line-height:1}
+  .tagsearch .ts-x:hover{color:#ffb0b0}
   .tagsearch.has-q .ts-x{display:block}
   .tagempty{font-family:var(--mono); font-size:12px; color:var(--muted-2); padding:6px 2px}
   .tagmode .seg button{padding:8px 16px; font-weight:600}
@@ -990,9 +1026,10 @@ try{
         <button class="logo" id="logoToggle" type="button" title="Show / hide filters" aria-label="Toggle filters">Q<b>T</b>PD</button>
         <div class="tagline">quality time per dollar</div>
       </div>
-      <label class="search">
+      <label class="search" id="searchBox">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
+        <button class="field-x" id="qClear" type="button" title="Clear search" aria-label="Clear search">✕</button>
       </label>
       <div class="mobile-sort" id="mobileSort" title="Sort games (the table headers do this on desktop)">
         <span class="ms-lbl">Sort</span>
@@ -1038,8 +1075,9 @@ try{
       <div class="ctl-row">
         <div class="wishrow">
           <span class="wishlabel">Wishlist</span>
-          <div class="wishbox">
+          <div class="wishbox" id="wishBox">
             <input id="steamid" type="text" placeholder="profile URL, name, SteamID64, STEAM_0:… — any format" autocomplete="off" />
+            <button class="field-x" id="steamidClear" type="button" title="Clear" aria-label="Clear input">✕</button>
             <button id="wishimport" type="button">Import</button>
           </div>
           <button class="toggle wish" id="wishOnly" aria-pressed="false" style="display:none">Wishlist only</button>
@@ -1318,23 +1356,16 @@ try{
     </div>
     <!-- Grid view gets its OWN sort control (desktop) so the top-bar tools never shift when
          switching table↔grid — the top bar stays identical across those views (point 4). -->
+    <!-- Sort fields laid out as buttons side-by-side (one click each) instead of a dropdown.
+         layoutGridSort() fits as many as the row is wide enough for; whatever overflows spills
+         into the "More ▾" menu, so it never wraps to a second row. Buttons are built by JS. -->
     <div class="gridsort" id="gridSort">
       <span class="ms-lbl">Sort by</span>
-      <select id="gsort" aria-label="Sort games by">
-        <option value="qtpd">QTPD</option>
-        <option value="title">Name</option>
-        <option value="rating_pct">Review score</option>
-        <option value="review_count">Review count</option>
-        <option value="trend">Trend</option>
-        <option value="wr">Weighted rating</option>
-        <option value="price_final">Price</option>
-        <option value="discount_pct">Discount</option>
-        <option value="discount_end">Sale ends</option>
-        <option value="release_ts">Released</option>
-        <option value="updated">Updated</option>
-        <option value="playtime">Playtime</option>
-        <option value="hltb">HLTB</option>
-      </select>
+      <div class="gsort-btns" id="gsortBtns"></div>
+      <div class="gsort-more" id="gsortMore" style="display:none">
+        <button class="gsort-b gsort-morebtn" id="gsortMoreBtn" type="button" aria-haspopup="true" aria-expanded="false" title="More sort fields">More ▾</button>
+        <div class="gsort-menu" id="gsortMoreMenu" role="menu"></div>
+      </div>
       <button id="gsortdir" type="button" title="Toggle sort direction" aria-label="Toggle sort direction">▼</button>
     </div>
     <!-- L3/L5: cool box-art grid. Populated by renderGrid(); shown only in grid view. -->
@@ -2346,6 +2377,7 @@ function applyLayout(){
   document.body.classList.toggle("grid-view", state.view === "grid");
   document.body.classList.toggle("layout-card", state.view !== "grid" && narrow);
   updateViewButtons(narrow);
+  layoutGridSort();   // (re)fit the grid-sort field buttons for the current width/visibility
 }
 // Enable only the device-appropriate detailed button; disable the other with a hint. Pressed
 // state follows the device: Grid when gridding, else Table (desktop) / Card (mobile).
@@ -2868,6 +2900,7 @@ function clearWishlist(){
   state.wishlist = null; state.wishOnly = false;
   $("#wishOnly").style.display = "none"; $("#wishOnly").setAttribute("aria-pressed","false");
   $("#wishClear").style.display = "none"; $("#steamid").value = "";
+  $("#wishBox").classList.remove("has-q");
   update();
 }
 
@@ -2896,6 +2929,82 @@ function syncMobileSort(){
                                    : "Sorted low → high — tap for high → low";
   ["msort", "gsort"].forEach(id => { const s = document.getElementById(id); if(s) s.value = state.sortKey; });
   ["msortdir", "gsortdir"].forEach(id => { const d = document.getElementById(id); if(d){ d.textContent = dirTxt; d.title = dirTip; } });
+  syncGridSortButtons();
+}
+
+// ── Desktop grid sort: one-click field buttons with a "More ▾" overflow ──────────────────────
+// The fields are the same SORT_LABELS the table headers / mobile <select> use. They're laid out
+// side-by-side; layoutGridSort() keeps them on ONE row per screen width by pushing whatever
+// doesn't fit into the More menu (so wide monitors show more buttons, narrow ones show fewer).
+let GSORT_BTNS = [];   // the field buttons, in canonical order, re-parented between row and menu
+function buildGridSortButtons(){
+  const wrap = document.getElementById("gsortBtns"); if(!wrap) return;
+  wrap.innerHTML = "";
+  GSORT_BTNS = Object.entries(SORT_LABELS).map(([k, lbl]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "gsort-b"; b.dataset.sortk = k;
+    b.textContent = lbl; b.title = `Sort by ${lbl}`;
+    wrap.appendChild(b);
+    return b;
+  });
+}
+// Fit as many field buttons inline as the row is wide enough for; overflow → the More menu.
+// Widths are derived from the bar's own geometry (not sibling visibility) so there's no reflow
+// feedback loop between showing/hiding the More button.
+function layoutGridSort(){
+  const bar = document.getElementById("gridSort");
+  if(!bar || !bar.offsetParent) return;               // only when the grid-sort bar is visible
+  const wrap = document.getElementById("gsortBtns"), moreWrap = document.getElementById("gsortMore"),
+        menu = document.getElementById("gsortMoreMenu"), moreBtn = document.getElementById("gsortMoreBtn"),
+        dir = document.getElementById("gsortdir"), label = bar.querySelector(".ms-lbl");
+  if(!wrap || !GSORT_BTNS.length) return;
+  GSORT_BTNS.forEach(b => wrap.appendChild(b));        // reset: everything inline, in order
+  moreWrap.style.display = "";                         // shown so its width is measurable
+  const cs = getComputedStyle(bar);
+  const barGap = parseFloat(cs.columnGap) || 8, btnGap = 6;
+  const inner = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const fixed = label.offsetWidth + dir.offsetWidth;
+  const widths = GSORT_BTNS.map(b => b.offsetWidth);
+  const totalAll = widths.reduce((a, w) => a + w, 0) + btnGap * (widths.length - 1);
+  // Row layout with More hidden = label · buttons · dir → 2 bar-gaps.
+  if(totalAll <= inner - fixed - 2 * barGap){ moreWrap.style.display = "none"; syncGridSortButtons(); return; }
+  // Overflow needed. Row = label · buttons · more · dir → 3 bar-gaps. Reserve the More button at
+  // its widest (it may show the active field's label), so a long label never clips inline buttons.
+  const widest = Object.values(SORT_LABELS).reduce((a, b) => a.length >= b.length ? a : b);
+  const prevMore = moreBtn.textContent; moreBtn.textContent = `${widest} ▾`;
+  const moreW = moreBtn.offsetWidth; moreBtn.textContent = prevMore;
+  const avail = inner - fixed - moreW - 3 * barGap;
+  let used = 0, cut = GSORT_BTNS.length;
+  for(let i = 0; i < GSORT_BTNS.length; i++){
+    const w = widths[i] + (i > 0 ? btnGap : 0);
+    if(used + w > avail){ cut = i; break; }
+    used += w;
+  }
+  if(cut < 1) cut = 1;                                 // always keep at least the first (QTPD) inline
+  menu.innerHTML = "";
+  for(let i = cut; i < GSORT_BTNS.length; i++) menu.appendChild(GSORT_BTNS[i]);
+  syncGridSortButtons();
+}
+// Light the active field; if it's hidden in the More menu, mark the More button so the current
+// sort is still visible without opening it.
+function syncGridSortButtons(){
+  if(!GSORT_BTNS.length) return;
+  let inMenuSelected = false;
+  GSORT_BTNS.forEach(b => {
+    const on = b.dataset.sortk === state.sortKey;
+    b.classList.toggle("on", on);
+    if(on && b.closest("#gsortMoreMenu")) inMenuSelected = true;
+  });
+  const moreBtn = document.getElementById("gsortMoreBtn");
+  if(moreBtn){
+    moreBtn.classList.toggle("sel", inMenuSelected);
+    moreBtn.textContent = inMenuSelected ? `${SORT_LABELS[state.sortKey]} ▾` : "More ▾";
+  }
+}
+function setGsortMenu(open){
+  const m = document.getElementById("gsortMore"); if(!m) return;
+  m.classList.toggle("open", open);
+  const b = document.getElementById("gsortMoreBtn"); if(b) b.setAttribute("aria-expanded", open ? "true" : "false");
 }
 function setSort(key){
   if(state.sortKey === key){ state.sortDir *= -1; }
@@ -3011,7 +3120,7 @@ function loadFromURL(){
   _urlSuspended = true;
   const setIf = (k, fn) => { if(p.has(k)) fn(p.get(k)); };
 
-  setIf("q", v => { state.q = v; const el=$("#q"); if(el) el.value = v; });
+  setIf("q", v => { state.q = v; const el=$("#q"); if(el) el.value = v; const box=$("#searchBox"); if(box) box.classList.toggle("has-q", !!v); });
   setIf("inc", v => v.split(",").filter(Boolean).forEach(t => state.tagsInc.add(canon(t.toLowerCase()))));
   setIf("exc", v => v.split(",").filter(Boolean).forEach(t => state.tagsExc.add(canon(t.toLowerCase()))));
   setIf("tagmode", v => { if(v==="or"||v==="and"){ state.tagMode = v;
@@ -3118,7 +3227,19 @@ function init(data){
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); syncFlagsUI(); render();
   });
 
-  $("#q").addEventListener("input", e => { state.q = e.target.value; update(); });
+  // Header search: toggle the persistent red ✕ whenever the field holds text; the ✕ clears it.
+  const syncSearchClear = () => $("#searchBox").classList.toggle("has-q", !!$("#q").value);
+  $("#q").addEventListener("input", e => { state.q = e.target.value; syncSearchClear(); update(); });
+  $("#qClear").addEventListener("click", () => {
+    const el = $("#q"); el.value = ""; state.q = ""; syncSearchClear(); el.focus(); update();
+  });
+  // Wishlist input: same persistent-✕ affordance — it just empties the field (Import/Wishlist
+  // buttons still do the fetch/clear-results work; #wishClear handles an imported list).
+  const syncWishClear = () => $("#wishBox").classList.toggle("has-q", !!$("#steamid").value);
+  $("#steamid").addEventListener("input", syncWishClear);
+  $("#steamidClear").addEventListener("click", () => {
+    const el = $("#steamid"); el.value = ""; syncWishClear(); el.focus();
+  });
   // Page-size selector: change games-per-page, reset to page 1, re-render.
   document.querySelectorAll("#pagesize button").forEach(b =>
     b.addEventListener("click", () => {
@@ -3330,7 +3451,38 @@ function init(data){
     if(d) d.addEventListener("click", () => { state.sortDir *= -1; syncSortArrows(); render(); syncURL(); });
   };
   bindSortControl("msort", "msortdir");
-  bindSortControl("gsort", "gsortdir");
+  // Desktop grid sort: build the field buttons, wire clicks (row + overflow menu), the dir flip,
+  // and re-fit on resize. The buttons drive the same state.sortKey/sortDir as everything else.
+  buildGridSortButtons();
+  layoutGridSort();   // initial fit (applyLayout ran before the buttons existed)
+  {
+    const bar = document.getElementById("gridSort");
+    bar.addEventListener("click", e => {
+      const b = e.target.closest("[data-sortk]");
+      if(b){
+        const k = b.dataset.sortk;
+        if(state.sortKey === k){ state.sortDir *= -1; }          // re-click same field flips direction
+        else { state.sortKey = k; state.sortDir = (k === "title") ? 1 : -1; }
+        setGsortMenu(false); syncSortArrows(); render(); syncURL();
+        return;
+      }
+      if(e.target.closest("#gsortMoreBtn")){
+        setGsortMenu(!document.getElementById("gsortMore").classList.contains("open"));
+        return;
+      }
+    });
+    const gd = document.getElementById("gsortdir");
+    if(gd) gd.addEventListener("click", () => { state.sortDir *= -1; syncSortArrows(); render(); syncURL(); });
+    // Close the overflow menu on any outside click.
+    document.addEventListener("click", e => {
+      if(!e.target.closest("#gsortMore")) setGsortMenu(false);
+    });
+  }
+  let _gsortRAF = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(_gsortRAF);
+    _gsortRAF = requestAnimationFrame(layoutGridSort);
+  });
   document.body.addEventListener("click", e => {
     const h = e.target.closest("[data-hide]");
     if(h){ e.preventDefault(); e.stopPropagation(); hideGame(h.dataset.hide); return; }
