@@ -239,6 +239,9 @@ def main():
     ap.add_argument("--top", type=int, help="also pull live top-N most-played")
     ap.add_argument("--out", default="pics_raw", help="output dir for raw shards")
     ap.add_argument("--chunk", type=int, default=150, help="appids per PICS call")
+    ap.add_argument("--only-new", action="store_true",
+                    help="fetch ONLY appids the archive has never seen (cheap catch-up pass "
+                         "for freshly-listed games; see pics-new.yml)")
     ap.add_argument("--stale-days", type=float, default=0,
                     help="skip games whose stored fetch ts is younger than N days (0=refresh all)")
     ap.add_argument("--run-minutes", type=float, default=0,
@@ -281,6 +284,19 @@ def main():
         for shard in range(SHARD_COUNT):
             existing_by_shard[shard] = read_existing_shard(args.out, shard)
             known.update(int(a) for a in existing_by_shard[shard])
+
+    # --- --only-new: the catch-up pass --------------------------------------
+    # The full refresh runs once a day, so a game listed just after it can wait ~24h for
+    # its store art — and until that row exists the frontend has NOTHING to draw (see the
+    # priority note below). This mode drops every appid the archive already holds, which
+    # leaves a few hundred at most: a ~1 minute run that can be scheduled several times a
+    # day without re-fetching the other 128k. It is purely additive to the daily run and
+    # shares its concurrency group, so the one-writer-per-shard invariant still holds.
+    if args.only_new:
+        before = len(worklist)
+        worklist = [a for a in worklist if a not in known]
+        print(f"  only-new: {before - len(worklist)} already in archive, "
+              f"{len(worklist)} never-seen to fetch")
 
     # --- never-fetched games go FIRST ---------------------------------------
     # The worklist arrives in catalog order, which is appid-ascending, so a game the
