@@ -1,0 +1,97 @@
+name: 2.7b PICS catch-up (new games only)
+
+# Why a second PICS job exists
+# ----------------------------
+# pics.yml does the full refresh once a day. A game listed just after it runs
+# therefore waits ~24h for its PICS row — and until that row exists the frontend has
+# NOTHING to draw for it: `art` is the only path to a modern app's store capsule
+# (Valve stopped shipping the appid-derived /steam/apps/<appid>/header.jpg years ago),
+# so the row renders a screenshot fallback at best.
+#
+# This job closes that window. `--only-new` drops every appid the archive already
+# holds, which leaves at most a few hundred freshly-listed games — about a minute of
+# CM traffic — so it can run several times a day without touching the other 128k.
+# It is purely additive: it never re-fetches, never expires anything, and the daily
+# full refresh remains the thing that keeps existing rows current.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Three passes between the daily full run at 03:20 UTC, so a new listing waits
+    # ~6h for real art rather than ~24h. Off-the-hour, like the sibling scrapers.
+    - cron: "50 9,15,21 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  # SAME group as pics.yml, deliberately. pics_refresh.py is the sole writer of
+  # pics_raw/shard_NN.json and that invariant is what lets it skip locking entirely;
+  # sharing the group serialises the two jobs so it still holds.
+  group: steam-pics
+  cancel-in-progress: false
+
+jobs:
+  pics-new:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # v5 deliberate, as in pics.yml: it preserves the credential-persistence the
+      # fetch -> rebase -> push commit pattern relies on (v6/v7 changed it).
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install steam gevent gevent-eventemitter "protobuf<3.21"
+
+      # --stale-days 0 with --only-new: no expiry window to evaluate, the "have we
+      # seen this appid at all" test is the whole filter. --run-minutes caps a
+      # pathological run (a huge batch of new listings) rather than the normal case.
+      - name: Fetch PICS for never-seen appids
+        env:
+          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+        run: |
+          python pics_refresh.py \
+            --catalog games.json \
+            --out pics_raw \
+            --only-new \
+            --stale-days 0 \
+            --run-minutes 20 \
+            --checkpoint-min 10
+
+      - name: Summarize PICS -> pics/ shards
+        run: python pics_summarize.py --in pics_raw --out pics
+
+      - name: Merge PICS shards -> pics.json
+        run: python pics_merge.py --in pics --out pics.json
+
+      # Same retried push as pics.yml, and for the same reason: main is written to
+      # continuously by a dozen sibling scrapers and this commit carries pics.json
+      # (~40 MB), so a single-shot push loses the race often enough to matter — and a
+      # lost race here would discard exactly the new games this job exists to fetch.
+      # When there is nothing new, summarize/merge reproduce the same bytes and the
+      # staged diff is empty, so the job exits without a commit.
+      - name: Commit pics_raw + pics + pics.json
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pics_raw pics pics.json
+          if git diff --staged --quiet; then
+            echo "No new games this run"
+            exit 0
+          fi
+          git commit -m "PICS catch-up: new games ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+          for i in 1 2 3 4 5 6 7 8; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              echo "pushed on attempt $i"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 3 + RANDOM % 5))
+          done
+          echo "ERROR: could not push PICS catch-up after 8 attempts"; exit 1

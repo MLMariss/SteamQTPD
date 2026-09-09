@@ -219,6 +219,14 @@ PICS_SUBMETRICS = [
     ("primary_genre",           lambda r: r.get("pgenre") is not None,  "genre ID (structural)"),
     ("feature categories",      lambda r: bool(r.get("cats")),          "single-player/co-op/cloud/... flags"),
     ("store_tags",              lambda r: bool(r.get("tags")),          "ranked community tag IDs"),
+    # Structural, and the one PICS field with a directly VISIBLE failure mode: `art` is
+    # the store-header path, and index.html has no other way to reach a modern app's
+    # capsule (the appid-derived legacy URLs 404 for anything Valve moved to
+    # store_item_assets). A game without it drew an empty frame in the table. This sat
+    # untracked while a broken pics.yml push silently dropped three runs' worth of new
+    # games, so the gap was only ever found by looking at the site. It belongs here,
+    # alongside the other ~100% structural fields, where a dip is an alarm.
+    ("store header art",        lambda r: bool(r.get("art")),           "capsule/header path (structural — blank thumbnails without it)"),
     ("genres",                  lambda r: bool(r.get("genres")),        "genre IDs"),
     ("supported languages",     lambda r: bool(r.get("langs")),         "language codes"),
     ("developer",               lambda r: bool(r.get("dev")),           "structured dev name(s)"),

@@ -439,7 +439,12 @@ def main():
              cov=(pics_cov, b_pics["fresh"], b_pics["overdue"], BASE - len(pics_have), 0),
              window=f"flat {CV.PICS_STALE_DAYS}d (`--stale-days`)",
              note=f"{pics_pop}/{pics_shards} shards populated; real per-game `_ts`, so "
-                  f"`pending refresh` is exact. Separate CM rate surface, not the storefront budget."),
+                  f"`pending refresh` is exact. Separate CM rate surface, not the storefront budget. "
+                  f"A second workflow, `pics-new.yml`, writes the same shards on a 6-hourly "
+                  f"`--only-new` pass (never-seen appids only, no re-fetch), so a freshly-listed "
+                  f"game gets its store art in ~6h instead of waiting for this row's daily run. "
+                  f"It shares this job's concurrency group, so `pics_refresh.py` stays "
+                  f"single-writer; the schedule below is the FULL refresh's."),
         dict(key="3.1", kind="derived", wf="playtime-raw.yml", label="Playtime medians (chained)",
              script="playtime_summarize.py", owns="playtime.json",
              stamp=json_stamp("playtime.json"), ts_map={}, cov=None, derived="2.3",

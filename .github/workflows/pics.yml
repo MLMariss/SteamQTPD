@@ -64,17 +64,44 @@ jobs:
         run: |
           python pics_merge.py --in pics --out pics.json
 
-      # -------- Commit (fetch -> rebase -> push, commit only on diff) --------
+      # -------- Commit (fetch -> rebase -> push, with retries) --------
+      # main is pushed to CONTINUOUSLY by a dozen sibling scrapers (recent/updates/
+      # playtime/shots/trailers/...), and this job's push is one of the slowest in the
+      # repo — pics.json + 64 raw shards is ~40 MB, so the upload alone takes ~25s.
+      # That is a wide window for a sibling to land first, and the old single-shot
+      # `push` then died with "cannot lock ref 'refs/heads/main'" and threw away the
+      # WHOLE run: raw blocks, shards and pics.json all discarded, so every game first
+      # seen since the last successful run kept `art: null` and rendered a blank
+      # thumbnail until some later run happened to win the race. It lost 3 of the 10
+      # runs to 2026-09-09 (Sep 3, 7, 8) — which is exactly why Sep-7 releases still had
+      # no capsule art on Sep 9.
+      #
+      # So: retry, the same way every other writer in this repo already does
+      # (recent_refresh.py, shots.py, trailers.py, freshness.yml, ...) — re-fetch and
+      # replay onto the new main each attempt, with jittered backoff. The commit is a
+      # pure add of files no sibling touches, so the replay is always clean.
+      #
+      # The old `|| git merge -s ours origin/main` fallback is deliberately GONE: on a
+      # rebase failure it would have committed a merge that keeps OUR side of every
+      # conflicting path, silently reverting whatever a sibling had just pushed. A
+      # failed rebase here means something is genuinely wrong; abort it and retry.
       - name: Commit pics_raw + pics + pics.json
         run: |
+          set -e
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pics_raw pics pics.json
           if git diff --staged --quiet; then
             echo "No changes this run"
-          else
-            git commit -m "Refresh PICS metadata ($(date -u +'%Y-%m-%d %H:%M') UTC)"
-            git fetch origin main
-            git rebase origin/main || (git rebase --abort; git merge -s ours origin/main)
-            git push
+            exit 0
           fi
+          git commit -m "Refresh PICS metadata ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+          for i in 1 2 3 4 5 6 7 8; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              echo "pushed on attempt $i"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 3 + RANDOM % 5))
+          done
+          echo "ERROR: could not push PICS refresh after 8 attempts"; exit 1
