@@ -263,12 +263,14 @@ def main():
     # --- incremental skip: preload existing shard data, drop fresh games ---
     now = time.time()
     existing_by_shard = {}
+    known = set()          # every appid the archive already holds, at any age
     if args.stale_days > 0:
         cutoff = now - args.stale_days * 86400
         skip = set()
         for shard in range(SHARD_COUNT):
             existing_by_shard[shard] = read_existing_shard(args.out, shard)
             for aid_str, rec in existing_by_shard[shard].items():
+                known.add(int(aid_str))
                 if rec.get("_ts", 0) >= cutoff:
                     skip.add(int(aid_str))
         before = len(worklist)
@@ -278,6 +280,25 @@ def main():
     else:
         for shard in range(SHARD_COUNT):
             existing_by_shard[shard] = read_existing_shard(args.out, shard)
+            known.update(int(a) for a in existing_by_shard[shard])
+
+    # --- never-fetched games go FIRST ---------------------------------------
+    # The worklist arrives in catalog order, which is appid-ascending, so a game the
+    # archive has never seen sits at the very END of it — new appids are the highest
+    # ones there are. That is precisely backwards under a time budget: the games with
+    # NO row at all are the only ones the frontend cannot render (no `art` means no
+    # store-header path, and the appid-derived legacy URLs 404 for every app on Steam's
+    # store_item_assets scheme, so the thumbnail comes out blank), whereas a game with
+    # a row a fortnight old still draws correctly while it waits its turn.
+    #
+    # So partition, stably: unseen appids first, everything else after in the order it
+    # already had. A run that stops on --run-minutes now drops only re-refreshes.
+    if known:
+        unseen = [a for a in worklist if a not in known]
+        if unseen:
+            seen_again = [a for a in worklist if a in known]
+            worklist = unseen + seen_again
+            print(f"  priority: {len(unseen)} never-fetched games moved to the front")
 
     if not worklist:
         print("nothing stale to fetch; done.")

@@ -2223,8 +2223,36 @@ function stepThumb(img, hardError){
   if(step < chain.length){
     img.setAttribute("data-step", step);
     img.src = chain[step];
+    return;
   }
-  // else: exhausted the chain; leave the last attempt as-is (rare).
+  shotFallback(img, a);   // chain exhausted -> last resort, see below
+}
+
+// --- Last resort: draw the game's first SCREENSHOT ------------------------------- //
+// Reaching here means every capsule/header URL we know for this appid failed, which in
+// practice means one thing: pics.json carries no `art` for the game yet. Steam has not
+// shipped the legacy /steam/apps/<appid>/header.jpg for new apps in years — modern store
+// art lives under a per-asset SHA1 that only PICS knows — so a game the PICS pipeline
+// has not reached has NO derivable art at all and used to render as an empty dark frame.
+//
+// That is a data-latency gap the frontend can close on its own, because shots.py has
+// already archived the store screenshots for the same game, on its own faster rotation
+// and under a path we DO have. A screenshot is not the capsule the designer made, but it
+// is the game, and it is strictly better than a hole in the table.
+//
+// Deliberately lazy and deliberately last: it costs one ~400KB shard fetch, so it fires
+// only for rows that have genuinely exhausted the real art chain (near-zero once the
+// PICS pipeline is healthy), the shard is shared by every row in it and cached for the
+// session, and `data-shotfb` guarantees at most one attempt per <img> — a screenshot URL
+// that itself fails re-enters stepThumb, finds the flag set, and stops rather than
+// looping. When PICS later fills the game in, the real capsule comes back by itself.
+function shotFallback(img, appid){
+  if(!appid || img.getAttribute("data-shotfb")) return;
+  img.setAttribute("data-shotfb", "1");
+  loadShotsShard(appid).then(doc => {
+    const urls = shotUrls(appid, doc);
+    if(urls.length) img.src = urls[0];
+  }).catch(() => {});
 }
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
