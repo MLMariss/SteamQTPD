@@ -87,7 +87,19 @@ import sys
 import time
 from pathlib import Path
 
-import requests
+try:
+    import requests
+except ImportError:                  # pragma: no cover - see note below
+    # This module doubles as the SINGLE SOURCE OF TRUTH for the refresh ladder:
+    # coverage.py / freshness.py `import playtime_refresh` purely to read
+    # cooldown_days() + the tier constants, so their generated docs can never drift
+    # from the real gate (they used to hard-copy the constants, and silently rotted —
+    # see COVERAGE.md history). Those two jobs are deliberately stdlib-only (no pip
+    # install step in coverage.yml / freshness.yml), so a hard `import requests` here
+    # would break them. Degrade to None instead: every scraping path below goes
+    # through SESSION and fails loudly at first use if requests is genuinely absent,
+    # while the pure-logic half of this file stays importable anywhere.
+    requests = None
 
 # --------------------------------------------------------------------------- #
 # CONFIG
@@ -437,9 +449,12 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qhpp playtime-refresher; github pag
 COOKIES = {"birthtime": "568022401", "mature_content": "1",
            "Steam_Language": "english", "wants_mature_content": "1"}
 
-SESSION = requests.Session()
-SESSION.headers.update(HEADERS)
-SESSION.cookies.update(COOKIES)
+if requests is not None:
+    SESSION = requests.Session()
+    SESSION.headers.update(HEADERS)
+    SESSION.cookies.update(COOKIES)
+else:
+    SESSION = None                   # import-only mode; see the requests import above
 
 
 def log(msg):
