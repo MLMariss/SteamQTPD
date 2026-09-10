@@ -149,7 +149,13 @@ def main():
             # Only publish games that have at least one usable segment median. A game
             # with a handful of reviews (all segments < MIN_SEGMENT) carries no median,
             # so there's nothing for the frontend to show — omit it to keep the file lean.
-            if s["median_up"] is None and s["median_down"] is None and s["median_all"] is None:
+            #
+            # The gate tests exactly what save_summary() actually WRITES, which is the
+            # up/down pair — median_all is deliberately not in the payload (see its
+            # docstring). Including median_all here used to let a game through on the
+            # strength of a number the frontend never receives, publishing a row of two
+            # nulls it cannot render: appid 201271 -> [null, null, 1, 2].
+            if s["median_up"] is None and s["median_down"] is None:
                 skipped += 1
                 continue
             summary[aid] = s
