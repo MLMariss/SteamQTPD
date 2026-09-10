@@ -826,7 +826,14 @@ def _robust_commit(msg, our_shards, drop_monolith=False):
         try:
             subprocess.run(["git", "fetch", "origin", "main"],
                            check=True, capture_output=True, text=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"],
+            # Reset to FETCH_HEAD, not origin/main. An explicit `git fetch origin main`
+            # ALWAYS writes FETCH_HEAD, in a shallow clone as well as a full one, whereas
+            # refs/remotes/origin/main is only updated if the remote's configured fetch
+            # refspec happens to map it — which actions/checkout does not guarantee at
+            # fetch-depth: 1. Same commit in the normal case, but it does not depend on
+            # how the checkout step configured the remote, so the shallow checkout below
+            # cannot silently break every push in this job.
+            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"],
                            check=True, capture_output=True, text=True)   # latest remote tree
             SHARD_DIR.mkdir(exist_ok=True)
             for name, data in snaps.items():                              # re-apply only our shard(s)
