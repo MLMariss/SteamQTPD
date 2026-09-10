@@ -25,7 +25,12 @@ OUT = HERE / "SHARDS.md"
 LIMIT = 100 * 1024 * 1024          # GitHub hard file-size limit (bytes)
 WARN_MB = 50                       # GitHub's soft warning threshold
 CRIT_MB = 80                       # our "act now" threshold (headroom getting thin)
-MIN_REVIEWS_FLOOR = 10             # addressable = games with >= this many reviews (keep in lockstep with playtime_refresh.py)
+# IMPORTED, not copied. "Keep in lockstep with playtime_refresh.py" was the old comment
+# here and it did not survive first contact: the floor moved 10 -> 5 and this stayed at
+# 10, understating the addressable universe by 15,561 games and therefore understating
+# the full-coverage size projection — the one number this file exists to protect.
+# playtime_refresh degrades gracefully without `requests`, so this stays stdlib-only.
+from playtime_refresh import MIN_REVIEWS_FLOOR
 
 
 def human(b):
@@ -126,6 +131,39 @@ def main():
         L.append(f"| Addressable universe (≥{MIN_REVIEWS_FLOOR} reviews) | {addressable:,} → ~{addressable // n:,}/shard at full coverage |")
     if proj_full_mb is not None:
         L.append(f"| **Projected max shard at full coverage** | **~{proj_full_mb:.0f} MB** |")
+
+    # --- ROTATION: how long a shard waits between openings ------------------ #
+    # This is the number that governs how fresh playtime can possibly be. A per-game
+    # cooldown promise shorter than the shard-open interval cannot be met by
+    # construction: the 0-7 day tier promises a 1-day refresh, so at a 46 h median
+    # rotation it was structurally unreachable. Per-shard timestamps were already
+    # listed below, but never aggregated, so the interval was invisible.
+    ages = sorted((now - ts) / 3600.0 for _n, _c, _s, ts, _v in rows if ts)
+    if ages:
+        a_med = ages[len(ages) // 2]
+        a_max = ages[-1]
+        within = lambda h: sum(1 for a in ages if a <= h)
+        L += [
+            "",
+            "## Rotation (shard-open interval)",
+            "",
+            "| Metric | Value |",
+            "|---|---|",
+            f"| Freshest shard | {ages[0]:.1f} h |",
+            f"| **Median shard age** | **{a_med:.1f} h** |",
+            f"| p90 | {ages[int(0.9 * (len(ages) - 1))]:.1f} h |",
+            f"| **Stalest shard** | **{a_max:.1f} h** |",
+            f"| Inside 8 h | {within(8)}/{len(ages)} shards |",
+            f"| Inside 24 h | {within(24)}/{len(ages)} shards |",
+            f"| Inside 48 h | {within(48)}/{len(ages)} shards |",
+            "",
+            f"_Rotation caps playtime freshness: no game can be refreshed more often than "
+            f"its shard is opened. The ladder's fastest tier promises a 1-day refresh, so "
+            f"a median above ~24 h means that tier is unreachable no matter how much "
+            f"budget the run has. Track this after any change to `RUN_MINUTES`, the cron, "
+            f"or `MAX_SHARDS_PER_RUN`._",
+        ]
+
     L += [
         "",
         "## Per-shard",
@@ -139,8 +177,11 @@ def main():
         L.append(f"| {name[:2]} | {cc} | {human(sz)} | {100*sz/LIMIT:.1f}% | {upd} |")
     L += [
         "",
-        "_Buckets rotate — each is scraped roughly every ~64 runs, so a shard being several "
-        "days old is normal. The number that matters is **max shard size** vs the 100 MB limit._",
+        "_Buckets rotate; **max shard size** vs the 100 MB limit is what this file exists "
+        "to protect. But shard age is NOT merely cosmetic — this note used to say a shard "
+        "being several days old is normal, and that assumption hid a real fault: rotation "
+        "had drifted to a 46 h median / 81 h worst, which made the ladder's 1-day "
+        "fast-lane tier unreachable by construction. See Rotation above._",
         "",
     ]
     OUT.write_text("\n".join(L) + "\n", encoding="utf-8")

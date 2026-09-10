@@ -72,8 +72,12 @@ print("\n== playtime: eligibility ==")
 fresh = {"reviews": {str(i): {} for i in range(500)}, "exhausted": True,
          "scraped_at": NOW - 12*3600}
 stale = dict(fresh, scraped_at=NOW - 10*DAY)
+# Derived from the constant, not hardcoded: this test asserted `review_count=5` was
+# below the floor, which silently became false when the floor moved 10 -> 5.
 check("below MIN_REVIEWS_FLOOR is never eligible",
-      not P.is_eligible({}, NOW - DAY, None, 5, NOW, 200))
+      not P.is_eligible({}, NOW - DAY, None, P.MIN_REVIEWS_FLOOR - 1, NOW, 200))
+check("AT MIN_REVIEWS_FLOOR is eligible (the floor is inclusive)",
+      P.is_eligible({}, NOW - DAY, None, P.MIN_REVIEWS_FLOOR, NOW, 200))
 check("never-scraped game is eligible",
       P.is_eligible({}, NOW - DAY, None, 50, NOW, 200))
 check("new release scraped 12h ago is NOT yet due (1d cooldown)",
