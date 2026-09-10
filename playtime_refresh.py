@@ -435,6 +435,37 @@ MIN_SEGMENT_FOR_MEDIAN = 3        # below this many samples, a segment median is
 # for the ~52k that can actually yield data.
 MIN_REVIEWS_FLOOR = 10
 
+# FIRST-TOUCH FAST LANE (phase 0). The gate on a new release getting playtime is not
+# its review count — it is WHEN ITS SHARD NEXT OPENS. A never-seen game scores 1300 in
+# priority() and would be served immediately, but only once the sweep reaches its
+# bucket, and the measured shard-open interval is ~46 h median / ~81 h worst. That is
+# the whole day-1..day-5 coverage hole (25% at day 1, ~93% by day 6): the game is not
+# starved of budget, it is waiting in a queue that opens twice a week.
+#
+# A first touch is the cheapest visit there is — ONE page request (page 1 already
+# satisfies FIRST_TOUCH_TARGET, so the walk breaks immediately), so the entire
+# never-seen frontier is minutes of budget. This phase serves it across ALL shards
+# before the normal rotation starts, instead of making each game wait for its bucket.
+#
+# It deliberately breaks the "one shard open at a time" rule only in the sense that it
+# touches many buckets in one phase — the batch is GROUPED BY SHARD and processed shard
+# by shard, so peak memory is still one shard, and one-writer-per-file is untouched
+# (this job remains the sole writer of playtime_raw/). A separate workflow was
+# considered and rejected: it would either queue forever behind this job's concurrency
+# group, or become a second writer to the same shards.
+#
+# Set FIRST_TOUCH_BATCH=0 to disable the phase entirely.
+FIRST_TOUCH_BATCH = int(os.environ.get("FIRST_TOUCH_BATCH", "300"))
+FIRST_TOUCH_TARGET = 100          # == PER_PAGE: exactly one page per game
+# The fast lane spreads a small number of games over MANY shards (80 games hit 40
+# buckets in the measured frontier), and one commit per shard would mean ~40 pushes of
+# a ~21 MB file per run. Shards are therefore saved as they finish but committed in
+# groups. Keep this modest: _robust_commit snapshots each shard's bytes in memory
+# before resetting to origin/main, so the group size is also the memory ceiling
+# (8 x ~21 MB). Phase 2's one-commit-per-shard cadence is untouched — there each shard
+# is minutes of work, so an immediate commit is the right checkpoint.
+FIRST_TOUCH_COMMIT_GROUP = int(os.environ.get("FIRST_TOUCH_COMMIT_GROUP", "8"))
+
 STEAM_DELAY = 1.5                 # storefront limit (~200/5min); at 1.5s this run sits AT the
                                   # ceiling (no headroom). Matches recent_refresh.py, which
                                   # already sustains 3h storefront passes at 1.5s — so this is
@@ -931,6 +962,126 @@ def select_buckets(due_by_bucket, anchor, forced=(), last_scraped=None):
 
 
 # --------------------------------------------------------------------------- #
+# Phase 0 — first-touch fast lane
+# --------------------------------------------------------------------------- #
+def shard_appids(bucket):
+    """Just the appid KEYS stored in a shard — no record bodies retained.
+
+    The membership scan needs to know which games exist, not what they hold, so the
+    parsed body is dropped immediately and only the key set survives. That keeps the
+    whole 64-shard scan at one shard's peak memory."""
+    p = shard_path(bucket)
+    if not p.exists():
+        return set()
+    try:
+        return set((json.loads(p.read_text(encoding="utf-8")).get("games") or {}).keys())
+    except ValueError:
+        return set()
+
+
+def find_first_touch(games, now, cap):
+    """{bucket: [(appid, review_count), ...]} for addressable games with NO stored
+    record, newest-release-first, capped at `cap` games in total.
+
+    Costs one pass over all 64 shards (keys only). That is the price of knowing what
+    is missing without opening bodies, and it buys the answer for EVERY bucket rather
+    than just the ones this run's rotation happens to reach."""
+    want = {}
+    for g in games:
+        if (g.get("review_count") or 0) < MIN_REVIEWS_FLOOR:
+            continue
+        aid = int(g["appid"])
+        want.setdefault(shard_of(aid), []).append(g)
+
+    missing = []
+    for b in sorted(want):
+        present = shard_appids(b)
+        for g in want[b]:
+            if str(g["appid"]) not in present:
+                missing.append(g)
+
+    # Newest release first: the whole point of the phase is day-1 coverage. Games with
+    # no parsed release date sort last (they are catalog back-fill, not new releases),
+    # then by review count so the most-visible ones land first.
+    def key(g):
+        rel = _released_ts(g)
+        return (0 if rel else 1, -(rel or 0), -(g.get("review_count") or 0))
+
+    missing.sort(key=key)
+    out = {}
+    for g in missing[:cap]:
+        out.setdefault(shard_of(int(g["appid"])), []).append(
+            (int(g["appid"]), g.get("review_count")))
+    return out, len(missing)
+
+
+def first_touch_sweep(games, now, time_left):
+    """PHASE 0: give never-seen games their first page without waiting for the shard
+    rotation. Returns (games_done, shards_touched, total_missing)."""
+    if FIRST_TOUCH_BATCH <= 0:
+        return 0, 0, 0
+    t0 = time.time()
+    batch, total_missing = find_first_touch(games, now, FIRST_TOUCH_BATCH)
+    scan_s = time.time() - t0
+    if not batch:
+        log(f"Fast lane: no never-seen addressable games (scan {scan_s:.0f}s). Skipping.")
+        return 0, 0, 0
+    queued = sum(len(v) for v in batch.values())
+    log(f"Fast lane: {total_missing} never-seen game(s); taking {queued} across "
+        f"{len(batch)} shard(s) (scan {scan_s:.0f}s, cap {FIRST_TOUCH_BATCH})")
+
+    done = shards = 0
+    pending = []                          # shard filenames saved but not yet committed
+    pending_games = 0
+
+    def flush(final=False):
+        """Commit the saved-but-uncommitted shards as one commit."""
+        nonlocal pending, pending_games
+        if not pending:
+            return
+        if not final and len(pending) < FIRST_TOUCH_COMMIT_GROUP:
+            return
+        _robust_commit(f"playtime raw: fast lane, {pending_games} first touch(es) "
+                       f"across {len(pending)} shard(s)", pending)
+        pending, pending_games = [], 0
+
+    for bucket in sorted(batch):
+        if time_left() < TIME_BUFFER:
+            log("  fast lane: time budget reached; deferring the rest to the next run.")
+            break
+        raw = load_shard(bucket)
+        got = 0
+        for aid, rc in batch[bucket]:
+            if time_left() < TIME_BUFFER:
+                break
+            aids = str(aid)
+            if aids in raw:               # filled by an earlier phase/run; don't re-walk
+                continue
+            reviews = {}
+            added, refreshed, exhausted = scrape_game(aid, reviews, FIRST_TOUCH_TARGET)
+            if not reviews and not exhausted:
+                continue                  # transient fetch failure — leave it for next run
+            raw[aids] = {"reviews": reviews, "summary": summarize_game(reviews),
+                         "exhausted": exhausted, "scraped_at": int(time.time())}
+            got += 1
+            s = raw[aids]["summary"]
+            mu = s["median_up"]
+            log(f"  first touch {aid:>8}: held {s['n_all']} of {rc or '?'} reviews · "
+                f"fans {f'{mu/60:.1f}h' if mu is not None else '—'} (n={s['n_up']})")
+        if got:
+            save_shard(bucket, raw)
+            pending.append(f"{bucket:02d}.json")
+            pending_games += got
+            done += got
+            shards += 1
+            flush()
+        del raw                           # release the shard before opening the next
+    flush(final=True)
+    log(f"Fast lane done: {done} game(s) across {shards} shard(s).")
+    return done, shards, total_missing
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
 def main():
@@ -946,6 +1097,17 @@ def main():
     target = effective_target()
     anchor = rotation_bucket()
     forced = forced_shards()
+
+    budget = RUN_MINUTES * 60
+
+    def time_left():
+        return budget - (time.time() - start)
+
+    # --- Phase 0: FIRST-TOUCH FAST LANE ------------------------------------- #
+    # Runs BEFORE the rotation so a brand-new release does not wait a full sweep for
+    # its bucket's turn. Writes straight into the shards, so the phases below see the
+    # new records on disk and (being freshly stamped) correctly skip them as not due.
+    ft_done, ft_shards, ft_missing = first_touch_sweep(games, now, time_left)
 
     # --- Phase 1: SCHEDULE (no shard bodies read) --------------------------- #
     # Score the whole catalog against the ladder purely from games.json, group the due
@@ -968,12 +1130,8 @@ def main():
         f"ladder 0-7d/1d · 7-30d/3d · 30-90d/7d · else {AGE_TIER_FALLBACK_DAYS}d "
         f"(>{HOT_REVIEWS_BOOST} reviews: halved; popularity floor >1k/5d, >500/10d — HLTB-aligned)")
 
-    budget = RUN_MINUTES * 60
     grand_done = grand_added = grand_refreshed = 0
     shards_touched = 0
-
-    def time_left():
-        return budget - (time.time() - start)
 
     # --- Phase 2: EXECUTE, one shard at a time ------------------------------ #
     # Each shard is loaded, worked, and committed before the next is opened, so peak
@@ -1077,8 +1235,12 @@ def main():
             log("Time budget reached; wrapping up.")
             break
 
+    ft_note = ""
+    if ft_done or ft_missing:
+        ft_note = (f" · fast lane {ft_done} first touch(es) across {ft_shards} shard(s)"
+                   f"{f', {ft_missing - ft_done} still never-seen' if ft_missing > ft_done else ''}")
     log(f"\nDone. {shards_touched} shard(s), {grand_done} games this run: "
-        f"+{grand_added} new reviews, ~{grand_refreshed} refreshed.")
+        f"+{grand_added} new reviews, ~{grand_refreshed} refreshed{ft_note}.")
     return 0
 
 
