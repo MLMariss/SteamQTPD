@@ -426,14 +426,30 @@ def _released_ts(g):
             return int(v)
     return None
 MIN_SEGMENT_FOR_MEDIAN = 3        # below this many samples, a segment median is null
-# Hard eligibility floor: a sentiment-split median needs a usable sample. Games
-# with fewer than this many all-time reviews can't produce one (they'd null out at
-# MIN_SEGMENT_FOR_MEDIAN anyway), so we don't spend request budget on them. This is
-# "skip for now", NOT permanent exclusion: eligibility is re-checked every run
-# against the live review_count from games.json, so a game re-qualifies the moment
-# it crosses the floor. Removes ~41k unusable games from the queue, leaving budget
-# for the ~52k that can actually yield data.
-MIN_REVIEWS_FLOOR = 10
+# Hard eligibility floor: a sentiment-split median needs a usable sample, so we don't
+# spend request budget on games that cannot produce one. This is "skip for now", NOT
+# permanent exclusion: eligibility is re-checked every run against the live
+# review_count from games.json, so a game re-qualifies the moment it crosses.
+#
+# FIVE IS THE EXACT MATHEMATICAL FLOOR, not a guess. A median publishes when either
+# sentiment side holds at least MIN_SEGMENT_FOR_MEDIAN (3) samples. Split 5 reviews
+# into two buckets and one bucket ALWAYS holds >= 3 — pigeonhole, no sampling involved.
+# At 4 a 2/2 split yields nothing; at 3 a 2/1 split yields nothing. So 5 is the smallest
+# review count at which a usable median is guaranteed, and every game at or above it
+# yields one.
+#
+# This was 10, justified in-comment by "removes ~41k unusable games from the queue,
+# leaving budget for the ~52k that can actually yield data". That claim was wrong:
+# games in the 5-9 band are not unusable, they yield a median 100% of the time. The
+# floor was discarding 15,561 games that each cost ONE page request to cover.
+#
+# Cost of 10 -> 5: addressable set 81,655 -> 97,216 (+19.1%). One-off first-touch
+# backfill ~15,561 requests (~6.5 h of STEAM_DELAY, drained in controlled batches by
+# the phase-0 fast lane). Ongoing, 93% of the band is 90 d+ old and lands on the 30-day
+# tier, so steady state is ~519 extra visits/day ≈ 13 min/day — about 1.6% of daily
+# throughput. It also aligns this gate exactly with ratings_summarize.py's
+# MIN_REVIEWS_FOR_RATING = 5, removing a long-standing mismatch between the two.
+MIN_REVIEWS_FLOOR = 5
 
 # FIRST-TOUCH FAST LANE (phase 0). The gate on a new release getting playtime is not
 # its review count — it is WHEN ITS SHARD NEXT OPENS. A never-seen game scores 1300 in

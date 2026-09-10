@@ -85,7 +85,12 @@ PICS_RAW_DIR = HERE / "pics_raw"
 PICS_DIR = HERE / "pics"
 
 DAY = 86400
-MIN_REVIEWS_FLOOR = 10   # addressable-set gate (playtime + updates layers)
+# Addressable-set gates. These USED to be one shared constant, which silently assumed
+# playtime and updates would always agree; they no longer do (playtime dropped to 5,
+# where a sentiment-split median is first mathematically guaranteed, while updates keeps
+# its own 10). Imported from playtime_refresh so this file cannot drift from it again.
+PT_MIN_REVIEWS_FLOOR = PT.MIN_REVIEWS_FLOOR      # playtime layer (5)
+UPD_MIN_REVIEWS_FLOOR = 10                       # updates_refresh.py's own floor
 UPDATE_ACTIVE_DAYS = 90  # "actively updated" if last_update_ts within this many days
 
 # --- cooldown constants copied VERBATIM from each scraper's is_eligible() ---
@@ -552,7 +557,10 @@ def main():
     rel_cov    = sum(1 for x in games if x.get("release_date"))
     is_free    = sum(1 for x in games if x.get("is_free") is True)
     nonfree    = BASE - is_free
-    addressable = sum(1 for x in games if (x.get("review_count") or 0) >= MIN_REVIEWS_FLOOR)
+    addressable = sum(1 for x in games
+                      if (x.get("review_count") or 0) >= PT_MIN_REVIEWS_FLOOR)
+    upd_addressable = sum(1 for x in games
+                          if (x.get("review_count") or 0) >= UPD_MIN_REVIEWS_FLOOR)
 
     prices = game_map(load("prices.json"), "prices")
     price_cov = len(prices)
@@ -620,12 +628,12 @@ def main():
 
     sched_pt = schedule_playtime(
         games, pt_scraped,
-        floor_pred=lambda g: (g.get("review_count") or 0) >= MIN_REVIEWS_FLOOR)
+        floor_pred=lambda g: (g.get("review_count") or 0) >= PT_MIN_REVIEWS_FLOOR)
     sched_pt_deep = schedule_playtime_deep(pt_deep, pt_deep_unanchored)
 
     sched_upd = schedule_two_track(
         games, upd_scraped, UPD_COOLDOWN_DAYS, UPD_NOUPDATE_COOLDOWN_DAYS,
-        floor_pred=lambda g: (g.get("review_count") or 0) >= MIN_REVIEWS_FLOOR)
+        floor_pred=lambda g: (g.get("review_count") or 0) >= UPD_MIN_REVIEWS_FLOOR)
 
     sched_scraper = schedule_scraper(games)
     sched_hltb = schedule_hltb(hltb)
@@ -701,7 +709,7 @@ def main():
              "else (long cooldown, refreshed rarely *by design*). Track totals **include** "
              "their overdue members. **overdue** = already past its lane's cooldown = real "
              "backlog. **never** = no data yet = fill frontier. **empty** = correctly "
-             f"skipped (below the {MIN_REVIEWS_FLOOR}-review floor / null score), not "
+             f"skipped (below the row's own review floor / null score), not "
              "pending work.")
     L.append("")
     L.append("| Metric | Storage | 7d-track | 30d-track | overdue | empty | never |")
@@ -716,8 +724,10 @@ def main():
     L.append("")
     L.append(f"Playtime is **not** a two-track row — every game gets its own cooldown from "
              f"`playtime_refresh.cooldown_days()` — so it gets its own table below. The "
-             f"`empty` column above is the {BASE - addressable:,} games below the "
-             f"{MIN_REVIEWS_FLOOR}-review floor (correctly skipped, not backlog).")
+             f"`empty` column above is per-row: {BASE - upd_addressable:,} games sit "
+             f"below Update events' {UPD_MIN_REVIEWS_FLOOR}-review floor. Playtime's "
+             f"own floor is {PT_MIN_REVIEWS_FLOOR} — the point at which a "
+             f"sentiment-split median first becomes mathematically guaranteed.")
     L.append("")
 
     # ---- AXIS 2b: playtime, against its real per-game ladder ----
@@ -883,7 +893,7 @@ def main():
     below = BASE - addressable
     L.append(f"**Playtime backfill.** Raw playtime covers **{raw_cov:,} games "
              f"({pct(raw_cov):.1f}% of catalog)**. The honest denominator is the "
-             f"addressable set after the `MIN_REVIEWS_FLOOR = {MIN_REVIEWS_FLOOR}` gate "
+             f"addressable set after the `MIN_REVIEWS_FLOOR = {PT_MIN_REVIEWS_FLOOR}` gate "
              f"— **{addressable:,} games ({addr_pct_base:.1f}% of catalog)** — against "
              f"which raw is **{raw_of_addr:.1f}% of addressable**. The other "
              f"**{below:,} games are below the floor and correctly skipped** (too few "
@@ -902,7 +912,8 @@ def main():
              f"{upd_total_shards} `updates_raw/` shards populated**. This layer feeds the "
              f"frontend's **Updated column cadence badge** (`N · 90d` / `N · 1y`, from the "
              f"summed 90d/365d `counts`) and backfills a null News-API `last_update_ts`. "
-             f"It is gated by the same {MIN_REVIEWS_FLOOR}-review floor as playtime. As the "
+             f"It is gated by its own {UPD_MIN_REVIEWS_FLOOR}-review floor (playtime's is "
+             f"{PT_MIN_REVIEWS_FLOOR}; the two no longer match). As the "
              f"remaining shards populate this coverage rises; the precedence flip (event "
              f"layer becomes primary over News-API) is gated on that coverage — see "
              f"ARCHITECTURE §9.5 / §3.1.")

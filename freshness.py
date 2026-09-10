@@ -381,17 +381,21 @@ def main():
     upd_ts, upd_pop, upd_shards, upd_new, upd_old = CV.read_upd_shards()
     pics_ts, pics_pop, pics_shards, pics_new, pics_old = CV.read_pics_raw_shards()
 
-    floor = lambda g: (g.get("review_count") or 0) >= CV.MIN_REVIEWS_FLOOR
+    # Two different floors: playtime scrapes from 5 reviews (where a sentiment-split
+    # median first becomes guaranteed), updates keeps its own 10. One shared lambda
+    # would silently score one layer against the other's gate.
+    pt_floor = lambda g: (g.get("review_count") or 0) >= CV.PT_MIN_REVIEWS_FLOOR
+    upd_floor = lambda g: (g.get("review_count") or 0) >= CV.UPD_MIN_REVIEWS_FLOOR
 
     # ---- buckets (coverage.py's gates verbatim — never re-derived here) ----
     b_scraper = CV.schedule_scraper(games)
     b_recent = CV.schedule_two_track(games, recent_ts, CV.RECENT_COOLDOWN_DAYS,
                                      CV.RECENT_NOUPDATE_COOLDOWN_DAYS,
                                      empty_ids=recent_empty)
-    b_pt = CV.schedule_playtime(games, pt_scraped, floor_pred=floor)
+    b_pt = CV.schedule_playtime(games, pt_scraped, floor_pred=pt_floor)
     b_pt_deep = CV.schedule_playtime_deep(pt_deep, pt_deep_unanchored)
     b_upd = CV.schedule_two_track(games, upd_ts, CV.UPD_COOLDOWN_DAYS,
-                                  CV.UPD_NOUPDATE_COOLDOWN_DAYS, floor_pred=floor)
+                                  CV.UPD_NOUPDATE_COOLDOWN_DAYS, floor_pred=upd_floor)
     b_hltb = CV.schedule_hltb(hltb)
     b_pics, pics_have = CV.schedule_pics(pics_ts)
 
