@@ -15,7 +15,12 @@ on:
     # anchor is retained only as a floor. Per-game priority still lives WITHIN a shard
     # (the overdue-ratio ladder), so hot games are served first once their shard opens.
     # Runs were finishing 12 shards in ~23 of 180 min, so the cap was raised 12 -> 24
-    # (the time was always there); at 24/run x 8 runs/day a full sweep completes in ~8 h.
+    # (the time was always there). NOTE the "~8 h full sweep" that used to be claimed here
+    # never happened: measured shard `generated_at` ages were median 46 h / worst 81 h,
+    # with only 7 of 64 shards inside 8 h. Two reasons, both now addressed — runs were
+    # overrunning the cron gap so only 4-5 of the 8 fires actually ran (see RUN_MINUTES
+    # below), and MAX_SHARDS_PER_RUN is never reached anyway because every run stops on
+    # TIME, not on work. Treat 24 as a ceiling that does not bind, not as a rate.
     # FORCE_SHARDS="27" (or a CSV) can pin specific buckets into a manual run to push a
     # known game through on demand. Shards are loaded, worked and committed ONE AT A TIME,
     # so commits stay small and peak memory stays at ~one shard. The :23 offset starts each run AFTER the :07 prices slot
@@ -43,7 +48,19 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: main
-          fetch-depth: 0
+          # SHALLOW ON PURPOSE. This was fetch-depth: 0 and it was the single largest
+          # cost in the job: measured on run #480, `actions/checkout` took 15m36s of a
+          # 238-minute run. Every commit in this repo rewrites a ~21 MB shard file, so
+          # full history is enormous and none of it is used — the script only ever needs
+          # the current tree plus the ability to push.
+          #
+          # Safe because _robust_commit() does `git fetch origin main` +
+          # `git reset --hard FETCH_HEAD` + `git push origin HEAD:main`. There is no
+          # rebase and no history walk, and FETCH_HEAD is written by an explicit fetch in
+          # a shallow clone exactly as in a full one. Verified end to end against a real
+          # shallow clone: a concurrent commit from another shard's writer is picked up
+          # by FETCH_HEAD, its file survives the reset, and our commit pushes on top.
+          fetch-depth: 1
 
       - uses: actions/setup-python@v6
         with:
@@ -52,7 +69,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Configure git (script commits once at run-end, rebasing onto main)
+      - name: Configure git (script commits per shard, resetting onto origin/main)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -60,24 +77,43 @@ jobs:
       - name: Refresh review playtime (identity-keyed, sentiment-split)
         env:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional (appreviews is keyless)
-          RUN_MINUTES: "180"
+          # 180 -> 165 so the WHOLE JOB fits inside the 3-hour cron gap. Measured runs
+          # took 191-320 min against a 180-min gap, and because the concurrency group
+          # uses cancel-in-progress: false (and GitHub keeps only ONE pending run per
+          # group) every fire that landed while a run was still going was silently
+          # discarded. Actual throughput was 4-5 runs/day, not the 8 the cron implies.
+          # Budget now: 165 scrape + ~1.2 summarize + shallow checkout ≈ 168 min, which
+          # leaves real headroom inside 180. Net scraping time per day goes UP, not down:
+          # 8 x 165 = 1,320 min/day versus the 810 min/day that 4-5 x 180 actually
+          # delivered. If runs still overrun after this, lower again rather than widening
+          # the cron — the 8 slots are what keep shard rotation inside its window.
+          RUN_MINUTES: "165"
           TARGET_REVIEWS: "200"        # reviews aimed for per game on a normal pass
           # Max shard buckets one run may open, oldest-scraped first (staleness sweep).
-          # Each open costs an ~18 MB read + a commit, but measured runs cleared 12 shards
-          # in ~23 of 180 min — 87% of the budget was idle — so the cap is 24, not 12.
-          # 24 × 8 runs/day = 192 shard-visits/day against 64 shards, so a full sweep of
-          # every shard completes in ~8 h (worst-case staleness), versus the old 8-day
-          # tail. Raise further (runs still finish well inside RUN_MINUTES) if you want a
-          # faster cycle; lower only if 403s show the storefront budget is the bottleneck.
+          # This is a CEILING, not a rate: no run has ever reached it. Every measured run
+          # spent its entire time budget (191-320 min of a nominal 180), so the binding
+          # constraint is RUN_MINUTES and the per-shard work, not this number. Raising it
+          # would change nothing; lower it only if 403s show the storefront budget is the
+          # bottleneck. Real shard rotation is tracked in COVERAGE.md, not predicted here.
           MAX_SHARDS_PER_RUN: "24"
           SHARD_MIN_HOT: "1"           # skip shards with fewer due games than this
+          # PHASE 0 — first-touch fast lane. Games with no stored record at all are
+          # served across ALL buckets before the rotation starts, newest-release-first,
+          # at one page each. Without it a new release waits for its shard's turn (~46 h
+          # median, ~81 h worst), which was the entire day-1..day-5 coverage hole.
+          # 300/run x 8 runs/day also drains the ~15,600-game frontier created by the
+          # MIN_REVIEWS_FLOOR 10 -> 5 drop in about a week, without letting any single
+          # run spend its whole budget on backfill. Set to 0 to disable the phase.
+          FIRST_TOUCH_BATCH: "300"
           # FORCE_SHARDS: "27"         # manual override: pin bucket(s) into this run,
           #                            # processed first (CSV ok, e.g. "27,5"); for pushing
           #                            # a specific game through without waiting for the sweep.
           # One-off DEEP pass: run this workflow manually and set a higher target
-          # (capped at PER_GAME_CAP=1000 in the script). It resumes each game by
-          # review identity, catching new reviews AND walking deeper into unseen ones.
-          # DEEPEN_TARGET: "1000"
+          # (capped at PER_GAME_CAP = DEPTH_LADDER[-1] = 3000 in the script — this
+          # comment said 1000 for a long time after the ladder grew). It resumes each
+          # game by review identity, catching new reviews AND walking deeper into
+          # unseen ones.
+          # DEEPEN_TARGET: "3000"
         run: python playtime_refresh.py
 
       # After the raw shards are refreshed and committed above, recompute the small

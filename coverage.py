@@ -30,7 +30,15 @@ Two axes are reported (see ARCHITECTURE §11.5 for the design rationale):
     both. A game "on the 7d track" that is 9 days stale counts as overdue, not as
     due-in-7d. Track totals INCLUDE their overdue members; overdue is a separate
     column so it can be read either way. Cooldown constants below are copied
-    verbatim from each scraper so this doc never drifts from the real gates.
+    verbatim from each scraper so this doc never drifts from the real gates —
+    EXCEPT playtime, whose gate is a per-game function rather than a constant and
+    is therefore imported live from playtime_refresh.py (copying it is what let
+    this file report a flat 7d/30d pair that had not been the real rule in months).
+
+    Playtime is reported on TWO axes, because one visit does not refresh one game
+    uniformly: the SURFACE axis (`scraped_at`, when we last looked at all) and the
+    DEEP axis (`walk_at`, when we last re-read every stored playtime rather than
+    just the newest page). A ceiling game can be surface-fresh and deep-stale.
 
 Timestamp fields used per file (the staleness key):
   games.json     -> per-game `scraped_at`
@@ -38,9 +46,11 @@ Timestamp fields used per file (the staleness key):
   hltb.json      -> per-row  `fetched_at`   (windows differ: partial/full/blank)
   recent.json    -> per-row  `recent_scraped_at`
   updates_raw/   -> per-game `scraped_at`   (the real updates-layer staleness key)
-  playtime_raw/  -> NO per-game stamp; PROXY = newest review `ts` per game.
-                    Approximate — a game with no new reviews reads as stale even
-                    if freshly walked. Flagged as (approx) in the table.
+  playtime_raw/  -> per-game `scraped_at`   (EXACT — set at walk time by
+                    playtime_refresh.py; present on 100% of records). Also carries
+                    `walk_at`, the last FULL-window re-walk, which is the only thing
+                    that unfreezes stored playtimes past the first page — reported
+                    separately as the deep-refresh axis.
   tags.json      -> NO timestamp of any kind. Coverage-only; no refresh axis.
                     (Tags rarely change and have no rescrape schedule yet — see
                     the "Future work" note for the planned periodic tag re-check.)
@@ -59,6 +69,14 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+# The playtime refresh ladder is READ FROM THE SCRAPER, never copied. Hard-copied
+# constants are exactly what rotted last time: this file carried a flat 7d/30d pair
+# long after playtime_refresh.py moved to a release-age ladder with a popularity
+# floor, so COVERAGE.md reported a gate that had not existed for months. Importing
+# keeps one source of truth. playtime_refresh degrades gracefully without `requests`
+# (see its import block), so this stays a stdlib-only job.
+import playtime_refresh as PT
+
 HERE = Path(__file__).resolve().parent
 OUT_FILE = HERE / "COVERAGE.md"
 PT_SHARD_DIR = HERE / "playtime_raw"
@@ -67,16 +85,25 @@ PICS_RAW_DIR = HERE / "pics_raw"
 PICS_DIR = HERE / "pics"
 
 DAY = 86400
-MIN_REVIEWS_FLOOR = 10   # addressable-set gate (playtime + updates layers)
+# Addressable-set gates. These USED to be one shared constant, which silently assumed
+# playtime and updates would always agree; they no longer do (playtime dropped to 5,
+# where a sentiment-split median is first mathematically guaranteed, while updates keeps
+# its own 10). Imported from playtime_refresh so this file cannot drift from it again.
+PT_MIN_REVIEWS_FLOOR = PT.MIN_REVIEWS_FLOOR      # playtime layer (5)
+UPD_MIN_REVIEWS_FLOOR = 10                       # updates_refresh.py's own floor
 UPDATE_ACTIVE_DAYS = 90  # "actively updated" if last_update_ts within this many days
 
 # --- cooldown constants copied VERBATIM from each scraper's is_eligible() ---
 # recent_refresh.py
 RECENT_COOLDOWN_DAYS = 4
 RECENT_NOUPDATE_COOLDOWN_DAYS = 30
-# playtime_refresh.py
-PT_COOLDOWN_DAYS = 7
-PT_NOUPDATE_COOLDOWN_DAYS = 30
+# playtime_refresh.py — NOT a flat pair. The real gate is a per-game function of
+# release age, review count and the popularity floor, so it is imported (PT.*) rather
+# than copied. These aliases exist only so the rendering code can name the tiers.
+PT_AGE_TIERS = PT.AGE_TIER_DAYS                    # [(max_age_days, cooldown_days), ...]
+PT_AGE_FALLBACK_DAYS = PT.AGE_TIER_FALLBACK_DAYS   # older than the last tier edge
+PT_REWALK_DAYS = PT.REWALK_DAYS                    # deep (full-window) re-walk backstop
+PT_CEILING = PT.PER_GAME_CAP                       # a game only deep-walks at the ceiling
 # updates_refresh.py
 UPD_COOLDOWN_DAYS = 7
 UPD_NOUPDATE_COOLDOWN_DAYS = 45
@@ -135,8 +162,26 @@ def is_active(last_update_ts, now):
 # Shard readers
 # --------------------------------------------------------------------------- #
 def read_pt_shards():
-    """playtime_raw: {appid: newest_review_ts} (staleness proxy) + shard bounds."""
-    proxy = {}
+    """playtime_raw: {appid: scraped_at} (the REAL per-game walk stamp) + shard bounds
+    + the deep-re-walk axis.
+
+    This used to return the newest review `ts` per game as a "staleness proxy", which
+    was simply wrong: every record carries a genuine `scraped_at` written at walk time
+    (verified present on 100% of stored records). The proxy measured when reviewers
+    last posted, not when we last looked, so a heavily-walked game with no recent
+    reviews read as years stale — which is how FRESHNESS.md came to claim a 3,762-day
+    max staleness and a 76% backlog that did not exist.
+
+    `deep` is the second axis (see COVERAGE.md → deep refresh). A normal visit to a
+    game already holding PER_GAME_CAP reviews only refreshes the newest page — stored
+    playtimes below that stay frozen until a FULL re-walk, stamped as `walk_at`. So
+    for ceiling games `scraped_at` alone overstates how fresh the medians really are.
+      deep = {appid: walk_at} for ceiling games that have an anchor
+      deep_unanchored = count of ceiling games with NO anchor (never deep-walked)
+    """
+    scraped = {}
+    deep = {}
+    deep_unanchored = 0
     newest = oldest = None
     if PT_SHARD_DIR.is_dir():
         for f in sorted(PT_SHARD_DIR.glob("*.json")):
@@ -146,13 +191,14 @@ def read_pt_shards():
                 newest = g if newest is None else max(newest, g)
                 oldest = g if oldest is None else min(oldest, g)
             for aid, rec in (sh.get("games") or {}).items():
-                mx = 0
-                for rv in (rec.get("reviews") or {}).values():
-                    t = rv.get("ts") or 0
-                    if t > mx:
-                        mx = t
-                proxy[str(aid)] = mx
-    return proxy, newest, oldest
+                scraped[str(aid)] = rec.get("scraped_at", 0)
+                if len(rec.get("reviews") or {}) >= PT_CEILING:
+                    w = rec.get("walk_at")
+                    if w:
+                        deep[str(aid)] = w
+                    else:
+                        deep_unanchored += 1
+    return scraped, newest, oldest, deep, deep_unanchored
 
 
 def read_upd_shards():
@@ -321,6 +367,99 @@ def schedule_two_track(games, present_ts, short_days, long_days,
     return b
 
 
+def _pct(vals, q):
+    """q-th percentile (0..1) of a sorted-able list, nearest-rank. [] -> None."""
+    if not vals:
+        return None
+    s = sorted(vals)
+    i = min(len(s) - 1, max(0, int(round(q * (len(s) - 1)))))
+    return s[i]
+
+
+def schedule_playtime(games, scraped_ts, floor_pred=None):
+    """Bucketer for playtime_raw, against the REAL per-game ladder.
+
+    Unlike the two-track scrapers there is no 'active/dormant' pair here — every game
+    gets its own cooldown from PT.cooldown_days(release age, review count), so this
+    reports the ladder the way the scraper actually applies it: one row per release-age
+    tier, each with its promise, the measured median/p90 staleness, and the share of
+    games actually inside their window.
+
+    Returns the standard overdue/empty/never counts plus `tiers` for the breakdown."""
+    now = int(time.time())
+    b = {"overdue": 0, "empty": 0, "never": 0, "covered": 0}
+    tiers = []
+    edges = [d for d, _ in PT_AGE_TIERS]
+    lo = 0
+    for e in edges:                              # 0–7 d, 7–30 d, 30–90 d
+        tiers.append({"label": f"{lo}–{e} d", "ages": [], "inside": 0,
+                      "promise_min": None, "promise_max": None})
+        lo = e
+    tiers.append({"label": f"{lo} d+", "ages": [], "inside": 0,      # 90 d+ fallback
+                  "promise_min": None, "promise_max": None})
+
+    def tier_for(age_days):
+        for i, (edge, _) in enumerate(PT_AGE_TIERS):
+            if age_days < edge:
+                return tiers[i]
+        return tiers[-1]
+
+    for g in games:
+        aid = str(g.get("appid"))
+        if floor_pred and not floor_pred(g):
+            b["empty"] += 1                      # below addressable floor: correct skip
+            continue
+        ts = scraped_ts.get(aid)
+        if not ts:
+            b["never"] += 1                      # true pending frontier
+            continue
+        b["covered"] += 1
+        rel = PT._released_ts(g)
+        rc = g.get("review_count")
+        cd = PT.cooldown_days(rel, g.get("last_update_ts"), rc, now)
+        age_days = (now - ts) / DAY
+        if age_days >= cd:
+            b["overdue"] += 1
+        # Bucket by release age so the table mirrors the ladder's primary axis.
+        t = tier_for((now - rel) / DAY) if rel else tiers[-1]
+        t["ages"].append(age_days)
+        if age_days < cd:
+            t["inside"] += 1
+        t["promise_min"] = cd if t["promise_min"] is None else min(t["promise_min"], cd)
+        t["promise_max"] = cd if t["promise_max"] is None else max(t["promise_max"], cd)
+
+    for t in tiers:
+        n = len(t["ages"])
+        t["n"] = n
+        t["median"] = _pct(t["ages"], 0.5)
+        t["p90"] = _pct(t["ages"], 0.9)
+        t["inside_pct"] = (t["inside"] / n * 100.0) if n else None
+        del t["ages"]
+    b["tiers"] = tiers
+    return b
+
+
+def schedule_playtime_deep(deep_ts, unanchored):
+    """The DEEP (full-window re-walk) axis for ceiling games — the metric that answers
+    'are our medians drifting as reviewers keep playing?'.
+
+    A ceiling game's normal visit refreshes only its newest page, so its stored
+    playtimes below that are frozen until a full re-walk (`walk_at`). Games with no
+    anchor at all have never had the clock started: on cold start playtime_refresh
+    stamps the anchor WITHOUT walking, so their deep positions stay frozen and the
+    first real re-walk is a further REWALK_DAYS out."""
+    now = int(time.time())
+    ages = [(now - w) / DAY for w in deep_ts.values() if w]
+    over = sum(1 for a in ages if a >= PT_REWALK_DAYS)
+    anchored = len(ages)
+    return {"anchored": anchored, "unanchored": unanchored,
+            "ceiling": anchored + unanchored,
+            "median": _pct(ages, 0.5), "p90": _pct(ages, 0.9),
+            "max": max(ages) if ages else None,
+            "overdue": over,
+            "overdue_pct": (over / anchored * 100.0) if anchored else None}
+
+
 def schedule_scraper(games):
     """games.json core. Two populations:
       * within REVIEW_TIERS (age since release <= the last tier): a real per-game
@@ -418,7 +557,10 @@ def main():
     rel_cov    = sum(1 for x in games if x.get("release_date"))
     is_free    = sum(1 for x in games if x.get("is_free") is True)
     nonfree    = BASE - is_free
-    addressable = sum(1 for x in games if (x.get("review_count") or 0) >= MIN_REVIEWS_FLOOR)
+    addressable = sum(1 for x in games
+                      if (x.get("review_count") or 0) >= PT_MIN_REVIEWS_FLOOR)
+    upd_addressable = sum(1 for x in games
+                          if (x.get("review_count") or 0) >= UPD_MIN_REVIEWS_FLOOR)
 
     prices = game_map(load("prices.json"), "prices")
     price_cov = len(prices)
@@ -444,8 +586,8 @@ def main():
     updates = game_map(load("updates.json"), "games")
     upd_cov = len(updates)
 
-    pt_proxy, pt_new_shard, pt_old_shard = read_pt_shards()
-    raw_cov = len(pt_proxy)
+    pt_scraped, pt_new_shard, pt_old_shard, pt_deep, pt_deep_unanchored = read_pt_shards()
+    raw_cov = len(pt_scraped)
     upd_scraped, upd_populated, upd_total_shards, upd_new_shard, upd_old_shard = read_upd_shards()
     upd_raw_cov = len(upd_scraped)
 
@@ -484,13 +626,14 @@ def main():
         games, recent_ts, RECENT_COOLDOWN_DAYS, RECENT_NOUPDATE_COOLDOWN_DAYS,
         empty_ids=recent_empty_ids)
 
-    sched_pt = schedule_two_track(
-        games, pt_proxy, PT_COOLDOWN_DAYS, PT_NOUPDATE_COOLDOWN_DAYS,
-        floor_pred=lambda g: (g.get("review_count") or 0) >= MIN_REVIEWS_FLOOR)
+    sched_pt = schedule_playtime(
+        games, pt_scraped,
+        floor_pred=lambda g: (g.get("review_count") or 0) >= PT_MIN_REVIEWS_FLOOR)
+    sched_pt_deep = schedule_playtime_deep(pt_deep, pt_deep_unanchored)
 
     sched_upd = schedule_two_track(
         games, upd_scraped, UPD_COOLDOWN_DAYS, UPD_NOUPDATE_COOLDOWN_DAYS,
-        floor_pred=lambda g: (g.get("review_count") or 0) >= MIN_REVIEWS_FLOOR)
+        floor_pred=lambda g: (g.get("review_count") or 0) >= UPD_MIN_REVIEWS_FLOOR)
 
     sched_scraper = schedule_scraper(games)
     sched_hltb = schedule_hltb(hltb)
@@ -566,7 +709,8 @@ def main():
              "else (long cooldown, refreshed rarely *by design*). Track totals **include** "
              "their overdue members. **overdue** = already past its lane's cooldown = real "
              "backlog. **never** = no data yet = fill frontier. **empty** = correctly "
-             "skipped (below the 10-review floor / null score), not pending work.")
+             f"skipped (below the row's own review floor / null score), not "
+             "pending work.")
     L.append("")
     L.append("| Metric | Storage | 7d-track | 30d-track | overdue | empty | never |")
     L.append("|---|---|---:|---:|---:|---:|---:|")
@@ -576,18 +720,84 @@ def main():
                 f"| {b['overdue']:,}{overdue_mark} | {b['empty']:,} | {b['never']:,} |")
 
     L.append(track_row("Recent reviews", "recent.json", sched_recent))
-    L.append(track_row("Playtime raw (approx)", "playtime_raw/", sched_pt, overdue_mark=" †"))
     L.append(track_row("Update events", "updates_raw/", sched_upd))
     L.append("")
-    L.append(f"**†  Playtime `overdue` is proxy-inflated — read with caution.** "
-             f"`playtime_raw/` stores no per-game scrape timestamp, so staleness uses each "
-             f"game's **newest review `ts`** as a proxy. A game with no recent reviews reads "
-             f"as overdue even if the scraper walked it days ago, so this figure is an "
-             f"**upper bound**, not true backlog (contrast Update events, which has a real "
-             f"per-game `scraped_at` and shows exact overdue). The `empty` column is the "
-             f"{BASE - addressable:,} games below the {MIN_REVIEWS_FLOOR}-review floor "
-             f"(correctly skipped, not backlog). An exact figure needs a per-game "
-             f"`scraped_at` in the shards — see Future work.")
+    L.append(f"Playtime is **not** a two-track row — every game gets its own cooldown from "
+             f"`playtime_refresh.cooldown_days()` — so it gets its own table below. The "
+             f"`empty` column above is per-row: {BASE - upd_addressable:,} games sit "
+             f"below Update events' {UPD_MIN_REVIEWS_FLOOR}-review floor. Playtime's "
+             f"own floor is {PT_MIN_REVIEWS_FLOOR} — the point at which a "
+             f"sentiment-split median first becomes mathematically guaranteed.")
+    L.append("")
+
+    # ---- AXIS 2b: playtime, against its real per-game ladder ----
+    L.append("### Playtime raw — surface refresh (`playtime_raw/`)")
+    L.append("")
+    L.append(f"Staleness is the **real per-game `scraped_at`**, measured against the real "
+             f"ladder (release-age tiers "
+             + " · ".join(f"<{d}d→{c}d" for d, c in PT_AGE_TIERS)
+             + f" · else {PT_AGE_FALLBACK_DAYS}d; halved above "
+             f"{PT.HOT_REVIEWS_BOOST:,} reviews, then floored by the popularity tiers "
+             + "/".join(f">{e}→{d}d" for e, d in PT.POPULAR_FLOOR_TIERS)
+             + f"). Because the cooldown varies per game, **promise** is the range actually "
+             f"applied within each release-age tier. `covered` {sched_pt['covered']:,} · "
+             f"`overdue` {sched_pt['overdue']:,} · `never` {sched_pt['never']:,} · "
+             f"`empty` {sched_pt['empty']:,}.")
+    L.append("")
+    L.append("| Release age | n | Promise | Median stale | p90 | Inside window |")
+    L.append("|---|---:|---:|---:|---:|---:|")
+    for t in sched_pt["tiers"]:
+        if not t["n"]:
+            continue
+        pmin, pmax = t["promise_min"], t["promise_max"]
+        promise = (f"{pmin:g} d" if pmin == pmax else f"{pmin:g}–{pmax:g} d")
+        L.append(f"| {t['label']} | {t['n']:,} | {promise} | "
+                 f"{t['median']:.1f} d | {t['p90']:.1f} d | {t['inside_pct']:.1f}% |")
+    L.append("")
+    L.append("**A surface refresh is not a full one.** For a game already holding "
+             f"{PT_CEILING:,} reviews a normal visit stops after page 1, so only its newest "
+             "~100 playtimes are re-read; positions below that stay frozen at whatever they "
+             "were when first captured. Small games (below their rung) are walked to the end "
+             "of Steam's list every visit, so for them this table *is* the whole story.")
+    L.append("")
+
+    # ---- AXIS 2c: the deep re-walk clock (ceiling games only) ----
+    d = sched_pt_deep
+    L.append("### Playtime raw — deep re-walk (drift control)")
+    L.append("")
+    if d["ceiling"]:
+        med = f"{d['median']:.1f} d" if d["median"] is not None else "—"
+        p90 = f"{d['p90']:.1f} d" if d["p90"] is not None else "—"
+        mx = f"{d['max']:.1f} d" if d["max"] is not None else "—"
+        opct = f"{d['overdue_pct']:.1f}%" if d["overdue_pct"] is not None else "—"
+        unanch_pct = d["unanchored"] / d["ceiling"] * 100.0
+        L.append(f"The only axis that unfreezes a ceiling game's older playtimes is a FULL "
+                 f"window re-walk, stamped `walk_at` and promised every "
+                 f"{PT_REWALK_DAYS} d. This is the number that answers *are our medians "
+                 f"drifting as reviewers keep playing*.")
+        L.append("")
+        L.append("| Metric | Value |")
+        L.append("|---|---:|")
+        L.append(f"| Games at the {PT_CEILING:,}-review ceiling | {d['ceiling']:,} |")
+        L.append(f"| — anchored (deep clock running) | {d['anchored']:,} |")
+        L.append(f"| — **no `walk_at` anchor** (never deep-walked) | "
+                 f"**{d['unanchored']:,}** ({unanch_pct:.1f}%) |")
+        L.append(f"| Anchored: median since last full walk | {med} |")
+        L.append(f"| Anchored: p90 | {p90} |")
+        L.append(f"| Anchored: max | {mx} |")
+        L.append(f"| Anchored: past the {PT_REWALK_DAYS} d promise | "
+                 f"{d['overdue']:,} ({opct}) |")
+        L.append("")
+        if d["unanchored"]:
+            L.append(f"**{d['unanchored']:,} ceiling games have never had the deep clock "
+                     f"started.** On cold start the scraper stamps the anchor *without* "
+                     f"walking (deliberate — it staggers the population instead of firing "
+                     f"every ceiling game at once), so those records' deep positions have "
+                     f"been frozen since the ladder filled them. `DEEP_BACKFILL_PER_RUN` in "
+                     f"`playtime_refresh.py` drains this set at a fixed rate per run.")
+    else:
+        L.append(f"No games at the {PT_CEILING:,}-review ceiling yet — nothing can be "
+                 f"deep-stale.")
     L.append("")
     L.append("Files with a single-window (not two-track) refresh rule:")
     L.append("")
@@ -683,7 +893,7 @@ def main():
     below = BASE - addressable
     L.append(f"**Playtime backfill.** Raw playtime covers **{raw_cov:,} games "
              f"({pct(raw_cov):.1f}% of catalog)**. The honest denominator is the "
-             f"addressable set after the `MIN_REVIEWS_FLOOR = {MIN_REVIEWS_FLOOR}` gate "
+             f"addressable set after the `MIN_REVIEWS_FLOOR = {PT_MIN_REVIEWS_FLOOR}` gate "
              f"— **{addressable:,} games ({addr_pct_base:.1f}% of catalog)** — against "
              f"which raw is **{raw_of_addr:.1f}% of addressable**. The other "
              f"**{below:,} games are below the floor and correctly skipped** (too few "
@@ -702,7 +912,8 @@ def main():
              f"{upd_total_shards} `updates_raw/` shards populated**. This layer feeds the "
              f"frontend's **Updated column cadence badge** (`N · 90d` / `N · 1y`, from the "
              f"summed 90d/365d `counts`) and backfills a null News-API `last_update_ts`. "
-             f"It is gated by the same {MIN_REVIEWS_FLOOR}-review floor as playtime. As the "
+             f"It is gated by its own {UPD_MIN_REVIEWS_FLOOR}-review floor (playtime's is "
+             f"{PT_MIN_REVIEWS_FLOOR}; the two no longer match). As the "
              f"remaining shards populate this coverage rises; the precedence flip (event "
              f"layer becomes primary over News-API) is gated on that coverage — see "
              f"ARCHITECTURE §9.5 / §3.1.")
@@ -739,9 +950,6 @@ def main():
              "dormant 30–45d) deliberately front-loads budget onto games whose data "
              "actually moves; a uniform target only makes sense once no backlog is "
              "competing for that budget.")
-    L.append("- **Playtime per-game timestamp.** Adding a per-game `scraped_at` to the "
-             "`playtime_raw/` shard records would replace the newest-review-`ts` proxy "
-             "with an exact staleness signal, removing the (approx) caveat above.")
     L.append("")
 
     OUT_FILE.write_text("\n".join(L) + "\n", encoding="utf-8")

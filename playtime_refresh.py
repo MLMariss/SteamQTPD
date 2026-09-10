@@ -87,7 +87,19 @@ import sys
 import time
 from pathlib import Path
 
-import requests
+try:
+    import requests
+except ImportError:                  # pragma: no cover - see note below
+    # This module doubles as the SINGLE SOURCE OF TRUTH for the refresh ladder:
+    # coverage.py / freshness.py `import playtime_refresh` purely to read
+    # cooldown_days() + the tier constants, so their generated docs can never drift
+    # from the real gate (they used to hard-copy the constants, and silently rotted —
+    # see COVERAGE.md history). Those two jobs are deliberately stdlib-only (no pip
+    # install step in coverage.yml / freshness.yml), so a hard `import requests` here
+    # would break them. Degrade to None instead: every scraping path below goes
+    # through SESSION and fails loudly at first use if requests is genuinely absent,
+    # while the pure-logic half of this file stays importable anywhere.
+    requests = None
 
 # --------------------------------------------------------------------------- #
 # CONFIG
@@ -414,14 +426,83 @@ def _released_ts(g):
             return int(v)
     return None
 MIN_SEGMENT_FOR_MEDIAN = 3        # below this many samples, a segment median is null
-# Hard eligibility floor: a sentiment-split median needs a usable sample. Games
-# with fewer than this many all-time reviews can't produce one (they'd null out at
-# MIN_SEGMENT_FOR_MEDIAN anyway), so we don't spend request budget on them. This is
-# "skip for now", NOT permanent exclusion: eligibility is re-checked every run
-# against the live review_count from games.json, so a game re-qualifies the moment
-# it crosses the floor. Removes ~41k unusable games from the queue, leaving budget
-# for the ~52k that can actually yield data.
-MIN_REVIEWS_FLOOR = 10
+# Hard eligibility floor: a sentiment-split median needs a usable sample, so we don't
+# spend request budget on games that cannot produce one. This is "skip for now", NOT
+# permanent exclusion: eligibility is re-checked every run against the live
+# review_count from games.json, so a game re-qualifies the moment it crosses.
+#
+# FIVE IS THE EXACT MATHEMATICAL FLOOR, not a guess. A median publishes when either
+# sentiment side holds at least MIN_SEGMENT_FOR_MEDIAN (3) samples. Split 5 reviews
+# into two buckets and one bucket ALWAYS holds >= 3 — pigeonhole, no sampling involved.
+# At 4 a 2/2 split yields nothing; at 3 a 2/1 split yields nothing. So 5 is the smallest
+# review count at which a usable median is guaranteed, and every game at or above it
+# yields one.
+#
+# This was 10, justified in-comment by "removes ~41k unusable games from the queue,
+# leaving budget for the ~52k that can actually yield data". That claim was wrong:
+# games in the 5-9 band are not unusable, they yield a median 100% of the time. The
+# floor was discarding 15,561 games that each cost ONE page request to cover.
+#
+# Cost of 10 -> 5: addressable set 81,655 -> 97,216 (+19.1%). One-off first-touch
+# backfill ~15,561 requests (~6.5 h of STEAM_DELAY, drained in controlled batches by
+# the phase-0 fast lane). Ongoing, 93% of the band is 90 d+ old and lands on the 30-day
+# tier, so steady state is ~519 extra visits/day ≈ 13 min/day — about 1.6% of daily
+# throughput. It also aligns this gate exactly with ratings_summarize.py's
+# MIN_REVIEWS_FOR_RATING = 5, removing a long-standing mismatch between the two.
+MIN_REVIEWS_FLOOR = 5
+
+# LOW-YIELD APPIDS (the DLC dead-end loop). A DLC's store page reports the BASE game's
+# review count, but `appreviews` for that appid returns almost nothing. Measured live:
+# DOOM Eternal: The Ancient Gods Part One (1098292) claims 6,412 reviews in games.json
+# and the API serves exactly 1; Part Two (1098293) claims 5,448 and serves 2.
+#
+# That combination is a permanent budget leak. is_eligible()'s "still filling" fast path
+# (`held < target and not exhausted`) bypasses the cooldown entirely, so it returns True
+# on EVERY visit, forever — those two records were being re-walked every run, 2.4 h
+# apart, to re-fetch the same single review. They can never reach
+# MIN_SEGMENT_FOR_MEDIAN, so they are also permanently absent from playtime.json.
+#
+# The fix is deliberately NOT a permanent retirement flag. `exhausted` already has a
+# history of being set wrongly (see the short-page note in scrape_game — one unlucky
+# page used to retire a game for good), so this only takes away the FAST PATH: after
+# two consecutive visits that grow nothing while holding far less than the catalog
+# claims, the game drops back to its normal ladder cooldown instead of every run. It is
+# still re-walked, just at 30-day cadence rather than 3-hourly, and any real growth or a
+# materially higher catalog count clears the strikes immediately.
+LOW_YIELD_RATIO = 0.10       # holding <10% of the catalog's count = the API isn't serving them
+LOW_YIELD_STRIKES = 2        # consecutive fruitless visits before dropping the fast path
+LOW_YIELD_REOPEN = 1.5       # catalog count growing this many x since re-opens the fast path
+
+# FIRST-TOUCH FAST LANE (phase 0). The gate on a new release getting playtime is not
+# its review count — it is WHEN ITS SHARD NEXT OPENS. A never-seen game scores 1300 in
+# priority() and would be served immediately, but only once the sweep reaches its
+# bucket, and the measured shard-open interval is ~46 h median / ~81 h worst. That is
+# the whole day-1..day-5 coverage hole (25% at day 1, ~93% by day 6): the game is not
+# starved of budget, it is waiting in a queue that opens twice a week.
+#
+# A first touch is the cheapest visit there is — ONE page request (page 1 already
+# satisfies FIRST_TOUCH_TARGET, so the walk breaks immediately), so the entire
+# never-seen frontier is minutes of budget. This phase serves it across ALL shards
+# before the normal rotation starts, instead of making each game wait for its bucket.
+#
+# It deliberately breaks the "one shard open at a time" rule only in the sense that it
+# touches many buckets in one phase — the batch is GROUPED BY SHARD and processed shard
+# by shard, so peak memory is still one shard, and one-writer-per-file is untouched
+# (this job remains the sole writer of playtime_raw/). A separate workflow was
+# considered and rejected: it would either queue forever behind this job's concurrency
+# group, or become a second writer to the same shards.
+#
+# Set FIRST_TOUCH_BATCH=0 to disable the phase entirely.
+FIRST_TOUCH_BATCH = int(os.environ.get("FIRST_TOUCH_BATCH", "300"))
+FIRST_TOUCH_TARGET = 100          # == PER_PAGE: exactly one page per game
+# The fast lane spreads a small number of games over MANY shards (80 games hit 40
+# buckets in the measured frontier), and one commit per shard would mean ~40 pushes of
+# a ~21 MB file per run. Shards are therefore saved as they finish but committed in
+# groups. Keep this modest: _robust_commit snapshots each shard's bytes in memory
+# before resetting to origin/main, so the group size is also the memory ceiling
+# (8 x ~21 MB). Phase 2's one-commit-per-shard cadence is untouched — there each shard
+# is minutes of work, so an immediate commit is the right checkpoint.
+FIRST_TOUCH_COMMIT_GROUP = int(os.environ.get("FIRST_TOUCH_COMMIT_GROUP", "8"))
 
 STEAM_DELAY = 1.5                 # storefront limit (~200/5min); at 1.5s this run sits AT the
                                   # ceiling (no headroom). Matches recent_refresh.py, which
@@ -437,9 +518,12 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qhpp playtime-refresher; github pag
 COOKIES = {"birthtime": "568022401", "mature_content": "1",
            "Steam_Language": "english", "wants_mature_content": "1"}
 
-SESSION = requests.Session()
-SESSION.headers.update(HEADERS)
-SESSION.cookies.update(COOKIES)
+if requests is not None:
+    SESSION = requests.Session()
+    SESSION.headers.update(HEADERS)
+    SESSION.cookies.update(COOKIES)
+else:
+    SESSION = None                   # import-only mode; see the requests import above
 
 
 def log(msg):
@@ -742,7 +826,14 @@ def _robust_commit(msg, our_shards, drop_monolith=False):
         try:
             subprocess.run(["git", "fetch", "origin", "main"],
                            check=True, capture_output=True, text=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"],
+            # Reset to FETCH_HEAD, not origin/main. An explicit `git fetch origin main`
+            # ALWAYS writes FETCH_HEAD, in a shallow clone as well as a full one, whereas
+            # refs/remotes/origin/main is only updated if the remote's configured fetch
+            # refspec happens to map it — which actions/checkout does not guarantee at
+            # fetch-depth: 1. Same commit in the normal case, but it does not depend on
+            # how the checkout step configured the remote, so the shallow checkout below
+            # cannot silently break every push in this job.
+            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"],
                            check=True, capture_output=True, text=True)   # latest remote tree
             SHARD_DIR.mkdir(exist_ok=True)
             for name, data in snaps.items():                              # re-apply only our shard(s)
@@ -799,10 +890,53 @@ def is_eligible(rec, released_ts, last_update_ts, review_count, now, target):
     if not rec:
         return True
     held = len((rec.get("reviews") or {}))
-    if held < target and not rec.get("exhausted"):
+    if held < target and not rec.get("exhausted") and not is_low_yield(rec, review_count):
         return True
     age = now - rec.get("scraped_at", 0)
     return age >= cooldown_days(released_ts, last_update_ts, review_count, now) * 86400
+
+
+def is_low_yield(rec, review_count):
+    """True when this appid has repeatedly failed to yield anything close to the review
+    count its store page claims — the DLC dead-end case (see LOW_YIELD_* above).
+
+    Only suppresses the "still filling" FAST PATH; the caller still falls through to the
+    normal cooldown test, so the game keeps being re-checked on its ladder cadence.
+    Reversible: strikes are cleared on any real growth, and a catalog count that has
+    grown LOW_YIELD_REOPEN x since we gave up re-opens the fast path immediately (a DLC
+    that genuinely starts accumulating its own reviews is not stuck here)."""
+    if rec.get("low_yield_strikes", 0) < LOW_YIELD_STRIKES:
+        return False
+    anchor = rec.get("low_yield_rc")
+    if anchor and (review_count or 0) >= anchor * LOW_YIELD_REOPEN:
+        return False                     # catalog grew a lot since — worth another look
+    return True
+
+
+def low_yield_strikes(rec, reviews, added, review_count, game_target):
+    """(strikes, anchor_rc) to persist after a visit. (0, None) means 'store nothing'.
+
+    A strike means: we WANTED more (held < this visit's rung), we got nothing new, and
+    what we hold is a small fraction of what the catalog claims exists. Any one of those
+    failing resets to zero, so a game that is merely small (holds 40 of its 50 reviews)
+    or genuinely still climbing never accumulates strikes.
+
+    The anchor is the catalog count as it stood when we FIRST gave up, and is then held
+    fixed — re-stamping it every visit would move the goalposts and make the
+    grown-since-we-gave-up escape hatch in is_low_yield() unreachable. When that escape
+    hatch does fire, the assessment restarts from zero against a fresh anchor, so a
+    genuinely growing appid is re-evaluated rather than bouncing in and out forever."""
+    held = len(reviews)
+    rc = review_count or 0
+    fruitless = (added == 0 and held < game_target
+                 and rc > 0 and held < rc * LOW_YIELD_RATIO)
+    if not fruitless:
+        return 0, None
+    prev = rec.get("low_yield_strikes", 0)
+    anchor = rec.get("low_yield_rc")
+    if anchor and rc >= anchor * LOW_YIELD_REOPEN:
+        prev, anchor = 0, None            # grew a lot since: fresh assessment
+    return prev + 1, (anchor or rc)
 
 
 def priority(rec, released_ts, last_update_ts, all_time_count, now, target):
@@ -916,6 +1050,126 @@ def select_buckets(due_by_bucket, anchor, forced=(), last_scraped=None):
 
 
 # --------------------------------------------------------------------------- #
+# Phase 0 — first-touch fast lane
+# --------------------------------------------------------------------------- #
+def shard_appids(bucket):
+    """Just the appid KEYS stored in a shard — no record bodies retained.
+
+    The membership scan needs to know which games exist, not what they hold, so the
+    parsed body is dropped immediately and only the key set survives. That keeps the
+    whole 64-shard scan at one shard's peak memory."""
+    p = shard_path(bucket)
+    if not p.exists():
+        return set()
+    try:
+        return set((json.loads(p.read_text(encoding="utf-8")).get("games") or {}).keys())
+    except ValueError:
+        return set()
+
+
+def find_first_touch(games, now, cap):
+    """{bucket: [(appid, review_count), ...]} for addressable games with NO stored
+    record, newest-release-first, capped at `cap` games in total.
+
+    Costs one pass over all 64 shards (keys only). That is the price of knowing what
+    is missing without opening bodies, and it buys the answer for EVERY bucket rather
+    than just the ones this run's rotation happens to reach."""
+    want = {}
+    for g in games:
+        if (g.get("review_count") or 0) < MIN_REVIEWS_FLOOR:
+            continue
+        aid = int(g["appid"])
+        want.setdefault(shard_of(aid), []).append(g)
+
+    missing = []
+    for b in sorted(want):
+        present = shard_appids(b)
+        for g in want[b]:
+            if str(g["appid"]) not in present:
+                missing.append(g)
+
+    # Newest release first: the whole point of the phase is day-1 coverage. Games with
+    # no parsed release date sort last (they are catalog back-fill, not new releases),
+    # then by review count so the most-visible ones land first.
+    def key(g):
+        rel = _released_ts(g)
+        return (0 if rel else 1, -(rel or 0), -(g.get("review_count") or 0))
+
+    missing.sort(key=key)
+    out = {}
+    for g in missing[:cap]:
+        out.setdefault(shard_of(int(g["appid"])), []).append(
+            (int(g["appid"]), g.get("review_count")))
+    return out, len(missing)
+
+
+def first_touch_sweep(games, now, time_left):
+    """PHASE 0: give never-seen games their first page without waiting for the shard
+    rotation. Returns (games_done, shards_touched, total_missing)."""
+    if FIRST_TOUCH_BATCH <= 0:
+        return 0, 0, 0
+    t0 = time.time()
+    batch, total_missing = find_first_touch(games, now, FIRST_TOUCH_BATCH)
+    scan_s = time.time() - t0
+    if not batch:
+        log(f"Fast lane: no never-seen addressable games (scan {scan_s:.0f}s). Skipping.")
+        return 0, 0, 0
+    queued = sum(len(v) for v in batch.values())
+    log(f"Fast lane: {total_missing} never-seen game(s); taking {queued} across "
+        f"{len(batch)} shard(s) (scan {scan_s:.0f}s, cap {FIRST_TOUCH_BATCH})")
+
+    done = shards = 0
+    pending = []                          # shard filenames saved but not yet committed
+    pending_games = 0
+
+    def flush(final=False):
+        """Commit the saved-but-uncommitted shards as one commit."""
+        nonlocal pending, pending_games
+        if not pending:
+            return
+        if not final and len(pending) < FIRST_TOUCH_COMMIT_GROUP:
+            return
+        _robust_commit(f"playtime raw: fast lane, {pending_games} first touch(es) "
+                       f"across {len(pending)} shard(s)", pending)
+        pending, pending_games = [], 0
+
+    for bucket in sorted(batch):
+        if time_left() < TIME_BUFFER:
+            log("  fast lane: time budget reached; deferring the rest to the next run.")
+            break
+        raw = load_shard(bucket)
+        got = 0
+        for aid, rc in batch[bucket]:
+            if time_left() < TIME_BUFFER:
+                break
+            aids = str(aid)
+            if aids in raw:               # filled by an earlier phase/run; don't re-walk
+                continue
+            reviews = {}
+            added, refreshed, exhausted = scrape_game(aid, reviews, FIRST_TOUCH_TARGET)
+            if not reviews and not exhausted:
+                continue                  # transient fetch failure — leave it for next run
+            raw[aids] = {"reviews": reviews, "summary": summarize_game(reviews),
+                         "exhausted": exhausted, "scraped_at": int(time.time())}
+            got += 1
+            s = raw[aids]["summary"]
+            mu = s["median_up"]
+            log(f"  first touch {aid:>8}: held {s['n_all']} of {rc or '?'} reviews · "
+                f"fans {f'{mu/60:.1f}h' if mu is not None else '—'} (n={s['n_up']})")
+        if got:
+            save_shard(bucket, raw)
+            pending.append(f"{bucket:02d}.json")
+            pending_games += got
+            done += got
+            shards += 1
+            flush()
+        del raw                           # release the shard before opening the next
+    flush(final=True)
+    log(f"Fast lane done: {done} game(s) across {shards} shard(s).")
+    return done, shards, total_missing
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
 def main():
@@ -931,6 +1185,17 @@ def main():
     target = effective_target()
     anchor = rotation_bucket()
     forced = forced_shards()
+
+    budget = RUN_MINUTES * 60
+
+    def time_left():
+        return budget - (time.time() - start)
+
+    # --- Phase 0: FIRST-TOUCH FAST LANE ------------------------------------- #
+    # Runs BEFORE the rotation so a brand-new release does not wait a full sweep for
+    # its bucket's turn. Writes straight into the shards, so the phases below see the
+    # new records on disk and (being freshly stamped) correctly skip them as not due.
+    ft_done, ft_shards, ft_missing = first_touch_sweep(games, now, time_left)
 
     # --- Phase 1: SCHEDULE (no shard bodies read) --------------------------- #
     # Score the whole catalog against the ladder purely from games.json, group the due
@@ -953,12 +1218,8 @@ def main():
         f"ladder 0-7d/1d · 7-30d/3d · 30-90d/7d · else {AGE_TIER_FALLBACK_DAYS}d "
         f"(>{HOT_REVIEWS_BOOST} reviews: halved; popularity floor >1k/5d, >500/10d — HLTB-aligned)")
 
-    budget = RUN_MINUTES * 60
     grand_done = grand_added = grand_refreshed = 0
     shards_touched = 0
-
-    def time_left():
-        return budget - (time.time() - start)
 
     # --- Phase 2: EXECUTE, one shard at a time ------------------------------ #
     # Each shard is loaded, worked, and committed before the next is opened, so peak
@@ -1016,6 +1277,15 @@ def main():
             now_ts = int(time.time())
             rec_out = {"reviews": reviews, "summary": summarize_game(reviews),
                        "exhausted": exhausted, "scraped_at": now_ts}
+            # DLC dead-end guard: persist strikes only while they exist, so a healthy
+            # record never carries the key at all (see LOW_YIELD_* and is_low_yield).
+            strikes, ly_anchor = low_yield_strikes(rec, reviews, added, _rc, game_target)
+            if strikes:
+                rec_out["low_yield_strikes"] = strikes
+                rec_out["low_yield_rc"] = ly_anchor
+                if strikes == LOW_YIELD_STRIKES:
+                    log(f"  {aid:>8}: low yield — holds {len(reviews)} of a claimed "
+                        f"{_rc}; dropping to ladder cadence (was every run)")
             # Anchor the ceiling clocks (rc_at_walk / walk_at). Re-anchor on any FULL
             # refresh — a deep re-walk, OR the ladder climb that first fills the ceiling
             # (`held < game_target` means we just walked deep to grow). On cold start
@@ -1062,8 +1332,12 @@ def main():
             log("Time budget reached; wrapping up.")
             break
 
+    ft_note = ""
+    if ft_done or ft_missing:
+        ft_note = (f" · fast lane {ft_done} first touch(es) across {ft_shards} shard(s)"
+                   f"{f', {ft_missing - ft_done} still never-seen' if ft_missing > ft_done else ''}")
     log(f"\nDone. {shards_touched} shard(s), {grand_done} games this run: "
-        f"+{grand_added} new reviews, ~{grand_refreshed} refreshed.")
+        f"+{grand_added} new reviews, ~{grand_refreshed} refreshed{ft_note}.")
     return 0
 
 

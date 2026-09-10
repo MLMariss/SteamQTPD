@@ -66,6 +66,35 @@ OUT_FILE = HERE / "FRESHNESS.md"
 
 DAY = 86400
 HOUR = 3600
+PT_HOT = CV.PT.HOT_REVIEWS_BOOST   # >this many reviews halves a game's playtime cooldown
+
+
+def _pt_deep_note(d):
+    """The SECOND playtime staleness axis, for the 2.3 row's note.
+
+    `pending refresh` above counts games whose SURFACE walk is overdue. But a game
+    already holding PER_GAME_CAP reviews only gets its newest page re-read on a normal
+    visit — every stored playtime below that stays frozen until a full window re-walk
+    (`walk_at`). So a ceiling game can be surface-fresh and still carry medians built
+    from months-old playtimes. This is the drift signal; without it the row overstates
+    how current the published medians are."""
+    if not d["ceiling"]:
+        return f"No games at the {CV.PT_CEILING:,}-review ceiling — no deep-walk drift possible."
+    med = f"{d['median']:.1f}d" if d["median"] is not None else "—"
+    p90 = f"{d['p90']:.1f}d" if d["p90"] is not None else "—"
+    opct = f"{d['overdue_pct']:.0f}%" if d["overdue_pct"] is not None else "—"
+    note = (f"**Deep re-walk axis:** {d['ceiling']:,} games sit at the "
+            f"{CV.PT_CEILING:,}-review ceiling, where a normal visit refreshes only the "
+            f"newest page. Their last FULL re-walk (`walk_at`, promised every "
+            f"{CV.PT_REWALK_DAYS}d): median {med}, p90 {p90}, "
+            f"{d['overdue']:,} ({opct}) past promise.")
+    if d["unanchored"]:
+        note += (f" **{d['unanchored']:,} have no anchor at all** (never deep-walked). ")
+    else:
+        note += (" Every ceiling game has its deep clock running. ")
+    note += ("Games below the ceiling are walked to the end of Steam's list on every "
+             "visit, so this axis does not apply to them.")
+    return note
 
 # --- status: MISSED SCHEDULED FIRES, not an age ratio -------------------------
 # A flat "age vs cadence" ratio judges a 30-min task and a daily task on different
@@ -348,21 +377,25 @@ def main():
     tags = CV.game_map(CV.load("tags.json"), "tags")
     tags_cov = sum(1 for v in tags.values() if v)
 
-    pt_proxy, pt_new, pt_old = CV.read_pt_shards()
+    pt_scraped, pt_new, pt_old, pt_deep, pt_deep_unanchored = CV.read_pt_shards()
     upd_ts, upd_pop, upd_shards, upd_new, upd_old = CV.read_upd_shards()
     pics_ts, pics_pop, pics_shards, pics_new, pics_old = CV.read_pics_raw_shards()
 
-    floor = lambda g: (g.get("review_count") or 0) >= CV.MIN_REVIEWS_FLOOR
+    # Two different floors: playtime scrapes from 5 reviews (where a sentiment-split
+    # median first becomes guaranteed), updates keeps its own 10. One shared lambda
+    # would silently score one layer against the other's gate.
+    pt_floor = lambda g: (g.get("review_count") or 0) >= CV.PT_MIN_REVIEWS_FLOOR
+    upd_floor = lambda g: (g.get("review_count") or 0) >= CV.UPD_MIN_REVIEWS_FLOOR
 
     # ---- buckets (coverage.py's gates verbatim — never re-derived here) ----
     b_scraper = CV.schedule_scraper(games)
     b_recent = CV.schedule_two_track(games, recent_ts, CV.RECENT_COOLDOWN_DAYS,
                                      CV.RECENT_NOUPDATE_COOLDOWN_DAYS,
                                      empty_ids=recent_empty)
-    b_pt = CV.schedule_two_track(games, pt_proxy, CV.PT_COOLDOWN_DAYS,
-                                 CV.PT_NOUPDATE_COOLDOWN_DAYS, floor_pred=floor)
+    b_pt = CV.schedule_playtime(games, pt_scraped, floor_pred=pt_floor)
+    b_pt_deep = CV.schedule_playtime_deep(pt_deep, pt_deep_unanchored)
     b_upd = CV.schedule_two_track(games, upd_ts, CV.UPD_COOLDOWN_DAYS,
-                                  CV.UPD_NOUPDATE_COOLDOWN_DAYS, floor_pred=floor)
+                                  CV.UPD_NOUPDATE_COOLDOWN_DAYS, floor_pred=upd_floor)
     b_hltb = CV.schedule_hltb(hltb)
     b_pics, pics_have = CV.schedule_pics(pics_ts)
 
@@ -407,11 +440,15 @@ def main():
              note=""),
         dict(key="2.3", kind="data", wf="playtime-raw.yml", label="Playtime raw (shards)",
              script="playtime_refresh.py", owns="playtime_raw/",
-             stamp=pt_new, ts_map=pt_proxy, approx=True,
-             cov=two_track_cov(b_pt),
-             window=f"{CV.PT_COOLDOWN_DAYS}d active / {CV.PT_NOUPDATE_COOLDOWN_DAYS}d dormant",
-             note="† Staleness is a PROXY (newest review `ts`, no per-game scrape stamp) — "
-                  "`pending refresh` is an upper bound, not real backlog."),
+             stamp=pt_new, ts_map=pt_scraped,
+             cov=(b_pt["covered"], b_pt["covered"] - b_pt["overdue"], b_pt["overdue"],
+                  b_pt["never"], b_pt["empty"]),
+             window="per-game ladder: "
+                    + " · ".join(f"<{d}d→{c}d" for d, c in CV.PT_AGE_TIERS)
+                    + f" · else {CV.PT_AGE_FALLBACK_DAYS}d "
+                      f"(halved >{PT_HOT:,} reviews; popularity floor "
+                    + "/".join(f">{e}→{d}d" for e, d in CV.PT.POPULAR_FLOOR_TIERS) + ")",
+             note=_pt_deep_note(b_pt_deep)),
         dict(key="2.4", kind="data", wf="updates.yml", label="Update events (shards)",
              script="updates_refresh.py", owns="updates_raw/",
              stamp=upd_new, ts_map=upd_ts, cov=two_track_cov(b_upd),
@@ -537,14 +574,13 @@ def main():
         if not covered or not over:
             continue
         share = over / covered
-        approx = " (proxy-inflated — see †)" if t.get("approx") else ""
-        if share >= BACKLOG_CRIT and not t.get("approx"):
+        if share >= BACKLOG_CRIT:
             alerts.append(f"🔴 **{t['key']} {t['label']} backlog** — {over:,} of {covered:,} rows "
                           f"({share*100:.0f}%) are past their own refresh window. The job is "
                           f"running but not keeping up with its per-game promise ({t['window']}).")
         elif share >= BACKLOG_WARN:
             alerts.append(f"🟡 **{t['key']} {t['label']} backlog** — {over:,} of {covered:,} rows "
-                          f"({share*100:.0f}%) are past their refresh window{approx}.")
+                          f"({share*100:.0f}%) are past their refresh window.")
     if not alerts:
         alerts.append("🟢 **All scheduled tasks are on time and no file has a material backlog.**")
 
@@ -636,15 +672,13 @@ def main():
         if not t.get("cov"):
             continue
         covered, up, over, never, skip = t["cov"]
-        mark = " †" if t.get("approx") else ""
         L.append(f"| {t['key']} | {t['label']} | `{t['owns']}` | {covered:,} | {up:,} "
-                 f"| {pct(up, covered):.1f}% | {over:,}{mark} | {never:,} | {skip:,} |")
+                 f"| {pct(up, covered):.1f}% | {over:,} | {never:,} | {skip:,} |")
     L.append("")
-    L.append("**† Playtime figures are proxy-based.** `playtime_raw/` stores no per-game scrape "
-             "stamp, so staleness falls back to each game's newest review `ts`: a game nobody has "
-             "reviewed lately reads as overdue even if the scraper walked it this morning. Treat "
-             "its `pending refresh` as an **upper bound** (contrast 2.4/2.7, which carry real "
-             "per-game stamps and are exact).")
+    L.append("Every row above is measured against a **real per-game timestamp** and its own "
+             "scraper's real gate. For 2.3 that is the surface walk (`scraped_at`); its second "
+             "axis, the full re-walk of ceiling games, is in the row note rather than this table "
+             "because it applies to only part of the population.")
     L.append("")
     L.append("---")
     L.append("")
@@ -664,8 +698,7 @@ def main():
         if not t.get("ts_map"):
             continue
         p50, p95, oldest = age_stats(t["ts_map"], now)
-        mark = " †" if t.get("approx") else ""
-        L.append(f"| {t['key']} | `{t['owns']}`{mark} | {t['window']} | {dur(p50)} | {dur(p95)} "
+        L.append(f"| {t['key']} | `{t['owns']}` | {t['window']} | {dur(p50)} | {dur(p95)} "
                  f"| {dur(oldest)} |")
     L.append("")
     L.append("Row-age distributions cover **every row in the file**, including rows the window "
@@ -715,10 +748,8 @@ def main():
              f"backlog crosses {int(BACKLOG_CRIT*100)}% of covered rows.")
     L.append("")
     L.append("**Known blind spots.** `tags.json` has no timestamp at all, so it cannot appear in "
-             "tables 2–3 — tags are fetched once and never rechecked. `playtime_raw/` has no "
-             "per-game stamp and uses a review-`ts` proxy. Both are tracked in COVERAGE.md → "
-             "Future work; adding a per-entry `scraped_at` to either one would upgrade its row "
-             "here from approximate to exact.")
+             "tables 2–3 — tags are fetched once and never rechecked. Tracked in COVERAGE.md → "
+             "Future work; adding a per-entry `scraped_at` would give it a real row here.")
     L.append("")
 
     OUT_FILE.write_text("\n".join(L) + "\n", encoding="utf-8")
