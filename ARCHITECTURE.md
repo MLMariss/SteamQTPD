@@ -2430,7 +2430,7 @@ something."
 | Frontend value(s) | Storage file | Scraper | Per-game staleness key | Refresh rule |
 |---|---|---|---|---|
 | name, appid, release, rating %, review count, `last_update_ts` | `games.json` | `scraper.py` | `scraped_at` | age-tiered by time since release (6h → 15d, `REVIEW_TIERS`, re-checked mid-run under 30d); plus Steam `last_modified` and PICS review-drift (§6) |
-| price, discount, sale-end | `prices.json` | `price_and_sale.py` | `scraped_at` | no cooldown — whole non-free base re-batched ~3h |
+| price, discount, sale-end | `prices.json` | `price_and_sale.py` | `scraped_at` | no cooldown — whole non-free base re-batched hourly, on the hour |
 | tags | `tags.json` | `tags_refresh.py` | **none** | fetch-once, **no rescrape** ([ROADMAP.md](ROADMAP.md) §3.5) |
 | recent 30d % / count | `recent.json` | `recent_refresh.py` | `recent_scraped_at` | two-track: active 4d / dormant 30d |
 | HLTB main/extra/complete/avg + `est` | `hltb.json` | `hltb_refresh.py` | `fetched_at` | partial 14d / full 365d; blank backoff 3→30→180d |
@@ -2613,6 +2613,11 @@ Each job's knobs live at the top of its own script:
   `IDLE_DRAIN_SKIP_FROZEN` (True)** — the never-idle drain's per-run cap and frozen-tier skip.
 - **`PRICE_BATCH` (100) / `GETITEMS_BATCH` (50)** — appids per batched `appdetails` price call
   and per `IStoreBrowseService/GetItems` sale-end call.
+- **`PASS_ALIGN_MINUTE` (0) / `MIN_PASS_MINUTES` (55) / `MIN_CHUNK_MINUTES` (15)** (prices) —
+  the pass loop's clock. A run repeats full sweeps until its `RUN_MINUTES` budget is gone,
+  each starting at `PASS_ALIGN_MINUTE` past the hour; it ends rather than begin a sweep with
+  under `MIN_PASS_MINUTES` of budget left, and spends a leftover window on a partial sweep
+  (resumed next pass) only if it is at least `MIN_CHUNK_MINUTES` long.
 - **`RECENT_COOLDOWN_DAYS` (4)** — staleness before a recent score is re-checked. Its two-track
   partner is **`NOUPDATE_COOLDOWN_DAYS` (30)**; **`MIN_AGE_DAYS` (45)** skips games too new for
   Steam to show a recent score at all, and **`RECENT_MIN_COUNT` (10)** is the count below which
@@ -2794,6 +2799,44 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Prices: the run keeps its own hourly clock (Sep 2026).** Steam flips its discount waves at
+  10:00 America/Los_Angeles — **17:00 UTC** in summer, 18:00 in winter — and essentially the
+  whole day's price movement lands in that one minute: **8,873 of the 9,947** dated sales in a
+  September `prices.json` ended at exactly 17:00 UTC. Whether the site looks current is
+  therefore decided entirely by how soon after that minute a pass runs, and cron could not
+  decide it. GitHub delivered `prices.yml`'s `7 */3 * * *` **30–160 minutes late and dropped
+  about a third of the firings** (11 cron workflows in this repo contend for the scheduler):
+  the observed cadence was **~5 passes a day, worst gap 7.8h**, with nothing tied to 17:00. On
+  14 Sep the last pass ended 13:42, the wave flipped at 17:00, and the table showed Expedition
+  33, Divinity: OS2 and everything else in that wave at **full price** while the store had them
+  at −20% / −82%. Three changes, all in `price_and_sale.py` + `prices.yml`:
+
+  - **The run loops passes instead of doing one.** `main()` now repeats `run_pass()` until its
+    `RUN_MINUTES` budget (300, ≈5 passes) is spent, **sleeping between passes so each one
+    starts on the hour**. A pass always begins at 17:00. The cron drops to `0 * * * *` and
+    becomes a *watchdog* — its only job is restarting the looper when a run ends or dies, which
+    it may do late without anyone noticing, and the existing `steam-prices` concurrency group
+    collapses firings that arrive mid-run. A late dispatch is no longer wasted either: a run
+    that boots at :10 sweeps the leftover 50 minutes and **resumes where the clock cut it off**
+    on the next pass, so a short window can never starve the tail of the catalog.
+  - **A pass is seeded from the last one.** Passes used to build `prices` from `{}`, so every
+    mid-pass checkpoint published a **truncated** `prices.json` — at 12:59 the live file held
+    13,900 of 110,640 rows and the frontend fell back to `games.json`'s slow prices for the
+    rest. Tolerable at 5 passes a day; at one an hour the site would have spent most of its
+    life on a partial file. `load_seed()` starts each pass from the committed file (pruned to
+    the current catalog), and the price pass replaces every row it reaches wholesale, so a
+    checkpoint is now "everything we knew, plus what this pass has refreshed" and nothing stale
+    survives a sweep. It also fixes a latent bug: the ~340 cached `avail` verdicts were read off
+    disk in pass 1c, *after* this pass's own checkpoints had already overwritten them.
+  - **`CHECKPOINT_SECONDS` 300 → 600.** A checkpoint rewrites all 18 MB of `prices.json`; at
+    ~5 passes per run the old interval would have quintupled commit volume on `main`.
+
+  Net effect: a price is at most ~1h old instead of up to 8h, and the 17:00 wave is picked up
+  the same hour it lands. Covered by `test_price_cadence.py` (hour alignment, seeding, resume
+  rotation, loop scheduling on a fake clock — no network, git or repo files). Note that
+  `FRESHNESS.md` scored this job **🟢 on time** throughout, because §11.6 compares against the
+  *nominal* cron rather than observed dispatch times — an 8-hour hole reported green (§4, §7).
 
 - **Min sale % floor (Sep 2026).** A `−5%` / readout / `+5%` stepper in the Value section, so a
   20-page table of `-10%` cuts can be narrowed to real discounts. Its resting value and both its

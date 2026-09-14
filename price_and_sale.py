@@ -33,6 +33,11 @@ price at all carry `avail` explaining WHY ("only" = sold only inside a bundle or
 with only_name/only_price; "notsold" = nothing purchasable, i.e. delisted; "unknown" =
 unpurchasable but a package exists, usually a free app) plus avail_at, the verdict's date.
 
+Cadence: one run does back-to-back passes for its whole wall budget, each pass starting on
+the hour (see "Pass scheduling" below). Steam flips its discounts at 17:00 UTC and GitHub's
+cron is too unreliable to be anywhere near that minute, so the run keeps its own clock and
+the schedule is only a watchdog that restarts it.
+
 Ownership (one writer per file):
   scraper.py      -> games.json   (catalog, rating, tags, last_update, release)
   THIS            -> prices.json  (price, discount %, sale end)
@@ -61,8 +66,17 @@ PRICES_FILE = HERE / "prices.json"        # this job's output (committed)
 COUNTRY = os.environ.get("QHPP_CC", "US")
 COUNTRY_LC = COUNTRY.lower()
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()
-RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "60"))
-CHECKPOINT_SECONDS = 300
+RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "60"))      # wall budget for the whole RUN
+MIN_PASS_MINUTES = int(os.environ.get("MIN_PASS_MINUTES", "55"))   # end the RUN rather than
+                                                                   # start a pass this short
+MIN_CHUNK_MINUTES = int(os.environ.get("MIN_CHUNK_MINUTES", "15"))  # but a leftover window
+                                                                    # this big still beats
+                                                                    # idling — the sweep
+                                                                    # resumes where it stops
+PASS_ALIGN_MINUTE = int(os.environ.get("PASS_ALIGN_MINUTE", "0")) % 60   # UTC minute each
+                                                                         # pass starts on
+CHECKPOINT_SECONDS = 600                  # was 300; the run now does ~5 passes instead of 1,
+                                          # and a checkpoint rewrites all 18MB of prices.json
 TIME_BUFFER = 45
 
 PRICE_BATCH = 100                         # appids per batched price-only appdetails call
@@ -291,8 +305,9 @@ def fetch_package_prices(appids):
 # It costs one call per app (appdetails only batches with filters=price_overview; asking
 # for packages across several appids is a hard 400), so the answer is CACHED in prices.json
 # as avail/avail_at and only a slice is re-checked per run. Availability changes on the
-# order of months, the bucket is ~400 apps, and the job runs several times a day, so
-# AVAIL_MAX_PER_RUN=60 still refreshes the whole set roughly daily.
+# order of months and the bucket is ~400 apps, so AVAIL_MAX_PER_RUN=60 per pass clears the
+# whole set inside a day; once every verdict is younger than AVAIL_TTL the cache answers
+# them all and the pass spends nothing here.
 def confirm_notsold(appid):
     """True if the app has no packages at all (delisted / never sold), False if it has one
     (free app, region-locked, etc.), None if Steam didn't answer — caller leaves it be."""
@@ -302,22 +317,6 @@ def confirm_notsold(appid):
     if not isinstance(node, dict) or not node.get("success"):
         return None
     return not ((node.get("data") or {}).get("packages") or [])
-
-
-def load_prev_avail():
-    """Availability facts from the existing prices.json, so a rebuild doesn't lose the
-    classification for the ~340 apps this run won't re-check. {appid_str: (avail, at)}."""
-    if not PRICES_FILE.exists():
-        return {}
-    try:
-        d = json.loads(PRICES_FILE.read_text(encoding="utf-8"))
-    except ValueError:
-        return {}
-    out = {}
-    for k, v in (d.get("prices") or {}).items():
-        if isinstance(v, dict) and v.get("avail"):
-            out[k] = (v["avail"], int(v.get("avail_at") or 0))
-    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -481,55 +480,119 @@ def git_checkpoint(msg):
 
 
 # --------------------------------------------------------------------------- #
-# Main
+# Pass scheduling
 # --------------------------------------------------------------------------- #
-def main():
-    start = time.time()
-    now = int(start)
-    appids = load_appids()
-    if not appids:
-        log("No priced games in games.json (or only sample data). Writing empty prices.json.")
-        save_prices({})
-        git_checkpoint("prices: nothing to refresh")
-        return 0
+# Steam flips its discount waves at 10:00 America/Los_Angeles — 17:00 UTC in summer,
+# 18:00 in winter — and virtually every price change of the day lands in that one minute:
+# in a September file, 8,873 of the 9,947 dated sales ended at exactly 17:00 UTC. So the
+# only thing that decides whether this job looks current is how soon after that minute a
+# pass runs.
+#
+# A cron cannot decide that. GitHub delivers scheduled events 30-160 minutes after their
+# slot and drops roughly a third of them outright on a repo with this many crons: the
+# "every 3 hours" schedule was really landing ~5 times a day with gaps up to 7.8h, and
+# none of those landings was tied to 17:00. A pass that finished at 13:42 missed the whole
+# 17:00 wave, so the site showed full price for everything that had just gone on sale.
+#
+# The run therefore no longer takes its cadence from the scheduler. It does back-to-back
+# passes for its entire wall budget, sleeping between them so that each pass STARTS on the
+# hour (PASS_ALIGN_MINUTE). The refresh becomes hourly and predictable — a pass always
+# begins at 17:00 — and the cron degrades into a watchdog whose only job is to start the
+# looper again when a run ends or dies, which it can do late without anyone noticing.
 
-    log(f"Priced games to refresh: {len(appids)} "
-        f"({math.ceil(len(appids)/PRICE_BATCH)} price batches)")
+def seconds_to_slot(align_minute):
+    """Seconds until the next <align_minute>-past-the-hour mark (always > 0, UTC)."""
+    tm = time.gmtime()
+    delta = align_minute * 60 - (tm.tm_min * 60 + tm.tm_sec)
+    return delta if delta > 0 else delta + 3600
 
-    prices = {}                # rebuilt fresh each run
-    budget = RUN_MINUTES * 60
+
+def load_seed(appids):
+    """The existing prices.json as a pass's starting point, restricted to the current
+    catalog. Passes used to start from an empty dict, which made every mid-pass checkpoint
+    publish a TRUNCATED prices.json — at 12:59 the live file held 13,900 of 110,640 rows
+    and the frontend fell back to games.json's slow prices for everything else. That was
+    survivable at 5 passes a day; at one an hour the site would spend most of its life on
+    a partial file. Seeding makes a checkpoint "everything we knew, plus whatever this
+    pass has refreshed so far"; the price pass replaces each row it reaches wholesale, so
+    nothing stale survives a sweep.
+
+    Returns (rows, avail). avail is the cached {appid: (verdict, at)} availability map,
+    read HERE rather than off disk in pass 1c, because by the time 1c runs this pass's own
+    checkpoints have overwritten the file and the cached verdicts would be gone."""
+    rows, avail = {}, {}
+    if not PRICES_FILE.exists():
+        return rows, avail
+    try:
+        d = json.loads(PRICES_FILE.read_text(encoding="utf-8"))
+    except ValueError:
+        return rows, avail
+    keep = {str(a) for a in appids}
+    for k, v in (d.get("prices") or {}).items():
+        if k not in keep or not isinstance(v, dict):
+            continue                       # gone from the catalog -> don't carry it forward
+        rows[k] = v
+        if v.get("avail"):
+            avail[k] = (v["avail"], int(v.get("avail_at") or 0))
+    return rows, avail
+
+
+# --------------------------------------------------------------------------- #
+# One full refresh pass
+# --------------------------------------------------------------------------- #
+def run_pass(appids, deadline, label, resume_at):
+    """Refresh every price once, then the sale end-dates for whatever came back on sale.
+    Wraps up early if `deadline` is close. Returns the index to resume from next pass: a
+    pass that ran out of time hands the next one the rest of the catalog instead of
+    restarting at appid 0 and starving the tail forever."""
+    pass_start = time.time()
+    now = int(pass_start)
+    total = len(appids)
+    prices, prev_avail = load_seed(appids)
+    log(f"\n=== pass {label} — {total} games, {math.ceil(total/PRICE_BATCH)} price batches, "
+        f"{(deadline - time.time())/60:.0f} min window "
+        f"(seeded with {len(prices)} rows from the last pass) ===")
+
     last_commit = time.time()
     onsale = []                # appids that came back discounted -> need an end date
+    touched = []               # appids this pass actually re-priced
 
     # --- pass 1: batched prices for the whole catalog ---
-    for i in range(0, len(appids), PRICE_BATCH):
-        if budget - (time.time() - start) < TIME_BUFFER:
+    order = appids[resume_at:] + appids[:resume_at]
+    done = 0
+    for i in range(0, total, PRICE_BATCH):
+        if deadline - time.time() < TIME_BUFFER:
             log("Time budget reached during price pass; wrapping up.")
             break
-        chunk = appids[i:i + PRICE_BATCH]
+        chunk = order[i:i + PRICE_BATCH]
         got = fetch_prices(chunk)
         time.sleep(STORE_DELAY)
         for aid, p in got.items():
             prices[str(aid)] = {**p, "discount_end": None, "scraped_at": now}
+            touched.append(aid)
             if (p.get("discount_pct") or 0) > 0:
                 onsale.append(aid)
+        done = i + len(chunk)
         if i % (PRICE_BATCH * 5) == 0:
-            log(f"  [prices {min(i+PRICE_BATCH, len(appids))}/{len(appids)}] {len(onsale)} on sale so far")
+            log(f"  [prices {done}/{total}] {len(onsale)} on sale so far")
         if time.time() - last_commit > CHECKPOINT_SECONDS:
             save_prices(prices)
-            git_checkpoint(f"prices: {len(prices)} priced (checkpoint)")
+            git_checkpoint(f"prices: {len(prices)} priced, {done}/{total} swept (checkpoint)")
             last_commit = time.time()
+    resume_next = 0 if done >= total else (resume_at + done) % total
 
     # --- pass 1b: package prices + availability for apps appdetails gave no price for ---
     # ~450 of the catalog: package-only storefronts (the CoD launcher) mixed with delisted
-    # games. ~10 batched calls, so it costs nothing next to the price pass above.
-    unpriced = [int(k) for k, p in prices.items() if p.get("price_final") is None]
+    # games. ~10 batched calls, so it costs nothing next to the price pass above. Only the
+    # apps THIS pass re-priced are considered — seeded rows we never reached keep whatever
+    # the last pass concluded about them.
+    unpriced = [a for a in touched if prices[str(a)].get("price_final") is None]
     log(f"Package-price pass for {len(unpriced)} apps with no app-level price "
         f"({math.ceil(len(unpriced)/GETITEMS_BATCH)} batches)")
     n_pkg = n_only = 0
     pending = []               # provisional "notsold" -> needs the pass-1c confirmation
     for i in range(0, len(unpriced), GETITEMS_BATCH):
-        if budget - (time.time() - start) < TIME_BUFFER:
+        if deadline - time.time() < TIME_BUFFER:
             log("Time budget reached during package-price pass; wrapping up.")
             break
         chunk = unpriced[i:i + GETITEMS_BATCH]
@@ -559,25 +622,24 @@ def main():
 
     # --- pass 1c: confirm the "nothing purchasable" verdicts (§1c) ---
     # Cached in prices.json and rotated: reuse any verdict younger than AVAIL_TTL, spend the
-    # per-run call budget on the staleset, oldest first. Apps we can't get to keep whatever
+    # per-run call budget on the stale set, oldest first. Apps we can't get to keep whatever
     # the last run concluded, so the labels stay put instead of flickering.
-    prev = load_prev_avail()
     fresh = stale = 0
     for aid in pending:
         key = str(aid)
-        got = prev.get(key)
+        got = prev_avail.get(key)
         if got and got[0] in ("notsold", "unknown") and now - got[1] < AVAIL_TTL:
             prices[key]["avail"] = got[0]
             prices[key]["avail_at"] = got[1]
             fresh += 1
     todo = [a for a in pending if "avail" not in prices[str(a)]]
-    todo.sort(key=lambda a: prev.get(str(a), ("", 0))[1])          # oldest verdict first
+    todo.sort(key=lambda a: prev_avail.get(str(a), ("", 0))[1])    # oldest verdict first
     todo = todo[:AVAIL_MAX_PER_RUN]
     log(f"Availability pass: {fresh} cached verdicts reused, confirming {len(todo)} "
         f"(of {len(pending) - fresh} stale)")
     n_notsold = 0
     for aid in todo:
-        if budget - (time.time() - start) < TIME_BUFFER:
+        if deadline - time.time() < TIME_BUFFER:
             log("Time budget reached during availability pass; wrapping up.")
             break
         verdict = confirm_notsold(aid)
@@ -600,7 +662,7 @@ def main():
         f"({math.ceil(len(onsale)/GETITEMS_BATCH)} batches)")
     n_dated = 0
     for i in range(0, len(onsale), GETITEMS_BATCH):
-        if budget - (time.time() - start) < TIME_BUFFER:
+        if deadline - time.time() < TIME_BUFFER:
             log("Time budget reached during sale-date pass; wrapping up.")
             break
         chunk = onsale[i:i + GETITEMS_BATCH]
@@ -620,9 +682,56 @@ def main():
 
     save_prices(prices)
     git_checkpoint(f"prices: {len(prices)} priced, {len(onsale)} on sale, {n_dated} dated")
-    log(f"\nDone. Refreshed {len(prices)} prices; {n_pkg} from packages; {n_only} sold only "
-        f"inside something else; {n_notsold} confirmed not sold; {len(onsale)} on sale; "
-        f"{n_dated} with a live sale end-date. prices.json updated.")
+    log(f"Pass {label} done in {(time.time() - pass_start)/60:.0f} min: "
+        f"{len(touched)} re-priced; {n_pkg} from packages; {n_only} sold only inside "
+        f"something else; {n_notsold} confirmed not sold; {len(onsale)} on sale; "
+        f"{n_dated} with a live sale end-date.")
+    if resume_next:
+        log(f"  swept {done}/{total}; next pass resumes at index {resume_next}.")
+    return resume_next
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+def main():
+    run_start = time.time()
+    run_deadline = run_start + RUN_MINUTES * 60
+    appids = load_appids()
+    if not appids:
+        log("No priced games in games.json (or only sample data). Writing empty prices.json.")
+        save_prices({})
+        git_checkpoint("prices: nothing to refresh")
+        return 0
+
+    log(f"Priced games to refresh: {len(appids)} "
+        f"({math.ceil(len(appids)/PRICE_BATCH)} price batches)")
+    log(f"Run budget {RUN_MINUTES} min; a pass starts every hour at "
+        f":{PASS_ALIGN_MINUTE:02d} and must be done by the next one.")
+
+    passes = resume_at = 0
+    while True:
+        wait = seconds_to_slot(PASS_ALIGN_MINUTE)      # until the next pass is due to start
+        left = run_deadline - time.time()
+        if left < MIN_PASS_MINUTES * 60:
+            log(f"\n{left/60:.0f} min of budget left — not enough for another pass. Finishing; "
+                f"the cron starts the next run, and a queued one takes over immediately.")
+            break
+        # A pass must be done by the time the next one is due, so the hour mark is the
+        # window, not a fixed 60 minutes. That matters on the first pass of a run: GitHub
+        # dispatches these 30-160 min late, so a run that boots at :10 has 50 minutes of
+        # this hour left. Spending them sweeping (and resuming from wherever the clock cut
+        # it off) beats idling until the next mark, which is what a fixed window would do.
+        window = min(wait, left)
+        if window < MIN_CHUNK_MINUTES * 60:
+            log(f"\nSleeping {wait/60:.0f} min until the :{PASS_ALIGN_MINUTE:02d} pass.")
+            time.sleep(min(wait, left))
+            continue
+        passes += 1
+        resume_at = run_pass(appids, time.time() + window, passes, resume_at)
+
+    log(f"\nDone. {passes} pass(es) in {(time.time() - run_start)/60:.0f} min"
+        f"{'; prices.json updated.' if passes else ' — prices.json left as it was.'}")
     return 0
 
 
