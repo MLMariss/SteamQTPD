@@ -3,23 +3,28 @@ name: 2.1 Prices + sale dates -> prices.json
 on:
   workflow_dispatch:        # run manually from the Actions tab
   schedule:
-    # Prices + sale end-dates are the fast-changing layer, and both endpoints are batched
-    # and cheap (~32 price calls + a few GetItems calls for the whole catalog), so we
-    # refresh often. Offset to :07 so it doesn't collide with the scraper (:17), recent
-    # reviews (:41), or HLTB; its own concurrency group prevents overlapping runs.
-    - cron: "7 */3 * * *"   # every 3 hours
+    # HOURLY, but not for the reason a cron usually is: the run keeps its own clock and
+    # loops passes on the hour for ~5 hours (RUN_MINUTES below), so this schedule is a
+    # WATCHDOG, not the cadence. GitHub delivers scheduled events 30-160 min late and
+    # drops about a third of them on a repo with this many crons — at "every 3 hours"
+    # that meant ~5 passes a day with gaps up to 7.8h, and nothing landing near Steam's
+    # 17:00 UTC discount flip. Firing every hour means a dropped or delayed event costs
+    # an hour instead of most of a day; the concurrency group below collapses the ones
+    # that arrive while a run is still going (they queue, they don't pile up).
+    - cron: "0 * * * *"
 
 permissions:
   contents: write           # commits prices.json as it runs
 
 concurrency:
   group: steam-prices       # never overlap price runs (separate from scraper/recent/hltb)
-  cancel-in-progress: false
+  cancel-in-progress: false # a run in flight always finishes; a newer pending one waits
 
 jobs:
   prices:
     runs-on: ubuntu-latest
-    timeout-minutes: 135     # RUN_MINUTES=120 + headroom; still ~45min clear of the 3h cron
+    # RUN_MINUTES=300 + checkout/install overhead; under the 6h hard cap, same as 1.0/2.4.
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v5
         with:
@@ -42,10 +47,12 @@ jobs:
         env:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           QHPP_CC: "US"
-          # 120min budget: a full pass over ~105k non-free games (price pass) plus the
-          # on-sale subset's end-date pass needs ~75-90min WALL (delay + HTTP latency)
-          # during a big sale (Summer Sale = ~61k on sale). At 60 the run wrapped mid-pass
-          # at TIME_BUFFER every time, which is what made prices look stale. 120 finishes
-          # even the worst-case sale pass with margin; the 3h cron leaves ~60min headroom.
-          RUN_MINUTES: "120"
+          # 300min budget = ~5 hourly passes per run. A full sweep of the ~110k non-free
+          # catalog takes ~52min wall (1,107 batches x 1.6s + the on-sale end-date pass),
+          # so a 60min pass window fits with slack and the next pass starts on the hour.
+          # The run ends when it can't fit another whole pass; the cron above starts the
+          # next one, and the concurrency group means a queued event takes over
+          # immediately rather than waiting for its own slot.
+          RUN_MINUTES: "300"
+          PASS_ALIGN_MINUTE: "0"
         run: python price_and_sale.py
