@@ -1,0 +1,360 @@
+# Easing the QTPD learning curve
+### Applying `docs/TEACHING_COMPLEX_THINGS.md` to the live page
+
+`TEACHING_COMPLEX_THINGS.md` collects the GMTK strategy-tutorial techniques. This document is
+the other half: what the page **actually looks like to someone who has never seen it**, which of
+those techniques transfer, which don't and why, and the full list of candidate solutions with
+their cost and risk. Nothing here is built. It is a decision menu, not a plan of record — see
+§6 for the calls that need making before any of it is scoped.
+
+Cross-references: frontend as-built is **[ARCHITECTURE.md](../ARCHITECTURE.md) §11**; the
+shipped filter/view patterns are **§3.4**; the open UX backlog is **§3.2**.
+
+---
+
+## 1. The complexity surface, measured
+
+Not an impression — counted off `index.html` at the time of writing.
+
+| Surface | Count | Where |
+|---|---|---|
+| Games in the base universe | **129,445** | `COVERAGE.md` |
+| Interactive controls in the filter panel | **78** (73 buttons + 5 inputs, excluding the 4 section heads) | `index.html` 1669–1930 |
+| Labelled filter groups (`.field`) | **21** | same |
+| Accordion sections | **4** (Value · Quality · Flags · Tags) | §11 *Filters & controls* |
+| Table columns | **12** | §11 *The table* |
+| URL state parameters | **29** | §11 *State in the URL* |
+| Views | **3** (Table · Card · Grid) | §11 *Three views* |
+| `localStorage` preferences | **5** (`view`, `sections`, `tagsCollapsed`, `scheme`, `trailers`) | — |
+| Tag rail chips | built at runtime from the live tag set, two-tier + "+N more" | §11 *Tags* |
+
+The page already does several things right, and any proposal has to respect them rather than
+re-solve them:
+
+- **The filter panel ships collapsed.** `<div class="topbar compact">` is the shipped markup, so
+  the 78 controls are not the first thing anyone meets. The accordions inside it are *also*
+  folded by default. Two layers of progressive disclosure are already in place.
+- **Defaults are leftmost and gold marks deviation.** `markChangedControls()` lights up any
+  control moved off its default, so "what have I changed" is answerable at a glance (§3.4 R3).
+- **Grid is the default on mobile, Table on desktop.** The device gets the view that suits it
+  without being asked (§11 *Three views*).
+- **Nearly every control carries a written explanation.** The `title` coverage is genuinely
+  thorough, and the custom tooltip engine renders it consistently.
+
+So this is not a page that forgot about newcomers. The gaps are narrower and more specific than
+"it's complicated", and they are listed next.
+
+### 1.1 The four concrete gaps
+
+**G1 — The entire explanation layer is absent on touch.** The tooltip engine's first line is:
+
+```js
+if(matchMedia && matchMedia("(hover: none)").matches) return;  // touch: no hover tooltips
+```
+
+Every `title` on the page — the column headers, the filter fields, the legend keys, the QTPD
+tooltips, the `rb-key` swatches — is unreachable on a phone. This is not a missing feature so
+much as an **inverted one**: mobile is where the audience is least expert and the view is most
+compressed, and it is the one platform where the teaching layer does not exist. The native
+`title` attribute is still in the DOM, but no mobile browser surfaces it on tap.
+
+**G2 — The headline metric is defined at the bottom of an infinite-scroll page.** The formula —
+`QTPD = (chosen HLTB hours × rating%) ÷ price` — lives in `renderFoot()`, below a list that
+renders 66 games at a time (`PAGE_SIZE`) and appends another 66 on every scroll to the bottom.
+Reaching the footer means exhausting the filtered set, which on the default view is 129,445
+games. In practice nobody reaches it. The definition is
+also carried in the `qtpd` column tooltip, which returns us to G1 on mobile. **On a phone, in
+the default view, the number the whole site is named after has no explanation anywhere
+on screen.**
+
+**G3 — The empty state doesn't say which filter emptied it.** `render()` prints a fixed string:
+
+```js
+empty.innerHTML = "<b>No games match these filters.</b><br>Loosen the QTPD range, clear tags, or reset.";
+```
+
+Three guesses, in fixed order, regardless of what is actually set. With 78 controls and stacked
+tri-state flags, the filter that did it is frequently not one of the three named — and the user
+has no way to find out other than undoing things one at a time.
+
+**G4 — The first screen answers a question nobody asked.** The default sort is QTPD descending
+over the whole catalogue. That is the correct *engineering* default and the wrong *teaching*
+one: it presents a ranked list of 129,445 games by a metric the visitor has not yet been told
+the meaning of. There is no framing of what the list is, why it is in that order, or what to do
+next. The tagline "quality time per dollar" is the only orientation given, and on a narrow
+screen `body.narrow .topbar.compact .tagline{display:none}` removes even that.
+
+---
+
+## 2. What transfers, and what doesn't
+
+The source doc is about games. Three of its load-bearing assumptions do not hold here, and
+pretending otherwise would produce bad features.
+
+**A player has already paid; a visitor has not.** The doc's central principle is *pace teaching
+to investment* — spread lessons out because the player's willingness to learn grows as they get
+invested. A web visitor's investment at t=0 is **zero**, and their cost of leaving is one tab
+close. The curve doesn't rise over a campaign; it rises or dies in the first few seconds. So the
+technique transfers, but **compressed**: the "inverted pyramid" still applies, except turn 1 has
+to happen immediately and be worth something on its own.
+
+**There is no failure state, so kinaesthetic learning has no natural feedback.** The doc's
+hands-on techniques rely on consequences the player can observe. Nothing here can be done wrong.
+But there *is* one live feedback signal already on screen: **the result count**. `N / 129,445
+games` moves on every control change. That number is the closest thing this page has to a health
+bar, and it is currently rendered as small muted mono text in a meta strip. Making it the
+feedback channel is the honest local version of "learn by doing".
+
+**"Multiple playthroughs" means return visits, which most visitors won't make.** Civ V's staged
+expansion model assumes a player who comes back. Anything that defers teaching to a second
+session only helps the minority who have one — worth doing, but never as the primary path.
+
+**What does transfer cleanly:** affordances (§5 of the source doc) transfer completely and are
+the highest-value section for this page, because the audience is precisely definable — they are
+Steam users, and Steam's own visual language is available to borrow. "Reference tools on demand"
+transfers completely. "Show, don't tell" and "keep text tight" transfer completely.
+
+---
+
+## 3. Candidate solutions
+
+Grouped by the source doc's techniques. Each carries an effort estimate (S = under a day, M =
+a few days, L = a week-plus) and its main risk. **None of these are decided.**
+
+### Technique 1 — Stage the complexity (inverted pyramid)
+
+**S1 · A one-decision entry.**
+*Problem:* G4 — the first screen is a ranked list, not a question.
+*Proposal:* Above the results, a single row: **"I want to spend about [ $10 ▾ ] on something
+[ short ▾ ]"** — two dropdowns, nothing else. It writes the real filter state, so the list
+below reorders live and the user has seen the whole mechanism work before reading one word of
+explanation. Bruce Shelley's "turn 1: where to settle" — one decision, real consequences.
+*Cost:* M. *Risk:* it is a second control surface competing with the real filter panel; it must
+write into `state` and be reflected by `markChangedControls()`, not run in parallel.
+
+**S2 · Earn the sections.**
+*Problem:* four accordions present four equal-weight doors on arrival; a newcomer has no basis
+to pick one.
+*Proposal:* On a first visit, show **Value** only; **Quality**, **Flags** and **Tags** appear
+(with a brief highlight) once the visitor has changed anything in Value. Frostpunk's per-system
+mini-tutorials. Persist "unlocked" in `localStorage` so it is a one-time ramp, never a recurring
+obstacle, and always provide a **"show everything"** escape.
+*Cost:* S. *Risk:* hiding controls from someone who already knows what they want is actively
+hostile; the escape hatch and the shared-link case (a URL setting a Flags param must force-unlock)
+are both mandatory, not polish.
+
+**S3 · Preset shelves.**
+*Problem:* the gap between "129,445 games ranked by a metric you don't know" and "78 controls"
+has nothing in it.
+*Proposal:* Four or five one-click presets on the landing view — *Best deals under $10* · *Long
+games, highly rated* · *Short and cheap* · *Co-op picks* · *New and well-reviewed*. Each sets a
+full filter state and is **shown as chips in the summary line afterwards**, so the click also
+teaches which controls it moved. This is the single highest value-per-hour item on the list: it
+converts the whole filter panel from a thing you must learn into a thing you can *read the
+output of*.
+*Cost:* S–M (the state-setting machinery, `loadFromURL`/`syncURL`, already exists; presets are
+stored querystrings).
+*Risk:* preset selection is editorial and will need revisiting as the catalogue moves; a preset
+that returns a thin or stale list is worse than no preset. Needs a "these are just filter
+settings, here's what they set" reveal so it doesn't read as a black box.
+
+**S4 · Defer the second-order controls.**
+*Problem:* the **QTPD range slider** and the **min-sale stepper** cannot be understood before
+QTPD itself is, yet they sit in the same visual tier as min price.
+*Proposal:* Move both behind an "advanced" disclosure inside Value. They are refinements of a
+metric, not entry points to it.
+*Cost:* S. *Risk:* low, but it partially undoes deliberate §11 work — the min-sale stepper's
+resting-value behaviour was designed to be self-explanatory in place.
+
+### Technique 2 — Stage across visits
+
+**S5 · Simple / Full mode.**
+*Problem:* the page has one complexity level and it is the maximum.
+*Proposal:* A real reduced build — Grid view, presets, price + rating + length, and nothing else
+— as the default for an unrecognised visitor, with a persistent **Full** switch. Civ V shipping
+simpler and reintroducing systems later. Crucially the doc's point is that easy mode should
+**remove systems**, not weaken them: a dimmed-but-present control is not simple mode.
+*Cost:* L. *Risk:* highest on this list. Two modes is two surfaces to maintain, two screenshot
+sets, and a permanent question of which one a bug report is about. Only worth it if S1–S3 are
+measured and found insufficient.
+
+**S6 · Recognise the returning visitor.**
+*Problem:* whatever training wheels get built will annoy the regular.
+*Proposal:* A visit counter in `localStorage`; first-run affordances self-retire after the
+second or third visit. Cheap, and it is the prerequisite that makes S1/S2/S3 safe to ship
+aggressively.
+*Cost:* S. *Risk:* none material; `localStorage` clearing just replays the intro.
+
+**S7 · Make an arriving shared link legible.**
+*Problem:* with 29 serialized params, a shared link can land a stranger in a heavily-filtered
+view with no indication that it *is* filtered — they will read a 40-game list as the whole site.
+*Proposal:* When `loadFromURL()` applies more than one non-default param, show a one-line banner:
+**"This link has 6 filters applied · [see them] · [start fresh]"**. It teaches the filter model
+at the exact moment the visitor has a reason to care.
+*Cost:* S. *Risk:* low. The summary line (§3.4 L2) already renders the chips; this is a banner
+pointing at it.
+
+### Techniques 3 & 4 — Teach by doing, and teach *why*
+
+**S8 · Teach QTPD by comparison, not definition.**
+*Problem:* G2. Also, a formula is a poor teacher even when read.
+*Proposal:* The gold value-meter already does the real work — it makes "more" visible without
+arithmetic. Build on it rather than on prose: on the landing view, annotate the **top row once**
+— *"80 hours × 91% positive ÷ $12 — that's why this is #1"* — as a dismissible callout anchored
+to a real game currently in the list. The visitor learns the formula from an instance, which is
+the Threes lesson: a small real thing to work out, not a statement to read.
+*Cost:* S–M. *Risk:* the callout must be built from the live top row, not hardcoded, or it will
+rot within hours of a price refresh.
+
+**S9 · An advisor empty state.**
+*Problem:* G3.
+*Proposal:* When the result set is empty, run the filter predicates **one at a time** over the
+catalogue and report which single filter is responsible: *"Nothing matches. **Min rating 90+**
+is the binding constraint — 1,240 games match everything else. [relax it] [reset all]"*. This is
+the Offworld advisor: not "here is what the button does" but "here is what you just did and why
+it didn't work".
+*Cost:* M. *Risk:* an N-pass over ~129k games per empty render; must run only on empty, and can
+short-circuit. The interesting design question is what to report when two filters are jointly
+responsible — name the most-restrictive single one and say so, rather than claiming it is the
+only one.
+
+**S10 · Turn the result count into the feedback channel.**
+*Problem:* §2 — this page's only real-time consequence signal is rendered as muted mono text.
+*Proposal:* Animate the count on change and briefly attribute the delta to the control that
+caused it (*"−4,102 · min rating"*). Compresses the slow-feedback problem the doc flags for
+strategy games into an immediate one.
+*Cost:* M. *Risk:* easy to make noisy or nauseating; needs a reduced-motion path, which the
+page already respects elsewhere (`trailersOn()`).
+
+### Technique 5 — Affordances
+
+This is the section with the best cost-to-value ratio, and the source doc's Total War: Troy
+hourglass is a direct warning about several live elements.
+
+**S11 · The unexplained-glyph audit.**
+*Problem:* the page uses symbols whose meaning is carried only in a hover tooltip — i.e. nowhere
+on touch (G1).
+*Candidates:* `><` (Tags column collapse) · `⤢` (promote to player) · `▲`/`▼` (playtime
+recommender split, which look like sort arrows and are not) · `Δ` (weighted-vs-Steam badge) ·
+the `k-sale` gold edge · `18+` staging · `▸` section carets.
+*Proposal:* For each, decide: give it a word, give it a persistent caption, or accept it as
+decorative. The doc's rule is that an affordance either matches something the audience already
+knows or it needs teaching — and `⤢` and `><` are inventions, not conventions.
+*Cost:* S per item. *Risk:* low; mostly copy and a few pixels.
+
+**S12 · Borrow Steam's language, not a spreadsheet's.**
+*Problem:* **QTPD**, **HLTB**, **Weighted**, **Trend** are all coinages or acronyms. The doc's
+first stated takeaway is *don't assume your audience has played other similar games* — here,
+don't assume they have used a data tool.
+*Proposal:* Audit every visible label against "would this word appear on the Steam store". The
+mobile card layout already does this correctly (Reviews→**Rating**, HLTB→**Length**, Price /
+Sale→**Price**) — §11 *Responsive*. **Apply the same relabeling to the desktop table**, where
+the acronyms currently survive. `HLTB · M / E / 100%` is the worst offender on the page: four
+pieces of jargon in one header.
+*Cost:* S. *Risk:* QTPD itself is the brand and should stay; the argument is for a plain-word
+subtitle beside it, not a rename. (The metric was already renamed once, QHPP→QTPD, for exactly
+this reason — §3.2.)
+
+**S13 · Make the legend real.**
+*Problem:* the `.rb-legend` key strip is `aria-hidden="true"` and its entries explain themselves
+only via `title` — so it is invisible to assistive tech and inert on touch, while the colours it
+explains (gold = value, red→green = review score, gold edge = on sale) are load-bearing
+everywhere.
+*Proposal:* Drop `aria-hidden`, give each key a visible short caption at wider widths, and make
+it tappable on touch.
+*Cost:* S. *Risk:* low; costs a little horizontal space in the toolbar row.
+
+**S14 · Playtest, which the doc names as its second explicit takeaway.**
+*Proposal:* The repo already drives Playwright for layout verification. The onboarding
+equivalent is a scripted first-visit walkthrough at 390px and 1700px with a written task list —
+*"find a well-reviewed co-op game under $15 that takes about 20 hours"* — and a record of where
+the run stalls. Every other item on this page is a guess until this exists.
+*Cost:* M to set up, S per round. *Risk:* none. This should arguably precede everything else.
+
+### Technique 6 — Supporting
+
+**S15 · Give touch devices the explanation layer. (G1.)**
+*Proposal:* On `(hover: none)`, bind the same `title` corpus to **tap** — a tap on any element
+carrying a tip opens the styled tip box; a second tap elsewhere dismisses it. The engine is
+already fully event-delegated, so this is a second entry path into existing code, not a new
+system. The one real design question is collision: a tap on a column header currently sorts, and
+a tap on a card flips it — so the tip likely needs its own affordance (a small `?` on fields, a
+long-press on values) rather than stealing the primary tap.
+*Cost:* M. *Risk:* moderate, entirely in gesture collision. But this is the item that converts
+a large body of already-written, already-good explanation from *invisible* to *available*, which
+makes it the best value on the list.
+
+**S16 · A reference panel, reachable from the top.**
+*Problem:* G2 — help exists but is at the bottom or on hover.
+*Proposal:* A `?` beside the wordmark opening a short panel: what QTPD is (with the formula and
+one worked example), HLTB vs Playtime (the two most-confused fields — the code comments already
+note this confusion), what Weighted means, what the colours mean. The doc's "encyclopedia /
+reference on demand". Deliberately *not* a modal on load.
+*Cost:* M. *Risk:* low. The content mostly exists already, scattered across `title` attributes
+and `renderFoot()`; this is consolidation, not authoring.
+
+**S17 · Show, don't tell — for the two hardest concepts only.**
+*Proposal:* Replace prose with a small inline diagram for (a) the QTPD formula, as three labelled
+boxes over a division rule, and (b) **HLTB vs Playtime** — *hours to finish* against *hours
+actually played* — which the codebase itself flags as the ambiguity that forced a card-layout
+change. Into the Breach's preview animations: show the mechanism, don't describe it.
+*Cost:* M. *Risk:* diagrams must work in the dark palette and at 390px; keep to two.
+
+**S18 · Name the three views by what they answer.**
+*Problem:* an existing code comment says it plainly — *"Table / Card / Grid" are three unexplained
+words answering a question the user hasn't asked yet*. That comment records a fix already made
+(the switcher moved out of the top toolbar down to `#resultBar`, immediately above the results it
+governs) — but proximity only answers *what it affects*, not *what the three words mean*. This is
+the doc's "multiple learning paths" technique already shipped, and still unlabelled.
+*Proposal:* Tooltip/caption each with its purpose — Grid = *browse by box art*, Table = *compare
+on numbers*, Card = *read one game at a time*.
+*Cost:* S. *Risk:* none.
+
+---
+
+## 4. Suggested ordering
+
+Not a commitment — a defensible sequence if some of this gets built.
+
+| Phase | Items | Rationale |
+|---|---|---|
+| **0 — find out** | S14 | Every ranking below this line is a guess until a real first-visit run exists. The doc says this outright. |
+| **1 — make existing teaching reachable** | S15, S16, S13, S18, S11 | The page's explanations are already written and already good. Phase 1 authors almost no new content; it fixes *delivery*. Highest value per hour on the list. |
+| **2 — give the first screen a first decision** | S3, S7, S8 | Presets, link legibility and one worked example. Turns arrival from "read this ranking" into "pick a thing". |
+| **3 — respond to what the user does** | S9, S10, S6 | The advisor empty state and live feedback, plus the visit counter that lets phase 2's affordances retire. |
+| **4 — stage the surface itself** | S1, S2, S4, S12 | Structural changes to the control layout. Worth doing only once phases 1–3 are measured. |
+| **Reconsider later** | S5, S17 | Simple/Full mode is a permanent maintenance tax; diagrams are nice-to-have. |
+
+---
+
+## 5. Deliberately not proposed
+
+- **A modal tour on load.** The doc's whole argument is that frontloading fails — a
+  click-through overlay is the literal "click here" arrow prompt it criticises, and it is the
+  first thing a visitor dismisses.
+- **Renaming QTPD.** It was already renamed once (QHPP→QTPD, §3.2) and the brand is the metric.
+  The fix for the acronym is a plain-word gloss beside it (S12), not another rename.
+- **Flattening the semantic palette.** §3.2 already records that gold/blue/coral/teal carry
+  meaning; the affordance argument is to *explain* the colours (S13), never to reduce them to one
+  accent.
+- **Simplifying the metric itself.** QTPD's inputs are the product. The learning curve is a
+  presentation problem, not a modelling one.
+
+---
+
+## 6. Open decisions
+
+These need answering before anything above can be scoped properly.
+
+1. **Who is the target visitor?** A Steam user arriving from a link, a deal-hunter who will
+   return weekly, or a one-time curious click? The three want different phases first. Everything
+   in §4 assumes "mostly one-time, some returning"; if the real audience is returning regulars,
+   phase 1 still holds but phases 2 and 4 largely evaporate.
+2. **Is mobile the priority surface?** If yes, S15 is not merely first — it is the only item
+   that matters until it ships, because on touch there is currently no teaching layer at all.
+3. **Presets: who curates them, and how often?** S3's value depends entirely on the shelves
+   being good, and they are editorial content in a repo that otherwise generates everything.
+4. **Is a two-mode page (S5) acceptable as a maintenance cost?** If the answer is no, say so now
+   and it comes off the list permanently rather than resurfacing.
+5. **Should any of this gate on the still-open §3.2 item** — progressive disclosure of secondary
+   fields behind a per-card tap? It overlaps S2 and S4 and shouldn't be designed twice.
