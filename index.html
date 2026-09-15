@@ -6189,7 +6189,9 @@ const RD = {
   // whose reviews are half "10/10" needs twice the pages of one written in paragraphs, and
   // neither is knowable before fetching. 3x the request is well past the worst measured ratio
   // (~45% dropped at the 5-word bar, i.e. 1.8x) and still bounds a pathological game at 60
-  // pages for a 2000 pull. Hitting it is not an error — the header reports the short sample.
+  // pages for a 2000 pull — 150 at the 5000 ceiling, and 450 if a reach of 3 is asked for on
+  // top of it (§24.2), which is the deepest pull this dialog can be made to request. Hitting
+  // the ceiling is not an error — the header reports the short sample.
   noiseFetchMax: 3,
 
   // A REVIEW COUNT IS NOT A SIZE (§21.2, revised §22.1). Measured live 2026-09-02 across
@@ -6209,34 +6211,80 @@ const RD = {
 // out of a review. Never widen this to a generic bracket match.
 const RD_BBCODE = /\[\/?(?:b|i|u|h[1-3]|url|quote|spoiler|list|olist|\*|strike|code|noparse|table|tr|th|td|img|previewyoutube|hr)(?:=[^\]]{0,200})?\]/gi;
 
-// Sample size is a user choice, not a constant (plan §15.3). 500 stays the default; 300 is
-// the cheap read, and 1000 and 2000 are for busy games where 500 reviews reach back days
-// rather than months — 3.4 of them on Cyberpunk 2077, measured (§21.3). More reviews buy
-// HISTORY, not accuracy: the counting floor is the model's, not the sample's, which is why
-// this only became safe once §16 precomputed the arithmetic.
+// Sample size is a user choice, not a constant (plan §15.3). 300 is the cheap read; the sizes
+// above 500 are for busy games where 500 reviews reach back days rather than months — 3.4 of
+// them on Cyberpunk 2077, measured (§21.3). More reviews buy HISTORY, not accuracy: the
+// counting floor is the model's, not the sample's, which is why this only became safe once
+// §16 precomputed the arithmetic.
 //
-// 2000 is the ceiling, and it is an AI limit, not a Steam one — Steam paginates past 12,000
-// without complaint (§21.1). At ~47 tokens per review on a text-heavy game, 2000 is ~92k
-// tokens with the prompt; 3000 would be ~126k, which is more of a 200k window spent holding
-// the list than reasoning over it. Nothing caps a size from underneath it: 2000 means 2000,
-// on the text-heavy games that are the whole reason for asking. What the count does not say
-// is how BIG the result gets — that is priced after the fact, by rdPasteAdvice.
+// 5000 is the ceiling, and it is an AI limit, not a Steam one — Steam paginates past 12,000
+// without complaint (§21.1). §21.3 put that ceiling at 2000 and did the arithmetic against a
+// 200k context window: at ~47 tokens per review on a text-heavy game, 2000 is ~92k tokens with
+// the prompt and 5000 is ~235k, which that window cannot hold. §24.1 does not dispute the sum
+// — it disputes the window. The models this digest is handed to read 500k-1M now, and the
+// reader who wants a real before-and-after on a game with 2000 reviews a week cannot get one
+// out of 2000. So the limit becomes a PRICE rather than a locked door: the 5000 pill's tooltip
+// names the context window it needs, the result panel prices the finished bundle in tokens, and
+// the paste warning routes it to the composers that take it. What the page will not do is
+// quietly return less than was asked for (§22.1) — 5000 means 5000, on the text-heavy games
+// that are the whole reason for asking.
 //
 // Ordered smallest → largest, which deliberately OVERRIDES QTPD's "default leftmost" rule for
-// segmented controls (§18.2). These three options are a number line, and 500·300·1000 reads as
-// a typo — the eye checks the ordering before it reads the values, so a scrambled row costs
+// segmented controls (§18.2). These options are a number line, and 500·300·1000 reads as a
+// typo — the eye checks the ordering before it reads the values, so a scrambled row costs
 // more attention than a default that is not first. The lit pill is what says which is the
 // default, and RD_DEFAULT_SIZE is the one place that decides it.
-const RD_SIZES = [300, 500, 1000, 2000];
-const RD_DEFAULT_SIZE = 500;
+const RD_SIZES = [300, 500, 1000, 2000, 5000];
+// §24.1 — the deepest sample is the default. The old default of 500 was chosen when the report
+// was the cheap read and the bar did not exist; both changed. The one thing a reader cannot
+// recover after the fact is history the fetch never reached, and every other cost here (tokens,
+// minutes, KB) is stated up front and paid once. Small samples stay one click away.
+const RD_DEFAULT_SIZE = 5000;
 // The "bigger sample buys history, not accuracy" argument, per option, on the option itself.
 // It used to be three lines of body copy above the row; nobody needs it twice, and the person
 // choosing 300 over 1000 is hovering the pill when they want it.
 const RD_SIZE_TIP = {
-  300:  "The cheap read — a third of the tokens. Plenty on a quiet game, where 300 reviews already cover the same years 1000 would.",
-  500:  "The default. Balanced cost and reach; on a busy game it may only go back a few months.",
+  300:  "The cheap read — a fraction of the tokens. Plenty on a quiet game, where 300 reviews already cover the same years 1000 would.",
+  500:  "Balanced cost and reach, and what this page defaulted to before the big-context models arrived; on a busy game it may only go back a few months.",
   1000: "Deep history. On a busy game this is the first option that reaches back past the last patch cycle — and it costs three times 300's tokens.",
-  2000: "The most history available. On a busy game 500 reviews cover days, not months, and this is what reaches a real before-and-after. Big enough that Gemini will cut the paste — Claude and ChatGPT take it, and the .txt works everywhere.",
+  2000: "The deepest sample a 200k-context model holds comfortably (~92k tokens on a text-heavy game). On a busy game 500 reviews cover days, not months, and this is what reaches a real before-and-after.",
+  5000: "The default, and the most history available: up to ~235k tokens on a text-heavy game, so it wants a big-context model — Claude or ChatGPT will take it as a file, Gemini will cut a paste. Costs a minute or two of fetching, and roughly 50 pages of Steam.",
+};
+
+// §24.2 — REACH, and it is a different axis from the size above. The size says how many reviews
+// land in the bundle; reach says how far back they are drawn FROM. Steam serves `filter=recent`
+// newest-first in pages of 100, so every sample this page has ever built is a CONTIGUOUS run of
+// the newest N — which on a busy game is a very short window no size can widen. Measured on
+// Cyberpunk 2077 (§21.3), 500 reviews is 3.4 days; 5000 is a month, and a patch that shipped
+// six weeks ago is still out of reach at the ceiling.
+//
+// Keeping one page in N and discarding the rest turns the same N reviews into a systematic
+// 1-in-N sample of N times the period: identical bundle size, identical token cost, N times the
+// history. That is the whole feature.
+//
+// THE SKIPPED PAGES ARE STILL FETCHED. Steam's pagination is cursor-chained — the only way to
+// learn page 4's cursor is to ask for page 3 — so a skip is a discard, never a saving. Reach 2
+// costs twice the requests and twice the wall clock for the same bundle, reach 3 three times.
+// The reader pays in minutes, not in tokens, and the hint under the row says so rather than
+// leaving them to discover it at page 40 of a fetch they thought would be short.
+//
+// Why a PAGE and not every second review: a page is one request and one cursor, so the skip is
+// exact and needs no bookkeeping, and a page of 100 consecutive reviews is a few hours of one
+// game and a week of another — small enough everywhere to be a sampling unit rather than a
+// blind spot. And because the thinning is UNIFORM, everything the digest computes from
+// PROPORTIONS survives it untouched: NOW and BEFORE are thinned by the same N, so the trend
+// between them, the sentiment split and every topic rate mean exactly what they meant at reach
+// 1. The one family of figures it does distort is VOLUME — reviews/day comes out N times under
+// the truth — which is why rdBuildBundle states the factor on the COVERAGE line instead of
+// letting a model read a thinned rate as a quiet week.
+const RD_REACH = [1, 2, 3];
+const RD_DEFAULT_REACH = 1;       // a contiguous run of the newest reviews — what this page always did
+const rdOrdinal = n => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th";
+const RD_REACH_LABEL = n => n === 1 ? "Every page" : `Every ${rdOrdinal(n)} page`;
+const RD_REACH_TIP = {
+  1: "The default. A contiguous run of the newest reviews, exactly as Steam served them — no gaps, and the per-day rates in the report are the real ones.",
+  2: "Keep a page of 100, skip the next. Same sample size, about twice the time span — and about twice the fetch time, because a skipped page still has to be requested to get the next cursor.",
+  3: "Keep a page of 100, skip two. About three times the span for the same bundle, at three times the wait. For a game busy enough that even 5000 newest reviews only cover a week.",
 };
 
 // §18.4 — depth of the REPORT, not of the sample. Advanced is the v7 skeleton this file has
@@ -6412,7 +6460,14 @@ const RD_OUT = [
   { key:"html", label:"HTML page",
     tip:"The same report, same counts, rendered as one self-contained HTML file: masthead, sentiment bar, styled tables, dark mode and a print stylesheet. The prompt asks the AI for the page itself — never an artifact, never a script that writes it — and whatever shape the reply arrives in, paste it back here and this page saves it as star-wars-zero-company.html. Costs ~3k more tokens of instructions and a longer reply." },
 ];
-const RD_DEFAULT_OUT = "md";               // the page's own output for two years; HTML is opt-in
+// §24.1 — HTML is the default now. Markdown was the default because it was what the page had
+// always produced, and "what it always did" is a reason to keep OFFERING something, not a reason
+// to make it everyone's starting point. The reader this dialog exists for wants a keepable report
+// per game that can be set beside nine others, which is the thing the HTML page does and Markdown
+// in a chat window does not; and §23.11 removed the last friction by having this page save the
+// reply itself. The addendum's ~3k tokens of stylesheet is noise beside a 5000-review sample.
+// Markdown stays one click away, and stays the right pick for pasting a report into a doc.
+const RD_DEFAULT_OUT = "html";
 
 // §23.1 — the quality bar. RD.substantive has always MEASURED this and never acted on it, on
 // the argument that dropping one-liners biases the sample negative (they skew positive). That
@@ -6427,17 +6482,25 @@ const RD_DEFAULT_OUT = "md";               // the page's own output for two year
 // is the filter rather than the game. That is the same bargain the ASCII-art and copypasta
 // filters already make — remove what poisons the counting, and say what was removed.
 //
-// 0 is off, and off is the pre-§23 behaviour exactly. 5 is the default: a five-word review is
-// the shortest thing that can carry a subject and a complaint ("combat feels stiff and slow"),
-// and 3 keeps "great combat, terrible optimisation" while 10 keeps only reviews arguing a case.
+// 0 is off, and off is the pre-§23 behaviour exactly. 5 is the shortest bar that can still carry
+// a subject and a complaint ("combat feels stiff and slow"), and 3 keeps "great combat, terrible
+// optimisation".
+//
+// §24.1 makes 10 the default, and the reason is the default SIZE moving to 5000. At 500 the bar
+// was rationing a scarce sample and 5 was the cautious pick; at 5000 the sample is not scarce,
+// and the constraint has moved to the reader's context window — which makes "which 5000" a
+// better question than "how many". 10 words is the bar where every review left in the bundle
+// argues a case, so the tokens go on reviews that carry a reason instead of on 2000 more ways
+// to write "gg". On a quiet game it can take the fetch to its page ceiling without filling the
+// sample; that is a short sample, reported as one in the header, not an error.
 const RD_BARS = [0, 3, 5, 10];
-const RD_DEFAULT_BAR = 5;
+const RD_DEFAULT_BAR = 10;
 const RD_BAR_LABEL = n => n ? `${n}+ words` : "Off";
 const RD_BAR_TIP = {
   0:  "No filter — every review Steam returns, one-worders included. What this page did before the bar existed: the counts stay honest, but every percentage is a share of a sample that is ~38% \"10/10\" and \"gg\".",
   3:  "The light bar. Drops \"gg\" and \"10/10\" but keeps three-word verdicts like \"great game, terrible optimisation\". Least distortion of the sentiment split.",
-  5:  "The default. A five-word review is the shortest that can name a thing and say what is wrong with it, so this is the bar where a percentage starts meaning \"of the people who said something\".",
-  10: "Only reviews that argue a case. The cleanest denominator and the smallest sample — on a quiet game this can take the fetch to its page ceiling without filling the sample.",
+  5:  "A five-word review is the shortest that can name a thing and say what is wrong with it, so this is the bar where a percentage starts meaning \"of the people who said something\". The gentlest bar that still fixes the denominator.",
+  10: "The default. Only reviews that argue a case — the cleanest denominator, and with a 5000-review sample there is no shortage of them. On a quiet game this can take the fetch to its page ceiling without filling the sample.",
 };
 
 // Word counting for the bar. Whitespace splitting is wrong for the "All languages" sample:
@@ -6509,7 +6572,8 @@ const RD_FOCUS = [
 ];
 
 const rdState = { open:false, appid:null, lang:"english", size:RD_DEFAULT_SIZE,
-                  mode:RD_DEFAULT_MODE, out:RD_DEFAULT_OUT, bar:RD_DEFAULT_BAR, focus:[],
+                  mode:RD_DEFAULT_MODE, out:RD_DEFAULT_OUT, bar:RD_DEFAULT_BAR,
+                  reach:RD_DEFAULT_REACH, focus:[],
                   busy:false, abort:null, bundle:"", prompts:{} };
 
 function rdArtRatio(t){
@@ -6625,7 +6689,8 @@ function rdSetProgress(text, sub, pct){
 // reviews with something in them, or the option quietly halves every sample it improves.
 // So compaction happens inline and the loop runs until `size` reviews have been KEPT —
 // which also, with the bar off, finally makes 2000 mean 2000 after the dupes come out.
-async function rdCollect(appid, lang, size, minWords, onProgress, signal){
+async function rdCollect(appid, lang, size, minWords, reach, onProgress, signal){
+  reach = Math.max(1, reach | 0);
   const pages = Math.ceil(size / RD.perPage);
   onProgress("reading the review totals…", "", null);
   // Anchor fetched with the SAME language and off-topic setting as the sample, so the
@@ -6643,7 +6708,17 @@ async function rdCollect(appid, lang, size, minWords, onProgress, signal){
   // so the ceiling becomes RD.noiseFetchMax × the request. It is a guard against a game of
   // pure one-liners, not a budget: on any normal game the loop meets its count long before.
   const comp = rdCompactor(minWords);
-  const maxPages = minWords ? Math.ceil(size * RD.noiseFetchMax / RD.perPage) : pages + 5;
+  // §24.2 — the ceiling is expressed in KEPT pages first, then multiplied by the reach, because
+  // every page whose reviews we keep drags `reach - 1` discarded ones behind it. Getting this
+  // wrong in the other order is the bug that would make reach 3 quietly return a third of the
+  // sample and call it a short game.
+  const keptPages = minWords ? Math.ceil(size * RD.noiseFetchMax / RD.perPage) : pages + 5;
+  const maxPages = keptPages * reach;
+  // Page 1 is always kept, so the newest review is always in the sample whatever the reach —
+  // a digest whose most recent line is three days stale would be a strange thing to hand a
+  // reader who asked for "the newest 5000".
+  const keepPage = p => (p - 1) % reach === 0;
+  const skip = { pages:0, reviews:0 };
   let cursor = "*";
   // One place decides how far along the run is, so the line before a page and the line after
   // it cannot disagree. Rounded DOWN: 100% is reserved for a sample that is actually full,
@@ -6651,7 +6726,11 @@ async function rdCollect(appid, lang, size, minWords, onProgress, signal){
   // this counter that would be wrong.
   const tick = p => onProgress(
     Math.floor(100 * Math.min(comp.rows.length, size) / size) + "%",
-    `page ${p} · ${comp.stats.seen} read · ${comp.rows.length} of ${size} kept`,
+    `page ${p} · ${comp.stats.seen} read · ${comp.rows.length} of ${size} kept`
+      // At reach 2 the bar sits still for every second page, which on a 50-page pull is a
+      // lot of apparent stalling. Naming the skipped pages is what turns that pause from a
+      // hang into the thing the reader asked for.
+      + (reach > 1 ? ` · ${skip.pages} skipped for reach` : ""),
     100 * comp.rows.length / size);
   for(let p = 1; p <= maxPages && comp.rows.length < size; p++){
     tick(p);
@@ -6661,9 +6740,20 @@ async function rdCollect(appid, lang, size, minWords, onProgress, signal){
     const batch = d.reviews || [];
     // Compacted inline, and stopped mid-page the moment the count is met — the only trim is
     // the one the reader asked for, so nothing beyond the 500th kept review is even read.
-    for(const rv of batch){
-      comp.add(rv);
-      if(comp.rows.length >= size) break;
+    //
+    // A skipped page is fetched and thrown away whole: it never reaches the compactor, so it
+    // is absent from `stats` and from every count built on it, and the sample's own arithmetic
+    // is the arithmetic of the pages it kept. What was passed over is counted separately and
+    // reported — a discard this large stated nowhere would be the one filter in this file that
+    // hides itself.
+    if(keepPage(p)){
+      for(const rv of batch){
+        comp.add(rv);
+        if(comp.rows.length >= size) break;
+      }
+    } else {
+      skip.pages++;
+      skip.reviews += batch.length;
     }
     tick(p);      // again, so the page that just landed moves the bar before the next wait
     const next = d.cursor;
@@ -6681,7 +6771,7 @@ async function rdCollect(appid, lang, size, minWords, onProgress, signal){
     if(comp.rows.length < size) await new Promise(r => setTimeout(r, RD.pageDelayMs));
   }
 
-  return { comp, minWords,
+  return { comp, minWords, reach, skip,
            scoped:scoped.query_summary || {}, overall:overall.query_summary || {} };
 }
 
@@ -7169,6 +7259,11 @@ function rdPromptParts(p){
 
 function rdBuildBundle(g, data, lang, prompt, focus, htmlPrompt){
   const { comp, minWords, scoped, overall } = data;
+  // §24.2. Defaulted rather than destructured bare, so a caller built before reach existed
+  // (the test harness's unit-style calls, a cached bundle) reads as a contiguous sample
+  // instead of printing "every undefinedth page".
+  const reach = Math.max(1, data.reach | 0) || 1;
+  const skip = data.skip || { pages:0, reviews:0 };
   const { rows, stats } = comp;          // compacted during the fetch — see rdCollect (§23.3)
 
   const up = rows.filter(r => r.rv.voted_up).length;
@@ -7243,6 +7338,17 @@ function rdBuildBundle(g, data, lang, prompt, focus, htmlPrompt){
   L.push("");
   L.push(`SAMPLE: ${rows.length} newest ${lang === "all" ? "reviews, all languages" : "English reviews"} (filter=recent) · fetched ${new Date().toISOString().slice(0,10)}`);
   if(times.length) L.push(`  covering: ${rdDay(times[0])} to ${rdDay(times[times.length-1])}`);
+  // §24.2 — a systematic 1-in-N page sample is not the same object as a contiguous run, and a
+  // model told only the span will read the holes between consecutive lines as quiet stretches.
+  // Stated here, where the sample is described, and again on COVERAGE where the one family of
+  // figures it distorts is printed.
+  if(reach > 1)
+    L.push(`  reach: every ${rdOrdinal(reach)} page of 100 kept — ${skip.pages} pages`
+         + ` (${skip.reviews} reviews) were fetched and passed over, which is how ${rows.length} reviews`
+         + ` cover about ${reach}x the period. This is a 1-in-${reach} sample of the same stream,`
+         + ` taken evenly: the passed-over reviews are not missing, not deleted and not filtered`
+         + ` — they are the other ${reach - 1} in ${reach}. Do not describe the gaps between`
+         + ` review dates as quiet periods.`);
   // §23.1 / §23.4 — the two splits, adjacent and in the SAME shape, plus the difference
   // between them broken out. The bar removes reviews that skew positive, so these two rates
   // are never equal, and a reader (or a model) who sees only one of them cannot tell whether
@@ -7298,6 +7404,11 @@ function rdBuildBundle(g, data, lang, prompt, focus, htmlPrompt){
     // depending on which, so it is stated before any of it.
     L.push(`COVERAGE: this sample spans ${rdPlural(W.sampleDays, "day")} · `
          + (W.sampleDays < RD_THIN_SAMPLE_DAYS ? `~${W.perDay} reviews/day` : `~${W.perMonth} reviews/month`));
+    // The rate above counts reviews KEPT over days covered, so at reach N it is N times under
+    // the truth. Proportions are untouched — both windows are thinned identically — so the fix
+    // is to name the factor and fence off the one line it applies to, not to caveat the report.
+    if(reach > 1)
+      L.push(`          SAMPLING: 1 page in ${reach}. The SPAN above is fact; the rate beside it is measured over the reviews kept, so the game's real review volume is about ${reach}x it — multiply before quoting a per-day or per-month figure, or do not quote one. Everything else below is a PROPORTION and is unaffected: NOW and BEFORE are thinned by the same ${reach}, so the trend, the splits and every topic rate mean what they say.`);
     if(W.sampleDays < RD_THIN_SAMPLE_DAYS)
       L.push(`          WARNING: fewer than ${RD_THIN_SAMPLE_DAYS} days. This sample cannot describe the game before ${rdDay(times[0])}; do not present it as the game's history.`);
     L.push(`NOW    : ${W.now.from} to ${W.now.to} · ${rdPlural(W.now.n, "review")} · ${W.now.up}▲/${W.now.down}▼ · ${W.now.pct}% positive`);
@@ -7430,7 +7541,7 @@ function rdRenderSetup(g){
   const head = document.getElementById("rdHeadCount");
   if(head) head.textContent = "";
   body.innerHTML =
-    `<p class="rd-note" title="Review-bombing reviews are included on purpose — the prompt counts them and reports them separately, so you see the pile-on instead of a score quietly smoothed over.">Takes the <b id="rdCount">${rdState.size}</b> newest <span id="rdCountQual">${rdState.bar ? "reviews worth reading" : "Steam reviews"}</span> and wraps them in an AI prompt.</p>
+    `<p class="rd-note" title="Review-bombing reviews are included on purpose — the prompt counts them and reports them separately, so you see the pile-on instead of a score quietly smoothed over.">Takes the <b id="rdCount">${rdState.size}</b> newest <span id="rdCountQual">${rdState.bar ? "reviews worth reading" : "Steam reviews"}</span><span id="rdCountReach">${rdReachCopy()}</span> and wraps them in an AI prompt.</p>
      <div class="rd-row"><span class="rd-lbl">Report</span>
        ${RD_MODES.map(m => `<button type="button" class="rd-opt${rdState.mode===m.key?" on":""}" data-rdmode="${m.key}" title="${esc(m.tip)}">${esc(m.label)}</button>`).join("")}
      </div>
@@ -7445,6 +7556,10 @@ function rdRenderSetup(g){
        ${RD_SIZES.map(n => `<button type="button" class="rd-opt${rdState.size===n?" on":""}" data-rdsize="${n}" title="${esc(RD_SIZE_TIP[n] || (n + " reviews."))}">${n}</button>`).join("")}
      </div>
      <p class="rd-hint">A bigger sample buys <b>history</b>, not accuracy.</p>
+     <div class="rd-row"><span class="rd-lbl">Reach</span>
+       ${RD_REACH.map(n => `<button type="button" class="rd-opt${rdState.reach===n?" on":""}" data-rdreach="${n}" title="${esc(RD_REACH_TIP[n] || "")}">${esc(RD_REACH_LABEL(n))}</button>`).join("")}
+     </div>
+     <p class="rd-hint">Skipping pages spreads the <b>same</b> sample over <b>2-3x the time period</b> — same size, same tokens. The skipped pages still have to be fetched, so it costs the <b>wait</b>, not the paste.</p>
      <div class="rd-row"><span class="rd-lbl">Quality bar</span>
        ${RD_BARS.map(n => `<button type="button" class="rd-opt${rdState.bar===n?" on":""}" data-rdbar="${n}" title="${esc(RD_BAR_TIP[n] || "")}">${esc(RD_BAR_LABEL(n))}</button>`).join("")}
      </div>
@@ -7462,9 +7577,19 @@ function rdRenderSetup(g){
 // The dialog's own copy is re-rendered on demand, but the entry-point buttons were rendered
 // with the rest of the grid long before the dialog opened — so a size change has to reach
 // back and correct their tooltips, or the card promises 500 while the dialog fetches 1000.
+// One sentence, one source of truth: the dialog's opening line, the entry-point tooltips and
+// the bundle header all have to agree about whether the sample is contiguous, and a reach set
+// to 2 makes the word "newest" only half true. This is the clause that repairs it.
+function rdReachCopy(){
+  return rdState.reach > 1
+    ? `, one page of 100 in every ${rdState.reach} for ~${rdState.reach}x the time span,`
+    : "";
+}
+
 function rdEntryTitle(){
   return `Pull the ${rdState.size} newest Steam reviews`
        + (rdState.bar ? ` that say more than "gg"` : "")
+       + (rdState.reach > 1 ? `, sampled one page in ${rdState.reach} to cover ~${rdState.reach}x the period,` : "")
        + ` and package them with an AI prompt`;
 }
 function rdSyncEntryTitles(){
@@ -7694,7 +7819,7 @@ async function rdRun(){
   const say = rdSetProgress;
   try {
     const [data, prompt, htmlPrompt] = await Promise.all([
-      rdCollect(g.appid, rdState.lang, rdState.size, rdState.bar, say, rdState.abort.signal),
+      rdCollect(g.appid, rdState.lang, rdState.size, rdState.bar, rdState.reach, say, rdState.abort.signal),
       rdLoadPrompt(rdState.mode),
       rdLoadOutPrompt(rdState.out),
     ]);
@@ -7801,6 +7926,18 @@ document.addEventListener("click", e => {
     // They must move together or one of them lies about what the fetch will do.
     const n = document.getElementById("rdCount"); if(n) n.textContent = rdState.size;
     const go = document.getElementById("rdGo");   if(go) go.textContent = `Fetch ${rdState.size} reviews`;
+    rdSyncEntryTitles();
+    return;
+  }
+  const reach = e.target.closest("[data-rdreach]");
+  if(reach && !rdState.busy){
+    rdState.reach = parseInt(reach.getAttribute("data-rdreach"), 10);
+    document.querySelectorAll("[data-rdreach]").forEach(b =>
+      b.classList.toggle("on", parseInt(b.getAttribute("data-rdreach"), 10) === rdState.reach));
+    // Reach does not change the SIZE, so nothing that quotes the number moves — but it does
+    // change what "newest" means, and both places that say it have to follow (§24.2).
+    const r = document.getElementById("rdCountReach");
+    if(r) r.textContent = rdReachCopy();
     rdSyncEntryTitles();
     return;
   }
