@@ -4,8 +4,9 @@
 `TEACHING_COMPLEX_THINGS.md` collects the GMTK strategy-tutorial techniques. This document is
 the other half: what the page **actually looks like to someone who has never seen it**, which of
 those techniques transfer, which don't and why, and the full list of candidate solutions with
-their cost and risk. Nothing here is built. It is a decision menu, not a plan of record — see
-§6 for the calls that need making before any of it is scoped.
+their cost and risk — scored and ranked by impact ÷ effort in **§4**. Nothing here is built. It
+is a decision menu, not a plan of record — see §6 for the calls that need making before any of
+it is scoped.
 
 Cross-references: frontend as-built is **[ARCHITECTURE.md](../ARCHITECTURE.md) §11**; the
 shipped filter/view patterns are **§3.4**; the open UX backlog is **§3.2**.
@@ -118,8 +119,9 @@ transfers completely. "Show, don't tell" and "keep text tight" transfer complete
 
 ## 3. Candidate solutions
 
-Grouped by the source doc's techniques. Each carries an effort estimate (S = under a day, M =
-a few days, L = a week-plus) and its main risk. **None of these are decided.**
+Grouped by the source doc's techniques. Each carries a rough effort band (S = under a day, M =
+a few days, L = a week-plus) and its main risk; **§4 scores all eighteen numerically and ranks
+them**. **None of these are decided.**
 
 ### Technique 1 — Stage the complexity (inverted pyramid)
 
@@ -312,18 +314,77 @@ on numbers*, Card = *read one game at a time*.
 
 ---
 
-## 4. Suggested ordering
+## 4. Impact ÷ effort
 
-Not a commitment — a defensible sequence if some of this gets built.
+Every candidate scored on two 1–10 scales. **Impact** = how much it moves a first-time
+visitor's ability to use the page (10 = they can't use it without this). **Effort** = build cost
+including the risk work it drags in (10 = weeks, or a permanent maintenance tax). The ratio is
+impact ÷ effort; higher is cheaper value.
+
+These are judgement calls made by reading the code, not measurements. **S14 exists precisely
+because they are guesses** — a single first-visit playtest would re-order this table, and that
+is the strongest argument for doing S14 before betting much on the rest of it.
+
+| # | Solution | Impact | Effort | Ratio | Note on the score |
+|---|---|:--:|:--:|:--:|---|
+| S6 | Visit counter / returning-visitor | 4 | 1 | **4.00** | One `localStorage` key. Low impact alone — it's an *enabler* that lets everything else be aggressive without annoying regulars. |
+| S12 | Push mobile relabeling onto the desktop table | 7 | 2 | **3.50** | Copy-only. The correct words already exist and are already shipped on the card layout; the desktop table just never got them. |
+| S3 | Preset shelves | 9 | 3 | **3.00** | Presets are stored querystrings and `loadFromURL`/`syncURL` already exist. Real cost is editorial curation, and it recurs. |
+| S7 | "This link has N filters applied" banner | 6 | 2 | **3.00** | `loadFromURL()` already knows the count; the summary chips already render. Only fires for link arrivals, which caps impact. |
+| S11 | Unexplained-glyph audit | 6 | 2 | **3.00** | Mostly copy. Compounds hard with S15 — on touch these glyphs are currently the *only* signal. |
+| S18 | Name the three views | 3 | 1 | **3.00** | Three tooltip strings. High ratio, small absolute gain. |
+| S13 | Make the legend real | 5 | 2 | **2.50** | Drop `aria-hidden`, add captions, make it tappable. Costs a little toolbar width. |
+| S15 | Tap-tooltips on touch | **10** | 4 | **2.50** | Highest absolute impact on the list. Engine is already event-delegated, so it's a second entry path, not a new system; the effort is entirely gesture collision. |
+| S4 | Defer the second-order controls | 4 | 2 | **2.00** | Partially undoes deliberate §11 work on the min-sale stepper. |
+| S8 | Annotate the live top row | 8 | 4 | **2.00** | Direct fix for G2, teaching by instance. Must build from the live row or it rots within hours of a price refresh. |
+| S14 | Playtest | 8 | 4 | **2.00** | Ships nothing user-visible. Scored on leverage: it converts the other 17 guesses into knowledge. |
+| S16 | Reference panel (`?` by the wordmark) | 7 | 4 | **1.75** | Consolidation, not authoring — the content exists, scattered across `title` attributes and `renderFoot()`. |
+| S9 | Advisor empty state | 6 | 5 | **1.20** | Excellent when it fires; capped by how often anyone actually empties the list. Needs an N-pass and a joint-responsibility rule. |
+| S1 | One-decision entry | 7 | 6 | **1.17** | Strong idea, but S3 captures most of the same value for a third of the cost. |
+| S2 | Earn the sections | 4 | 4 | **1.00** | Marginal gain over "already folded" is small, and the shared-link force-unlock plus escape hatch are mandatory, not polish. |
+| S10 | Result count as feedback channel | 5 | 5 | **1.00** | The one live consequence signal on the page, but delta attribution is subtle and easy to make nauseating. |
+| S17 | Diagrams for QTPD and HLTB-vs-Playtime | 4 | 5 | **0.80** | S8 and S16 cover most of the same ground more cheaply. |
+| S5 | Simple / Full mode | 6 | 9 | **0.67** | Two surfaces to maintain forever, two screenshot sets, and a permanent "which mode is this bug in". |
+
+### 4.1 Where the ratio misleads
+
+Pure impact ÷ effort rewards trivia. **S6** and **S18** top the ratio table while changing
+almost nothing on their own; **S15** has the single highest impact on the page and only a
+middling ratio because gesture collision is genuinely fiddly. Read the ratio as *"is this cheap
+for what it gives"*, and the impact column as *"does it matter"* — then pick from the top-left
+quadrant of both.
+
+Three different questions, three different answers:
+
+- **Easiest fix with real impact → S12.** Relabel the desktop table headers with the plain words
+  the mobile card already uses. It is a copy change with no new mechanism, no new state, no
+  gesture, no persistence. `HLTB · M / E / 100%` is four pieces of jargon in one header on the
+  most-used desktop surface, and `Reviews`/`HLTB`/`Price / Sale` → `Rating`/`Length`/`Price` is
+  **already proven in this codebase**. The only check needed is that the table's `min-width` —
+  the exact sum of the column track minimums (§11) — still holds.
+- **Biggest absolute impact → S15.** Everything else assumes the visitor can read the page's
+  explanations. On touch, none of them exist. Until this ships, every other teaching improvement
+  is desktop-only by construction.
+- **Best single bet overall → S3.** Impact 9 at effort 3, and it is the only item that fills
+  the void between "129,445 games ranked by an unexplained metric" and "78 controls" with
+  something a visitor can act on in one click.
+
+### 4.2 Recommended order
+
+Weighted by impact first and ratio second, not by ratio alone.
 
 | Phase | Items | Rationale |
 |---|---|---|
-| **0 — find out** | S14 | Every ranking below this line is a guess until a real first-visit run exists. The doc says this outright. |
-| **1 — make existing teaching reachable** | S15, S16, S13, S18, S11 | The page's explanations are already written and already good. Phase 1 authors almost no new content; it fixes *delivery*. Highest value per hour on the list. |
-| **2 — give the first screen a first decision** | S3, S7, S8 | Presets, link legibility and one worked example. Turns arrival from "read this ranking" into "pick a thing". |
-| **3 — respond to what the user does** | S9, S10, S6 | The advisor empty state and live feedback, plus the visit counter that lets phase 2's affordances retire. |
-| **4 — stage the surface itself** | S1, S2, S4, S12 | Structural changes to the control layout. Worth doing only once phases 1–3 are measured. |
-| **Reconsider later** | S5, S17 | Simple/Full mode is a permanent maintenance tax; diagrams are nice-to-have. |
+| **0 — find out** | S14 | Every score above is a guess until a real 390px first-visit run exists. The source doc names playtesting as an explicit takeaway. |
+| **1 — make existing teaching reachable** | S15, S12, S11, S13, S18 | Authors almost no new content; fixes *delivery* of explanation that is already written and already good. Contains both the highest-impact item and the cheapest. |
+| **2 — give the first screen a first decision** | S3, S7, S8 | Presets, link legibility, one worked example. Turns arrival from "read this ranking" into "pick a thing". |
+| **3 — respond to what the user does** | S6, S9, S16 | S6 first, because it is one key and it retires phase 2's affordances for regulars. |
+| **4 — stage the surface itself** | S4, S1, S10, S2 | Structural changes to the control layout. Only once phases 1–3 are measured. |
+| **Reconsider later** | S17, S5 | Lowest ratios on the board. S5 in particular buys an unmeasured gain for a permanent maintenance tax. |
+
+If only one thing gets built: **S12**. If only one *afternoon* is available: **S12 + S18 + S11**
+— all three are copy and tooltips, and together they remove most of the page's unexplained
+vocabulary. If a week is available: **S15 and S3**.
 
 ---
 
