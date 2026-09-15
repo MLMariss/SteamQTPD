@@ -1626,7 +1626,7 @@ try{
           <option value="release_ts">Released</option>
           <option value="updated">Updated</option>
           <option value="playtime">Playtime</option>
-          <option value="hltb">HLTB</option>
+          <option value="hltb">Length</option>
         </select>
         <button id="msortdir" type="button" title="Toggle sort direction" aria-label="Toggle sort direction">▼</button>
       </div>
@@ -1678,8 +1678,8 @@ try{
             <button id="qb-before" aria-pressed="false" title="Base QTPD on the full (non-sale) price.">Full</button>
           </div>
         </div>
-        <div class="field" title="HLTB metric for QTPD — which HowLongToBeat length is the 'hours' side of QTPD: Main story, Main + Extras, 100% completion, or the average of the three.">
-          <label>HLTB metric for QTPD</label>
+        <div class="field" title="Length metric for QTPD — which HowLongToBeat (HLTB) length is the 'hours' side of QTPD: Main story, Main + Extras, 100% completion, or the average of the three.">
+          <label>Length metric for QTPD</label>
           <div class="seg metric" role="group" aria-label="HLTB metric">
             <button data-metric="main"     aria-pressed="true"  title="Main Story — hours to finish the core game, skipping side content (HowLongToBeat).">Main</button>
             <button data-metric="extra"    aria-pressed="false" title="Main + Extras — the main story plus most side quests (HowLongToBeat).">+Extras</button>
@@ -1687,10 +1687,10 @@ try{
             <button data-metric="avg"      aria-pressed="false" title="Average — the Main, +Extras, and 100% times combined.">Avg</button>
           </div>
         </div>
-        <div class="field" title="HLTB data — whether QTPD may use estimated lengths. Real uses only genuine HowLongToBeat times; All fills gaps with an estimate from the typical main / extras / 100% ratio.">
-          <label>HLTB data</label>
-          <div class="seg" role="group" aria-label="HLTB data quality">
-            <button data-hquality="real" aria-pressed="true" title="Real only — use just real HowLongToBeat times. Games missing one for the selected metric show no HLTB or QTPD.">Real</button>
+        <div class="field" title="Length data — whether QTPD may use estimated lengths. Real uses only genuine HowLongToBeat (HLTB) times; All fills gaps with an estimate from the typical main / extras / 100% ratio.">
+          <label>Length data</label>
+          <div class="seg" role="group" aria-label="Length data quality">
+            <button data-hquality="real" aria-pressed="true" title="Real only — use just real HowLongToBeat times. Games missing one for the selected metric show no Length or QTPD.">Real</button>
             <button data-hquality="loose" aria-pressed="false" title="All — also use estimated times (from the typical main / extras / 100% ratio) when HowLongToBeat has none.">All</button>
           </div>
         </div>
@@ -1951,10 +1951,15 @@ try{
       <button data-scheme="spectrum" aria-pressed="true"></button>
       <button data-scheme="rarity" aria-pressed="false"></button>
     </div>
-    <div class="rb-legend" aria-hidden="true">
+    <!-- The legend explains three load-bearing colours (gold = value, red->green = review score,
+         gold edge = on sale), so it carried the page's colour key behind aria-hidden="true" —
+         invisible to assistive tech precisely where colour is the only signal. The strip is now
+         exposed; only the swatches themselves are hidden, since they are decorative and would
+         otherwise read as empty elements between the words. -->
+    <div class="rb-legend">
       <span class="rb-key" title="QTPD — Quality Time Per Dollar, the headline metric. Higher means more game-hours of value per dollar."><b class="k-q">QTPD</b> value score</span>
-      <span class="rb-key" title="Steam review score — the share of all reviews that are positive. Colour runs red (low) to green (high)."><i class="k-rev"></i> review score</span>
-      <span class="rb-key" title="A gold card edge marks a game that is discounted right now. The badge on the art gives the size of the cut."><i class="k-sale"></i> on sale</span>
+      <span class="rb-key" title="Steam review score — the share of all reviews that are positive. Colour runs red (low) to green (high)."><i class="k-rev" aria-hidden="true"></i> review score</span>
+      <span class="rb-key" title="A gold card edge marks a game that is discounted right now. The badge on the art gives the size of the cut."><i class="k-sale" aria-hidden="true"></i> on sale</span>
     </div>
   </div>
   <div class="tablecard">
@@ -2022,7 +2027,7 @@ try{
             <th class="sortable center" data-sort="updated" title="Updated — how recently the game was last patched, and how often. Top line: time since the last update. Badge: updates in the last 90 days (hover it for the 365-day count). Sorts most-recently-updated first.">Updated</th>
             <th class="tagsth" id="tagsTh" title="Collapse the Tags column to give the space to Game — bigger art and full titles."><span class="tagslabel">Tags</span><span class="tagstoggle" id="tagsToggle">&gt;&lt;</span></th>
             <th class="sortable num pad" data-sort="playtime" title="Playtime — median hours Steam reviewers actually PLAYED, split by review. Not the same as Length (HLTB), which is how long the game takes to finish. Green ▲ = players who recommended it; red ▼ = players who did not. Long hours on a ▼ is a real signal: someone knows the game well and still says skip. Hover a value for mean, sample size, and spread. Click to sort; pick which side sorts with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
-            <th class="sortable num pad" data-sort="hltb" title="HLTB — HowLongToBeat, community-reported hours to FINISH the game: Main story / Main+Extras / Completionist, with the average below. This is the length QTPD divides the price by, and it is not the same as Playtime (hours actually played). Sorts by the HLTB metric picked above.">HLTB · M / E / 100%</th>
+            <th class="sortable num pad" data-sort="hltb" title="Length — HowLongToBeat (HLTB), community-reported hours to FINISH the game: Main story / Main+Extras / Completionist, with the average below. This is the length QTPD divides the price by, and it is not the same as Playtime (hours actually played). Sorts by the HLTB metric picked above.">Length · M/E/100%</th>
             <th class="sortable num pad" data-sort="qtpd" title="QTPD — Quality Time Per Dollar, the headline metric. Higher means more game-hours of value per dollar.">QTPD <span class="arrow" id="qarrow">▼</span></th>
           </tr>
         </thead>
@@ -4557,7 +4562,7 @@ function markChangedControls(){
 // ── L2 — collapsed-bar filter summary sentence + inline editors ─────────────────────────
 const SORT_LABELS = {qtpd:"QTPD", title:"Name", rating_pct:"Review score", review_count:"Review count",
   trend:"Trend", wr:"Weighted", price_final:"Price", discount_pct:"Discount", discount_end:"Sale ends",
-  release_ts:"Released", updated:"Updated", playtime:"Playtime", hltb:"HLTB"};
+  release_ts:"Released", updated:"Updated", playtime:"Playtime", hltb:"Length"};
 // What each sort field MEANS, keyed the same as SORT_LABELS. The grid sort bar used to generate
 // its tooltips as `"Sort by " + label`, which on the one field nobody can guess produced the
 // tooltip "Sort by HLTB" — the acronym restated and nothing else. The words "HowLongToBeat"
@@ -4576,7 +4581,7 @@ const SORT_TIPS = {
   release_ts:   "Released — the Steam release date.",
   updated:      "Updated — how recently the game was last patched. Sorts most-recently-updated first.",
   playtime:     "Playtime — the median hours Steam reviewers actually played, split by whether they recommended it. Not the same as Length: this is time spent, not time to finish.",
-  hltb:         "HLTB — HowLongToBeat, community-reported hours to finish a game: Main story, Main + Extras, or Completionist. This is the length QTPD divides the price by."
+  hltb:         "Length — HowLongToBeat (HLTB), community-reported hours to finish a game: Main story, Main + Extras, or Completionist. This is the length QTPD divides the price by."
 };
 const REV_LBLS = ["0", "10", "100", "1k", "5k+"];
 
