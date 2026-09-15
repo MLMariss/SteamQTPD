@@ -142,11 +142,22 @@ const outOpts   = await page.locator("[data-rdout]").allTextContents();
 const outOn     = await page.locator("[data-rdout].on").allTextContents();
 const barOpts   = await page.locator("[data-rdbar]").allTextContents();
 const barOn     = await page.locator("[data-rdbar].on").allTextContents();
+// §24.2 — the fourth axis. Reach 1 is the default and is the behaviour every other scenario
+// in this file assumes, so the ninth scenario at the bottom is the one that exercises a skip.
+const reachOpts = await page.locator("[data-rdreach]").allTextContents();
+const reachOn   = await page.locator("[data-rdreach].on").allTextContents();
 // A focus whose family name does not exist in RD_TOPICS points the model at nothing and
 // fails silently — no error, just a focus the bundle cannot answer. Typos are the whole risk.
 const badFocusMap = await page.evaluate(() =>
   RD_FOCUS.flatMap(f => f.topics.filter(t => !RD_TOPICS.some(x => x.name === t))));
 
+// The defaults are read above; the bundle below is asserted on the MARKDOWN path at the
+// 5-word bar, which is what this scenario was written to cover and what scenario 8 does not.
+// §24.1 moved the defaults to HTML and 10 words, so these two clicks are what puts the fixture
+// back on the path its assertions describe — including the 6-word [deck] review, which a
+// 10-word bar legitimately drops.
+await page.locator('[data-rdout="md"]').click();
+await page.locator('[data-rdbar="5"]').click();
 await page.locator("#rdGo").click();
 await page.waitForSelector("#rdOut", { timeout: 15000 });
 const bundle = await page.locator("#rdOut").inputValue();
@@ -165,7 +176,7 @@ const dlTip    = await page.locator("#rdFoot #rdDl").getAttribute("title");
 // are gone — an untitled pill is a dead end for anyone who does not already know the answer.
 const setupUntitled = await page.evaluate(() => {
   rdRenderSetup(gameOf(rdState.appid));
-  return [...document.querySelectorAll("#rdBody [data-rdmode],#rdBody [data-rdsize],#rdBody [data-rdlang],#rdBody [data-rdfocus],#rdBody [data-rdout],#rdBody [data-rdbar]")]
+  return [...document.querySelectorAll("#rdBody [data-rdmode],#rdBody [data-rdsize],#rdBody [data-rdlang],#rdBody [data-rdfocus],#rdBody [data-rdout],#rdBody [data-rdbar],#rdBody [data-rdreach]")]
     .filter(b => !b.title || b.title.trim().length < 12).map(b => b.textContent.trim());
 });
 await browser.close();
@@ -288,19 +299,28 @@ check(bundle.includes("--- INSTRUCTIONS ---"), "instructions section present");
   // LINE, so they read smallest -> largest even though that puts the default second. The lit
   // pill is what marks the default now, which makes the second check load-bearing rather
   // than a restatement of the first.
-  check(sizeOpts.join("·") === "300·500·1000·2000", `sample sizes offered in ascending order (${sizeOpts.join("·")})`);
-  check(sizeOn.length === 1 && sizeOn[0] === "500", `500 is the default and the only one lit (${sizeOn.join(",")})`);
+  check(sizeOpts.join("·") === "300·500·1000·2000·5000", `sample sizes offered in ascending order (${sizeOpts.join("·")})`);
+  // §24.1 — the deepest sample is the default now. History the fetch never reached is the one
+  // thing a reader cannot recover afterwards; every other cost is stated up front.
+  check(sizeOn.length === 1 && sizeOn[0] === "5000", `5000 is the default and the only one lit (${sizeOn.join(",")})`);
   check(modeOpts.join("·") === "Simplified·Advanced", `both report modes offered, simple first (${modeOpts.join("·")})`);
   check(modeOn.length === 1 && modeOn[0] === "Advanced", `Advanced is the default report mode (${modeOn.join(",")})`);
-  check(goLabel === "Fetch 500 reviews", `fetch button quotes the chosen size (${JSON.stringify(goLabel)})`);
-  // §23.2 — the output is its own axis, not a third depth. Markdown stays the default: the
-  // HTML addendum is ~3k tokens of stylesheet and nobody should pay it without asking.
+  check(goLabel === "Fetch 5000 reviews", `fetch button quotes the chosen size (${JSON.stringify(goLabel)})`);
+  // §23.2 — the output is its own axis, not a third depth. §24.1 made the page the default:
+  // the reader who wants a keepable report per game is the reader this dialog is for, and the
+  // addendum's ~3k tokens of stylesheet is noise beside a 5000-review sample.
   check(outOpts.join("·") === "Markdown·HTML page", `both output formats offered (${outOpts.join("·")})`);
-  check(outOn.length === 1 && outOn[0] === "Markdown", `Markdown is the default output (${outOn.join(",")})`);
+  check(outOn.length === 1 && outOn[0] === "HTML page", `the HTML page is the default output (${outOn.join(",")})`);
   // §23.1 — the bar ships ON. Off is offered and is the pre-§23 behaviour exactly, but a
-  // default of Off would leave the wrong denominator as what everybody gets.
+  // default of Off would leave the wrong denominator as what everybody gets. §24.1 raised it
+  // to 10: with 5000 reviews the sample is not scarce, so the tokens go on reviews that argue.
   check(barOpts.join("·") === "Off·3+ words·5+ words·10+ words", `the quality bar offers off and three heights (${barOpts.join("·")})`);
-  check(barOn.length === 1 && barOn[0] === "5+ words", `the 5-word bar is on by default (${barOn.join(",")})`);
+  check(barOn.length === 1 && barOn[0] === "10+ words", `the 10-word bar is on by default (${barOn.join(",")})`);
+  // §24.2 — reach is offered as its own row and defaults to the contiguous run. A default of
+  // anything else would silently hand every reader a 1-in-N sample they never asked for.
+  check(reachOpts.join("·") === "Every page·Every 2nd page·Every 3rd page",
+        `reach offers the contiguous run and two skips (${reachOpts.join("·")})`);
+  check(reachOn.length === 1 && reachOn[0] === "Every page", `every page is kept by default (${reachOn.join(",")})`);
   check(focusOpts === 7, `seven reader-focus toggles offered (${focusOpts})`);
   check(focusOn === 0, `no focus is on by default (${focusOn})`);
   check(badFocusMap.length === 0,
@@ -549,6 +569,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
   await p5.waitForTimeout(500);
   await p5.locator("button.gsub-rev").first().click();
   await p5.waitForSelector("#rdHost.on");
+  await p5.locator('[data-rdout="md"]').click();      // §24.1's default is the page; this scenario is about the Markdown skeleton
   await p5.locator('[data-rdmode="simple"]').click();
   const modeOn5 = await p5.locator("[data-rdmode].on").allTextContents();
   await p5.locator('[data-rdfocus="deck"]').click();
@@ -636,6 +657,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
   await p6.waitForTimeout(500);
   await p6.locator("button.gsub-rev").first().click();
   await p6.waitForSelector("#rdHost.on");
+  await p6.locator('[data-rdout="md"]').click();      // the KB and token figures below are the Markdown bundle's
   await p6.locator('[data-rdsize="2000"]').click();
   const goLabel6 = (await p6.locator("#rdGo").textContent()).trim();
   await p6.locator("#rdGo").click();
@@ -713,7 +735,9 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
     fileNames: RD_AI_FILE,
     cutNames:  RD_AI_CUT,
     sizes:    RD_SIZES,
-    tip2000:  RD_SIZE_TIP[2000] || null,
+    tip5000:  RD_SIZE_TIP[5000] || null,
+    reaches:  RD_REACH,
+    reachTips: RD_REACH.map(n => RD_REACH_TIP[n] || ""),
     warnNone: rdPasteAdvice(40 * 1024),
     warnSoft: rdPasteAdvice(80 * 1024).hard,
     warnHard: rdPasteAdvice(200 * 1024).hard,
@@ -727,11 +751,18 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
         `every AI has a declared paste behaviour (${r.aiPaste.join(", ")})`);
   check(r.fileNames === "Claude and ChatGPT" && r.cutNames === "Gemini",
         `the copy names the composers from that table (${r.fileNames} / ${r.cutNames})`);
-  check(r.sizes[r.sizes.length - 1] === 2000, `2000 is the largest sample offered (${r.sizes.join(",")})`);
+  check(r.sizes[r.sizes.length - 1] === 5000, `5000 is the largest sample offered (${r.sizes.join(",")})`);
   // Every size pill carries its own argument; a new option with no tip falls back to a bare
-  // "2000 reviews." and silently loses the one thing the reader needs to choose it.
-  check(!!r.tip2000 && /\.txt/.test(r.tip2000) && /Gemini/.test(r.tip2000),
-        "the 2000 pill's tooltip names Gemini's cut and the .txt route");
+  // "5000 reviews." and silently loses the one thing the reader needs to choose it. 5000 is
+  // past a 200k context window (§24.1), so its tooltip owes the reader that number and the
+  // composer that survives it — the option is offered on a stated price, not on silence.
+  check(!!r.tip5000 && /Gemini/.test(r.tip5000) && /tokens/.test(r.tip5000),
+        "the 5000 pill's tooltip prices it in tokens and names Gemini's cut");
+  // §24.2 — reach costs wall clock, not tokens, and a reader who learns that at page 40 of a
+  // fetch has been misled by omission. Every skipping option has to say so on itself.
+  check(r.reaches.join(",") === "1,2,3", `reach offers 1x, 2x and 3x (${r.reaches.join(",")})`);
+  check(r.reachTips.slice(1).every(t => /fetch|wait/.test(t)),
+        "each skipping option's tooltip admits it costs fetch time");
   check(r.warnNone === null, "a small bundle warns about nothing");
   check(r.warnSoft === false && r.warnHard === true, "60 KB warns, 150 KB insists on the file");
 }
@@ -777,10 +808,16 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
   await p8.goto("http://127.0.0.1:8099/index.html", { waitUntil: "networkidle" });
   await p8.waitForTimeout(500);
 
-  // --- run A: the defaults (bar at 5, Markdown) -------------------------------------------
+  // --- run A: the 5-word bar, rendered as Markdown ------------------------------------------
+  // Pinned rather than defaulted since §24.1, which moved the defaults to the 10-word bar and
+  // the HTML page. Both halves matter here: run C below is the HTML contrast and is only a
+  // contrast if this one is Markdown, and the "ON at 5 words" disclosure is a distinct sentence
+  // from the 10-word one — run C leaves the bar at its default and covers that.
   await p8.locator("button.gsub-rev").first().click();
   await p8.waitForSelector("#rdHost.on");
   await p8.locator('[data-rdsize="300"]').click();
+  await p8.locator('[data-rdout="md"]').click();
+  await p8.locator('[data-rdbar="5"]').click();
   // §23.5 — the counter is watched WHILE it runs, because that is the only place it exists.
   // A MutationObserver catches every value the reader would have seen; asserting the final
   // state only would pass on a counter that sat at 0% and jumped to 100%, which is exactly
@@ -1115,6 +1152,88 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
         `the header pairs what landed with what was filtered (${JSON.stringify(headBar)})`);
   check(headOff === "300 reviews",
         `and says nothing about filtering when nothing was filtered (${JSON.stringify(headOff)})`);
+}
+
+// --- ninth scenario: reach — a 1-in-N page sample (plan §24.2) -------------------------
+// The one thing this option must not do is quietly return a normal sample. Three failures
+// are possible and all three are silent: keeping every page anyway (nothing gained, twice the
+// wait), stopping at the page ceiling with a third of the sample (the ceiling multiplied in
+// the wrong order), and delivering the gaps without telling the model they are gaps — which is
+// the one that produces a WRONG report rather than a short one, since a thinned stream read as
+// contiguous is a game whose reviews mysteriously halved.
+//
+// The fixture numbers every review, so which pages landed is readable off the bundle itself
+// rather than inferred from a count: at reach 2, review numbers 1-100 and 201-300 and 401-500
+// are in and 101-200 must be nowhere.
+{
+  const b9 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const p9 = await b9.newPage();
+  const errs9 = [];
+  p9.on("pageerror", e => errs9.push(e.message));
+  const cursors9 = [];
+  let seq9 = 0;
+  await p9.route("**/qtpd-reviews.*/**", route => {
+    const q = new URL(route.request().url()).searchParams;
+    const fulfil = body => route.fulfill({ status: 200, contentType: "application/json",
+      headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify(body) });
+    if (q.get("num_per_page") === "0")
+      return fulfil({ success: 1, reviews: [], query_summary: { total_reviews: 60000,
+        total_positive: 45000, total_negative: 15000, review_score_desc: "Mostly Positive" } });
+    cursors9.push(q.get("cursor"));
+    const base = seq9; seq9 += 100;
+    // 7200s apart: five pages of this fixture span ~41 days, enough for a real NOW/BEFORE.
+    const reviews = Array.from({ length: 100 }, (_, i) =>
+      mk(base + i + 1, { ts: 1756000000 - (base + i) * 7200 }));
+    fulfil({ success: 1, query_summary: {}, reviews, cursor: "c" + seq9 });
+  });
+  await p9.goto("http://127.0.0.1:8099/index.html", { waitUntil: "networkidle" });
+  await p9.waitForTimeout(500);
+  await p9.locator("button.gsub-rev").first().click();
+  await p9.waitForSelector("#rdHost.on");
+  await p9.locator('[data-rdsize="300"]').click();
+  await p9.locator('[data-rdreach="2"]').click();
+  const reachOn9  = await p9.locator("[data-rdreach].on").allTextContents();
+  const copy9     = (await p9.locator("#rdBody .rd-note").first().textContent()).replace(/\s+/g, " ");
+  const entry9    = await p9.locator("button.gsub-rev").first().getAttribute("title");
+  const goLabel9  = (await p9.locator("#rdGo").textContent()).trim();
+  await p9.locator("#rdGo").click();
+  await p9.waitForSelector("#rdOut", { timeout: 40000 });
+  const b = await p9.locator("#rdOut").inputValue();
+  await b9.close();
+
+  console.log("\nreach — a 1-in-2 page sample:");
+  check(reachOn9.length === 1 && reachOn9[0] === "Every 2nd page", `picking a reach lights exactly one (${reachOn9.join(",")})`);
+  // Reach does not change the SIZE, and a button that started quoting a different number would
+  // be describing a bundle nobody is going to get.
+  check(goLabel9 === "Fetch 300 reviews", `the fetch button still quotes the size, not the reach (${JSON.stringify(goLabel9)})`);
+  check(/one page of 100 in every 2/.test(copy9), `the dialog copy stops claiming a contiguous run (${JSON.stringify(copy9.slice(0, 110))})`);
+  check(/sampled one page in 2/.test(entry9 || ""), `the entry-point tooltip follows it too (${JSON.stringify(entry9)})`);
+  // Three kept pages at one skipped page between them: 1,2,3,4,5 fetched, 1,3,5 kept. Four
+  // would mean the skips were not fetched (impossible — the cursor is chained) and six would
+  // mean the loop kept walking after the count was met.
+  check(cursors9.length === 5, `three kept pages cost five requests (${cursors9.length})`);
+  check((b.match(/^--- REVIEWS \((\d+)\) ---$/m) || [])[1] === "300",
+        `the sample is still full size (${(b.match(/^--- REVIEWS \((\d+)\) ---$/m) || [])[1]})`);
+  // The actual skip, read off the reviews rather than off a counter that could agree with
+  // itself while the fetch did something else.
+  const nums = new Set((b.match(/Review number (\d+) with/g) || []).map(m => Number(m.match(/\d+/)[0])));
+  check(nums.has(1) && nums.has(100), "page 1 is kept — the newest review is always in the sample");
+  check(![...nums].some(n => n > 100 && n <= 200), `page 2 was discarded whole (${[...nums].filter(n => n > 100 && n <= 200).length} leaked)`);
+  check(nums.has(201) && nums.has(401), "pages 3 and 5 are kept");
+  // §24.2 — the disclosure. A thinned sample that does not say so is the failure mode that
+  // produces a confidently wrong report instead of a visibly short one.
+  check(/^  reach: every 2nd page of 100 kept — 2 pages \(200 reviews\) were fetched and passed over/m.test(b),
+        "the header states the skip, in pages and in reviews");
+  check(/1-in-2 sample of the same stream/.test(b) && /not missing, not deleted and not filtered/.test(b),
+        "and says what the skipped reviews are, so the gaps are not read as quiet periods");
+  check(/^          SAMPLING: 1 page in 2\./m.test(b),
+        "COVERAGE carries the sampling factor beside the rate it distorts");
+  check(/real review volume is about 2x it/.test(b) && /thinned by the same 2/.test(b),
+        "the factor is applied to volume only, and proportions are declared untouched");
+  // The rest of the bundle is an ordinary bundle: reach changes which reviews are in it, not
+  // what is computed from them.
+  check(/^TREND  : [+-]?\d+ pts/m.test(b), "TIMELINE still computes a trend over the thinned sample");
+  check(errs9.length === 0, `no uncaught JS errors on the reach path (${errs9.length})`);
 }
 
 srv.close();

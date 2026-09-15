@@ -1897,3 +1897,105 @@ per-chat bullets; and the word *rung* no longer appears anywhere in the addendum
 assertions now run against a whitespace-flattened copy of the bundle, because three separate
 re-wraps of this file have failed checks on text that was still present — the test should assert
 that a rule is there, not how it happened to wrap.
+
+## 24. Shipped 2026-09-15 — a bigger sample, a different default, and history the size could not buy
+
+Three asks off one screenshot of the setup dialog: make the settings in it the defaults, add a
+5000 option, and — the interesting one — *"what if we drop every other page of reviews, so we
+can cover a bigger time period?"* The first two are a re-pricing of decisions §21-§23 made
+against a smaller context window. The third is a new axis.
+
+### 24.1 The defaults were set when the digest was the cheap read
+
+Every default in that dialog was chosen under a constraint that has since moved:
+
+| Option | Was | Now | Why it moved |
+|---|---|---|---|
+| Sample | 500 | **5000** | §21.3 put the ceiling at 2000 by dividing a 200k context window by ~47 tokens a review. The arithmetic is still right; the window is not. |
+| Output | Markdown | **HTML page** | §23.11 made the HTML reply a one-click save. What was an opt-in that cost a manual save-as is now the artefact most readers actually wanted. |
+| Quality bar | 5+ words | **10+ words** | A bar is rationing. At 500 reviews the sample was scarce and 5 was the cautious pick; at 5000 it is not, and the binding constraint has moved from *how many* to *which*. |
+
+**5000 as the new ceiling.** Steam was never the limit — it paginates past 12,000 without
+complaint (§21.1) — and §21.3 said so explicitly while capping at 2000 anyway, because 5000 is
+~235k tokens on a text-heavy game and a 200k model cannot hold it. That is not a reason to
+withhold the option from a reader running a 1M-context model; it is a reason to **price it on
+the pill**. So the tooltip names the token cost, the composer that survives it, and the fetch
+time, and the result panel prices the finished bundle as it always has. The rule from §22.1
+holds unchanged: nothing caps a size from underneath the reader — 5000 means 5000.
+
+**Why the deepest sample is the default rather than the deepest option.** Every cost here is
+recoverable or stated up front: tokens are priced in the footer, minutes are spent while the
+progress bar is on screen, and a smaller sample is one click away. The one thing a reader
+cannot recover after the fact is **history the fetch never reached** — they get a confident
+report about the last three days and no indication that is what it is.
+
+### 24.2 Reach — the size says how many, not how far back
+
+`filter=recent` is newest-first in pages of 100, so every sample this page has built is a
+**contiguous run of the newest N**. On a busy game that run is short and no size fixes it:
+Cyberpunk 2077 at 500 reviews is 3.4 days (§21.3), and even 5000 is about a month — a patch
+that shipped six weeks ago is still out of reach at the ceiling. The size buys *more of the
+same window*, which is precisely what §15.3 promised ("history, not accuracy") and cannot
+deliver once the window itself is the limit.
+
+**Keep one page in N, discard the rest.** The same N reviews become a systematic 1-in-N sample
+of N times the period: identical bundle, identical tokens, N times the history. `Reach: Every
+page | Every 2nd page | Every 3rd page`, default **Every page** — the contiguous run, exactly
+what the page has always produced.
+
+**The skipped pages are still fetched, and that is the entire cost.** Steam's pagination is
+cursor-chained: the only way to learn page 4's cursor is to ask for page 3. A skip is a
+*discard*, never a saving. Reach 2 costs twice the requests and twice the wall clock for the
+same bundle; reach 3, three times. The reader pays in **minutes, not tokens** — the opposite
+trade from the size selector — and the hint under the row says so, because discovering it at
+page 40 of a fetch you thought would be short is being misled by omission. The page ceiling is
+computed in kept pages first and multiplied by the reach afterwards; the other order is the bug
+that would make reach 3 return a third of a sample and call it a quiet game.
+
+**A page, not every second review.** One request, one cursor, no bookkeeping — and 100
+consecutive reviews is a few hours of one game and a week of another, small enough everywhere
+to be a sampling unit rather than a blind spot. Page 1 is always kept, so the newest review is
+in the sample at every reach.
+
+**What survives a uniform thinning, and what does not.** Everything the digest computes from
+**proportions** is untouched: NOW and BEFORE are thinned by the same N, so the trend between
+them, the sentiment splits and every topic rate mean exactly what they meant at reach 1. The
+one family of figures that is not safe is **volume** — reviews/day comes out N times under the
+truth. So the bundle states the factor rather than hiding it, in the two places a reader or a
+model would otherwise go wrong:
+
+- `SAMPLE` gains a `reach:` line naming the pages and reviews passed over, and saying what they
+  are: *"not missing, not deleted and not filtered — they are the other 1 in 2. Do not describe
+  the gaps between review dates as quiet periods."* This is the failure mode that produces a
+  **confidently wrong** report rather than a visibly short one.
+- `COVERAGE` gains a `SAMPLING:` line: the span is fact, the rate beside it is N times under,
+  multiply before quoting it or do not quote it — and everything below is a proportion and is
+  unaffected.
+
+That is the same bargain §23.1 struck for the quality bar and §6 struck for the copypasta
+filter: remove what would distort the counting, and **say what was removed**.
+
+### 24.3 Verified
+
+`test_review_digest.mjs` gains a ninth scenario and pins three older ones. 252 checks pass.
+
+The reach scenario numbers every review in the fixture, so *which* pages landed is read off the
+bundle rather than inferred from a total: at reach 2 with a 300 sample, review numbers 1-100,
+201-300 and 401-500 are present, **101-200 are nowhere**, three kept pages cost exactly five
+requests (four would mean the skips were not fetched, which is impossible; six would mean the
+loop kept walking after the count was met), and the bundle still says `--- REVIEWS (300) ---`.
+Both disclosure lines are asserted by shape, and the dialog copy and the entry-point tooltip
+are asserted to stop claiming a contiguous run the moment a skip is picked.
+
+Scenario 1 asserts the new defaults (5000, HTML page, 10+ words, Every page) and that the reach
+row carries tooltips like every other option in that dialog — then **clicks back to Markdown and
+the 5-word bar** before fetching, because its bundle assertions were written for that path and
+include a six-word review that a 10-word bar legitimately drops. Scenarios 5, 6 and scenario 8's
+first run pin Markdown for the same reason: each was written as a Markdown-path test and §24.1
+moved the ground under it. Scenario 8's run C now exercises the 10-word default end-to-end.
+
+**The lesson, and it is §22.1's inverted.** §22.1 removed a char budget that silently returned
+less than the reader asked for. This section adds two options that cost the reader real money —
+a quarter-million tokens, four minutes of fetching — and the thing that makes them safe is the
+same thing: **state the price on the control, and deliver exactly what was picked.** A limit
+you can see and pay is an option; a limit that acts on your behalf is a bug.
