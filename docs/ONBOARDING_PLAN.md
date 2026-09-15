@@ -233,9 +233,15 @@ page already respects elsewhere (`trailersOn()`).
 This is the section with the best cost-to-value ratio, and the source doc's Total War: Troy
 hourglass is a direct warning about several live elements.
 
-**S11 · The unexplained-glyph audit.**
+**S11 · The unexplained-glyph audit. [Largely moot — verified against the code.]**
 *Problem:* the page uses symbols whose meaning is carried only in a hover tooltip — i.e. nowhere
 on touch (G1).
+*Verified Sep 2026:* every candidate below **already carries a written explanation** — `><` via
+the Tags `<th>` title, `▲`/`▼` inside the Playtime header tip, `⤢` on its own button, and the
+scheme-switch buttons get both text and title from `syncSchemeUI()` at runtime. So there is no
+glyph here that is unexplained *on desktop*; there are only glyphs unexplained *on touch*, which
+is S15's problem, not a separate one. This item collapses into S15 and should not be scoped
+independently.
 *Candidates:* `><` (Tags column collapse) · `⤢` (promote to player) · `▲`/`▼` (playtime
 recommender split, which look like sort arrows and are not) · `Δ` (weighted-vs-Steam badge) ·
 the `k-sale` gold edge · `18+` staging · `▸` section carets.
@@ -244,7 +250,7 @@ decorative. The doc's rule is that an affordance either matches something the au
 knows or it needs teaching — and `⤢` and `><` are inventions, not conventions.
 *Cost:* S per item. *Risk:* low; mostly copy and a few pixels.
 
-**S12 · Borrow Steam's language, not a spreadsheet's.**
+**S12 · Borrow Steam's language, not a spreadsheet's. [Done — Chunk A.]**
 *Problem:* **QTPD**, **HLTB**, **Weighted**, **Trend** are all coinages or acronyms. The doc's
 first stated takeaway is *don't assume your audience has played other similar games* — here,
 don't assume they have used a data tool.
@@ -256,8 +262,22 @@ pieces of jargon in one header.
 *Cost:* S. *Risk:* QTPD itself is the brand and should stay; the argument is for a plain-word
 subtitle beside it, not a rename. (The metric was already renamed once, QHPP→QTPD, for exactly
 this reason — §3.2.)
+*Done:* `HLTB · M / E / 100%` → **`Length · M/E/100%`** in the table head, `HLTB metric for
+QTPD` → **`Length metric for QTPD`** and `HLTB data` → **`Length data`** in the filter panel, and
+`SORT_LABELS.hltb` `HLTB` → **`Length`**. That last one was the real find: it feeds the mobile
+*"sorted by …"* chip, so a phone read **"sorted by HLTB"** directly above cards whose own label
+said **"Length"** — two controls disagreeing about the name of one field. The grid card's
+existing `Length <i>HLTB</i>` set the house pattern (plain word leads, acronym subordinate) and
+every tooltip still spells out HowLongToBeat, so the sourcing is demoted, not lost.
+*Left alone on purpose:* `data-label`, which is a CSS selector driving the card `::before`
+labels, the `order` chain and the `:has()` no-data drops — not display text; and the CSV header
+`HLTB hours`, since an exported column benefits from naming its source and renaming it would
+break existing sheets.
+*Scoring correction:* impact was set at 7 on the assumption this jargon was unexplained. It is
+not — the desktop table is the only place that header exists, and desktop hover tooltips work.
+Honest impact is **~5**.
 
-**S13 · Make the legend real.**
+**S13 · Make the legend real. [Done — Chunk A.]**
 *Problem:* the `.rb-legend` key strip is `aria-hidden="true"` and its entries explain themselves
 only via `title` — so it is invisible to assistive tech and inert on touch, while the colours it
 explains (gold = value, red→green = review score, gold edge = on sale) are load-bearing
@@ -265,6 +285,12 @@ everywhere.
 *Proposal:* Drop `aria-hidden`, give each key a visible short caption at wider widths, and make
 it tappable on touch.
 *Cost:* S. *Risk:* low; costs a little horizontal space in the toolbar row.
+*Done:* `aria-hidden` removed from the strip; the two decorative colour swatches take it instead
+so they no longer read as empty elements between the words. The "visible caption" half was
+already shipped — each key has real text (*value score* / *review score* / *on sale*). The
+"tappable on touch" half is S15's, not this item's.
+*Scoring correction:* this strip only renders in **Grid view** (`.rb-legend{display:none}` +
+`body.grid-view .rb-legend{display:flex}`), so its reach is narrower than the impact 5 implied.
 
 **S14 · Playtest, which the doc names as its second explicit takeaway.**
 *Proposal:* The repo already drives Playwright for layout verification. The onboarding
@@ -311,6 +337,12 @@ the doc's "multiple learning paths" technique already shipped, and still unlabel
 *Proposal:* Tooltip/caption each with its purpose — Grid = *browse by box art*, Table = *compare
 on numbers*, Card = *read one game at a time*.
 *Cost:* S. *Risk:* none.
+*Verified Sep 2026 — already shipped.* All three buttons already carry exactly this: *"Table —
+every column, one row per game"*, *"Cards — the same data as the table, stacked one game per
+card"*, *"Grid — Steam box art with the QTPD score and both review scores…"*. The item was
+scored off a code comment that described the switcher's **position**, a problem also already
+fixed. Nothing remains here except that those tooltips are invisible on touch — S15 again.
+**Impact 3 → 0; drop from the list.**
 
 ---
 
@@ -388,6 +420,30 @@ vocabulary. If a week is available: **S15 and S3**.
 
 ---
 
+### 4.3 Verified against the code — scoring corrections (Sep 2026)
+
+Before building Chunk A, the four cheapest items were checked against the markup rather than
+taken from §3's reading. Three of them were partly or wholly already shipped:
+
+| # | Scored | Actual | Why the score was wrong |
+|---|---|---|---|
+| S18 | impact 3 | **already shipped — drop** | All three view buttons already carry purpose-explaining tooltips. The item was scored off a code comment about the switcher's *position*, which had also already been fixed. |
+| S11 | impact 6 | **collapses into S15** | Every glyph (`><`, `▲`/`▼`, `⤢`, the scheme buttons) already carries a written explanation. There is no glyph unexplained on desktop — only glyphs unexplained on touch. |
+| S12 | impact 7 | **~5, now done** | The jargon is real, but the desktop table is the only place it appears and desktop tooltips work. |
+| S13 | impact 5 | **narrower, now done** | The legend renders in Grid view only. |
+
+**The pattern this exposes is the most useful finding in this document.** On desktop, QTPD is
+already thoroughly explained — the `title` corpus is extensive, well-written and consistently
+rendered. Almost every "cheap copy fix" in §3 turns out to be cheap *because it is nearly a
+no-op*. The learning curve is not a vocabulary problem; it is a **delivery** problem, and it is
+almost entirely a **touch** problem.
+
+That materially strengthens **S15** and weakens its neighbours: S11, S13 and S18 do not sit
+*beside* S15 on the list so much as *inside* it. Phase 1 is therefore much smaller than §4.2
+implies — Chunk A (S12 + S13) is essentially all of it, and the next real work is S15.
+
+---
+
 ## 5. Deliberately not proposed
 
 - **A modal tour on load.** The doc's whole argument is that frontloading fails — a
@@ -419,3 +475,26 @@ These need answering before anything above can be scoped properly.
    and it comes off the list permanently rather than resurfacing.
 5. **Should any of this gate on the still-open §3.2 item** — progressive disclosure of secondary
    fields behind a per-card tap? It overlaps S2 and S4 and shouldn't be designed twice.
+
+---
+
+## 7. Build log
+
+| Chunk | Items | State |
+|---|---|---|
+| **A** | S12 (plain-word Length labels) · S13 (legend exposed to assistive tech) | **Done.** Verified in Chromium at 1324 / 1400 / 1700 / 2400px: label renders on one line at every width, `<th>` height unchanged, no overflow, header/body column edges aligned, no JS errors. |
+| **B** | S15 — tap-tooltips on touch | Next. |
+| **C** | S6 · S7 | — |
+| **D** | S3 · S8 · S16 | — |
+| **E** | S9 · S10 | — |
+| **F** | S1 · S2 · S4 | — |
+
+### Stale figures found in `ARCHITECTURE.md` §11
+
+Noticed while verifying, not corrected here — both are doc drift, not code bugs:
+
+- §11 describes pagination as a **"100 / 500 / 2000 per page"** selector. The code fixes it at
+  `PAGE_SIZE = 66`, and an `index.html` comment records the selector's removal ("Page size is
+  now fixed at PAGE_SIZE below").
+- §11 puts the table→card breakpoint at **1374px**. The `--grid-cols` comment block says the
+  card layout takes over below **1280px**, with Tags folding to its strip between 1280 and 1365.
