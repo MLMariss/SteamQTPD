@@ -50,20 +50,21 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
 
 - **Never highlight or feature adult content. Ever.** Anywhere the site puts games in front of
   someone who did not ask for something specific — preset shelves, any future "recommended" or
-  "featured" surface, `Lucky` if it is ever promoted to the landing view — adult content is
-  excluded, and excluded with **both** locks, not one:
-  1. `adult=hide`, and
-  2. an `exc=` list carrying every tag in `ADULT_TAGS` (nudity, sexual content, mature, nsfw,
-     hentai).
-  Both are needed because `isAdult()` treats the PICS flag as authoritative for any game PICS
-  has covered, so for those games the tag test never runs — a PICS-covered game tagged
-  "Nudity" with no PICS flag passes `adult=hide` on its own. Adding the tag exclusion removed
-  **1,498 games** across the seven shelves that the flag alone had let through.
-  `presets.py` enforces both at build time and fails the job if a shelf is missing either;
+  "featured" surface, `Lucky` if it is ever promoted to the landing view — the surface sets
+  `adult=hide`. `presets.py` enforces that at build time and fails the job if a shelf omits it;
   keep that guard, and extend it to any new surface of this kind.
-  **Known residual:** a game whose only adult signal is its title — no PICS flag, no adult tag,
-  innocuous SteamSpy tags — is not identifiable from the data we hold. Nothing currently catches
-  those. Say so rather than implying the filtering is complete.
+  **The storefront's adult flag is the definition, and it is the only lock.** Shelves used to
+  carry a second one — an `exc=` list naming every tag in `ADULT_TAGS` — because `isAdult()`
+  treats the PICS flag as authoritative for any game PICS has covered, so for those games the
+  tag test never runs and a PICS-covered game tagged "Nudity" with an unset flag passes
+  `adult=hide` on its own. That second lock was removed deliberately (2026-09-16, at the
+  owner's instruction): "Nudity" and "Mature" sit on plenty of games whose adult content is
+  incidental, and excluding the tag by name threw out the game rather than the scene. Dropping
+  it returned ~1,100 games to the seven shelves. Do not re-add it without being asked.
+  **Known residuals**, to be stated rather than implied away: a PICS-covered game whose adult
+  flag is unset but whose tags say otherwise now passes; so does a game whose only adult signal
+  is its title — no flag, no tag, innocuous SteamSpy tags. Neither is identifiable from the data
+  we hold. Say so rather than implying the filtering is complete.
 - This rule is not a default to weigh against other goals. It outranks result counts, shelf
   breadth, and "the metric says it is good value".
 

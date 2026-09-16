@@ -14,6 +14,15 @@
     --text:#f1f4fb; --title:#ffffff; --muted:#b9c4dd; --muted-2:#94a0c0;
     --gold:#ffc24d; --gold-deep:#b98a28; --gold-soft:#3a2f17; --blue:#6f9bff; --coral:#ff7d7d;
     --teal:#5dd6a8; --green:#54c98a; --red:#ff7d7d;
+    /* ONE content edge for the page. Every text edge — the filter bar's "Showing" line, the
+       "Start with" shelves, the "View" switcher, the table's Game column — sits this far in
+       from the .wrap gutter. Cards (.barwrap, .tablecard) draw a 1px border and pad their
+       contents by --pad-x; the bare rows between them (.presetbar, .resultbar) have no border,
+       so they inset by --card-inset to land on the same line. Change one number, the page stays
+       aligned. --pad-x matches the table cell padding, which is the edge everything else was
+       failing to meet. */
+    --pad-x:12px;
+    --card-inset:calc(var(--pad-x) + 1px);
     --sans:"IBM Plex Sans",system-ui,sans-serif;
     /* Chivo Mono, NOT IBM Plex Mono. Plex Mono draws a DOT inside its zero — a coding-font
        convention for telling 0 from O, and unreadable clutter on a page whose entire job is
@@ -46,7 +55,7 @@
   /* ---- header (scrolls away; table header takes over as sticky, see thead below) ---- */
   .topbar{position:relative; z-index:40; padding-top:10px; background:var(--bg)}
   .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px; overflow:hidden}
-  .bar-main{display:flex; align-items:center; gap:16px; padding:12px 16px; flex-wrap:wrap}
+  .bar-main{display:flex; align-items:center; gap:16px; padding:12px var(--pad-x); flex-wrap:wrap}
   .brand{display:flex; align-items:baseline; gap:13px; flex:none}
   .logo{font-family:inherit; font-weight:700; font-size:28px; letter-spacing:-.04em; line-height:1;
         background:linear-gradient(180deg,#fff,#d6deef); -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -78,7 +87,7 @@
   .preview-badge{display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid var(--gold-deep);
         color:var(--gold); border-radius:999px; font-size:12px; letter-spacing:.05em; text-transform:uppercase}
 
-  .bar-filters{padding:0 16px; border-top:1px solid var(--line)}
+  .bar-filters{padding:0 var(--pad-x); border-top:1px solid var(--line)}
   /* Folded filter bar reads as a clean vertical list — the wishlist row, then the three section
      headers, all similar height. #1 no container vertical padding; #2 the wishlist row gets its
      own balanced vertical space (min-height matches a section header) and centres its box in it;
@@ -163,19 +172,26 @@
      on. Each chip is only a querystring, so clicking one sets REAL filter state and the summary
      chips underneath then show which controls moved — the click teaches the panel rather than
      replacing it. Definitions and their live counts come from presets.json (presets.py). */
+  /* Left edge: --pad-x inside the card border, matching the table cells below and the filter
+     bar above, so "Start with", "View" and the Game column all begin on one line. The row is
+     already inside .wrap, so it needs neither its own max-width nor its own centring. */
   .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-             padding:11px 16px 0; max-width:2400px; margin:0 auto}
+             padding:11px var(--card-inset) 0}
   /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
      this the row could never hide and sat there as an empty strip once the user had filters of
      their own (and before presets.json had loaded at all). */
   .presetbar[hidden]{display:none}
   .presetbar-lbl{font-family:var(--mono); font-size:11px; letter-spacing:.06em;
                  text-transform:uppercase; color:var(--muted-2); margin-right:2px}
+  /* Styled as a .toggle, not as a pill: same 9px radius, same mono 13px, same panel/line
+     colours as every other button on the page (.toggle, .seg, .util-btn). The row sits
+     directly above the View segmented control and directly below the filter bar, so a
+     999px pill in a sans face read as a control borrowed from a different site. */
   .preset{display:inline-flex; align-items:baseline; gap:7px; cursor:pointer;
-          background:var(--panel); border:1px solid var(--line); border-radius:999px;
-          padding:6px 13px; font-family:var(--sans); font-size:13px; color:var(--text);
-          transition:border-color .12s ease, background .12s ease}
-  .preset:hover{border-color:var(--gold); background:#2a3350}
+          background:var(--panel); border:1px solid var(--line); border-radius:9px;
+          padding:9px 14px; font-family:var(--mono); font-size:13px; color:var(--muted);
+          letter-spacing:.01em; transition:border-color .12s ease, background .12s ease, color .12s ease}
+  .preset:hover{border-color:var(--muted-2); color:var(--text)}
   /* No result count on the chip. presets.py can count a shelf, but it counts it in Python by
      re-implementing passFilters(), and the two drifted (tag source, per-metric HLTB realness,
      adult precedence) — a chip quoting a number this page did not compute is a chip that can
@@ -184,9 +200,11 @@
   /* Niche shelves read as the quieter, more exploratory half of the row — they are capped at
      5,000 reviews precisely to surface what the popular shelves cannot. */
   .preset.niche{border-style:dashed}
-  .preset[aria-pressed="true"]{border-color:var(--gold); background:#2f3a5c; color:var(--gold)}
+  /* Pressed = gold, the same "this is changed from the default" language the toggles and the
+     segmented controls already use. */
+  .preset[aria-pressed="true"]{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
   @media (max-width:700px){
-    .presetbar{padding:9px 12px 0; gap:6px}
+    .presetbar{padding-top:9px; gap:6px}
     .presetbar-lbl{width:100%; margin-bottom:1px}
     .preset{font-size:12.5px; padding:5px 11px}
   }
@@ -384,7 +402,8 @@
   /* NOTE: no overflow:hidden here — it would clip the sticky <thead> to the card and stop
      it pinning to the viewport. Rounded corners still render via border-radius + border. */
   /* Results bar — sits between the filters and the results, and belongs to the results. */
-  .resultbar{display:flex; align-items:center; gap:10px 12px; flex-wrap:wrap; margin-top:14px}
+  .resultbar{display:flex; align-items:center; gap:10px 12px; flex-wrap:wrap; margin-top:14px;
+             padding:0 var(--card-inset)}
   .rb-lbl{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted-2)}
   /* Legend for the grid's two unlabelled card marks. Grid-only: the table labels its own columns. */
   .rb-legend{display:none; align-items:center; gap:14px; margin-left:auto; flex-wrap:wrap}
@@ -968,7 +987,7 @@
      a one-line summary of the currently-picked filters where each highlighted term is
      clickable → opens a small popover to change just that filter (no full-bar expand). */
   .filter-summary{display:none}
-  .topbar.compact .filter-summary{display:block; padding:11px 16px; border-top:1px solid var(--line);
+  .topbar.compact .filter-summary{display:block; padding:11px var(--pad-x); border-top:1px solid var(--line);
         font-family:var(--mono); font-size:13px; color:var(--muted); line-height:2}
   .filter-summary .sumlbl{color:var(--muted-2)}
   .filter-summary .sumf{appearance:none; background:var(--gold-soft); border:1px solid var(--gold-deep);
@@ -2105,7 +2124,7 @@ try{
             <th class="sortable" data-sort="title">Game</th>
             <th class="th-split" title="Review score and count. Click Score to sort by the review %; click Count to sort by number of reviews. The Review period toggle above sets which one is used."><button class="splitsort sortable" data-sort="rating_pct">Score</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="review_count">Count</button></th>
             <th class="sortable center" data-sort="trend" title="Trend — recent score minus all-time: improving, stable, or declining.">Trend</th>
-            <th class="sortable num" data-sort="wr" title="Weighted rating — each review counts by how long that player actually played, so a 300-hour thumbs-up outweighs a 20-minute one. Capped at 2× the game's median so no single super-fan dominates. Hover a cell to compare it with Steam's flat %. Grayed when too few reviews to trust.">Weighted</th>
+            <th class="sortable num" data-sort="wr" title="Weighted rating — each review counts by how long that player actually played, so a 300-hour thumbs-up outweighs a 20-minute one. Capped at 2× the game's median so no single super-fan dominates. Computed from the newest reviews we hold, not from every review the game has, so on a game whose reception has shifted it reads closer to the recent score than to the all-time one. Hover a cell for the sample it used. Grayed when that sample is too small, or too thin a slice of the game, to trust.">Weighted</th>
             <th class="th-split" title="Price and discount. Click Price to sort by the current price; click Sale to sort by discount size."><button class="splitsort sortable" data-sort="price_final">Price</button><span class="splitsep">/</span><button class="splitsort sortable" data-sort="discount_pct">Sale</button></th>
             <th class="sortable center" data-sort="discount_end" title="Sale ends — time left on the current discount. Sorts soonest-ending first.">Sale ends</th>
             <th class="sortable center" data-sort="release_ts" title="Released — the Steam release date. Hover a row's value for the exact day.">Released</th>
@@ -3126,23 +3145,46 @@ function render(){
     else trend = `<span class="trend down${stale?' stale':''}" title="Declining: recent ${Math.abs(tval)} pts below all-time">▼ ${Math.abs(tval)}</span>`;
 
     // Weighted rating cell: playtime-weighted % (capped variant), shown next to
-    // Steam's flat %. Grayed (low-confidence) when fewer than PT_CONFIDENT reviews.
+    // Steam's flat %. Grayed (low-confidence) when the sample can't carry the number —
+    // see wrLowConf().
     let wrCell;
     if(g.wr == null){
       wrCell = `<div class="wrcell"><span class="wrval na">—</span></div>`;
     } else {
-      const lowConf = (g.wr_n != null && g.wr_n < window.PT_CONFIDENT);
+      const lowConf = wrLowConf(g);
       const delta = (g.wr_steam != null) ? Math.round(g.wr - g.wr_steam) : null;
       const deltaStr = delta == null ? "" : (delta > 0 ? `+${delta}` : `${delta}`);
       // Review count is per-game and read straight from the data (g.wr_n), so as the scraper
       // deepens a game's sample the tip tracks it automatically — 1k today, 2k or 3k later.
       // Formatted with a thousands separator for readability.
       const nStr = g.wr_n != null ? g.wr_n.toLocaleString() : "?";
-      const tip = `Playtime-weighted: ${g.wr}%${lowConf?'':tierTip(g.wr)} — from ${nStr} reviews, each counted by hours played. `
-        + `Steam's flat %: ${g.wr_steam==null?'—':g.wr_steam+'%'}`
-        + (delta!=null?` (${deltaStr} pts vs Steam)`:``)
+      // SAY WHAT THE SAMPLE IS. The tip used to read "from 100 reviews", which invites the
+      // obvious reading — that the game HAS 100 reviews — when the game may have 60,000 and
+      // this is the newest 100 of them. The sample is always the newest-N (playtime_refresh.py
+      // walks filter=recent), so the honest phrasing names both numbers and, where the data
+      // carries it, the stretch of time those reviews were written in. That last clause is
+      // what makes a bad sample obvious: "the newest 100 of 60,202, all posted within 7
+      // minutes" needs no further explanation.
+      const totalStr = (g.review_count != null) ? g.review_count.toLocaleString() : null;
+      const sampleStr = totalStr && g.wr_n != null && g.wr_n < g.review_count
+        ? `the newest ${nStr} of ${totalStr} reviews` : `${nStr} reviews`;
+      // THREE DIFFERENT NUMBERS, EACH NAMED FOR WHAT IT IS. wr_steam is NOT Steam's published
+      // score — it is the plain one-vote-per-review % OF THIS SAMPLE (ratings_summarize.py's
+      // plain_steam_pct over the stored reviews). Calling it "Steam's flat %", as this tip did,
+      // put a second number under Steam's name on a row that already shows Steam's real one in
+      // the column to the left — and on a big game the two are nowhere near each other: New
+      // World: Aeternum reads 27.7% here against a published 67%. The delta has the same
+      // problem: it is sample-weighted minus sample-unweighted, so it measures WHAT PLAYTIME
+      // WEIGHTING DID and nothing about Steam at all. Both are useful; both were misnamed.
+      // Steam's published score now appears too, explicitly labelled, so the comparison the
+      // reader actually wants to make is available instead of implied.
+      const tip = `Playtime-weighted: ${g.wr}%${lowConf?'':tierTip(g.wr)} — from ${sampleStr}${spanTip(g)}, each counted by hours played. `
+        + `Same sample unweighted: ${g.wr_steam==null?'—':g.wr_steam+'%'}`
+        + (delta!=null?` (so weighting by playtime moved it ${deltaStr} pts)`:``)
         + `. Uncapped: ${g.wr_raw==null?'—':g.wr_raw+'%'}.`
-        + (lowConf?` ⚠ Only ${nStr} reviews — low confidence; needs ${window.PT_CONFIDENT.toLocaleString()}+ to be reliable.`:``);
+        + (g.rating_pct!=null?` Steam's published score is ${g.rating_pct}%${totalStr?` across all ${totalStr} reviews`:``}`
+            + `${(g.wr_n!=null && totalStr && g.wr_n < g.review_count)?` — this sample is the recent end of that, so the two can differ a lot on a game whose reception has moved`:``}.`:``)
+        + (lowConf?` ⚠ ${wrLowConfWhy(g, nStr, totalStr)}`:``);
       wrCell = `<div class="wrcell${lowConf?' lowconf':''}" title="${tip}">`
         + `<span class="wrtop">`
         + `<span class="dot" style="background:${lowConf?'var(--muted-2)':ratingColor(g.wr)}"></span>`
@@ -4996,8 +5038,65 @@ function applyPreset(id){
   const next = (activePresetId() === id) ? "" : p.query;
   history.replaceState(null, "", next ? "?" + next : location.pathname);
   dispatchEvent(new PopStateEvent("popstate"));
-  const card = document.querySelector(".tablecard");
-  if(card) card.scrollIntoView({block:"start", behavior:"smooth"});
+  // Deliberately no scroll. Applying a shelf used to scrollIntoView() the table, which pushed
+  // the row you just clicked off the top of the screen — so the one thing you wanted to check
+  // (which chip is lit, and which filter chips it set) was the first thing to disappear.
+  // Staying put keeps the chip, the summary line and the new results all in view at once.
+}
+
+// ── Weighted-rating confidence ──────────────────────────────────────────────────────────────
+// The playtime-weighted % is computed from the newest-N reviews a game has stored, never from
+// all of them. That is fine and intended — it is a read on how the game plays NOW — but it
+// means `n` alone cannot tell you whether the number deserves to be believed. Two failures the
+// old flat `n < PT_CONFIDENT` (10) test could not see:
+//
+//   * THE FIRST-TOUCH STAKE. playtime_refresh.py's phase 0 spends one page — 100 reviews — on
+//     every never-seen game so a new release gets a number on day one instead of waiting for
+//     its shard to open (~46h median, ~81h worst). On a quiet release that page is most of the
+//     game. On a busy one it is nothing: WARDOGS (appid 1867240) had 60,202 reviews at 81% and
+//     a stored sample of 100 — 0.17% of the game, and because it launched into ~14 reviews a
+//     minute, all 100 were written inside SEVEN MINUTES of launch evening. It rated 48.3% and
+//     rendered in full colour with a "+2 vs Steam" delta, indistinguishable from a settled
+//     number. n = 100 clears a floor of 10 fifty times over.
+//   * THE FROZEN WINDOW. A sample can be large and still be one moment, if the game was taking
+//     reviews fast enough. Span catches what size cannot.
+//
+// So: a sliver (small AND a tiny share of the storefront's count) or a sample crushed into
+// almost no time is low-confidence, on top of the absolute floor. What this deliberately does
+// NOT flag is a big game's legitimate newest-3000 window — New World: Aeternum reads 27.7%
+// against an all-time 67%, and that is not an error, it is the game's 30-day score (23%)
+// showing through. That gap is a labelling problem, and the tip above names both populations
+// rather than graying out a sample that is doing its job.
+const WR_FLASH_SPAN = 0.25;   // days (6h): a sample drawn from less time than this is a moment
+function wrLowConf(g){
+  if(g.wr_n == null) return false;
+  if(g.wr_n < window.PT_CONFIDENT) return true;                       // absolute floor
+  const sliver = g.review_count != null
+    && g.wr_n < window.PT_SLIVER_N
+    && g.wr_n < g.review_count * window.PT_SLIVER_FRAC;
+  // span is 0 for a one-review sample and for data written before the field existed, so it
+  // only ever fires alongside a sample we can see is partial.
+  const flash = g.wr_span != null && g.wr_span > 0 && g.wr_span < WR_FLASH_SPAN
+    && g.review_count != null && g.wr_n < g.review_count;
+  return sliver || flash;
+}
+// Human span, only when the data carries one: minutes/hours where that is the damning detail,
+// days or years where it is reassuring.
+function spanTip(g){
+  const d = g.wr_span;
+  if(d == null || d <= 0) return "";
+  if(d < 1/24)  return ` posted within ${Math.max(1, Math.round(d*1440))} minutes of each other`;
+  if(d < 1)     return ` posted within ${Math.round(d*24)} hours of each other`;
+  if(d < 60)    return ` spanning ${Math.round(d)} days`;
+  if(d < 730)   return ` spanning ${Math.round(d/30)} months`;
+  return ` spanning ${(d/365).toFixed(1)} years`;
+}
+function wrLowConfWhy(g, nStr, totalStr){
+  if(g.wr_n < window.PT_CONFIDENT)
+    return `Only ${nStr} reviews — low confidence; needs ${window.PT_CONFIDENT.toLocaleString()}+ to be reliable.`;
+  if(g.wr_span != null && g.wr_span > 0 && g.wr_span < WR_FLASH_SPAN)
+    return `All ${nStr} reviews in this sample were${spanTip(g)} — one moment of the game's life, not a verdict on it. It settles as the sample deepens.`;
+  return `Only ${nStr} of this game's ${totalStr} reviews have been read so far — low confidence until the sample deepens.`;
 }
 
 function renderFoot(){
@@ -6165,6 +6264,13 @@ Promise.all([
   const catName = id => window.PICS_CAT_LK["category_" + id] || window.PICS_CAT_LK[String(id)] || null;
   // gray threshold: below this many reviews the weighted rating renders low-confidence.
   window.PT_CONFIDENT = (ratj && ratj.confident_reviews) ? ratj.confident_reviews : 10;
+  // Sliver gate (ratings_summarize.py SLIVER_N / SLIVER_FRAC). An absolute floor of 10 cannot
+  // see the case it most needs to: the newest-100 first-touch page on a 60,000-review release
+  // clears it fifty times over while covering 0.17% of the game. A sample is a sliver when it
+  // is small in absolute terms AND a tiny share of the storefront's own review count — both,
+  // so a small game sampled completely is untouched. Defaults mirror the summarizer.
+  window.PT_SLIVER_N = (ratj && ratj.sliver_n) ? ratj.sliver_n : 250;
+  window.PT_SLIVER_FRAC = (ratj && ratj.sliver_frac) ? ratj.sliver_frac : 0.02;
   const now = NOW();
   data.games.forEach(game => {
     const key = String(game.appid);
@@ -6249,11 +6355,16 @@ Promise.all([
       const a = playtimeMap[key];
       game.pt_up = a[0]; game.pt_down = a[1]; game.pt_nup = a[2]; game.pt_ndown = a[3];
     }
-    // ratings.json -> playtime-weighted rating. [0]=steam%, [1]=raw%, [2]=capped%, [3]=n.
+    // ratings.json -> playtime-weighted rating.
+    // [0]=steam%, [1]=raw%, [2]=capped%, [3]=n, [4]=span_days.
     // We display `capped` (2x-median-capped, whale-resistant); keep the others for tooltip/debug.
+    // [4] is newer than the rest of the format — a ratings.json written before it existed
+    // simply leaves wr_span undefined, and the tip drops that clause rather than printing
+    // "undefined days". Never assume the data file is as new as this page.
     if(ratingsMap && ratingsMap[key]){
       const a = ratingsMap[key];
       game.wr_steam = a[0]; game.wr_raw = a[1]; game.wr = a[2]; game.wr_n = a[3];
+      if(a.length > 4) game.wr_span = a[4];
     }
     // updates.json backfill: ONLY when the old News-API last_update_ts is missing. The
     // new event-based layer then supplies "last update of ANY type" (last_any_ts) so a
