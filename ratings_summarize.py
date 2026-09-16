@@ -69,6 +69,20 @@ MIN_REVIEWS_FOR_RATING = 5                   # hard floor: below this, no rating
 CONFIDENT_REVIEWS = 10                        # >= this renders full-color; 5-9 renders grayed
                                              #   (frontend reads this from the meta to style the cue)
 CAP_MULT = 2.0                               # per-review playtime capped at 2x the game's median
+# SLIVER GATE. CONFIDENT_REVIEWS is an ABSOLUTE floor and it cannot see the failure it needs
+# to: a game with 60,202 reviews whose stored sample is the 100-review first-touch page clears
+# n >= 10 fifty times over and renders in full colour, while covering 0.17% of the game and
+# seven minutes of its life. A sample is a sliver when it is BOTH small in absolute terms and
+# a tiny fraction of what the storefront counted — one without the other is fine (a 40-review
+# game sampled 40 times is complete; a 3,000-review sample of Counter-Strike 2 is 0.03% of the
+# catalogue count but is a perfectly good read on current sentiment).
+# Measured over the live file 2026-09-16: these thresholds move 5 games out of 95,297 beyond
+# what n < CONFIDENT_REVIEWS already catches — WARDOGS, Halloween: The Game, The Roottrees are
+# Dead and two others, every one of them a first-touch stake on a popular release. It is a
+# scalpel, not a net, which is what it should be.
+SLIVER_N = 250                               # sample sizes below this can be a sliver...
+SLIVER_FRAC = 0.02                           # ...if they are also under this share of the
+                                             #    storefront's own review count
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
@@ -79,6 +93,37 @@ def log(msg):
 def _game_vals(reviews):
     """[(playtime_minutes, voted_up_bool), ...] for a game's stored reviews."""
     return [(r["pt"], bool(r.get("up"))) for r in reviews.values()]
+
+
+def sample_span_days(reviews):
+    """How much CALENDAR TIME the stored sample covers, newest review minus oldest.
+
+    The sample is always the NEWEST-N reviews (playtime_refresh.py walks filter=recent and
+    ring-buffers the oldest out), so `n` alone does not say what the rating measured. Two
+    games can both show n=3000 and mean completely different things: on a back-catalogue
+    game that is four years of reviews, on a launch-week hit it is four days.
+
+    The pathological case is a first touch on a busy release — ONE page, 100 reviews, and
+    on a game taking ~14 reviews a minute that page spans SEVEN MINUTES. Measured live
+    2026-09-16 on WARDOGS (appid 1867240, 60,202 reviews, Steam 81%): the stored sample was
+    100 reviews from a 7-minute slice of launch evening and rated it 48.3%. The number was
+    not wrong about its sample; the sample was a moment, and nothing in the file said so.
+    Shipping the span lets the frontend say what the rating actually looked at, and lets it
+    withhold confidence from a sample that is a sliver of a much-reviewed game.
+
+    Resolution has to survive the case it exists for. Rounding to 0.1 day put WARDOGS' seven
+    minutes at 0.0 — indistinguishable from "no data", which is precisely the reading the field
+    was added to prevent. So: 3 decimals under a day (~86 seconds, enough to say "7 minutes"),
+    1 decimal from 1 to 10 days, whole days above. Long spans are the common case and cost one
+    small integer each, so the file stays lean.
+    """
+    ts = [r.get("ts") for r in reviews.values() if r.get("ts")]
+    if len(ts) < 2:
+        return 0
+    span = (max(ts) - min(ts)) / 86400.0
+    if span < 1:
+        return round(span, 3)
+    return round(span, 1) if span < 10 else int(round(span))
 
 
 def raw_weighted(vals):
@@ -151,12 +196,15 @@ def raw_source_present():
 def save_ratings(ratings, per_game_cap):
     """Lean compact output. Each game -> positional array:
 
-        "<appid>": [steam, raw, capped, n]
-                     [0]    [1]  [2]     [3]
+        "<appid>": [steam, raw, capped, n, span]
+                     [0]    [1]  [2]     [3]  [4]
         * steam  = plain one-vote %, rounded to 1 decimal (reference / comparison)
         * raw    = uncapped playtime-weighted % (kept for debug; whale-distorted)
         * capped = 2x-median-capped playtime-weighted % (the INTENDED display value)
         * n      = review sample size behind the rating
+        * span   = calendar days from the oldest to the newest review in that sample. The
+                   sample is the NEWEST n reviews, so this is what says whether n=3000 means
+                   four years of opinion or four days of it (see sample_span_days).
 
     All percentages are 0..100 with one decimal. The frontend reads by index (see
     `_format` in the meta), displays `capped`, and uses `n` vs CONFIDENT_REVIEWS to
@@ -164,15 +212,19 @@ def save_ratings(ratings, per_game_cap):
     No Bayesian smoothing: reliability is conveyed by the gray cue, not by nudging
     the number toward a prior.
     """
-    payload = {aid: [r["steam"], r["raw"], r["capped"], r["n"]]
+    payload = {aid: [r["steam"], r["raw"], r["capped"], r["n"], r["span"]]
                for aid, r in ratings.items()}
     OUT_FILE.write_text(json.dumps(
         {"generated_at": int(time.time()),
          "min_reviews": MIN_REVIEWS_FOR_RATING,       # below this: no rating at all
          "confident_reviews": CONFIDENT_REVIEWS,      # >= this: full color; between: grayed
+         # Sliver gate — see SLIVER_* below. Shipped so the frontend applies the same numbers
+         # this script documents, rather than hard-coding a second copy that can drift.
+         "sliver_n": SLIVER_N,
+         "sliver_frac": SLIVER_FRAC,
          "cap_mult": CAP_MULT,
          "per_game_cap": per_game_cap,
-         "_format": ["steam_pct", "raw_pct", "capped_pct", "n"],
+         "_format": ["steam_pct", "raw_pct", "capped_pct", "n", "span_days"],
          "count": len(payload),
          "playtime_ratings": payload},
         ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -237,6 +289,7 @@ def main():
                 "raw": round(raw_weighted(vals), 1),        # uncapped (debug)
                 "capped": round(capped, 1),                 # 2x-median-capped (displayed)
                 "n": n,
+                "span": sample_span_days(reviews),          # calendar days the sample covers
             }
 
     # FAIL LOUD guard #2: the source is present (shards on disk) but iteration yielded
