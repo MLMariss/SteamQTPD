@@ -108,6 +108,17 @@ PRESETS = [
          blurb="Discounted right now, under $10, and actually good.",
          q="pc=sale&pmax=10&minscore=70&rev=4&ratesrc=all&adult=hide&sort=qtpd&dir=-1",
          rev=(5000, None), minscore=70, pmax=10.0, on_sale=True),
+    # Sibling to "deals", and deliberately the opposite question. That shelf asks "what is
+    # CHEAP" (a $10 ceiling) and a 15% cut on an $8 game clears it; this one asks "what is
+    # heavily MARKED DOWN" and does not care what the game costs — a 60%-off $60 game is the
+    # point, and it can never appear on the other shelf. Sorted by discount rather than qtpd
+    # for the same reason: the label promises a big cut, so the biggest cuts open the list.
+    # 50/80/5k leaves 267 games (measured 2026-09-16); dropping to 40% adds only 15, and 70%
+    # costs 87, so the knee is right about here.
+    dict(id="slashed", label="Half off or better", tone="popular",
+         blurb="50% or more off, 80%+ positive, and thousands of people have played it.",
+         q="pc=sale&minsale=50&minscore=80&rev=4&ratesrc=all&adult=hide&sort=discount_pct&dir=-1",
+         rev=(5000, None), minscore=80, on_sale=True, minsale=50),
     dict(id="long", label="Long games, highly rated", tone="popular",
          blurb="40 hours or more, 80%+ positive, with an actual ending.",
          q="hmin=40&minscore=80&rev=4&ratesrc=all&adult=hide&" + NO_ENDING_Q + "&sort=qtpd&dir=-1",
@@ -223,7 +234,17 @@ def build():
             return False
         if p.get("tag") and p["tag"] not in r["tags"]:
             return False
-        if p.get("on_sale") and not (r["disc"] > 0):
+        # `pc=sale` is one of three non-overlapping price classes on the page: a game is free,
+        # or paid-and-discounted, or paid-at-full-price. So "on sale" excludes FREE games too,
+        # not just undiscounted ones — a free game is class "free" whatever discount_pct says.
+        # Exactly one game in the catalogue is currently both free and carrying a discount, so
+        # this corrects a one-game overcount rather than anything visible; it is fixed because
+        # a generator whose entire job is to reproduce the page's answer should reproduce it.
+        if p.get("on_sale") and not (r["disc"] > 0 and not r["free"]):
+            return False
+        # Min sale % floor, mirroring passNonRange(): free games are exempt (they are kept or
+        # dropped by the price class alone), everything else must clear the floor.
+        if p.get("minsale") is not None and not r["free"] and (r["disc"] or 0) < p["minsale"]:
             return False
         if p.get("pmax") is not None:
             if r["price"] is None or r["price"] > p["pmax"]:
@@ -255,8 +276,17 @@ def build():
 
         sel = [r for r in rows if matches(r, p)]
         scored = sorted((r for r in sel if qtpd(r) is not None), key=qtpd, reverse=True)
-        top = scored if p.get("rel") is None else sorted(
-            sel, key=lambda r: r["rel"] or 0, reverse=True)
+        # The `sample` below is the shelf's OPENING ROWS, so it has to be ordered the way the
+        # chip's own querystring orders them — not always by qtpd. This used to special-case
+        # release_ts alone, which quietly mislabelled any shelf sorted some third way: the
+        # report would print the qtpd leaders under a shelf that opens on the biggest discount.
+        # Driven off the query now, so a new shelf's sort is honoured without touching this.
+        sort_key = (urllib.parse.parse_qs(p["q"]).get("sort") or ["qtpd"])[0]
+        SAMPLE_ORDER = {
+            "release_ts":   lambda: sorted(sel, key=lambda r: r["rel"] or 0, reverse=True),
+            "discount_pct": lambda: sorted(sel, key=lambda r: r["disc"] or 0, reverse=True),
+        }
+        top = SAMPLE_ORDER.get(sort_key, lambda: scored)()
 
         flags = []
         if len(sel) < MIN_HEALTHY:
