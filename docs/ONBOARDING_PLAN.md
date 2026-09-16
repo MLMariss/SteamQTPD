@@ -191,6 +191,15 @@ changed, which is the whole point of the chips:
 Valheim, Green Hell on the popular side; Wizardry 8, Caveblazers, Globesweeper, Crystal Story II
 on the niche side.
 
+*House rule — no shelf ever highlights adult content.* Every shelf carries **both** locks:
+`adult=hide` **and** an `exc=` list of every `ADULT_TAGS` entry. The second is not redundant:
+`isAdult()` treats the PICS flag as authoritative for PICS-covered games, so the tag test never
+runs for them, and a PICS-covered game tagged *Nudity* with no PICS flag passed `adult=hide`
+alone. Adding the tag exclusion removed **1,498 games** across the seven shelves. `presets.py`
+asserts both at build time, so a new shelf missing either fails the job rather than quietly
+shipping. The residual — a game whose only adult signal is its title — remains uncatchable from
+the data we hold, and is stated rather than implied away. See CLAUDE.md.
+
 *No count on the chip.* `presets.py` can count a shelf, but it counts it by re-implementing
 `passFilters()` in Python, and the two drifted — three corrections were needed before they
 agreed (PICS tags override SteamSpy, HLTB realness is per-metric not per-game, the PICS adult
