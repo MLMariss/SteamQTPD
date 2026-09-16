@@ -145,7 +145,7 @@ obstacle, and always provide a **"show everything"** escape.
 hostile; the escape hatch and the shared-link case (a URL setting a Flags param must force-unlock)
 are both mandatory, not polish.
 
-**S3 · Preset shelves.**
+**S3 · Preset shelves. [Done — Chunk D.]**
 *Problem:* the gap between "129,445 games ranked by a metric you don't know" and "78 controls"
 has nothing in it.
 *Proposal:* Four or five one-click presets on the landing view — *Best deals under $10* · *Long
@@ -159,6 +159,45 @@ stored querystrings).
 *Risk:* preset selection is editorial and will need revisiting as the catalogue moves; a preset
 that returns a thin or stale list is worse than no preset. Needs a "these are just filter
 settings, here's what they set" reveal so it doesn't read as a black box.
+
+*Done, with three findings that changed the design:*
+
+1. **The proposed shelves surfaced junk.** At the natural gate (100+ reviews, 70%+) sorted by
+   QTPD, *Best deals* led with *Tap Heroes* and *New and well-reviewed* led with an adult title.
+   The metric rewards hours per dollar, so an unknown 90-hour game at $1 beats every famous one.
+2. **Adult content leaks past both filters.** That title carries no PICS `adult` flag and none
+   of `ADULT_TAGS` — its SteamSpy tags are *Casual, Relaxing, Cozy, Comedy*. No data-driven
+   filter available to us catches it; only the review floor moves the number (6.2% of the pool
+   at 100+ reviews is adult-flagged, 1.3% at 5,000+).
+3. **QTPD's hours side breaks for games with no ending.** EVE Online 1,777h, Melvor Idle 1,395h,
+   Dota 2 770h. Divided by a small price these top every value ranking, so they are excluded
+   from the length shelves (and only those — they are legitimate results elsewhere).
+
+*The fix is per-shelf review BANDS, not one floor.* Popular shelves floor at 5,000 reviews so
+results are recognisable; niche shelves **ceiling** at 5,000 so the well-known games cannot
+crowd out what the visitor has not heard of. Both map onto the existing independent review
+bands (`REV_BANDS` 0/10/100/1k/5k, gaps allowed by design), so a ceiling needed no new filter —
+it is simply not selecting the top band.
+
+*Two filters had to be built first,* because three shelves could not otherwise be expressed as
+real filter state — and a preset that is not real filter state cannot show the user what it
+changed, which is the whole point of the chips:
+- **Length range (hours)**, `hmin`/`hmax` — the twin of Price range, reading `hoursFor()` so it
+  follows the Length metric and Length data toggles.
+- **Released within**, `rel` — the twin of Updated within, on `release_ts`. Previously "what
+  came out recently" could only be reached by *sorting*, which is a different question.
+
+*What the shelves return now:* shapez, Divinity: Original Sin, Garry's Mod, SteamWorld Dig,
+Valheim, Green Hell on the popular side; Wizardry 8, Caveblazers, Globesweeper, Crystal Story II
+on the niche side.
+
+*No count on the chip.* `presets.py` can count a shelf, but it counts it by re-implementing
+`passFilters()` in Python, and the two drifted — three corrections were needed before they
+agreed (PICS tags override SteamSpy, HLTB realness is per-metric not per-game, the PICS adult
+flag *replaces* the tag test rather than adding to it). Six of seven shelves now match the page
+exactly, but a chip quoting a number the page did not compute is a chip that can lie, so the
+chip carries only its label. The live count is one click away in the meta strip and is always
+right.
 
 **S4 · Defer the second-order controls.**
 *Problem:* the **QTPD range slider** and the **min-sale stepper** cannot be understood before
@@ -502,7 +541,8 @@ These need answering before anything above can be scoped properly.
 | Chunk | Items | State |
 |---|---|---|
 | **A** | S12 (plain-word Length labels) · S13 (legend exposed to assistive tech) | **Merged** (#87). Verified in Chromium at 1324 / 1400 / 1700 / 2400px: label renders on one line at every width, `<th>` height unchanged, no overflow, header/body column edges aligned, no JS errors. |
-| **B** | S15 — tap-tooltips on touch (absorbs S11 and S18) | **Done.** Verified on an emulated Pixel 7 and at 1700px desktop — see below. |
+| **B** | S15 — tap-tooltips on touch (absorbs S11 and S18) | **Merged** (#88). Verified on an emulated Pixel 7 and at 1700px desktop — see below. |
+| **D** | S3 — preset shelves, plus the Length-range and Released-within filters they needed, plus `presets.py` | **Done.** Verified against the full 129k-game dataset — see below. |
 | **C** | S6 · S7 | — |
 | **D** | S3 · S8 · S16 | — |
 | **E** | S9 · S10 | — |
@@ -534,6 +574,37 @@ Before this chunk that string existed in the DOM and could not be reached by any
 
 Coverage: **36 of 181** titled elements are tap-reachable; the rest are controls whose tap is
 spoken for (see the residual gap under S15).
+
+### Chunk D verification
+
+Against the **real** dataset (81,907 games passing the default filters), not the bundled sample —
+the sample is six games, which silently passes any filter test.
+
+| Check | Result |
+|---|---|
+| Length range: max 6h | 81,907 → 15,907 |
+| Length range: 3–6h | → 5,497, and all 60 sampled rows inside the band |
+| Released within 1yr | 81,907 → 12,109 |
+| 1yr and 1yr+ partition the catalogue | 12,109 + 69,798 = 81,907 exactly |
+| Length stepper drives the length boxes, not the price boxes | pass |
+| Both filters serialize to the URL and restore from it | pass |
+| Reset clears both | pass |
+| All 7 shelves render and apply | pass |
+| Each shelf's live count vs the generator | 6 of 7 match exactly; *Short and cheap* differs by 14 (272 vs 258) |
+| Summary chips explain the applied shelf | pass — e.g. *"reviews: 5k+ · $0–$10 · length 0h–6h"* |
+| Clicking the active shelf clears it | pass |
+| Row hides once the user sets their own filters | pass |
+| Chips fit a phone viewport | pass |
+| JS errors | none |
+
+Two bugs this testing caught, both invisible without the real data:
+
+- **`update()` renders before it calls `syncURL()`**, so the row read the *previous* URL and
+  left a shelf looking active after the user had edited it. Fixed by repainting from `syncURL()`
+  once the URL is current.
+- **`.presetbar{display:flex}` outranks the UA sheet's `[hidden]{display:none}`**, so the row
+  could never hide — it sat there as an empty strip before `presets.json` loaded and after the
+  user filtered. Fixed with an explicit `.presetbar[hidden]{display:none}`.
 
 ### Stale figures found in `ARCHITECTURE.md` §11
 

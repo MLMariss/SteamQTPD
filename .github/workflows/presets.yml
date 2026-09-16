@@ -1,0 +1,80 @@
+name: 4.4 Preset shelves -> presets.json
+
+on:
+  workflow_dispatch:          # run manually any time
+  workflow_run:
+    # Trails the main scrape, like the other generated-file jobs: the shelves are measured
+    # against games.json, so they are only worth recomputing once it has moved.
+    # NOTE: workflow_run matches the upstream workflow's exact current `name:` — if
+    # scrape.yml is ever renamed, this string goes stale and the trigger silently stops
+    # firing (that has happened before; see coverage.yml's note).
+    workflows: ["1. Steam game catalog -> games.json"]
+    types: [completed]
+
+permissions:
+  contents: write             # commits presets.json
+
+concurrency:
+  group: presets-json         # one-writer-per-file (presets.json); never overlaps itself
+  cancel-in-progress: false
+
+jobs:
+  presets:
+    runs-on: ubuntu-latest
+    # Skip on a cancelled/failed scrape so the shelves are never measured against a
+    # half-written games.json. Manual dispatch always runs.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # presets.py uses only the standard library — no pip install needed.
+
+      - name: Generate presets.json
+        run: python presets.py | tee presets-report.txt
+
+      # The shelf definitions live in presets.py under version control and are NEVER retuned
+      # here — this job only ever measures them. A shelf that has gone thin or broad is
+      # surfaced in the step summary so it is visible in the Actions UI without opening the
+      # diff, and is left for a human to decide about.
+      - name: Report shelf health
+        run: |
+          {
+            echo '### Preset shelves'
+            echo '```'
+            cat presets-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if grep -q '^PROBLEMS:' presets-report.txt; then
+            echo "::warning title=Preset shelves need attention::$(sed -n '/^PROBLEMS:/,$p' presets-report.txt | tail -n +2 | tr '\n' ' ')"
+          fi
+
+      - name: Commit presets.json
+        run: |
+          rm -f presets-report.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- presets.json; then
+            echo "presets.json unchanged — nothing to commit."
+            exit 0
+          fi
+          git add presets.json
+          git commit -m "presets: refresh shelf counts"
+          # Other jobs commit to main continuously. They all write DIFFERENT files, so a
+          # rebase is always clean; retry a few times in case one lands mid-push.
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((i * 3))
+            git pull --rebase origin main
+          done
+          echo "could not push presets.json after 5 attempts" >&2
+          exit 1
