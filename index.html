@@ -156,6 +156,40 @@
   .uitip .tk-num{color:var(--blue); font-weight:500}
   .uitip .tk-pos{color:var(--teal); font-weight:500}
   .uitip .tk-neg{color:var(--coral); font-weight:500}
+
+  /* ── Preset shelves ────────────────────────────────────────────────────────────────────────
+     The landing view's missing middle. Between "129,445 games ranked by a metric you have not
+     been told the meaning of" and "78 filter controls" there was nothing a newcomer could act
+     on. Each chip is only a querystring, so clicking one sets REAL filter state and the summary
+     chips underneath then show which controls moved — the click teaches the panel rather than
+     replacing it. Definitions and their live counts come from presets.json (presets.py). */
+  .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+             padding:11px 16px 0; max-width:2400px; margin:0 auto}
+  /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
+     this the row could never hide and sat there as an empty strip once the user had filters of
+     their own (and before presets.json had loaded at all). */
+  .presetbar[hidden]{display:none}
+  .presetbar-lbl{font-family:var(--mono); font-size:11px; letter-spacing:.06em;
+                 text-transform:uppercase; color:var(--muted-2); margin-right:2px}
+  .preset{display:inline-flex; align-items:baseline; gap:7px; cursor:pointer;
+          background:var(--panel); border:1px solid var(--line); border-radius:999px;
+          padding:6px 13px; font-family:var(--sans); font-size:13px; color:var(--text);
+          transition:border-color .12s ease, background .12s ease}
+  .preset:hover{border-color:var(--gold); background:#2a3350}
+  /* No result count on the chip. presets.py can count a shelf, but it counts it in Python by
+     re-implementing passFilters(), and the two drifted (tag source, per-metric HLTB realness,
+     adult precedence) — a chip quoting a number this page did not compute is a chip that can
+     lie. The count the user needs is the live one in the meta strip, one click away, and it is
+     always right. presets.json keeps its counts for the generated health report instead. */
+  /* Niche shelves read as the quieter, more exploratory half of the row — they are capped at
+     5,000 reviews precisely to surface what the popular shelves cannot. */
+  .preset.niche{border-style:dashed}
+  .preset[aria-pressed="true"]{border-color:var(--gold); background:#2f3a5c; color:var(--gold)}
+  @media (max-width:700px){
+    .presetbar{padding:9px 12px 0; gap:6px}
+    .presetbar-lbl{width:100%; margin-bottom:1px}
+    .preset{font-size:12.5px; padding:5px 11px}
+  }
   /* ── Touch: the tip is reached by tapping, so it needs a visible mark and a narrower box ────
      A pointer advertises an explanation with cursor:help; a finger has no cursor, so on touch
      the availability of a tip has to be PAINTED or it may as well not exist. The filter fields
@@ -1710,6 +1744,23 @@ try{
             <button data-hquality="loose" aria-pressed="false" title="All — also use estimated times (from the typical main / extras / 100% ratio) when HowLongToBeat has none.">All</button>
           </div>
         </div>
+        <!-- Length range. The page could filter by price but not by how long a game is, which
+             made "show me something short" unaskable — and made a preset like Short & cheap
+             impossible to express as real filter state. Built as the twin of Price range right
+             below it: same .numinput + steppers, same blank = unbounded rule. It reads through
+             hoursFor(), so it follows the Length metric and Length data toggles above rather
+             than testing a fixed field. -->
+        <div class="field" title="Length range (hours) — keep only games whose length sits between these bounds, using the Length metric picked above. Leave a box blank for no bound (0 to ∞). Games with no length for that metric are dropped once either bound is set.">
+          <label>Length range (hours)</label>
+          <div style="display:flex; align-items:center; gap:6px">
+            <span class="pricesep">min</span>
+            <div class="numinput"><input id="minhours" type="number" min="0" step="1" inputmode="decimal" placeholder="0" />
+              <span class="steppers"><button type="button" data-step="minhours" data-d="1">▲</button><button type="button" data-step="minhours" data-d="-1">▼</button></span></div>
+            <span class="pricesep">– max</span>
+            <div class="numinput"><input id="maxhours" type="number" min="0" step="1" inputmode="decimal" placeholder="∞" />
+              <span class="steppers"><button type="button" data-step="maxhours" data-d="1">▲</button><button type="button" data-step="maxhours" data-d="-1">▼</button></span></div>
+          </div>
+        </div>
         <div class="field" title="Price range (USD) — keep only games whose current price sits between these min and max amounts. Leave a box blank for no bound (0 to ∞); free games count as $0.">
           <label>Price range (USD)</label>
           <div style="display:flex; align-items:center; gap:6px">
@@ -1796,6 +1847,21 @@ try{
             <button data-upd="6mo" title="Updated in the last 6 months.">6mo</button>
             <button data-upd="1yr" title="Updated in the last year.">1yr</button>
             <button data-upd="1yr+" title="No update in over a year — effectively abandoned.">1yr+</button>
+          </div>
+        </div>
+        <!-- Released within. Updated-within existed; released-within did not, so "what came out
+             recently" could only be reached by SORTING on Released, which is a different
+             question ("newest first" still lists everything). Same six-button shape as Updated
+             within directly above, reading release_ts instead of last_update_ts. -->
+        <div class="field" title="Released within — show only games released inside this window. 1yr+ means released more than a year ago, i.e. everything except the last year's releases.">
+          <label>Released within</label>
+          <div class="seg" role="group" aria-label="Released within">
+            <button data-rel="any"  aria-pressed="true" title="Any — no release-date limit.">Any</button>
+            <button data-rel="1mo" title="Released in the last month.">1mo</button>
+            <button data-rel="3mo" title="Released in the last 3 months.">3mo</button>
+            <button data-rel="6mo" title="Released in the last 6 months.">6mo</button>
+            <button data-rel="1yr" title="Released in the last year.">1yr</button>
+            <button data-rel="1yr+" title="Released more than a year ago — excludes the last year's releases.">1yr+</button>
           </div>
         </div>
         <div class="field" title="Playtime sort — which median the Playtime column sorts by when clicked: recommenders' hours (▲) or non-recommenders' (▼). This is a selection only; it reorders nothing until you click the column.">
@@ -1936,6 +2002,9 @@ try{
        for the grid's two unlabelled signals (the % and the gold edge). Both were reported as
        "no idea what this is" — the switcher because it had no context, the card marks because
        their only explanation lived in a hover tooltip. -->
+  <!-- Preset shelves. Rendered from presets.json; hidden entirely when that file is absent,
+       so the page degrades to exactly what it was before. -->
+  <div class="presetbar" id="presetBar" hidden></div>
   <div class="resultbar" id="resultBar">
     <span class="rb-lbl">View</span>
     <div class="seg viewseg" id="viewSwitch" role="group" aria-label="View mode">
@@ -2154,6 +2223,7 @@ const PAGE_SIZE = 66;
 // ----- state -----
 const state = { data:null, q:"", tagQuery:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", hltbMetric:"main", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
+                minHours:null, maxHours:null, releasedWithin:"any",
                 // Min sale %: null = no floor (the resting position). Any number is a multiple of 5
                 // and means "only discounts at least this deep". saleFloor/saleCeil are the
                 // shallowest/deepest discount in the results the OTHER filters produce, floored to
@@ -2636,6 +2706,17 @@ function passNonRange(x){
   const p = x.is_free ? 0 : x.price_final;
   if(state.minPrice != null){ if(p == null || p < state.minPrice) return false; }
   if(state.maxPrice != null){ if(p == null || p > state.maxPrice) return false; }
+  // Length range. Reads hoursFor(), so it follows the Length metric + Length data toggles
+  // rather than a fixed field: asking for "under 6 hours" on the 100% metric is a different
+  // question from asking it on Main, and the control the user can see says which. A game with
+  // no length for the selected metric is dropped once EITHER bound is set — an unknown length
+  // cannot be shown to sit inside a range the user asked for.
+  if(state.minHours != null || state.maxHours != null){
+    const h = hoursFor(x);
+    if(h == null) return false;
+    if(state.minHours != null && h < state.minHours) return false;
+    if(state.maxHours != null && h > state.maxHours) return false;
+  }
   if(state.wishOnly && state.wishlist && !state.wishlist.has(x.appid)) return false;
   // Trend is a multi-toggle: a game passes if its trend class is enabled. All-on (size 3)
   // or none-on (size 0) both mean "no trend filter" — everything passes.
@@ -2646,6 +2727,17 @@ function passNonRange(x){
     else {
       const d = {"1mo":30,"3mo":90,"6mo":180,"1yr":365}[state.updatedWithin];
       if(!(age <= d*86400)) return false;
+    }
+  }
+  // Released within — the same shape as Updated within above, on release_ts. A game with no
+  // release date cannot satisfy a recency window, so it drops out (Infinity age), but it DOES
+  // satisfy "1yr+", which asks for old rather than for recent.
+  if(state.releasedWithin !== "any"){
+    const rage = x.release_ts ? (NOW() - x.release_ts) : Infinity;
+    if(state.releasedWithin === "1yr+"){ if(!(rage > 365*86400)) return false; }
+    else {
+      const d = {"1mo":30,"3mo":90,"6mo":180,"1yr":365}[state.releasedWithin];
+      if(!(rage <= d*86400)) return false;
     }
   }
   // --- PICS "Flags" cluster (all independent; ONLY applied when PICS data is loaded).
@@ -4511,11 +4603,13 @@ function sectionActiveCounts(){
   return {
     value: (state.qBasis !== "after" ? 1 : 0) + (state.hltbMetric !== "main" ? 1 : 0) + (state.hltbQuality !== "real" ? 1 : 0)
          + ((state.minPrice != null || state.maxPrice != null) ? 1 : 0) + (state.priceClass.size < 3 ? 1 : 0)
+         + ((state.minHours != null || state.maxHours != null) ? 1 : 0)
          + (state.minSale != null ? 1 : 0) + (state.qRangeTouched ? 1 : 0),
     // Quality now also carries the merged Activity controls (updated-within, playtime-sort).
     quality: (state.minScore > 0 ? 1 : 0) + (state.ratingSource !== "recent" ? 1 : 0)
          + ((state.trendSet.size > 0 && state.trendSet.size < 3) ? 1 : 0) + revActive
-         + (state.updatedWithin !== "any" ? 1 : 0) + (state.ptMetric !== "up" ? 1 : 0),
+         + (state.updatedWithin !== "any" ? 1 : 0) + (state.releasedWithin !== "any" ? 1 : 0)
+         + (state.ptMetric !== "up" ? 1 : 0),
     tags: state.tagsInc.size + state.tagsExc.size,
     flags: (() => { const F = state.flags; let n = 0;
       if(F.ea !== "any") n++; if(F.eula !== "any") n++; if(F.fse !== "any") n++; if(F.vrOnly !== "any") n++;
@@ -4551,6 +4645,7 @@ function markChangedControls(){
   setGroup("[data-trend]",        state.trendSet.size > 0 && state.trendSet.size < 3);
   setGroup("[data-rev]",          !sameSet(state.revBands, [1,2,3,4]));
   setGroup("[data-upd]",          state.updatedWithin !== "any");
+  setGroup("[data-rel]",          state.releasedWithin !== "any");
   setGroup("[data-ptmetric]",     state.ptMetric !== "up");
   setGroup('[data-pc="full"],[data-pc="sale"],[data-pc="free"]', state.priceClass.size < 3);
   // FLAGS — all segmented, all tri-state
@@ -4568,6 +4663,8 @@ function markChangedControls(){
   // Price inputs — gold the box when that bound is set
   const mp = document.getElementById("minprice"); if(mp) mp.closest(".numinput").classList.toggle("changed", state.minPrice != null);
   const xp = document.getElementById("maxprice"); if(xp) xp.closest(".numinput").classList.toggle("changed", state.maxPrice != null);
+  const nh = document.getElementById("minhours"); if(nh) nh.closest(".numinput").classList.toggle("changed", state.minHours != null);
+  const xh = document.getElementById("maxhours"); if(xh) xh.closest(".numinput").classList.toggle("changed", state.maxHours != null);
   // Min sale % — gold the stepper while a floor is set (syncMinSaleUI paints the same class on
   // every step; this keeps it right after the paths that touch state without stepping).
   { const b = document.getElementById("minSale"); if(b) b.classList.toggle("changed", state.minSale != null); }
@@ -4620,7 +4717,9 @@ function renderSummary(){
   if(state.priceClass.size < 3){ const lbl = {full:"full price",sale:"on sale",free:"free"}; const t = ["full","sale","free"].filter(c => state.priceClass.has(c)).map(c => lbl[c]).join(" / "); parts.push(chip("pc", t)); }
   if(state.minSale != null) parts.push(chip("minsale", `sale ≥ ${state.minSale}%`));
   if(state.trendSet.size > 0 && state.trendSet.size < 3){ const map = {up:"▲", flat:"≈", down:"▼"}; const t = ["up","flat","down"].filter(x => state.trendSet.has(x)).map(x => map[x]).join(""); parts.push(chip("trend", `trend ${t}`)); }
+  if(state.minHours != null || state.maxHours != null){ const lo = state.minHours != null ? `${state.minHours}h` : "0h"; const hi = state.maxHours != null ? `${state.maxHours}h` : "∞"; parts.push(chip("hours", `length ${lo}–${hi}`)); }
   if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
+  if(state.releasedWithin !== "any"){ const t = state.releasedWithin === "1yr+" ? "released 1yr+ ago" : `released ≤ ${state.releasedWithin}`; parts.push(chip("rel", t)); }
   if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
   if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
 
@@ -4668,11 +4767,12 @@ function closePopover(){ $("#popHost").classList.remove("on"); const p = $("#pop
 // (so there's zero duplicated state logic — clicking a popover option clicks the actual button).
 const SUMMARY_EDITORS = {
   basis:    {title:"QTPD price basis", cur:() => state.qBasis, opts:[["Sale","#qb-after","after"],["Full","#qb-before","before"]]},
-  metric:   {title:"HLTB metric", cur:() => state.hltbMetric, opts:[["Main",'[data-metric="main"]',"main"],["+Extras",'[data-metric="extra"]',"extra"],["100%",'[data-metric="complete"]',"complete"],["Avg",'[data-metric="avg"]',"avg"]]},
-  hq:       {title:"HLTB data", cur:() => state.hltbQuality, opts:[["All (incl. est.)",'[data-hquality="loose"]',"loose"],["Real only",'[data-hquality="real"]',"real"]]},
+  metric:   {title:"Length metric", cur:() => state.hltbMetric, opts:[["Main",'[data-metric="main"]',"main"],["+Extras",'[data-metric="extra"]',"extra"],["100%",'[data-metric="complete"]',"complete"],["Avg",'[data-metric="avg"]',"avg"]]},
+  hq:       {title:"Length data", cur:() => state.hltbQuality, opts:[["All (incl. est.)",'[data-hquality="loose"]',"loose"],["Real only",'[data-hquality="real"]',"real"]]},
   minscore: {title:"Min rating", cur:() => String(state.minScore), opts:[["Any",'[data-minscore="0"]',"0"],["60+",'[data-minscore="60"]',"60"],["70+",'[data-minscore="70"]',"70"],["80+",'[data-minscore="80"]',"80"],["90+",'[data-minscore="90"]',"90"]]},
   ratesrc:  {title:"Review period", cur:() => state.ratingSource, opts:[["All-time",'[data-ratesrc="all"]',"all"],["30-day",'[data-ratesrc="recent"]',"recent"]]},
   upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
+  rel:      {title:"Released within", cur:() => state.releasedWithin, opts:[["Any",'[data-rel="any"]',"any"],["1mo",'[data-rel="1mo"]',"1mo"],["3mo",'[data-rel="3mo"]',"3mo"],["6mo",'[data-rel="6mo"]',"6mo"],["1yr",'[data-rel="1yr"]',"1yr"],["1yr+",'[data-rel="1yr+"]',"1yr+"]]},
   pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
   trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
@@ -4680,7 +4780,7 @@ const SUMMARY_EDITORS = {
   tagmode:  {title:"Required tags match", cur:() => state.tagMode, opts:[["ALL",'[data-tagmode="and"]',"and"],["ANY",'[data-tagmode="or"]',"or"]]},
 };
 function openSummaryEditor(anchor, key){
-  const EXPAND = {q:["value","#q"], price:["value","#minprice"], minsale:["value","#sale-up"], qrange:["value","#qmin"], tags:["tags",null]};
+  const EXPAND = {q:["value","#q"], price:["value","#minprice"], hours:["value","#minhours"], minsale:["value","#sale-up"], qrange:["value","#qmin"], tags:["tags",null]};
   if(EXPAND[key]){
     setFiltersCompact(false);
     const [sec, focusSel] = EXPAND[key];
@@ -4851,10 +4951,52 @@ function renderMeta(){
   const when   = d.sample ? '' : `<span title="${esc(ageTip)}">${relTime(d.generated_at)}</span> · `;
   $("#meta").innerHTML = `${counts} · ${when}<span title="${esc(curTip)}">USD</span>${badge}${hid}`;
   const ub = $("#unhide"); if(ub) ub.addEventListener("click", unhideAll);
+  renderPresets();          // preset shelves: show on the landing view / an applied shelf
   renderSummary();          // L2: keep the collapsed-bar summary sentence current
   updateSectionCounts();    // L1: keep each accordion's "N active" badge current
   markChangedControls();    // L1: gold-highlight only the controls changed from default
 }
+// ── Preset shelves (presets.json <- presets.py) ─────────────────────────────────────────────
+// A preset is a querystring and nothing more. Applying one therefore reuses the path the back
+// button already uses: write the URL, then fire popstate, whose handler resets every field to
+// its default and re-reads the URL. That is deliberately not a bespoke setter — a second way to
+// set filter state is a second place for it to drift out of step with loadFromURL().
+let PRESETS = null;
+// The row is a LANDING affordance, so it shows on the default view and stays while exactly one
+// preset is applied (so you can hop between shelves), and gets out of the way the moment the
+// user has filtered to something of their own.
+function presetQueryNow(){
+  return new URLSearchParams(location.search).toString();
+}
+function activePresetId(){
+  const cur = presetQueryNow();
+  if(!cur) return "";                                   // default view: none active, row shows
+  const norm = q => [...new URLSearchParams(q).entries()].map(([k,v]) => k+"="+v).sort().join("&");
+  const c = norm(cur);
+  const hit = (PRESETS || []).find(p => norm(p.query) === c);
+  return hit ? hit.id : null;                           // null = the user's own filters
+}
+function renderPresets(){
+  const host = $("#presetBar"); if(!host) return;
+  const active = activePresetId();
+  if(!PRESETS || active === null){ host.hidden = true; host.innerHTML = ""; return; }
+  host.hidden = false;
+  host.innerHTML = `<span class="presetbar-lbl">Start with</span>` + PRESETS.map(p =>
+    `<button type="button" class="preset${p.tone === "niche" ? " niche" : ""}" data-preset="${esc(p.id)}"`
+    + ` aria-pressed="${p.id === active}"`
+    + ` title="${esc(p.label)} — ${esc(p.blurb)} Sets real filters; the chips below show exactly which ones, and you can edit or clear any of them.">`
+    + `${esc(p.label)}</button>`).join("");
+}
+function applyPreset(id){
+  const p = (PRESETS || []).find(x => x.id === id); if(!p) return;
+  // Clicking the active shelf again clears it, so a preset is never a one-way door.
+  const next = (activePresetId() === id) ? "" : p.query;
+  history.replaceState(null, "", next ? "?" + next : location.pathname);
+  dispatchEvent(new PopStateEvent("popstate"));
+  const card = document.querySelector(".tablecard");
+  if(card) card.scrollIntoView({block:"start", behavior:"smooth"});
+}
+
 function renderFoot(){
   $("#foot").innerHTML =
     `QTPD = (chosen HLTB hours × rating%) ÷ price — pick the HLTB metric above. Higher = more quality time per dollar. Null for free games & games without HLTB data.<br>`+
@@ -5168,8 +5310,11 @@ function syncURL(){
   if(state.minSale != null) p.set("minsale", state.minSale);
   if(state.minPrice != null) p.set("pmin", state.minPrice);
   if(state.maxPrice != null) p.set("pmax", state.maxPrice);
+  if(state.minHours != null) p.set("hmin", state.minHours);
+  if(state.maxHours != null) p.set("hmax", state.maxHours);
   if(state.trendSet.size > 0 && state.trendSet.size < 3) p.set("trend", [...state.trendSet].join(","));
   if(state.updatedWithin !== "any") p.set("upd", state.updatedWithin);
+  if(state.releasedWithin !== "any") p.set("rel", state.releasedWithin);
   if(state.wishOnly) p.set("wishonly", "1");
   // PICS flags cluster — only non-default values emitted (keeps shared links clean).
   // The tri-state presence flags split across two lists: `flags` = require present (the
@@ -5198,6 +5343,11 @@ function syncURL(){
   const qs = p.toString();
   const url = qs ? "?" + qs : location.pathname;
   history.replaceState(null, "", url);
+  // The preset row decides what to show by comparing the CURRENT querystring against each
+  // shelf, and update() renders before it calls syncURL() — so painting the row from render()
+  // alone read the previous URL and left a shelf looking active after the user had edited it.
+  // Repainting here, once the URL is actually current, is the cheap fix (it is seven buttons).
+  renderPresets();
 }
 
 function loadFromURL(){
@@ -5238,11 +5388,15 @@ function loadFromURL(){
     } });
   setIf("pmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minPrice=n; const el=$("#minprice"); if(el) el.value=n; } });
   setIf("pmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxPrice=n; const el=$("#maxprice"); if(el) el.value=n; } });
+  setIf("hmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minHours=n; const el=$("#minhours"); if(el) el.value=n; } });
+  setIf("hmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxHours=n; const el=$("#maxhours"); if(el) el.value=n; } });
   setIf("trend", v => { state.trendSet = new Set(v.split(",").filter(x => ["up","flat","down"].includes(x)));
     if(state.trendSet.size === 0) state.trendSet = new Set(["up","flat","down"]);
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", state.trendSet.has(o.dataset.trend))); });
   setIf("upd", v => { state.updatedWithin=v;
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd===v)); });
+  setIf("rel", v => { state.releasedWithin=v;
+    document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o.dataset.rel===v)); });
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
   // Each list only sets the keys it names, so `flags` and `noflags` don't clobber each other.
@@ -5334,6 +5488,7 @@ function init(data){
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.priceClass=new Set(["full","sale","free"]);
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
+    state.minHours=null; state.maxHours=null; state.releasedWithin="any";
     state.minSale=null; state.minSaleForcedFull=false;
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up"; state.qRangeTouched=false;
     state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:"any" };
@@ -5433,6 +5588,12 @@ function init(data){
       document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o === b));
       update();
     }));
+  document.querySelectorAll("[data-rel]").forEach(b =>
+    b.addEventListener("click", () => {
+      state.releasedWithin = b.dataset.rel;
+      document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      update();
+    }));
   // --- PICS Flags cluster wiring ---
   // Single-select segmented groups: ai / ctrl / deck / adult.
   const segGroup = (attr, key) => {
@@ -5464,18 +5625,38 @@ function init(data){
   };
   $("#minprice").addEventListener("input", priceHandler);
   $("#maxprice").addEventListener("input", priceHandler);
+  // Length range — the same read-both-boxes shape as priceHandler, so a cleared box means
+  // "no bound" rather than zero.
+  const hoursHandler = () => {
+    const lo = $("#minhours").value.trim(), hi = $("#maxhours").value.trim();
+    state.minHours = lo === "" ? null : Math.max(0, parseFloat(lo));
+    state.maxHours = hi === "" ? null : Math.max(0, parseFloat(hi));
+    update();
+  };
+  $("#minhours").addEventListener("input", hoursHandler);
+  $("#maxhours").addEventListener("input", hoursHandler);
   // `button[data-step]`, NOT `[data-step]`: the attribute is used for two unrelated things.
   // These are the price steppers, whose value names an input id — but every row thumbnail
   // <img> also carries data-step, as the cursor into its T6 fallback chain (stepThumb).
   // The bare selector bound both, so clicking a thumbnail ran $("#0") and threw on an
   // invalid selector. That was harmless while clicking a thumbnail did nothing; it stopped
   // being harmless when the click became the rotation's step-forward control.
+  // The steppers now drive TWO numeric pairs (price and length), so the handler is picked from
+  // the input the button names rather than hardcoded to priceHandler — a length stepper firing
+  // priceHandler would read the price boxes and write the price state.
   document.querySelectorAll("button[data-step]").forEach(btn => btn.addEventListener("click", () => {
     const inp = $("#"+btn.dataset.step);
     let v = parseFloat(inp.value || "0"); if(isNaN(v)) v = 0;
     v = Math.max(0, v + parseInt(btn.dataset.d,10));
-    inp.value = v; priceHandler();
+    inp.value = v;
+    (btn.dataset.step.endsWith("hours") ? hoursHandler : priceHandler)();
   }));
+  // Preset shelves. Delegated, because renderPresets() replaces the row's innerHTML on every
+  // render — per-button listeners would be thrown away with it.
+  $("#presetBar").addEventListener("click", e => {
+    const b = e.target.closest("[data-preset]");
+    if(b) applyPreset(b.dataset.preset);
+  });
   // Tag match-mode (ALL / ANY for required tags)
   document.querySelectorAll("[data-tagmode]").forEach(b =>
     b.addEventListener("click", () => {
@@ -5535,7 +5716,10 @@ function init(data){
     state.minScore=0; state.revBands=new Set([1,2,3,4]); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.minSale=null; state.minSaleForcedFull=false;
     state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent"; state.hltbQuality="real"; state.ptMetric="up";
+    state.minHours=null; state.maxHours=null; state.releasedWithin="any";
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
+    $("#minhours").value=""; $("#maxhours").value="";
+    document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o.dataset.rel==="any"));
     syncPriceClassUI(); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", "true"));
@@ -5932,7 +6116,10 @@ Promise.all([
   // Trailer layer (trailers.py). Purely additive: absent or still-filling, the hover
   // panel just shows the enlarged still exactly as before.
   fetch("trailers.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-]).then(([g, pj, hj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj]) => {
+  // Preset shelves (presets.py). Additive: absent, the chip row simply never paints.
+  fetch("presets.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+]).then(([g, pj, hj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj]) => {
+  PRESETS = (presetj && Array.isArray(presetj.presets)) ? presetj.presets : null;
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
   const hltbMap   = (hj && hj.hltb)   ? hj.hltb   : null;
