@@ -191,6 +191,23 @@ changed, which is the whole point of the chips:
 Valheim, Green Hell on the popular side; Wizardry 8, Caveblazers, Globesweeper, Crystal Story II
 on the niche side.
 
+*Visibility — the row is always present, and that was a fix.* It shipped as a "landing
+affordance" that hid itself as soon as the user had filters of their own, which in practice
+meant **any querystring at all**: one search, one price bound, a bookmarked view, a shared link.
+Anyone who had ever touched a filter never saw the shelves again — the opposite of what a
+discovery row is for, and the reason the feature read as missing on the live site the morning
+after it shipped. A preset row is navigation, not a state indicator, so it stays put; the only
+thing the current filters change is which chip (if any) shows as active.
+
+*House rule — no shelf ever highlights adult content.* Every shelf carries **both** locks:
+`adult=hide` **and** an `exc=` list of every `ADULT_TAGS` entry. The second is not redundant:
+`isAdult()` treats the PICS flag as authoritative for PICS-covered games, so the tag test never
+runs for them, and a PICS-covered game tagged *Nudity* with no PICS flag passed `adult=hide`
+alone. Adding the tag exclusion removed **1,498 games** across the seven shelves. `presets.py`
+asserts both at build time, so a new shelf missing either fails the job rather than quietly
+shipping. The residual — a game whose only adult signal is its title — remains uncatchable from
+the data we hold, and is stated rather than implied away. See CLAUDE.md.
+
 *No count on the chip.* `presets.py` can count a shelf, but it counts it by re-implementing
 `passFilters()` in Python, and the two drifted — three corrections were needed before they
 agreed (PICS tags override SteamSpy, HLTB realness is per-metric not per-game, the PICS adult

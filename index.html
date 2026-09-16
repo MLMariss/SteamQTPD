@@ -4962,9 +4962,12 @@ function renderMeta(){
 // its default and re-reads the URL. That is deliberately not a bespoke setter — a second way to
 // set filter state is a second place for it to drift out of step with loadFromURL().
 let PRESETS = null;
-// The row is a LANDING affordance, so it shows on the default view and stays while exactly one
-// preset is applied (so you can hop between shelves), and gets out of the way the moment the
-// user has filtered to something of their own.
+// The row is always present once presets.json has loaded. It was first written as a LANDING
+// affordance that hid itself the moment the user had filters of their own — which meant it
+// vanished for ANY querystring: one search, one price bound, a bookmarked view, a shared link.
+// Anyone who had ever touched a filter never saw the shelves again, which is the opposite of
+// what a discovery row is for. It is navigation, not a state indicator, so it stays put; the
+// only thing the current filters change is which chip (if any) shows as active.
 function presetQueryNow(){
   return new URLSearchParams(location.search).toString();
 }
@@ -4978,8 +4981,8 @@ function activePresetId(){
 }
 function renderPresets(){
   const host = $("#presetBar"); if(!host) return;
-  const active = activePresetId();
-  if(!PRESETS || active === null){ host.hidden = true; host.innerHTML = ""; return; }
+  const active = activePresetId();     // "" = default view, null = the user's own filters
+  if(!PRESETS){ host.hidden = true; host.innerHTML = ""; return; }
   host.hidden = false;
   host.innerHTML = `<span class="presetbar-lbl">Start with</span>` + PRESETS.map(p =>
     `<button type="button" class="preset${p.tone === "niche" ? " niche" : ""}" data-preset="${esc(p.id)}"`

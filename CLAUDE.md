@@ -46,6 +46,27 @@ Claude's job; the user reviews the PR, merges it, and pulls. Nothing else should
 
 Title + description as copy-paste blocks too, in case a pre-fill truncates.
 
+## Product rules (non-negotiable)
+
+- **Never highlight or feature adult content. Ever.** Anywhere the site puts games in front of
+  someone who did not ask for something specific — preset shelves, any future "recommended" or
+  "featured" surface, `Lucky` if it is ever promoted to the landing view — adult content is
+  excluded, and excluded with **both** locks, not one:
+  1. `adult=hide`, and
+  2. an `exc=` list carrying every tag in `ADULT_TAGS` (nudity, sexual content, mature, nsfw,
+     hentai).
+  Both are needed because `isAdult()` treats the PICS flag as authoritative for any game PICS
+  has covered, so for those games the tag test never runs — a PICS-covered game tagged
+  "Nudity" with no PICS flag passes `adult=hide` on its own. Adding the tag exclusion removed
+  **1,498 games** across the seven shelves that the flag alone had let through.
+  `presets.py` enforces both at build time and fails the job if a shelf is missing either;
+  keep that guard, and extend it to any new surface of this kind.
+  **Known residual:** a game whose only adult signal is its title — no PICS flag, no adult tag,
+  innocuous SteamSpy tags — is not identifiable from the data we hold. Nothing currently catches
+  those. Say so rather than implying the filtering is complete.
+- This rule is not a default to weigh against other goals. It outranks result counts, shelf
+  breadth, and "the metric says it is good value".
+
 ## Branches
 - **One working branch at a time.** Do not spin a new branch per change; commit onto the branch already checked out. If it's unclear which is the working branch, ask — don't invent one.
 - **Never delete branches.** This is a public repo and the history is intentionally on display.

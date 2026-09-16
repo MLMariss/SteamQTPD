@@ -47,6 +47,22 @@ OUT = "presets.json"
 # per shelf and made every generated count disagree with the page.
 ADULT_TAGS = {"Nudity", "Sexual Content", "Mature", "NSFW", "Hentai"}
 
+# HOUSE RULE: a preset shelf never highlights adult content. Not "rarely", not "only in the
+# niche bands" — never. Shelves are the one place the site puts games in front of someone who
+# did not ask for anything specific, so they carry a second lock rather than one.
+#
+# `adult=hide` alone is NOT that second lock. index.html's isAdult() treats the PICS flag as
+# authoritative for any game PICS has covered, so the tag test never runs for those — a
+# PICS-covered game tagged "Nudity" whose PICS flag is unset passes the filter. Excluding the
+# tags by name as well closes that, and it works on PICS tag names too (the lookup carries
+# "Sexual Content", "Nudity" and "Hentai" as ids 12095 / 6650 / 9130).
+#
+# What NEITHER lock catches is a game whose only adult signal is its title — no flag, no tag,
+# innocuous SteamSpy tags. Nothing in the data we hold identifies those. The popular shelves'
+# 5,000-review floor is the only thing that thins them out, and it does not reach the niche
+# bands. That residual is stated here rather than papered over.
+
+
 # Games with no ending. Their HLTB "main" is meaningless-to-enormous (EVE Online 1,777h,
 # Melvor Idle 1,395h), so on any length-based shelf they crowd out everything with an actual
 # credits roll. Excluded from length shelves only — they are legitimate results elsewhere.
@@ -55,7 +71,11 @@ ADULT_TAGS = {"Nudity", "Sexual Content", "Mature", "NSFW", "Hentai"}
 # the page does not produce.
 NO_ENDING = ["idle", "incremental", "clicker", "idler", "mmorpg", "massively multiplayer",
              "free to play"]
-NO_ENDING_Q = "exc=" + ",".join(t.replace(" ", "+") for t in NO_ENDING)
+# Every shelf's exc list starts from the adult tags; the length shelves add the no-ending ones.
+# One string, so a shelf cannot accidentally be built without the adult half.
+_ADULT_EXC = sorted(t.lower().replace(" ", "+") for t in ADULT_TAGS)
+ADULT_EXC_Q = "exc=" + ",".join(_ADULT_EXC)
+NO_ENDING_Q = "exc=" + ",".join(_ADULT_EXC + [t.replace(" ", "+") for t in NO_ENDING])
 
 # Canonicalisation, mirroring CANON_GROUPS in index.html.
 CANON = {}
@@ -83,7 +103,7 @@ REL_WINDOW = {"1mo": 30, "3mo": 90, "6mo": 180, "1yr": 365}
 PRESETS = [
     dict(id="deals", label="Best deals under $10", tone="popular",
          blurb="Discounted right now, under $10, and actually good.",
-         q="pc=sale&pmax=10&minscore=70&rev=4&ratesrc=all&adult=hide&sort=qtpd&dir=-1",
+         q="pc=sale&pmax=10&minscore=70&rev=4&ratesrc=all&adult=hide&" + ADULT_EXC_Q + "&sort=qtpd&dir=-1",
          rev=(5000, None), minscore=70, pmax=10.0, on_sale=True),
     dict(id="long", label="Long games, highly rated", tone="popular",
          blurb="40 hours or more, 80%+ positive, with an actual ending.",
@@ -95,11 +115,11 @@ PRESETS = [
          rev=(5000, None), minscore=70, pmax=10.0, hmax=6.0, no_ending=False),
     dict(id="coop", label="Co-op picks", tone="popular",
          blurb="Games to play with someone else, well reviewed.",
-         q="inc=co-op&minscore=70&rev=4&ratesrc=all&adult=hide&sort=qtpd&dir=-1",
+         q="inc=co-op&minscore=70&rev=4&ratesrc=all&adult=hide&" + ADULT_EXC_Q + "&sort=qtpd&dir=-1",
          rev=(5000, None), minscore=70, tag="co-op"),
     dict(id="new", label="New and well-reviewed", tone="popular",
          blurb="Released in the last year and already well liked.",
-         q="rel=1yr&minscore=80&rev=4&ratesrc=all&adult=hide&sort=release_ts&dir=-1",
+         q="rel=1yr&minscore=80&rev=4&ratesrc=all&adult=hide&" + ADULT_EXC_Q + "&sort=release_ts&dir=-1",
          rev=(5000, None), minscore=80, rel="1yr"),
     dict(id="gems", label="Hidden gems", tone="niche",
          blurb="80%+ positive, but under 5,000 reviews — the ones that got missed.",
@@ -178,6 +198,9 @@ def build():
             hours=(h.get("main") if "main" not in (h.get("est") or []) else None),
             # PICS-covered -> its flag decides, alone. Uncovered -> the raw tag fallback.
             adult=(bool(pi.get("adult")) if pi else bool(ADULT_TAGS & set(raw_tags))),
+            # The second lock: an adult tag on the MERGED tag set (PICS names where PICS has
+            # them, SteamSpy otherwise), which is what the page's exc= list tests.
+            adult_tagged=bool({t.lower() for t in ADULT_TAGS} & tg),
             no_end=bool(set(NO_ENDING) & tg),
             tags=tg,
         ))
@@ -193,7 +216,8 @@ def build():
             return False
         if (r["rating"] or 0) < p["minscore"]:
             return False
-        if r["adult"]:
+        # Both locks, in the same order the page applies them.
+        if r["adult"] or r["adult_tagged"]:
             return False
         if p.get("no_ending") is False and r["no_end"]:
             return False
@@ -219,9 +243,21 @@ def build():
 
     out, problems = [], []
     for p in PRESETS:
-        bad = set(urllib.parse.parse_qs(p["q"], keep_blank_values=True)) - KNOWN_PARAMS
+        parsed = urllib.parse.parse_qs(p["q"], keep_blank_values=True)
+        bad = set(parsed) - KNOWN_PARAMS
         if bad:
             raise SystemExit(f"preset {p['id']}: unknown URL params {sorted(bad)}")
+        # The house rule, enforced at build time rather than trusted to review: no shelf ships
+        # without BOTH adult locks. A new shelf that forgets one fails the job loudly instead
+        # of quietly putting adult content on the landing page.
+        if parsed.get("adult") != ["hide"]:
+            raise SystemExit(f"preset {p['id']}: every shelf must set adult=hide")
+        # parse_qs already decodes "+" to a space, so compare against the decoded spelling
+        # rather than the URL one ("sexual content", not "sexual+content").
+        excluded = set((parsed.get("exc") or [""])[0].split(","))
+        missing = {t.lower() for t in ADULT_TAGS} - excluded
+        if missing:
+            raise SystemExit(f"preset {p['id']}: exc= is missing adult tags {sorted(missing)}")
 
         sel = [r for r in rows if matches(r, p)]
         scored = sorted((r for r in sel if qtpd(r) is not None), key=qtpd, reverse=True)
