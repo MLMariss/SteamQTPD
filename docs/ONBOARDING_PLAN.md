@@ -301,7 +301,7 @@ the run stalls. Every other item on this page is a guess until this exists.
 
 ### Technique 6 — Supporting
 
-**S15 · Give touch devices the explanation layer. (G1.)**
+**S15 · Give touch devices the explanation layer. (G1.) [Done — Chunk B.]**
 *Proposal:* On `(hover: none)`, bind the same `title` corpus to **tap** — a tap on any element
 carrying a tip opens the styled tip box; a second tap elsewhere dismisses it. The engine is
 already fully event-delegated, so this is a second entry path into existing code, not a new
@@ -311,6 +311,25 @@ long-press on values) rather than stealing the primary tap.
 *Cost:* M. *Risk:* moderate, entirely in gesture collision. But this is the item that converts
 a large body of already-written, already-good explanation from *invisible* to *available*, which
 makes it the best value on the list.
+*Done:* the engine no longer bails on `(hover: none)`; it detects the capability and wires a tap
+path instead of the hover path. Collision was solved by **inverting the question** — rather than
+finding a gesture nobody uses, a tap opens a tip only when it lands on an **inert** part of a
+titled element. Anything with its own meaning (`button, a, input, select, textarea, summary,
+label[for], [role=button], .sortable, .splitsort, .chip, .gcard, .gart, .stage-box, .tagstoggle,
+.seg`) keeps it untouched. That costs almost nothing in coverage, because the page's controls sit
+*beside* their explanatory label rather than inside it: `.field` carries the title and its
+`<label>` is a sibling of the `.seg` holding the buttons. A second tap on the same element closes;
+so does a scroll, or a tap anywhere else. Placement anchors to the element's box (centred under
+it, flipped above near the bottom, clamped both axes) since there is no cursor to follow, and the
+box is capped at `min(340px, 100vw - 24px)` so it fits a 390px phone.
+*Discovery:* a pointer advertises a tip with `cursor:help`, which does not exist on a finger — so
+on touch the 21 filter fields paint a small **?** beside their label. Everything else is found by
+tapping the value it explains, which is the gesture people already try.
+*Residual gap, deliberate:* the ~145 titled elements that are themselves controls keep their tap,
+so their individual tips (e.g. *"Real only — use just real HowLongToBeat times"*) stay unreachable
+on touch. The parent field's tip covers the group but not the per-option nuance. Closing that
+would need a dedicated affordance per button, which is not worth the clutter — revisit only if a
+playtest (S14) shows people reaching for it.
 
 **S16 · A reference panel, reachable from the top.**
 *Problem:* G2 — help exists but is at the bottom or on hover.
@@ -482,12 +501,39 @@ These need answering before anything above can be scoped properly.
 
 | Chunk | Items | State |
 |---|---|---|
-| **A** | S12 (plain-word Length labels) · S13 (legend exposed to assistive tech) | **Done.** Verified in Chromium at 1324 / 1400 / 1700 / 2400px: label renders on one line at every width, `<th>` height unchanged, no overflow, header/body column edges aligned, no JS errors. |
-| **B** | S15 — tap-tooltips on touch | Next. |
+| **A** | S12 (plain-word Length labels) · S13 (legend exposed to assistive tech) | **Merged** (#87). Verified in Chromium at 1324 / 1400 / 1700 / 2400px: label renders on one line at every width, `<th>` height unchanged, no overflow, header/body column edges aligned, no JS errors. |
+| **B** | S15 — tap-tooltips on touch (absorbs S11 and S18) | **Done.** Verified on an emulated Pixel 7 and at 1700px desktop — see below. |
 | **C** | S6 · S7 | — |
 | **D** | S3 · S8 · S16 | — |
 | **E** | S9 · S10 | — |
 | **F** | S1 · S2 · S4 | — |
+
+### Chunk B verification
+
+Emulated **Pixel 7** (`hover: none`) and a **1700px** mouse context, same page:
+
+| Check | Result |
+|---|---|
+| Tapping a filter field label opens the tip | pass |
+| Tip stays inside a 412px viewport | pass (left 10px, right 350px) |
+| Tapping the same label again closes it | pass |
+| `?` affordance painted on touch | pass |
+| Tapping a filter **button** still toggles it | pass — `aria-pressed` flips |
+| Tapping a filter button does **not** open a tip | pass |
+| Tapping a grid card's title still flips the card | pass — card opens |
+| Tapping a grid card's title does **not** open a tip | pass |
+| Scrolling dismisses | pass |
+| **Desktop** hover still opens the tip | pass |
+| **Desktop** does not paint the `?` | pass |
+| **Desktop** mouse-out still hides | pass |
+| JS errors | none |
+
+The one that matters for **G2**: tapping the QTPD legend key on a phone now returns *"QTPD —
+Quality Time Per Dollar, the headline metric. Higher means more game-hours of value per dollar."*
+Before this chunk that string existed in the DOM and could not be reached by any gesture.
+
+Coverage: **36 of 181** titled elements are tap-reachable; the rest are controls whose tap is
+spoken for (see the residual gap under S15).
 
 ### Stale figures found in `ARCHITECTURE.md` §11
 

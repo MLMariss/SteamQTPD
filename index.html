@@ -156,6 +156,22 @@
   .uitip .tk-num{color:var(--blue); font-weight:500}
   .uitip .tk-pos{color:var(--teal); font-weight:500}
   .uitip .tk-neg{color:var(--coral); font-weight:500}
+  /* ── Touch: the tip is reached by tapping, so it needs a visible mark and a narrower box ────
+     A pointer advertises an explanation with cursor:help; a finger has no cursor, so on touch
+     the availability of a tip has to be PAINTED or it may as well not exist. The filter fields
+     are the densest explanatory surface on the page (21 of them, each with a written tip), so
+     they carry a small ? beside the label. Everything else is found by tapping the value it
+     explains, which is the gesture people already try. The box also has to fit a 390px phone,
+     where a flat 340px plus the anchor clamp can leave it edge to edge. */
+  @media (hover: none){
+    .uitip{max-width:min(340px, calc(100vw - 24px))}
+    .field[title] > label{display:flex; align-items:center; gap:5px}
+    .field[title] > label::after{
+      content:"?"; flex:none; width:13px; height:13px; border-radius:50%;
+      border:1px solid var(--line); background:var(--panel); color:var(--muted-2);
+      font-family:var(--mono); font-size:9px; line-height:11px; text-align:center;
+      font-weight:600; letter-spacing:0}
+  }
 
   .seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:9px; overflow:hidden}
   .seg button{appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--mono);
@@ -6088,7 +6104,12 @@ Promise.all([
      • numbers / percentages / multipliers          → blue
      • a small set of positive / negative cues       → teal / coral (matching recommend / not). */
 (function(){
-  if(matchMedia && matchMedia("(hover: none)").matches) return;  // touch: no hover tooltips
+  // Touch gets the SAME tip corpus, through a tap instead of a hover. This engine used to bail
+  // out entirely on the line below, which meant every [title] on the page — column headers,
+  // filter fields, legend keys, the QTPD explanation itself — existed for pointer users only.
+  // On a phone Grid is the default view and the audience is least expert, so that left the one
+  // platform with no explanation layer at all (ONBOARDING_PLAN.md G1 / S15).
+  const TOUCH = !!(matchMedia && matchMedia("(hover: none)").matches);
   const TIP = document.createElement("div");
   TIP.className = "uitip"; TIP.setAttribute("role","tooltip");
   const mount = () => (document.body || document.documentElement).appendChild(TIP);
@@ -6123,12 +6144,26 @@ Promise.all([
     if(y < pad) y = pad;
     TIP.style.left = x + "px"; TIP.style.top = y + "px";
   }
-  function show(el, t){
+  // Touch has no cursor to hang the box off, so it anchors to the tapped element's box instead:
+  // centred under it, flipped above when the bottom of the screen is closer, clamped to the
+  // viewport on both axes. Same box, same decoration — only the anchor differs.
+  function placeNear(el){
+    const pad = 10, vw = innerWidth, vh = innerHeight;
+    const r = el.getBoundingClientRect(), w = TIP.offsetWidth, h = TIP.offsetHeight;
+    let x = Math.round(r.left + r.width / 2 - w / 2);
+    if(x + w + pad > vw) x = vw - w - pad;
+    if(x < pad) x = pad;
+    let y = r.bottom + 8;
+    if(y + h + pad > vh) y = r.top - h - 8;
+    if(y < pad) y = pad;
+    TIP.style.left = x + "px"; TIP.style.top = y + "px";
+  }
+  function show(el, t, near){
     if(curEl) restore();
     curEl = el; curTitle = t;
     el.setAttribute("title", "");                       // suppress the native tooltip
     TIP.innerHTML = decorate(t);
-    place();
+    (near ? placeNear : place)(el);
     requestAnimationFrame(() => TIP.classList.add("show"));
   }
   function restore(){
@@ -6137,22 +6172,41 @@ Promise.all([
   }
   function hide(){ restore(); TIP.classList.remove("show"); }
 
-  document.addEventListener("mouseover", e => {
-    const el = e.target.closest && e.target.closest("[title]");
-    if(el === curEl) return;
-    const t = el && el.getAttribute("title");
-    if(t){ show(el, t); } else if(curEl){ hide(); }
-  });
-  document.addEventListener("mousemove", e => {
-    lastX = e.clientX; lastY = e.clientY;
-    if(!curEl) return;
-    if(!raf) raf = requestAnimationFrame(() => { raf = 0; place(); });
-  });
-  document.addEventListener("mouseout", e => {
-    if(curEl && !(e.relatedTarget && curEl.contains(e.relatedTarget))) hide();
-  });
+  // Every element that already means something when tapped keeps that meaning: the tip must
+  // never swallow a filter toggle, a sort, a card flip, a link or the preview player. So a tap
+  // opens a tip only when it landed on an INERT part of a titled element — a <label>, a legend
+  // key, a spec-sheet row, a meta figure. That costs nothing in coverage, because the controls
+  // sit BESIDE their explanatory label rather than inside it: .field carries the title and its
+  // <label> is a sibling of the .seg holding the buttons.
+  const INERT_BLOCKERS = "button,a,input,select,textarea,summary,label[for],[role=button]," +
+                         ".sortable,.splitsort,.chip,.gcard,.gart,.stage-box,.tagstoggle,.seg";
+  if(TOUCH){
+    document.addEventListener("click", e => {
+      const hit = e.target.closest && e.target.closest("[title]");
+      if(!hit || e.target.closest(INERT_BLOCKERS)){ if(curEl) hide(); return; }
+      if(hit === curEl){ hide(); return; }               // tapping the same thing again closes
+      const t = hit.getAttribute("title");
+      if(t) show(hit, t, true); else if(curEl) hide();
+    });
+  } else {
+    document.addEventListener("mouseover", e => {
+      const el = e.target.closest && e.target.closest("[title]");
+      if(el === curEl) return;
+      const t = el && el.getAttribute("title");
+      if(t){ show(el, t); } else if(curEl){ hide(); }
+    });
+    document.addEventListener("mousemove", e => {
+      lastX = e.clientX; lastY = e.clientY;
+      if(!curEl) return;
+      if(!raf) raf = requestAnimationFrame(() => { raf = 0; place(); });
+    });
+    document.addEventListener("mouseout", e => {
+      if(curEl && !(e.relatedTarget && curEl.contains(e.relatedTarget))) hide();
+    });
+    document.addEventListener("mousedown", hide, true);
+  }
+  // Scrolling dismisses on both: the box is anchored to a point that has just moved.
   addEventListener("scroll", hide, true);
-  document.addEventListener("mousedown", hide, true);
   addEventListener("blur", hide);
 })();
 
