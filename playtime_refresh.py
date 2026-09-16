@@ -480,10 +480,13 @@ LOW_YIELD_REOPEN = 1.5       # catalog count growing this many x since re-opens 
 # the whole day-1..day-5 coverage hole (25% at day 1, ~93% by day 6): the game is not
 # starved of budget, it is waiting in a queue that opens twice a week.
 #
-# A first touch is the cheapest visit there is — ONE page request (page 1 already
-# satisfies FIRST_TOUCH_TARGET, so the walk breaks immediately), so the entire
+# A first touch is the cheapest visit there is — for most games ONE page request (page 1
+# already satisfies FIRST_TOUCH_TARGET, so the walk breaks immediately), so the entire
 # never-seen frontier is minutes of budget. This phase serves it across ALL shards
 # before the normal rotation starts, instead of making each game wait for its bucket.
+# The exception is a release the catalog already shows as popular, which gets the ladder's
+# first rung instead of one page — see first_touch_target() and FIRST_TOUCH_HOT_REVIEWS
+# for why one page is not a sample on a game taking reviews by the minute.
 #
 # It deliberately breaks the "one shard open at a time" rule only in the sense that it
 # touches many buckets in one phase — the batch is GROUPED BY SHARD and processed shard
@@ -495,6 +498,41 @@ LOW_YIELD_REOPEN = 1.5       # catalog count growing this many x since re-opens 
 # Set FIRST_TOUCH_BATCH=0 to disable the phase entirely.
 FIRST_TOUCH_BATCH = int(os.environ.get("FIRST_TOUCH_BATCH", "300"))
 FIRST_TOUCH_TARGET = 100          # == PER_PAGE: exactly one page per game
+
+# ONE PAGE IS NOT ALWAYS A SAMPLE. The fast lane's one-page stake is sized for the game it
+# usually lands on: a release taking a handful of reviews a day, where 100 reviews is most of
+# the game and days of its life. On a big launch it buys something else entirely. Measured on
+# WARDOGS (appid 1867240) 2026-09-16: 60,202 reviews at 81%, and its stored sample was the
+# 100-review first-touch page — 0.17% of the game, and because it launched into ~14 reviews a
+# MINUTE, all 100 were written inside a SEVEN-MINUTE window of launch evening. It rated 48.3%
+# off that, 35 points under Steam, and sat there for 5 days waiting for its shard to open
+# (~46 h median, ~81 h worst). The frontend now refuses to show such a sample at full
+# confidence (ratings_summarize.py's sliver gate), but a grayed number is a number we failed
+# to produce — the real fix is not to take a seven-minute sample in the first place.
+#
+# So the stake is sized by what the CATALOG already knows about the game. A release the store
+# says has >= FIRST_TOUCH_HOT_REVIEWS is walked to FIRST_TOUCH_HOT_TARGET — rung 1 of
+# DEPTH_LADDER, exactly what its first normal visit would have given it, just taken on day one
+# instead of two days later.
+#
+# Cost is bounded three ways and stays small: games this popular are rare in the frontier
+# (measured 2026-09-16: 5 of 95,297 rated games sit at exactly the first-touch 100 with >10k
+# reviews), FIRST_TOUCH_HOT_MAX caps how many any single run will deepen, and the sweep's
+# existing per-game time_left() check still ends the phase when the budget runs out. A hot
+# touch is ~10 pages / ~15 s at STEAM_DELAY against ~1.5 s for a cold one.
+FIRST_TOUCH_HOT_REVIEWS = 10_000  # catalog review count at which one page stops being a sample
+FIRST_TOUCH_HOT_TARGET = DEPTH_LADDER[0]   # give those the ladder's first rung immediately
+FIRST_TOUCH_HOT_MAX = int(os.environ.get("FIRST_TOUCH_HOT_MAX", "25"))   # deep touches per run
+
+
+def first_touch_target(review_count):
+    """Depth for ONE first touch, from the catalog's own review count for that game.
+
+    `review_count` comes from games.json and can be None for a game the scraper has seen but
+    not counted — treat that as cold, since we have no evidence it is big."""
+    if (review_count or 0) >= FIRST_TOUCH_HOT_REVIEWS:
+        return FIRST_TOUCH_HOT_TARGET
+    return FIRST_TOUCH_TARGET
 # The fast lane spreads a small number of games over MANY shards (80 games hit 40
 # buckets in the measured frontier), and one commit per shard would mean ~40 pushes of
 # a ~21 MB file per run. Shards are therefore saved as they finish but committed in
@@ -1133,6 +1171,7 @@ def first_touch_sweep(games, now, time_left):
                        f"across {len(pending)} shard(s)", pending)
         pending, pending_games = [], 0
 
+    deep_done = 0                     # hot (multi-page) first touches spent this run
     for bucket in sorted(batch):
         if time_left() < TIME_BUFFER:
             log("  fast lane: time budget reached; deferring the rest to the next run.")
@@ -1145,16 +1184,26 @@ def first_touch_sweep(games, now, time_left):
             aids = str(aid)
             if aids in raw:               # filled by an earlier phase/run; don't re-walk
                 continue
+            # Depth by catalog review count — see first_touch_target(). Once this run has
+            # spent its budget of deep touches the rest fall back to the one-page stake and
+            # the next run picks them up, rather than one popular bucket eating the phase.
+            target = first_touch_target(rc)
+            deep = target > FIRST_TOUCH_TARGET
+            if deep and deep_done >= FIRST_TOUCH_HOT_MAX:
+                target, deep = FIRST_TOUCH_TARGET, False
             reviews = {}
-            added, refreshed, exhausted = scrape_game(aid, reviews, FIRST_TOUCH_TARGET)
+            added, refreshed, exhausted = scrape_game(aid, reviews, target)
             if not reviews and not exhausted:
                 continue                  # transient fetch failure — leave it for next run
             raw[aids] = {"reviews": reviews, "summary": summarize_game(reviews),
                          "exhausted": exhausted, "scraped_at": int(time.time())}
             got += 1
+            if deep:
+                deep_done += 1
             s = raw[aids]["summary"]
             mu = s["median_up"]
-            log(f"  first touch {aid:>8}: held {s['n_all']} of {rc or '?'} reviews · "
+            log(f"  first touch {aid:>8}: held {s['n_all']} of {rc or '?'} reviews"
+                f"{' (deep — popular release)' if deep else ''} · "
                 f"fans {f'{mu/60:.1f}h' if mu is not None else '—'} (n={s['n_up']})")
         if got:
             save_shard(bucket, raw)
