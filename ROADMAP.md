@@ -27,6 +27,12 @@ Cloudflare Worker (§12), it does not become a server.
 > are still numbered that way, because ~22 cross-references across the docs point at `§3.1`,
 > `§3.2` and `§3.4`. A citation of `§3.x` anywhere in the repo means *this file*; every other
 > `§N` means ARCHITECTURE.md.
+>
+> **The split is now real.** For a while ARCHITECTURE.md kept its own full copy of §3 as well,
+> and the two drifted — different readings of the update-events precedence flip, among other
+> things. That copy was replaced with a pointer in the 2026-09-16 documentation audit, so this
+> file is the only backlog. **Nothing was dropped in the move**; the one item that lived only in
+> the ARCHITECTURE copy (review-TEXT keyword extraction) was ported into §3.1 here.
 
 ---
 
@@ -35,9 +41,19 @@ Cloudflare Worker (§12), it does not become a server.
 Open items only — the shipped ones are annotated `[Done]` inline below and kept as a record so
 they aren't re-proposed. Sorted roughly by value-to-effort within each group.
 
+> **This is not the only backlog — check the other two before proposing something.**
+> `docs/ONBOARDING_PLAN.md` holds 18 scored solutions for the *learning curve* (S1–S18) with
+> its own build log; `INESKA_IMPROVEMENTS.md` holds an outside reviewer's cold-arrival findings
+> (23 items, all shipped). Items there are tracked by their own IDs and **do not appear in this
+> index**. Recently shipped from ONBOARDING_PLAN and therefore already answered: **preset
+> shelves** (S3, with the *Length range* and *Released within* filters they needed),
+> **tap-tooltips on touch** (S15), and **plain-word Length labels + an accessible colour
+> legend** (S12/S13). As-built records for all of those are in ARCHITECTURE §11.
+
 | Item | Where | Blocked on |
 |---|---|---|
 | Completion rate (achievement-weighted QTPD) | §3.1 | An achievement-selection heuristic ("which one means finished?") |
+| Review-TEXT keyword / sentiment aggregates | §3.1 | A decision on the lexicon, and on whether a stored aggregate still earns its keep beside the on-demand Review Digest |
 | Region-specific pricing | §3.1 | An explicit store-N-regions vs fetch-live design decision |
 | Update-events **precedence flip** | §3.1 / §9.5 | Re-scoped — needs a per-game preference or a lower review floor, not more coverage |
 | Mod support & mod count | §3.1 | Nothing; Workshop counts are retrievable |
@@ -118,6 +134,51 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   re-measure. **Live figures are in `COVERAGE.md` (Axis 1, `updates.json` / `updates_raw/`
   rows) — read those rather than any hand-written count here.**
 
+- **Review-TEXT analysis: keyword / sentiment extraction (a free data source — no new
+  scrape).** *The exception to this section's rule that every item is a new scrape:* we already
+  fetch the **full written review text** on every playtime run and discard it.
+  `playtime_refresh.py` calls `appreviews` with `num_per_page=100, filter=recent, language=all`,
+  so Steam returns complete review objects — but `_parse_review` keeps only `{pt, up, ts}` and
+  drops the rest. The same `rv` also carries, at **zero extra request cost**: **`review`** (the
+  text), `votes_up` / `votes_funny` / `weighted_vote_score` (helpfulness), `language`,
+  `steam_purchase`, `received_for_free`, `written_during_early_access`, `comment_count`. (The
+  other two callers are *not* candidates: `scraper.py:rating_from_reviews` asks for
+  `num_per_page=0` = zero bodies, and `recent_refresh.py` reads only the 30-day `query_summary`.)
+
+  *The real constraint is storage, not fetching:* raw prose for ~1,000 reviews × ~78k games is
+  1 GB+, and the playtime set is **already sharded across 64 files** because it hit GitHub's
+  100 MB/file cap (§9, SHARDS.md) — so the design must **extract at scrape time and store only
+  aggregates**, exactly as `playtime_summarize.py` does for medians.
+
+  *What to do (Option A, recommended):* in `_parse_review` also read `review` + `language`;
+  during the existing walk (text already in memory) count hits from a curated lexicon split by
+  ▲recommend / ▼not (e.g. `buggy`, `crash`, `optimiz`, `p2w`, `grindy`, `masterpiece`, `refund`,
+  `unfinished`, `microtransaction`, `addictive`); write only the counts to a **new one-writer
+  `review_keywords.json`** (respecting §1 — a new file, not a change to the playtime shards),
+  merged by `appid` in the frontend as a "common praise / complaints" column or tooltip.
+  *Higher-ambition alternatives if A proves useful:* **B** — keep the ~5 most-helpful review
+  texts per game (by `weighted_vote_score`) for representative quotes (bounded text storage, its
+  own sharded file); **C** — an LLM one-line "what players say" summary per game (highest value,
+  but adds an external-model dependency + cost + batch job, breaking the "runs entirely free on
+  GitHub Actions" model).
+
+  *Open decisions before coding:* hand-curate the lexicon vs. derive it from a live
+  raw-`appreviews` sample first (recommended — eyeball the text, tune terms); English-only the
+  keyword pass via the `language` field vs. multilingual term lists; and confirm a separate file
+  over piggybacking the playtime shards' `summary` block (leaning separate — keeps
+  one-writer-per-file and doesn't grow the already-capped shards).
+  *Free-to-fetch, low-medium effort, de-risk with Option A before B/C.*
+
+  **Still open, and the Review Digest did NOT close it** — the two are adjacent and answer
+  different questions. The digest (ARCHITECTURE §17, REVIEW_DIGEST_PLAN.md) is **on-demand, in
+  the browser, for one game at a time, and stores nothing**; this item is a **stored aggregate
+  for every game**, which is what a column, a sort or a filter would need. What the digest *does*
+  change is the risk profile: its compaction pipeline has already settled, against live data, the
+  questions this item lists as open — which reviews are noise (ASCII art, copypasta, sub-10-word
+  stubs), what a review costs to store, and whether a keyword floor is worth anything next to a
+  model reading the prose (`REVIEW_DIGEST_PLAN.md` §12 decision 5 dropped an in-browser lexicon
+  count for exactly that reason). **Read §6, §12 and §23 of that memo before starting Option A.**
+
 - **Mod support & mod count.** Flag whether a game is moddable and roughly how large its mod
   scene is — especially relevant to the survival-craft audience. *What to do:* query the
   Steam Workshop for published-file counts per app into a new file; expose as a filter/column.
@@ -184,7 +245,7 @@ Works off data already collected. Several are cheap and high-impact.
   **resolved**; **Price and Discount** merged into one `Price / Sale` column with a **split
   header** whose halves sort independently (Price by current price, Sale by discount depth). Then
   (2026-07) the narrow-screen view was **rebuilt into a proper card** (§11 *Responsive*). Below
-  1374px each row is now a **single-column spec-sheet card**: a **thumbnail + title header**, the
+  1280px each row is now a **single-column spec-sheet card**: a **thumbnail + title header**, the
   **QTPD** value + meter as the headline metric, then one metric per line (fixed **label gutter**
   + value) in a **logical order** — name → QTPD → price → ratings → length → release → updates →
   tags — set by CSS **`order`**, independent of the table's column order. Column names are
@@ -353,7 +414,10 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
   `body.grid-view` (grid), `body.narrow` — set by `applyLayout()` + a tiny inline FOUC script.
   The **"detailed" view is one thing relabelled per device**: **Table = desktop-only, Card =
   mobile-only** (the off-device button is dimmed and shows a hint toast). View persists in
-  `localStorage["qtpd.view"]`. Breakpoint = **1374px** (the table's real floor) via `matchMedia`.
+  `localStorage["qtpd.view"]`. Breakpoint = **1280px** (`TABLE_MIN_W`, the table's real floor) via
+  `matchMedia`, with the Tags column folding to its strip between 1280 and 1365 rather than the
+  table being abandoned. *(It was a single 1374px cliff until INESKA_IMPROVEMENTS.md §2 — wrong
+  in both directions: it denied a table to 1366px windows that fit one comfortably.)*
 
 - **L4. Utility actions — ✅ SHIPPED** (in `.bar-tools`).
   - **Random** — picks from the **current filtered list**, grows the page until the pick is
@@ -473,7 +537,8 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     Tags-*column* collapse, §11, unrelated to the Tags filter *section*).
   - **Body classes** (set by `applyLayout()` + inline FOUC script): `layout-card`, `grid-view`,
     `narrow`, plus `tags-collapsed` (§11) and `nav-scrolled` (R6). Breakpoint
-    `matchMedia("(max-width:1374px)")`; phone tier `@media (max-width:560px)`.
+    `matchMedia("(max-width:1279px)")` for cards and `("(max-width:1365px)")` for the folded Tags
+    column; phone tier `@media (max-width:560px)`.
   - **URL params:** existing set + **`tagmode`**, and (from the PICS work, §9.6) **`pc`,
     `flags`, `noflags`, `ai`, `ctrl`, `deck`, `adult`. The old boolean `sale` param is gone**,
     superseded by `pc`. Full current list in §11 *State in the URL*

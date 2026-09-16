@@ -29,6 +29,15 @@ extras / completionist / avg) feeds the formula.
 > not being built, see **[ROADMAP.md](ROADMAP.md)**. Live data coverage is in the generated
 > **[COVERAGE.md](COVERAGE.md)**, and how current that data is — per task, with the next
 > refresh due and where the gap is too big — in the generated **[FRESHNESS.md](FRESHNESS.md)**.
+>
+> Two features have their own design records because they were built over many rounds:
+> the **Review Digest** in **[REVIEW_DIGEST_PLAN.md](REVIEW_DIGEST_PLAN.md)** (as-built summary
+> in ARCHITECTURE §17) and the **PICS metadata layer** in
+> **[PICS_METADATA_PIPELINE.md](PICS_METADATA_PIPELINE.md)**. Two more capture outside
+> feedback and what was done about it: **[INESKA_IMPROVEMENTS.md](INESKA_IMPROVEMENTS.md)**
+> (a first-time user's cold arrival, all 23 findings shipped) and
+> **[docs/ONBOARDING_PLAN.md](docs/ONBOARDING_PLAN.md)** (18 scored ideas for easing the
+> learning curve, with a build log).
 
 ## How it works
 
@@ -54,6 +63,7 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 | `pics_merge.py`         | `pics.json`          | Flattens the 64 `pics/` shards into the single file the browser downloads, keeping only the keys the frontend reads. Chained step; pure local recompute. |
 | `trailers.py`           | `trailers.json`      | CDN filenames for each game's Steam preview clip, so hovering a thumbnail plays moving footage instead of just enlarging the still — and, on a phone, so a tap plays it in the card and a swipe up moves it into the docked player (ARCHITECTURE.md §11). The path is a hash the appid doesn't predict, so unlike every other bit of store art it has to be looked up and stored. Valve no longer serves a progressive full trailer — only this short loop and DASH/HLS manifests — see ARCHITECTURE.md §2.1. Batched `GetItems`; backlog-drain, not a refresh loop. + `trailers_state.json` (queue state, not served). |
 | `shots.py`              | `shots/shard_NN.json` | Store screenshot filenames per game, so the hover panel — and the phone's preview player — rotates real gameplay stills after the preview clip ends — and shows them instead of a static piece of key art on the ~4,600 games with no clip at all. Hashed like trailers, so equally underivable from the appid; the PICS `store_screenshot` field that looks like a free substitute is dead (11.8% of apps, ~0% post-2019) — see ARCHITECTURE.md §2.2. Batched `GetItems`; backlog-drain, not a refresh loop. **Sharded** into 64 files and fetched lazily, one shard per hovered (or tapped) game, never at page load. + `shots_state.json` (queue state, not served). |
+| `presets.py`            | `presets.json`       | The landing page's preset shelves — measures each hand-authored shelf against the live catalogue after every scrape and flags any that has gone thin or broad. It **reports, it never re-tunes**: the shelf definitions stay in the script under version control. Stdlib-only, no Steam calls. |
 | `coverage.py`           | `COVERAGE.md`        | Regenerates the coverage/freshness snapshot from the live files after every scrape. Stdlib-only, no Steam calls. |
 | `shard_health.py`       | `SHARDS.md`          | Daily per-shard size/evenness report for `playtime_raw/`, watching the 100 MB per-file limit. No Steam calls. |
 | `freshness.py`          | `FRESHNESS.md`       | Daily 07:00 UTC freshness check: per-task last-run → next-run → gap, how much of the catalog each task holds up to date vs pending, and the per-game wait distribution. Reads the workflow crons themselves; stdlib-only, no Steam calls. |
@@ -114,25 +124,45 @@ art is the Steam link. **Right-click undoes** — from the "18+?" prompt or from
 goes straight back to hidden. Each row also has a slim `[x]` to hide that game for the session.
 
 - **Weighted** — a review rating where each vote is weighted by how long that player
-  actually played (capped at 2× the game's median so no single obsessive dominates), shown
-  next to Steam's flat %. Grayed when there are too few reviews to be reliable.
+  actually played (capped at 2× the game's median so no single obsessive dominates). Grayed when
+  the sample is too small to be reliable — either too few reviews outright, or a sample that is
+  a tiny sliver of a much-reviewed game. Hover it for all three numbers: the weighted score, the
+  same sample unweighted (so you can see what the weighting moved), and Steam's own published
+  score with its full review count.
 - **Playtime** — the median hours played, split into ▲ players who recommended it (green)
   and ▼ players who didn't (red). A long playtime on a "not recommended" is a credible
   signal. Hover for the sample size.
+
+## Start with a shelf
+Above the results is a row of one-click **preset shelves** — *Best deals under $10* · *Half off
+or better* · *Long games, highly rated* · *Short and cheap* · *Co-op picks* · *New and
+well-reviewed* · *Hidden gems* · *Under-the-radar indie*. Each one is just a set of filters, so
+after you click it the summary line shows you exactly which controls it moved and you can edit
+or clear any of them. Click the lit shelf again to clear it.
+
+They are regenerated after every scrape (`presets.py`) so a shelf that has gone thin or turned
+up junk shows as a warning in the build rather than sitting there stale for months. The popular
+shelves need 5,000+ reviews so the results are recognisable; the two "hidden" shelves *cap* at
+5,000 for the opposite reason. **No shelf ever features adult content** — every one of them sets
+`adult=hide` and the build fails if one doesn't.
 
 ## Frontend filters
 Filters live in four collapsible sections. Defaults are always the **leftmost** button, and any
 control you move off its default lights up gold, so an open section shows at a glance what
 you've touched.
 
-- **Value** — **QTPD price basis** (Sale / Full) · **HLTB metric** (main / +extras / 100% /
-  avg) · **HLTB data** (real only — the default — / all incl. estimates) · **price type**
-  (All / Full / Sale / Free, independent toggles) · min & max price · **QTPD range**
-  (log-scale slider that fits the current results).
-- **Quality** — minimum rating (any / 60+ / 70+ / 80+ / 90+) · **Reviews sort by** (30-day /
-  all-time) · review trend (improving / stable / declining) · minimum reviews (0 / 10 / 100 /
-  1k / 5k+ bands) · updated-within (any / 1mo / 3mo / 6mo / 1yr / 1yr+) · **Playtime sort**
-  (▲ recommenders / ▼ non-recommenders — this only *selects* which median a click on the
+- **Value** — **QTPD price basis** (Sale / Full) · **Length metric** (main / +extras / 100% /
+  avg) · **Length data** (real only — the default — / all incl. estimates) · **price type**
+  (All / Full / Sale / Free, independent toggles) · min & max price · **min sale %** (a −5 / +5
+  stepper that drops shallow discounts; its resting value is read from the current results, not
+  hard-coded) · **length range in hours** (the twin of price range — it follows the Length metric
+  above it) · **QTPD range** (log-scale slider that fits the current results).
+- **Quality** — minimum rating (any / 60+ / 70+ / 80+ / 90+) · **Review period** (30-day /
+  all-time — it drives both the rating floor and the score sort) · review trend (improving /
+  stable / declining) · minimum reviews (0 / 10 / 100 / 1k / 5k+ bands) · updated-within
+  (any / 1mo / 3mo / 6mo / 1yr / 1yr+) · **released-within** (same windows, on the release date —
+  `1yr+` means *older* than a year, so the two halves partition the catalogue) · **Playtime
+  sort** (▲ recommenders / ▼ non-recommenders — this only *selects* which median a click on the
   Playtime column will sort by; it doesn't reorder on its own).
 - **Flags** — Valve's own metadata, from the PICS layer: **Early Access · AI disclosure ·
   Adult content · VR-only · Family-share block · Custom EULA**, each an Any / Exclude / Only
@@ -145,7 +175,8 @@ you've touched.
   Strategy RPG to pick from; the ✕ (or Esc) brings the full list back. It only filters which
   tags are shown, never the games.
 
-Hover any filter toggle for a one-line tooltip explaining it. Click the **QTPD logo** to
+Hover any filter toggle for a one-line tooltip explaining it — **or tap it on a phone**, where
+the fields that carry an explanation are marked with a small `?`. Click the **QTPD logo** to
 show/hide the whole filter bar; when it's collapsed, your active filters show as clickable
 chips you can edit in place, with a **Reset** shortcut.
 
@@ -160,8 +191,9 @@ Sale** column's header splits into two sort targets — click **Price** to sort 
 **Sale** to sort by discount depth. The **Tags** column header has a `><` button that folds the
 column away and gives the space to bigger cover art and full titles. Where the header isn't
 visible (Card and Grid), sorting moves to the "sorted by …" chip on the filter summary line.
-Infinite-scroll pagination (100 / 500 / 2000 per page); all filter/sort state lives in the
-URL so views are shareable.
+Infinite-scroll pagination — it loads the next 66 rows when you reach the bottom, and the old
+`100 / 500 / 2000` selector is gone (setting it to 2000 only ever made the page slow). All
+filter/sort state lives in the URL, so any view is a shareable link.
 
 **Free games** normally show no QTPD — you can't divide by a zero price. But filter price type
 down to **Free alone** and the QTPD column switches to ranking them by quality-weighted length
@@ -174,6 +206,43 @@ convert in the browser; vanity names resolve via the Cloudflare Worker (see belo
 the profile's *game details* to be **public**. If the Worker isn't reachable or configured,
 the Import button stays visible but each attempt just fails with an on-screen error toast —
 the rest of the site is unaffected either way.
+
+## Review Digest — ask an AI about a game's actual reviews
+
+Next to a game's review count (and on its grid card) is a button that pulls **real Steam review
+text** for that game, live in your browser, and packages it into one block with an analysis
+prompt already on top. Paste that into any AI and you get a counted breakdown of what players
+actually complain about and praise, instead of reading thousands of reviews by hand.
+
+- **Up to 5,000 reviews**, newest first. Sizes are 300 / 500 / 1000 / 2000 / 5000 and nothing
+  is capped from underneath you — the dialog *prices* each choice (token cost, which models can
+  hold it, how long the fetch takes) rather than quietly shrinking it.
+- **Reach** trades minutes for history: keeping one page in 2 or 3 covers 2–3× the time span
+  for the same bundle size, which matters on a busy game where even 5,000 reviews is only about
+  a month. The bundle says it was thinned, because a thinned sample makes *volume* figures
+  (reviews/day) read low while leaving every proportion correct.
+- **Output** is a self-contained HTML page by default, or Markdown; there's a Simplified mode
+  if you want a straight answer rather than a report.
+- A **quality bar** (10+ words by default) drops one-word reviews before counting, and the
+  header says how many it dropped — same bargain throughout: remove what would distort the
+  count, and state what was removed.
+
+It needs one small **Cloudflare Worker** (`worker/`), because Steam's review endpoint sends no
+CORS headers and this site has no server. Unlike the wishlist Worker, **that source is in this
+repo** — see `worker/README.md` to deploy your own. The design record, including the live probe
+that settled the numbers, is [REVIEW_DIGEST_PLAN.md](REVIEW_DIGEST_PLAN.md).
+
+## Review-score colours
+
+The rating % is coloured, and the scheme is switchable in the results bar (it's a display
+preference, not a filter — it's remembered per device and rides along in a shared link):
+
+- **Spectrum** (default) — a continuous ramp from red through orange and yellow to green, with
+  a perfect 100 in blue so it reads as a separate mark rather than "even more green". No
+  threshold cliffs: an 82% and a 70% no longer wear the same colour.
+- **Rarity** — five hard loot-tier bands (Worn / Common / Uncommon / Rare / Epic) for reading a
+  score as a *category* instead of a position. Scores inside a tier look identical on purpose,
+  and the tier's name is in the tooltip so the scheme doesn't depend on telling five hues apart.
 
 ## Setup (~5 min)
 1. Push these files to a **public** repo (keep the structure, incl. `.github/workflows/`).
@@ -249,9 +318,17 @@ Each job's knobs are at the top of its own script. The main ones:
   **`--stale-days`** (pics, 14) — how old a PICS record must be to refetch.
 - **`MIN_REVIEWS_FOR_RATING` / `CONFIDENT_REVIEWS` / `CAP_MULT`** (ratings) — the weighted
   rating's eligibility floor (5), full-color threshold (10), and per-review playtime cap (2×).
+- **`SLIVER_N` / `SLIVER_FRAC`** (ratings, 250 / 2%) — the second confidence test, and both
+  halves must bind. A flat review-count floor can't see a sample that is large in absolute terms
+  and still a sliver of the game: a 100-review first look at a title taking reviews by the minute
+  can cover seven minutes of a 60,000-review game and clear a floor of 10 fifty times over.
 - **`MIN_REVIEWS_FLOOR`** (playtime, 10) — the playtime scraper skips games below this many
   all-time reviews, since they can't produce a usable sentiment-split median. Re-checked each
   run against live review counts, so it's skip-for-now, not a permanent exclusion.
+- **`FIRST_TOUCH_HOT_REVIEWS` / `FIRST_TOUCH_HOT_TARGET`** (playtime, 10,000 / 1,000) — how
+  deep the *first* look at a never-seen game goes. Normally one page (100 reviews), which is
+  most of a quiet release; a game the catalogue already shows as big gets the full first rung
+  straight away, because one page of a busy launch is minutes of its life, not a sample.
 - **`DEPTH_LADDER`** (playtime, `1000 → 2000 → 3000`) — how many reviews are kept per game. The
   first visit fills to 1,000 and moves on (so new games get covered fast); each later visit
   climbs one rung, up to 3,000. Only the ~10% of games with more than 1,000 reviews ever climb,

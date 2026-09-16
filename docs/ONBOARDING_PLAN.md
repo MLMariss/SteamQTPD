@@ -191,6 +191,15 @@ changed, which is the whole point of the chips:
 Valheim, Green Hell on the popular side; Wizardry 8, Caveblazers, Globesweeper, Crystal Story II
 on the niche side.
 
+*An eighth shelf, added after the first six proved out: "Half off or better."* It is the
+deliberate **opposite question** to *Best deals under $10*, not a variation on it. That shelf asks
+what is **cheap** — a $10 ceiling, which a 15% cut on an $8 game clears — and this one asks what
+is heavily **marked down**, not caring what the game costs: a 60%-off $60 game is the point, and
+it can never appear on the other shelf. It sorts by discount depth rather than QTPD for the same
+reason — the label promises a big cut, so the biggest cuts open the list. 50% / 80%+ / 5k reviews
+leaves 267 games (measured 2026-09-16); dropping the floor to 40% adds only 15 and raising it to
+70% costs 87, so the knee is about where it sits.
+
 *Visibility — the row is always present, and that was a fix.* It shipped as a "landing
 affordance" that hid itself as soon as the user had filters of their own, which in practice
 meant **any querystring at all**: one search, one price bound, a bookmarked view, a shared link.
@@ -199,22 +208,33 @@ discovery row is for, and the reason the feature read as missing on the live sit
 after it shipped. A preset row is navigation, not a state indicator, so it stays put; the only
 thing the current filters change is which chip (if any) shows as active.
 
-*House rule — no shelf ever highlights adult content.* Every shelf carries **both** locks:
-`adult=hide` **and** an `exc=` list of every `ADULT_TAGS` entry. The second is not redundant:
-`isAdult()` treats the PICS flag as authoritative for PICS-covered games, so the tag test never
-runs for them, and a PICS-covered game tagged *Nudity* with no PICS flag passed `adult=hide`
-alone. Adding the tag exclusion removed **1,498 games** across the seven shelves. `presets.py`
-asserts both at build time, so a new shelf missing either fails the job rather than quietly
-shipping. The residual — a game whose only adult signal is its title — remains uncatchable from
-the data we hold, and is stated rather than implied away. See CLAUDE.md.
+*House rule — no shelf ever highlights adult content.* Every shelf sets `adult=hide`, and
+`presets.py` fails the job at build time if one does not, so a new shelf cannot quietly ship
+without it.
+
+*The second lock was added and then removed, deliberately (2026-09-16).* Shelves briefly carried
+an `exc=` list of every `ADULT_TAGS` entry alongside `adult=hide`. The reasoning was sound as far
+as it went — `isAdult()` treats the PICS flag as authoritative for PICS-covered games, so the tag
+test never runs for them, and a PICS-covered game tagged *Nudity* with no PICS flag passes
+`adult=hide` on its own. The tag exclusion did close that (it removed 1,498 games across the
+seven shelves as they then stood). But it closed far more than that: *Nudity* and *Mature* sit on
+plenty of games whose adult content is incidental, so excluding the tag by name threw out the
+**game** rather than the scene. Dropping it returned **~1,100 games** to the shelves. **The
+storefront's own adult flag is the definition, and it is the only lock.** Do not re-add the tag
+exclusion without being asked.
+
+*Known residuals, stated rather than implied away:* a PICS-covered game whose adult flag is unset
+but whose tags say otherwise now passes; so does a game whose only adult signal is its title — no
+flag, no tag, innocuous SteamSpy tags. Neither is identifiable from the data we hold. The popular
+shelves' 5,000-review floor thins both out; it does not reach the niche bands. See CLAUDE.md.
 
 *No count on the chip.* `presets.py` can count a shelf, but it counts it by re-implementing
 `passFilters()` in Python, and the two drifted — three corrections were needed before they
 agreed (PICS tags override SteamSpy, HLTB realness is per-metric not per-game, the PICS adult
-flag *replaces* the tag test rather than adding to it). Six of seven shelves now match the page
-exactly, but a chip quoting a number the page did not compute is a chip that can lie, so the
-chip carries only its label. The live count is one click away in the meta strip and is always
-right.
+flag *replaces* the tag test rather than adding to it). Six of the original seven shelves matched
+the page exactly at ship, but a chip quoting a number the page did not compute is a chip that can
+lie, so the chip carries only its label. The live count is one click away in the meta strip and
+is always right.
 
 **S4 · Defer the second-order controls.**
 *Problem:* the **QTPD range slider** and the **min-sale stepper** cannot be understood before
@@ -559,9 +579,9 @@ These need answering before anything above can be scoped properly.
 |---|---|---|
 | **A** | S12 (plain-word Length labels) · S13 (legend exposed to assistive tech) | **Merged** (#87). Verified in Chromium at 1324 / 1400 / 1700 / 2400px: label renders on one line at every width, `<th>` height unchanged, no overflow, header/body column edges aligned, no JS errors. |
 | **B** | S15 — tap-tooltips on touch (absorbs S11 and S18) | **Merged** (#88). Verified on an emulated Pixel 7 and at 1700px desktop — see below. |
-| **D** | S3 — preset shelves, plus the Length-range and Released-within filters they needed, plus `presets.py` | **Done.** Verified against the full 129k-game dataset — see below. |
+| **D** | S3 — preset shelves, plus the Length-range and Released-within filters they needed, plus `presets.py` | **Merged** (#89–#92). Verified against the full 129k-game dataset — see below. Three follow-ups landed after the first merge: the row is now always visible, the second adult lock was added and then deliberately removed, and an eighth shelf (*Half off or better*) was added. |
 | **C** | S6 · S7 | — |
-| **D** | S3 · S8 · S16 | — |
+| **D′** | S8 · S16 (the rest of the original chunk D, minus S3) | — |
 | **E** | S9 · S10 | — |
 | **F** | S1 · S2 · S4 | — |
 
@@ -606,11 +626,11 @@ the sample is six games, which silently passes any filter test.
 | Length stepper drives the length boxes, not the price boxes | pass |
 | Both filters serialize to the URL and restore from it | pass |
 | Reset clears both | pass |
-| All 7 shelves render and apply | pass |
+| All 7 shelves render and apply | pass — an 8th (*Half off or better*) was added after this run |
 | Each shelf's live count vs the generator | 6 of 7 match exactly; *Short and cheap* differs by 14 (272 vs 258) |
 | Summary chips explain the applied shelf | pass — e.g. *"reviews: 5k+ · $0–$10 · length 0h–6h"* |
 | Clicking the active shelf clears it | pass |
-| Row hides once the user sets their own filters | pass |
+| ~~Row hides once the user sets their own filters~~ | **behaviour reverted** — see below. The row is now always present. |
 | Chips fit a phone viewport | pass |
 | JS errors | none |
 
@@ -623,12 +643,15 @@ Two bugs this testing caught, both invisible without the real data:
   could never hide — it sat there as an empty strip before `presets.json` loaded and after the
   user filtered. Fixed with an explicit `.presetbar[hidden]{display:none}`.
 
-### Stale figures found in `ARCHITECTURE.md` §11
+### Stale figures found in `ARCHITECTURE.md` §11 — both now corrected
 
-Noticed while verifying, not corrected here — both are doc drift, not code bugs:
+Noticed while verifying Chunk D. Both were doc drift, not code bugs, and both were **fixed in
+the 2026-09-16 documentation audit**:
 
-- §11 describes pagination as a **"100 / 500 / 2000 per page"** selector. The code fixes it at
+- §11 described pagination as a **"100 / 500 / 2000 per page"** selector. The code fixes it at
   `PAGE_SIZE = 66`, and an `index.html` comment records the selector's removal ("Page size is
-  now fixed at PAGE_SIZE below").
-- §11 puts the table→card breakpoint at **1374px**. The `--grid-cols` comment block says the
-  card layout takes over below **1280px**, with Tags folding to its strip between 1280 and 1365.
+  now fixed at PAGE_SIZE below"). §11 now says so, and cites INESKA_IMPROVEMENTS.md §23 for why.
+- §11 put the table→card breakpoint at **1374px**. The `--grid-cols` comment block says the card
+  layout takes over below **1280px**, with Tags folding to its strip between 1280 and 1365. §11
+  now documents the two-step (`TABLE_FULL_W = 1366` / `TABLE_MIN_W = 1280`) and why the single
+  cliff was wrong at both ends.

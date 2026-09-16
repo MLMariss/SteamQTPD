@@ -1,19 +1,37 @@
 # Review Digest — design memo
 
-**Status: Phase 0 run (§14) · Phase 0.5 Worker written, awaiting deploy. Phase 1 next.** Design record for a per-game, on-demand pull of
-*real Steam review text*, packaged into one copy-paste block with an AI prompt attached, so
-the user gets a quantitative issue breakdown from actual players instead of reading 500
-reviews by hand.
+**Status: SHIPPED and live.** Phases 0 → 1 are done, the `qtpd-reviews` Worker is deployed, and
+everything through §24 (2026-09-15) is in `main`. **The phase list in §11 is a historical record,
+not a status board** — read §16–§24 for what the feature actually does today.
 
-All design questions are **decided** (§12); the empirical ones were answered by the Phase 0
-probe on 2026-08-28 (**§14 — read this first**, it changes §3, §5 and §6).
+Design record for a per-game, on-demand pull of *real Steam review text*, packaged into one
+copy-paste block with an AI prompt attached, so the user gets a quantitative issue breakdown from
+actual players instead of reading thousands of reviews by hand.
 
-**Later than the phases below:** §16 and §17 record what shipped on 2026-08-30 — precomputed
-topic signals and the NOW-window fix (§16), then the whole deferred output redesign (§17).
-§15 holds the specs §17 was built against and is kept as written, not updated to match.
+All design questions are **decided** (§12); the empirical ones were answered by the Phase 0 probe
+on 2026-08-28 (**§14 — read this first**, it changes §3, §5 and §6).
 
-Companion docs: [ARCHITECTURE.md](ARCHITECTURE.md) (§1 design principles, §3.1 the
-review-TEXT roadmap item this is adjacent to, §12 the Worker) · [ROADMAP.md](ROADMAP.md).
+**This memo is written forward, never rewritten.** Each §16+ section records what shipped on a
+date and why, and the earlier sections are **kept as authored** rather than edited to match — so
+where an early section and a late one disagree, **the later one is the truth**. The ones that
+matter most:
+
+| Section | Date | What it changed |
+|---|---|---|
+| §16 | 2026-08-30 | Precomputed topic signals; the NOW-window fix |
+| §17 | 2026-08-30 | The whole deferred output redesign (§15 holds the specs it was built against) |
+| §18–§20 | 2026-09-02 | Discoverability, chat handoff, Simplified mode; the dialog slimmed; the game named at the top |
+| §21–§22 | 2026-09-02 | How deep the pull can actually go; sizes stop being capped from underneath the reader |
+| §23 | 2026-09-03 | A quality bar on the sample; the report is also an HTML page |
+| §24 | 2026-09-15 | 5000-review sample, HTML + 10-word defaults, and the **reach** selector |
+
+So: the flow in §1 still says "500 reviews" and §11 still lists phases as upcoming. **Both are
+superseded** — the default sample is 5,000 and every phase is done.
+
+Companion docs: [ARCHITECTURE.md](ARCHITECTURE.md) — **§17 is the as-built summary** (what runs
+where, the properties you need before touching it), plus §1 design principles and §12 the *other*
+Worker · [ROADMAP.md](ROADMAP.md) §3.1 for the review-TEXT roadmap item this is adjacent to ·
+[worker/README.md](worker/README.md) to deploy the proxy.
 
 ---
 
@@ -282,9 +300,9 @@ to read them is just wasted tokens.
 part that will be iterated on hardest and longest, and it should not require touching a
 5,500-line `index.html` to tune a sentence.
 
-- **Not a 14th load-time fetch.** The site fetches 13 files at load (ARCHITECTURE §2); this
-  one is **lazy** — requested only when the modal first opens, ~2 KB, then cached in memory
-  for the session.
+- **Not another load-time fetch.** The site fetches 14 files at load (ARCHITECTURE §2 — 13 when
+  this was written, before `presets.json`); this one is **lazy** — requested only when the modal
+  first opens, ~2 KB, then cached in memory for the session.
 - **`cache: "no-store"`**, matching the wishlist fetch pattern (`index.html:4488`), so an
   edit is live on the next modal open rather than after a CDN cache expiry.
 - **Inline fallback constant.** If the fetch fails, the bundle still gets a minimal built-in
