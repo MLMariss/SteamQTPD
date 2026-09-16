@@ -1380,7 +1380,9 @@
   /* Layout is now driven by a body class (`layout-card`), set by JS when EITHER the viewport
      is below the table's real floor OR the user explicitly picks the "Card" view from the
      switcher (L3). Single source of truth — the rules below were previously an
-     `@media (max-width:1374px)` block; a tiny inline script + a matchMedia listener toggle the
+     `@media (max-width:1374px)` block (a single cliff that no longer exists — the threshold is
+     now the two-step TABLE_FULL_W 1366 / TABLE_MIN_W 1280, see L4355); a tiny inline script +
+     a matchMedia listener toggle the
      class so mobile still gets the card layout with no flash. The genuinely-small-screen tweaks
      stay in a real `@media (max-width:560px)` below (they only ever matter on real phones, which
      always have layout-card active). Grid view (`body.grid-view`) hides the table entirely. */
@@ -6228,7 +6230,8 @@ Promise.all([
   const tagsMap   = (tj && tj.tags)   ? tj.tags   : null;
   const recentMap = (rj && rj.recent) ? rj.recent : null;
   // playtime.json: per-game [median_up_min, median_down_min, n_up, n_down] (positional).
-  // ratings.json:  per-game [steam_pct, raw_pct, capped_pct, n] (positional).
+  // ratings.json:  per-game [steam_pct, raw_pct, capped_pct, n, span_days] (positional).
+  //                span_days was appended later; a shorter row is an older file, not an error.
   const playtimeMap = (ptj && ptj.playtime) ? ptj.playtime : null;
   const ratingsMap  = (ratj && ratj.playtime_ratings) ? ratj.playtime_ratings : null;
   // updates.json: authoritative event_type-based update history (the new sharded layer).

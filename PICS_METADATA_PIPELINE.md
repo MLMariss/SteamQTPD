@@ -1,14 +1,15 @@
 # PICS Metadata Pipeline — Design Spec
 
-**Status:** SHIPPED — full-library sweep complete (**124,120** games in `pics_raw/`
-and `pics/` as of the 2026-07-22 `COVERAGE.md` snapshot; 123,560 at the original
-2026-07-16 write-up). §2 coverage figures below were updated from the original
-120-game probe to live full-library numbers, but they are a **point-in-time
-snapshot and drift by a few tenths of a percent as the sweep re-runs** — the
-authoritative live figures regenerate into `COVERAGE.md` on every pass. **Read
-`COVERAGE.md` for any number you intend to act on**; the figures here are for
-sense of scale and for the sample-vs-live comparison, which is the point they
-were recorded to make.
+**Status:** SHIPPED — full-library sweep complete and now **at 100% of the
+catalogue** (**129,551** games in `pics_raw/` and `pics/` as of the 2026-09-16
+`COVERAGE.md` snapshot, with only the 27-game fill frontier outstanding; it read
+124,120 on 2026-07-22 and 123,560 at the original 2026-07-16 write-up). §2
+coverage figures below were updated from the original 120-game probe to live
+full-library numbers, but they are a **point-in-time snapshot and drift as the
+sweep re-runs and the catalogue grows** — the authoritative live figures
+regenerate into `COVERAGE.md` on every pass. **Read `COVERAGE.md` for any number
+you intend to act on**; the figures here are for sense of scale and for the
+sample-vs-live comparison, which is the point they were recorded to make.
 **Author:** MLMariss + Claude working session
 **Scope:** New SteamQTPD data pipeline harvesting the Steam PICS `common`
 app-info block via anonymous CM session. Adds AI-content disclosure plus a
