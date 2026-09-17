@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """presets.py -> presets.json — the landing-page preset shelves, validated against live data.
 
-A preset is nothing but a querystring: the same 31 params `syncURL()` writes and
-`loadFromURL()` reads. Clicking one sets real filter state, so the summary chips afterwards
+A preset is nothing but a querystring: the same params `syncURL()` writes and `loadFromURL()`
+reads. `syncURL()` writes 33; KNOWN_PARAMS below allows 32 of them — `scheme` is deliberately
+out, because it is a colour-scheme display preference and no shelf sets one. Clicking one sets real filter state, so the summary chips afterwards
 show exactly which controls moved. That is the whole design — a preset must never be able to
 express something the user cannot then see and edit.
 

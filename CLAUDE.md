@@ -4,10 +4,11 @@
 - Remote: `https://github.com/MLMariss/SteamQTPD`
 - `main` is **live** (GitHub Pages deploys from it). Scraper workflows commit data to `main` continuously.
 - The global CLAUDE.md rule "work only on `test`" does **not** apply here — `test` is a stale ancestor of `main`.
-- `gh` CLI **is installed** (v2.96.0, authed as `MLMariss`, scopes `gist read:org repo workflow`) — verified 2026-07-23.
+- `gh` CLI **is installed on the local machine** (v2.96.0, authed as `MLMariss`, scopes `gist read:org repo workflow`) — verified 2026-07-23.
   - **Read-only `gh` is allowed and expected**: `gh pr view/list/diff/status/checks`, `gh repo view`, `gh run list/view`. Use it to fetch the **real** PR URL and CI state.
   - **`gh pr merge` is denied.** Never merge.
   - **`gh pr create` is usable** — it needs the branch on the remote, and since Claude now does the push (see handover below), that precondition is met. Prefer it over hand-building a compare link.
+  - **Remote sessions (Claude Code on the web) have NO `gh`** — `gh: command not found`, verified 2026-09-16. Use the **GitHub MCP tools** (`mcp__github__*`, load via ToolSearch) for the same reads and for opening a PR: `list_pull_requests`, `pull_request_read`, `actions_list` / `get_check_run`, `create_pull_request`. Every rule above carries over unchanged — read freely, **never** `merge_pull_request`. Do not report GitHub as unreachable in a remote session just because `gh` is missing; reach for the MCP tools instead.
 
 ## Git handover — MANDATORY
 
@@ -60,7 +61,8 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   `adult=hide` on its own. That second lock was removed deliberately (2026-09-16, at the
   owner's instruction): "Nudity" and "Mature" sit on plenty of games whose adult content is
   incidental, and excluding the tag by name threw out the game rather than the scene. Dropping
-  it returned ~1,100 games to the seven shelves. Do not re-add it without being asked.
+  it returned ~1,100 games to the shelves (seven at the time; there are **eight** now — *Half
+  off or better* was added the same day). Do not re-add it without being asked.
   **Known residuals**, to be stated rather than implied away: a PICS-covered game whose adult
   flag is unset but whose tags say otherwise now passes; so does a game whose only adult signal
   is its title — no flag, no tag, innocuous SteamSpy tags. Neither is identifiable from the data
