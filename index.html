@@ -483,6 +483,15 @@
     overflow:hidden; padding-left:0; padding-right:0;
   }
   body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"] > *{display:none}
+  /* ...except the Find-similar chip: the .tags wrapper stays, every real tag inside it goes,
+     and the chip drops its label to fit the strip as a bare ≈ (its tooltip still names the tags). */
+  body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"] > .tags{
+    display:flex; justify-content:center; align-items:center; height:100%; flex-wrap:nowrap;
+    width:100%}   /* the cell is itself a flex container, so without this the wrapper
+                     shrink-wraps the chip and justify-content has nothing to centre */
+  body.tags-collapsed:not(.layout-card) tbody td[data-label="Tags"] .tag:not(.simtag){display:none}
+  body.tags-collapsed:not(.layout-card) .tag.simtag{padding:3px 6px; font-size:14px; line-height:1}
+  body.tags-collapsed:not(.layout-card) .simtxt{display:none}
   body.tags-collapsed:not(.layout-card) thead th.tagsth .tagslabel{display:none}
   /* Modest art bump sized to Game's actual gain (~+110px, not the full freed 292px —
      the rest goes to the data columns). Title keeps its 2-line clamp: at ~516px the cell
@@ -812,6 +821,25 @@
   .hidebtn:hover{background:#7a2535; color:#fff; border-color:#a33}
   tr:hover .hidebtn{color:#c98a96}            /* row hover: nudge it more visible */
   tr:hover .hidebtn:hover{color:#fff}
+  /* Find similar, table view. The first chip in the Tags cell, filled blue so it never reads as
+     a tag: one click switches on the row's main tags. It survives the Tags collapse — see the
+     tags-collapsed rules, where it shrinks to its ≈ icon inside the 38px strip. */
+  .tag.simtag{background:#25407a; border-color:var(--blue); color:#fff; font-family:inherit; font-weight:600}
+  .tag.simtag:hover{background:var(--blue); color:#0e1320}
+  /* "Similar to…" suggestions under the search box. */
+  .simsug{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:60;
+        background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+        padding:4px; box-shadow:0 8px 24px #0008}
+  .simsug[hidden]{display:none}
+  .simsug .ss-h{font-size:11px; color:var(--muted-2); padding:4px 8px 2px}
+  .simsug button{display:flex; width:100%; gap:8px; align-items:center; text-align:left;
+        background:none; border:0; color:var(--text); padding:6px 8px; border-radius:6px;
+        cursor:pointer; font:inherit; font-size:13px}
+  .simsug button:hover, .simsug button:focus-visible{background:var(--panel)}
+  .simsug button i{font-style:normal; color:var(--blue); flex:none}
+  .simsug button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .simlbl b{color:var(--title); font-weight:600}
+  .gi-actions .gi-sim{background:#25407a; border-color:var(--blue); color:#fff; font-weight:600}
 
   .unhide-link{font-family:var(--mono); font-size:inherit; color:var(--blue); background:none;
         border:none; padding:0; cursor:pointer}
@@ -1681,6 +1709,7 @@ try{
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
         <button class="field-x" id="qClear" type="button" title="Clear search" aria-label="Clear search">✕</button>
+        <div class="simsug" id="simSug" hidden></div>
       </label>
       <div class="mobile-sort" id="mobileSort" title="Sort games (the table headers do this on desktop)">
         <span class="ms-lbl">Sort</span>
@@ -2242,7 +2271,7 @@ const bandOf = rc => {
 const PAGE_SIZE = 66;
 
 // ----- state -----
-const state = { data:null, q:"", tagQuery:"", tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
+const state = { data:null, q:"", tagQuery:"", similarTo:null, similarTags:null, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", hltbMetric:"main", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
                 minHours:null, maxHours:null, releasedWithin:"any",
                 // Min sale %: null = no floor (the resting position). Any number is a multiple of 5
@@ -3056,7 +3085,11 @@ function render(){
     } else sale = `<span class="nosale">—</span>`;
 
     // all tags, in original order (no reorder), light up if selected
-    const tagHtml = (g.tags||[]).map(t => {
+    const simKeys = similarKeyTags(g);
+    const simTip = simKeys.length ? esc(`Find similar games — switches on this game's main tags: ${simKeys.join(", ")}`) : "";
+    const simChip = simKeys.length
+      ? `<button class="tag simtag" data-similar="${g.appid}" title="${simTip}" aria-label="Find games similar to ${esc(g.title)}">≈<span class="simtxt"> Similar</span></button>` : "";
+    const tagHtml = simChip + (g.tags||[]).map(t => {
       const isSel = inc.has(canon(t.toLowerCase()));
       return `<button class="tag${isSel?' sel':''}" data-tag="${esc(t.toLowerCase())}">${esc(t)}</button>`;
     }).join("");
@@ -4324,6 +4357,74 @@ function cycleTag(t, dir){
   update();
 }
 
+// ----- find similar -----
+// No tag weights exist in the data (PICS and SteamSpy both give rank order only), so a tag's
+// weight is built from two things we already hold:
+//   position — Steam lists a game's tags most-voted first, so #1 counts most (1/sqrt(rank+1));
+//   rarity   — a tag few games carry says more than one nearly every game carries
+//              (log(total / games-with-tag), from state.fullCounts).
+// The SIMILAR_KEYS best-scoring tags become the game's "main tags", and Find similar simply
+// switches those on in the normal tag filter (ALL mode). Everything else — price, reviews,
+// adult setting, sort — is left exactly as the user had it.
+// Tags skipped as main tags: how-you-play tags (the rail's "Players & Mode" group), labels
+// that say nothing about what the game is, and content warnings (rare, so the rarity score
+// would otherwise push them to the top — e.g. Cyberpunk 2077 picked "Nudity").
+const SIMILAR_KEYS = 3;
+const SIMILAR_SKIP = new Set(["indie","early access","free to play","great soundtrack","moddable",
+  "replay value","family friendly","controller","2d","3d","colorful","classic","masterpiece",
+  "beautiful","addictive","nudity","sexual content","mature","nsfw","hentai","gore","violent",
+  "blood","psychological horror"]);
+function similarKeyTags(g){
+  const full = state.fullCounts || {};
+  const total = (state.data && state.data.games.length) || 1;
+  const seen = new Set(), scored = [];
+  (g.tags || []).forEach((raw, rank) => {
+    const t = canon(String(raw).toLowerCase());
+    if(seen.has(t)) return; seen.add(t);
+    if(SIMILAR_SKIP.has(t) || TAG_CAT[t] === "Players & Mode") return;
+    const n = full[t] || 0;
+    if(n < MIN_TAG_COUNT) return;                 // the rail hides these, so the chip would be invisible
+    scored.push([t, Math.log(total / (1 + n)) / Math.sqrt(rank + 1)]);
+  });
+  return scored.sort((a, b) => b[1] - a[1]).slice(0, SIMILAR_KEYS).map(x => x[0]);
+}
+// True while the tag filter still holds exactly the tags Find similar switched on.
+function similarActive(){
+  return !!(state.similarTo && state.similarTags && state.tagsExc.size === 0
+         && state.tagMode === "and" && sameSet(state.tagsInc, state.similarTags));
+}
+function findSimilar(appid){
+  const g = state.data && state.data.games.find(x => String(x.appid) === String(appid));
+  if(!g) return;
+  const keys = similarKeyTags(g);
+  if(!keys.length) return;
+  // The title search would otherwise narrow the list back down to the chosen game.
+  state.q = ""; const qi = $("#q"); if(qi) qi.value = "";
+  const box = $("#searchBox"); if(box) box.classList.remove("has-q");
+  hideSimSug();
+  state.tagsInc = new Set(keys); state.tagsExc.clear(); state.tagLinger.clear();
+  state.tagMode = "and";
+  document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode === "and"));
+  state.similarTo = String(g.appid); state.similarTags = keys;
+  update();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+// Search box: "≈ Title" suggestions for the best-known title matches.
+function hideSimSug(){ const el = $("#simSug"); if(el){ el.hidden = true; el.innerHTML = ""; } }
+function renderSimSug(){
+  const el = $("#simSug"); if(!el || !state.data) return;
+  const q = (state.q || "").trim().toLowerCase();
+  if(q.length < 2){ hideSimSug(); return; }
+  const hits = state.data.games
+    .filter(g => g.title && g.title.toLowerCase().includes(q) && (g.tags || []).length)
+    .sort((a, b) => (b.review_count || 0) - (a.review_count || 0))
+    .slice(0, 6);
+  if(!hits.length){ hideSimSug(); return; }
+  el.innerHTML = `<div class="ss-h">Find games similar to…</div>`
+    + hits.map(g => `<button type="button" data-similar="${g.appid}"><i>≈</i><span>${esc(g.title)}</span></button>`).join("");
+  el.hidden = false;
+}
+
 // central update for any non-range filter change (refits range + faceted counts).
 // Any filter/sort/search/page-size change resets to page 1 of the new result set.
 // Reflect state.priceClass onto the band's aria-pressed. "All" is lit only when all three
@@ -4547,6 +4648,7 @@ function gridCardHTML(g){
       <div class="gi-actions">
         <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener">Steam ↗</a>
         <button type="button" class="gi-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">Reviews ⇩</button>
+        <button type="button" class="gi-sim" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game's main tags: " + similarKeyTags(g).join(", "))}">≈ Similar</button>
         <button type="button" data-gclose="1">Close ✕</button>
       </div>
     </div>
@@ -4773,7 +4875,12 @@ function renderSummary(){
   const tagsFrag = interactedTagChipsHTML();
   const modeChip = (state.tagsInc.size > 1)
       ? ` <button class="sumf plain" data-sumf="tagmode" title="How required tags combine">${state.tagMode === "or" ? "any" : "all"}</button>` : "";
-  const tagsPart = tagsFrag ? `<span class="sumlbl">tags</span> ${tagsFrag}${modeChip}` : "";
+  let simLbl = "";
+  if(similarActive()){
+    const sg = state.data.games.find(x => String(x.appid) === state.similarTo);
+    if(sg) simLbl = `<span class="sumlbl simlbl">similar to <b>${esc(sg.title)}</b> ·</span> `;
+  }
+  const tagsPart = tagsFrag ? `${simLbl}<span class="sumlbl">tags</span> ${tagsFrag}${modeChip}` : "";
 
   const sortName = SORT_LABELS[state.sortKey] || state.sortKey;
   const sortChip = `<button class="sumf plain" data-sumf="sort">${esc(sortName)} ${state.sortDir < 0 ? "↓" : "↑"}</button>`;
@@ -5404,6 +5511,7 @@ function syncURL(){
   if(state.tagsInc.size) p.set("inc", [...state.tagsInc].join(","));
   if(state.tagsExc.size) p.set("exc", [...state.tagsExc].join(","));
   if(state.tagMode !== "and") p.set("tagmode", state.tagMode);
+  if(similarActive()) p.set("like", state.similarTo);
   if(state.priceClass.size < 3) p.set("pc", ["full","sale","free"].filter(c => state.priceClass.has(c)).join(","));
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.hltbMetric !== "main") p.set("hltb", state.hltbMetric);
@@ -5463,6 +5571,9 @@ function loadFromURL(){
   setIf("q", v => { state.q = v; const el=$("#q"); if(el) el.value = v; const box=$("#searchBox"); if(box) box.classList.toggle("has-q", !!v); });
   setIf("inc", v => v.split(",").filter(Boolean).forEach(t => state.tagsInc.add(canon(t.toLowerCase()))));
   setIf("exc", v => v.split(",").filter(Boolean).forEach(t => state.tagsExc.add(canon(t.toLowerCase()))));
+  // like= only restores the "similar to" label; the tags themselves come from inc=.
+  setIf("like", v => { state.similarTo = v; state.similarTags = p.has("inc")
+    ? p.get("inc").split(",").filter(Boolean).map(t => canon(t.toLowerCase())) : null; });
   setIf("tagmode", v => { if(v==="or"||v==="and"){ state.tagMode = v;
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===v)); } });
   setIf("pc", v => { const want = v.split(",").filter(c => ["full","sale","free"].includes(c));
@@ -5589,7 +5700,8 @@ function init(data){
 
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.priceClass=new Set(["full","sale","free"]);
+    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
+    state.similarTo=null; state.similarTags=null; hideSimSug(); state.priceClass=new Set(["full","sale","free"]);
     state.qBasis="after"; state.hltbMetric="main"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
     state.minHours=null; state.maxHours=null; state.releasedWithin="any";
@@ -5607,7 +5719,11 @@ function init(data){
 
   // Header search: toggle the persistent red ✕ whenever the field holds text; the ✕ clears it.
   const syncSearchClear = () => $("#searchBox").classList.toggle("has-q", !!$("#q").value);
-  $("#q").addEventListener("input", e => { state.q = e.target.value; syncSearchClear(); update(); });
+  $("#q").addEventListener("input", e => { state.q = e.target.value; syncSearchClear(); update(); renderSimSug(); });
+  $("#q").addEventListener("focus", renderSimSug);
+  $("#q").addEventListener("keydown", e => { if(e.key === "Escape") hideSimSug(); });
+  // Keep focus in the box while a suggestion is pressed, so blur doesn't close the list first.
+  $("#simSug").addEventListener("mousedown", e => e.preventDefault());
   $("#qClear").addEventListener("click", () => {
     const el = $("#q"); el.value = ""; state.q = ""; syncSearchClear(); el.focus(); update();
   });
@@ -5815,7 +5931,8 @@ function init(data){
   // user who had changed the sort had no way back to the default except remembering what it had
   // been — and the Reset button's own tooltip claimed it reset the sort, which it did not.
   function resetAll(){
-    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and"; state.priceClass=new Set(["full","sale","free"]);
+    state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
+    state.similarTo=null; state.similarTags=null; hideSimSug(); state.priceClass=new Set(["full","sale","free"]);
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode==="and"));
     state.minScore=0; state.revBands=new Set([1,2,3,4]); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.minSale=null; state.minSaleForcedFull=false;
@@ -5945,6 +6062,9 @@ function init(data){
   document.body.addEventListener("click", e => {
     const h = e.target.closest("[data-hide]");
     if(h){ e.preventDefault(); e.stopPropagation(); hideGame(h.dataset.hide); return; }
+    const sim = e.target.closest("[data-similar]");
+    if(sim){ e.preventDefault(); e.stopPropagation(); findSimilar(sim.dataset.similar); return; }
+    if(!e.target.closest("#searchBox")) hideSimSug();
     const more = e.target.closest("[data-more]");
     if(more){ e.preventDefault(); more.closest(".taggroup").classList.toggle("expanded"); return; }
     const t = e.target.closest("[data-tag]");
@@ -6041,6 +6161,8 @@ function init(data){
   $("#gridview").addEventListener("click", e => {
     const card = e.target.closest(".gcard"); if(!card) return;
     if(e.target.closest("a")) return;                                   // let the Steam link open
+    const sim = e.target.closest("[data-similar]");
+    if(sim){ e.preventDefault(); e.stopPropagation(); setCardOpen(card, false); findSimilar(sim.dataset.similar); return; }
     // The 18+ gate takes precedence over expand on an unrevealed adult card. Same three
     // stages and the same "reveal never navigates" rule as the table thumb — see the
     // adultSetStage block. The store stays reachable through the expanded card's "Steam ↗".
