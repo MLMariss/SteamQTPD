@@ -24,6 +24,7 @@ matter most:
 | §21–§22 | 2026-09-02 | How deep the pull can actually go; sizes stop being capped from underneath the reader |
 | §23 | 2026-09-03 | A quality bar on the sample; the report is also an HTML page |
 | §24 | 2026-09-15 | 5000-review sample, HTML + 10-word defaults, and the **reach** selector |
+| §25 | 2026-09-21 | The bundle is dated at the bottom, and the saved .txt is named for it |
 
 So: the flow in §1 still says "500 reviews" and §11 still lists phases as upcoming. **Both are
 superseded** — the default sample is 5,000 and every phase is done.
@@ -2017,3 +2018,78 @@ less than the reader asked for. This section adds two options that cost the read
 a quarter-million tokens, four minutes of fetching — and the thing that makes them safe is the
 same thing: **state the price on the control, and deliver exactly what was picked.** A limit
 you can see and pay is an option; a limit that acts on your behalf is a bug.
+
+---
+
+## 25. Shipped 2026-09-21 — the file says when it was taken, and so does its name
+
+A digest is a **snapshot of a moment**, and it was the only thing in it that a saved copy could
+lose. Every figure in the bundle — `61% positive`, `crashes: 23 of 139`, the whole NOW/BEFORE
+split — is a fact about one fortnight of one patch cycle, not about the game. Read six weeks
+later without knowing which fortnight, it is not a weaker finding; it is a **wrong** one, and
+nothing in the artefact said so.
+
+The dates were already computed and already printed — `REVIEWS:` at the top, `fetched` and
+`covering:` in OVERVIEW. Two things were missing, both about the file as an object rather than
+as a paste.
+
+### 25.1 A footer, because the top of a long file is not where you land
+
+`rdBuildBundle` closes with a `DIGEST FOOTER` block: the generated date, the sample's span with
+its length in days, the count kept, and the game. Four lines, ~30 tokens.
+
+```
+--- DIGEST FOOTER (metadata, not review content) ---
+GENERATED : 2026-09-21
+REVIEWS   : 2024-05-04 to 2025-08-24 (477 days) · 139 kept
+            oldest and newest KEPT in this bundle, after the 5-word bar
+GAME      : Melvor Idle (appid 1267910)
+```
+
+Three decisions inside that block:
+
+- **After the closing pointer, not before it.** §17 put the instructions first and left one
+  pointer line last, on the reasoning that instructions read most reliably as the most recent
+  thing in context. The footer now sits below it — so the last thing *said* is still "produce
+  the analysis", and the last thing *printed* is what the reader scrolling to the bottom of a
+  saved file came for. The block is labelled `metadata, not review content` for the same
+  reason TOPIC MENTIONS is labelled input-not-output.
+- **Date only, no clock time.** It matches the `fetched` line it echoes, and the question a
+  saved file has to answer is *which week*, not which minute.
+- **"oldest and newest KEPT".** The span's ends move with the quality bar and the art/duplicate
+  drops, and at reach > 1 it has holes by design — the footer says so in one clause, so it
+  cannot be quoted on its own as "the sample ran continuously from X to Y". Same bargain as
+  §23.1 and §24.2: state what was removed, where the number is read.
+
+### 25.2 The filename, which is the half that gets used
+
+`qtpd-reviews-melvor-idle-1267910-2026-09-21-139rev.txt`
+
+The old name was `qtpd-reviews-<slug>-<appid>.txt` and it was **stable across pulls**, which is
+the bug: two pulls of one game — a week apart, or one at 1000 and one at 5000 — produced the
+same name, so the browser silently made the second one `(1)` and the folder listing told the
+reader nothing about either. Date first, so a game's pulls sort chronologically; count after
+it, because "was this the 1000 or the 5000 run" is the other question asked of a file nobody
+remembers taking. Neither fact requires opening it.
+
+The date is read back **off the bundle's own footer**, not off the clock at save time. They are
+the same day in every normal case and not in the one that matters: a bundle built at 23:58 UTC
+and saved at 00:01 would otherwise carry one date inside the file and a different one in its
+name. The file is the record; the name follows it.
+
+### 25.3 Not done
+
+The AI's **report** still carries only the span, copied from the `REVIEWS:` line by both
+prompts, and not the date it was generated. Adding that means editing `review_prompt.md` and
+`review_prompt_html.md` and bumping both versions — the §23.2–§23.10 series is the standing
+warning about what prompt edits cost — and the bundle is where a date is load-bearing. Left
+for when the report itself is next opened.
+
+### 25.4 Verified
+
+`test_review_digest.mjs` pins the footer by shape (generated date, span with day count, kept
+count, the "KEPT" caveat, and the `GAME` line as the literal last line of the file) and pins
+the filename three ways: the shape, that its date is the one printed in the footer, and that
+its count is the bundle's own `--- REVIEWS (N) ---`. Scenario 1's closing-pointer assertion
+changed from "the file ends with the pointer" to "the pointer precedes the footer" — the one
+existing check this section invalidated. All checks pass.
