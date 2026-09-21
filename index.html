@@ -7844,6 +7844,31 @@ function rdBuildBundle(g, data, lang, prompt, focus, htmlPrompt){
   // the most recent thing in context, which is what putting them last used to buy; a
   // pointer costs ~15 tokens and keeps that without duplicating the whole block.
   L.push("--- END OF REVIEWS. Now produce the analysis described in the INSTRUCTIONS at the top. ---");
+  // §25 — the same facts the header opens with, repeated at the tail. The header states them
+  // for whoever is about to read the file; this is for whoever finds it in a downloads folder
+  // six weeks later with nothing on screen but its last page. A saved digest carries no other
+  // record of WHEN it was taken, and a review sample without its date is unreadable: "61%
+  // positive over 90 days" is a fact about one fortnight of one patch cycle, not about the
+  // game. Metadata, labelled as such so the model does not mine it for findings, and printed
+  // AFTER the closing pointer so the instruction to start writing is still the last thing
+  // said even though it is no longer the last thing printed.
+  L.push("");
+  L.push("--- DIGEST FOOTER (metadata, not review content) ---");
+  L.push(`GENERATED : ${new Date().toISOString().slice(0, 10)}`);
+  if(times.length){
+    const span = Math.max(1, Math.round((times[times.length-1] - times[0]) / 86400));
+    L.push(`REVIEWS   : ${rdDay(times[0])} to ${rdDay(times[times.length-1])} (${rdPlural(span, "day")}) · ${rows.length} kept`);
+    // The oldest date is the oldest review that SURVIVED — the word bar and the art/duplicate
+    // drops take reviews off the ends as readily as the middle — and at reach > 1 the span has
+    // holes in it by design. Both are stated in full up in OVERVIEW; the one clause here keeps
+    // the footer from being quoted on its own as "the sample ran continuously from X to Y".
+    L.push("            oldest and newest KEPT in this bundle"
+         + (minWords ? `, after the ${minWords}-word bar` : "")
+         + (reach > 1 ? ` · 1 page in ${reach}, so the span is sampled evenly, not continuous` : ""));
+  } else {
+    L.push(`REVIEWS   : ${rows.length} kept · no usable timestamps in this sample`);
+  }
+  L.push(`GAME      : ${g.title} (appid ${g.appid})`);
   return L.join("\n");
 }
 
@@ -8013,6 +8038,26 @@ const rdTokens = len => Math.round(len / RD_CHARS_PER_TOKEN / 100) / 10;
 function rdBundleCount(bundle){
   const m = bundle.match(/^--- REVIEWS \((\d+)\) ---$/m);
   return m ? parseInt(m[1], 10) : 0;
+}
+
+// §25 — the day the bundle was built, read back off its own footer rather than taken from the
+// clock at save time. The two are the same day in every normal case and not on the one that
+// matters: a digest built at 23:58 UTC and saved at 00:01 would otherwise carry one date inside
+// the file and another in its name. The file is the record; the name follows it.
+function rdBundleDay(bundle){
+  const m = String(bundle || "").match(/^GENERATED : (\d{4}-\d{2}-\d{2})$/m);
+  return m ? m[1] : new Date().toISOString().slice(0, 10);
+}
+
+// The two things that tell two pulls of the SAME game apart without opening either: when it was
+// taken and how big it is. A re-pull used to land on the identical name, so the browser either
+// silently appended "(1)" or the second file looked exactly like the first in the folder. Date
+// first so a game's pulls sort chronologically; the count after it, because "did I run this at
+// 1000 or at 5000" is the other question asked of a file you no longer remember.
+function rdTxtName(g, bundle){
+  const n = rdBundleCount(bundle);
+  return `qtpd-reviews-${rdSlug(g.title)}-${g.appid}-${rdBundleDay(bundle)}`
+       + (n ? `-${n}rev` : "") + ".txt";
 }
 
 // §23.11 — THE PAGE SAVES THE FILE, because eight versions of the addendum could not make the
@@ -8347,7 +8392,7 @@ document.addEventListener("click", e => {
   }
   if(e.target.closest("#rdDl")){
     const g = gameOf(rdState.appid) || { title:"game", appid:rdState.appid };
-    rdDownload(`qtpd-reviews-${rdSlug(g.title)}-${g.appid}.txt`, rdState.bundle, "text/plain");
+    rdDownload(rdTxtName(g, rdState.bundle), rdState.bundle, "text/plain");
   }
 }, true);   // capture: the grid card's own click handler would otherwise flip the card first
 

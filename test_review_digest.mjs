@@ -172,6 +172,12 @@ const aiInFoot = await page.locator("#rdFoot [data-rdai]").count();
 const aiHint   = await page.locator("#rdBody .rd-note").first().textContent();
 const aiTips   = await page.locator("#rdFoot [data-rdai]").evaluateAll(els => els.map(e => e.title));
 const dlTip    = await page.locator("#rdFoot #rdDl").getAttribute("title");
+// §25 — the saved file's NAME is half of what the footer buys. Two pulls of one game differ by
+// when they were taken and by how many reviews they hold, and both have to be readable off the
+// folder listing without opening either file. Read through the naming function rather than by
+// driving a real download, so this stays with the other bundle assertions instead of needing a
+// downloads directory; the click path is one line and is asserted by #rdDl's presence above.
+const txtName  = await page.evaluate(() => rdTxtName(gameOf(rdState.appid), rdState.bundle));
 // Every option in the setup dialog has to carry its own explanation now that the paragraphs
 // are gone — an untitled pill is a dead end for anyone who does not already know the answer.
 const setupUntitled = await page.evaluate(() => {
@@ -205,6 +211,18 @@ check(/language: english only \(~42%/.test(bundle), "non-English share reported"
 check(bundle.includes("off-topic / review-bombing reviews: INCLUDED"), "review bombs declared included");
 check(/substantive: \d+ of \d+/.test(bundle), "substantive count reported");
 check(/covering: \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}/.test(bundle), "sample date span reported");
+// §25 — date then count, so one game's pulls sort chronologically in a folder and a re-pull
+// never lands on the identical name (the browser used to silently make that one "(1)").
+check(/^qtpd-reviews-[a-z0-9-]+-\d+-\d{4}-\d{2}-\d{2}-\d+rev\.txt$/.test(txtName),
+      `saved .txt carries the date and the review count (${txtName})`);
+{
+  // The name is derived from the file, not from the clock at save time: a bundle built at
+  // 23:58 UTC and saved at 00:01 must not carry two different dates.
+  const genDay = (bundle.match(/^GENERATED : (\d{4}-\d{2}-\d{2})$/m) || [])[1];
+  const kept   = (bundle.match(/^--- REVIEWS \((\d+)\) ---$/m) || [])[1];
+  check(!!genDay && txtName.includes(genDay), "the filename's date is the one printed in the file");
+  check(!!kept && txtName.endsWith(`-${kept}rev.txt`), "the filename's count is the bundle's kept count");
+}
 check(bundle.includes("[EA]"), "EA flag emitted");
 check(bundle.includes("[deck]"), "deck flag emitted");
 check(bundle.includes("[free]"), "free flag emitted");
@@ -371,7 +389,19 @@ check(bundle.includes("--- INSTRUCTIONS ---"), "instructions section present");
   const o = bundle.indexOf("--- OVERVIEW ---");
   const r = bundle.indexOf("--- REVIEWS (");
   check(i >= 0 && o > i && r > o, `sections ordered instructions(${i}) < overview(${o}) < reviews(${r})`);
-  check(bundle.trimEnd().endsWith("at the top. ---"), "closing pointer back to the instructions");
+  const ptr = bundle.indexOf("--- END OF REVIEWS.");
+  const foot = bundle.indexOf("--- DIGEST FOOTER");
+  check(ptr > r && foot > ptr,
+        `closing pointer back to the instructions(${ptr}), footer last(${foot})`);
+  // §25 — the tail block, for a saved file opened months later on nothing but its last screen.
+  // The header already carries these; the point is that the END of the file carries them too.
+  check(/^GENERATED : \d{4}-\d{2}-\d{2}$/m.test(bundle), "footer dates the file it sits in");
+  check(/^REVIEWS   : \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2} \(\d+ days?\) · \d+ kept$/m.test(bundle),
+        "footer restates the sample's date range and size at the end of the file");
+  check(/oldest and newest KEPT in this bundle/.test(bundle),
+        "footer says the span is of reviews kept, not of everything Steam served");
+  check(/^GAME {6}: .+\(appid \d+\)$/.test(bundle.trimEnd().split("\n").pop()),
+        "the game is the last line, so the tail names what it is a digest of");
   check(/LEGEND: ▲\/▼/.test(bundle) && /^▲ |\n▲ /m.test(bundle),
         "review lines use the ▲/▼ glyphs the prompt documents");
 }
