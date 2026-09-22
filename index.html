@@ -829,13 +829,17 @@
   /* "Similar to…" suggestions under the search box. */
   .simsug{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:60;
         background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
-        padding:4px; box-shadow:0 8px 24px #0008}
+        padding:4px; box-shadow:0 8px 24px #0008;
+        max-height:min(62vh, 360px); overflow:auto; overscroll-behavior:contain}
+  /* Second section header: the "…or similar" alternative, ruled off from the exact titles. */
+  .simsug .ss-h.ss-alt{margin-top:4px; padding-top:6px; border-top:1px solid var(--line)}
   .simsug[hidden]{display:none}
   .simsug .ss-h{font-size:11px; color:var(--muted-2); padding:4px 8px 2px}
   .simsug button{display:flex; width:100%; gap:8px; align-items:center; text-align:left;
         background:none; border:0; color:var(--text); padding:6px 8px; border-radius:6px;
         cursor:pointer; font:inherit; font-size:13px}
-  .simsug button:hover, .simsug button:focus-visible{background:var(--panel)}
+  .simsug button:hover, .simsug button:focus-visible, .simsug button.on{background:var(--panel)}
+  .simsug button.on{outline:1px solid var(--blue); outline-offset:-1px}   /* ↑/↓ highlight */
   .simsug button i{font-style:normal; color:var(--blue); flex:none}
   .simsug button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .simlbl b{color:var(--title); font-weight:600}
@@ -2271,7 +2275,7 @@ const bandOf = rc => {
 const PAGE_SIZE = 66;
 
 // ----- state -----
-const state = { data:null, q:"", tagQuery:"", similarTo:null, similarTags:null, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
+const state = { data:null, q:"", tagQuery:"", similarTo:null, similarTags:null, simSugIdx:-1, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", hltbMetric:"main", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
                 minHours:null, maxHours:null, releasedWithin:"any",
                 // Min sale %: null = no floor (the resting position). Any number is a multiple of 5
@@ -4409,20 +4413,113 @@ function findSimilar(appid){
   update();
   window.scrollTo({top:0, behavior:"smooth"});
 }
-// Search box: "≈ Title" suggestions for the best-known title matches.
-function hideSimSug(){ const el = $("#simSug"); if(el){ el.hidden = true; el.innerHTML = ""; } }
+// Search box suggestions, in the order the question actually gets asked. The list used to open
+// straight onto "Find games similar to…", which offered the sideways answer before the direct
+// one: we can see exactly which titles we hold, so those come first and picking one narrows the
+// list to that game. Only below that does the second section throw the title away and switch on
+// that game's main tags instead.
+// Ranking is match quality first, review count as the tiebreak: an exact title wins, then any
+// match starting a word, then a match buried mid-word. Review count alone used to decide it,
+// which is why a game you were obviously typing could sit below an incidental match. The two
+// word-start cases — at the front of the title, or at the front of a later word — are one tier
+// on purpose: split them and "sims" puts Simson Tuningwerkstatt 3D (452 reviews) above The
+// Sims™ 4 (200,545), which is the whole complaint.
+// Matching runs on a normalised title: ™/®/© dropped and punctuation flattened to single
+// spaces. The plain title filter does not do this, so typing "the sims 4" or "half life" used
+// to find nothing at all; here it offers the real title, and picking it puts the real title —
+// ™ and all — into the box, where the ordinary filter does match it. Normalising 130k titles
+// per keystroke is not free, so each one is cached on its game as _nt.
+const SIMSUG_JUMP = 5, SIMSUG_SIM = 3;
+const simSugNorm = s => String(s).toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, "")
+                                 .replace(/[^a-z0-9]+/g, " ").trim();
+function simSugRank(g, q){
+  const t = g._nt != null ? g._nt : (g._nt = simSugNorm(g.title));
+  const i = t.indexOf(q);
+  if(i < 0) return -1;
+  if(t === q) return 0;
+  return (i === 0 || t[i - 1] === " ") ? 1 : 2;
+}
+// One pass, pushing only the matches: the catalogue is ~130k games and this runs on every
+// keystroke, so mapping the whole thing to pairs before filtering it back down is the kind of
+// waste you feel while typing.
+function simSugHits(q){
+  const out = [];
+  // The suggestion list deliberately ignores price, review and length filters — finding a title
+  // you half-remember is the point, and a row that reveals we hold the game is useful even when
+  // the current filters exclude it. The adult setting is not one of those: it is a content lock,
+  // so when it is set the list obeys it exactly as the table does. Otherwise a shelf arrived at
+  // with adult=hide would offer an adult title here, and picking it would land on nothing.
+  const af = state.flags.adultF;
+  for(const g of state.data.games){
+    if(!g.title) continue;
+    if(af === "hide" && isAdult(g)) continue;
+    if(af === "only" && !isAdult(g)) continue;
+    const r = simSugRank(g, q);
+    if(r >= 0) out.push([g, r]);
+  }
+  out.sort((a, b) => a[1] - b[1] || (b[0].review_count || 0) - (a[0].review_count || 0));
+  return out.map(x => x[0]);
+}
+function hideSimSug(){
+  const el = $("#simSug"); if(el){ el.hidden = true; el.innerHTML = ""; }
+  state.simSugIdx = -1;
+}
 function renderSimSug(){
   const el = $("#simSug"); if(!el || !state.data) return;
-  const q = (state.q || "").trim().toLowerCase();
+  const q = simSugNorm(state.q || "");
   if(q.length < 2){ hideSimSug(); return; }
-  const hits = state.data.games
-    .filter(g => g.title && g.title.toLowerCase().includes(q) && (g.tags || []).length)
-    .sort((a, b) => (b.review_count || 0) - (a.review_count || 0))
-    .slice(0, 6);
+  const hits = simSugHits(q);
   if(!hits.length){ hideSimSug(); return; }
-  el.innerHTML = `<div class="ss-h">Find games similar to…</div>`
-    + hits.map(g => `<button type="button" data-similar="${g.appid}"><i>≈</i><span>${esc(g.title)}</span></button>`).join("");
+  // Only games Find-similar can actually act on get a ≈ row — no tags, no main tags, no result.
+  // Bounded loop rather than .filter().slice(): similarKeyTags() scores and sorts a game's whole
+  // tag list, and a two-letter query matches thousands of titles, so filtering the lot first
+  // would do that work thousands of times per keystroke to keep three rows.
+  const sim = [];
+  for(const g of hits){
+    if(sim.length >= SIMSUG_SIM) break;
+    if((g.tags || []).length && similarKeyTags(g).length) sim.push(g);
+  }
+  let html = `<div class="ss-h">Show just this game</div>`
+    + hits.slice(0, SIMSUG_JUMP).map(g =>
+        `<button type="button" data-pick="${esc(g.title)}" title="${esc("Search for exactly “" + g.title + "”")}"><i>→</i><span>${esc(g.title)}</span></button>`).join("");
+  if(sim.length) html += `<div class="ss-h ss-alt">…or find games similar to</div>`
+    + sim.map(g =>
+        `<button type="button" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game’s main tags: " + similarKeyTags(g).join(", "))}"><i>≈</i><span>${esc(g.title)}</span></button>`).join("");
+  el.innerHTML = html;
   el.hidden = false;
+  state.simSugIdx = -1;
+}
+// Picking an exact title just puts that title in the search box, so the list narrows to it
+// through the ordinary title filter — no second code path, and the ✕ still clears it.
+function pickTitle(title){
+  const qi = $("#q"); if(qi) qi.value = title;
+  state.q = title;
+  const box = $("#searchBox"); if(box) box.classList.toggle("has-q", !!title);
+  hideSimSug();
+  update();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+// ↑/↓ move the highlight; Enter takes the highlighted row. Enter with nothing highlighted
+// only dismisses the list — typing a search and hitting Enter must never be hijacked into
+// picking a game you did not point at. Both return true when they consumed the key.
+function simSugMove(d){
+  const el = $("#simSug"); if(!el || el.hidden) return false;
+  const btns = [...el.querySelectorAll("button")];
+  if(!btns.length) return false;
+  let i = state.simSugIdx + d;
+  if(i < 0) i = btns.length - 1; else if(i >= btns.length) i = 0;
+  state.simSugIdx = i;
+  btns.forEach((b, n) => b.classList.toggle("on", n === i));
+  btns[i].scrollIntoView({block:"nearest"});
+  return true;
+}
+function simSugEnter(){
+  const el = $("#simSug"); if(!el || el.hidden) return false;
+  const b = [...el.querySelectorAll("button")][state.simSugIdx];
+  hideSimSug();
+  if(!b) return true;                      // nothing highlighted: Enter just dismisses the list
+  if(b.dataset.pick != null) pickTitle(b.dataset.pick); else findSimilar(b.dataset.similar);
+  return true;
 }
 
 // central update for any non-range filter change (refits range + faceted counts).
@@ -5698,6 +5795,13 @@ function init(data){
   computeSaleBounds(); syncMinSaleUI();
   render();
 
+  // Warm the search-suggestion title cache once the first paint is out of the way. Built
+  // lazily it costs ~200ms, and it would be spent on the keystroke that first opens the
+  // dropdown — precisely where a stall is felt. Idle time is free.
+  (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => {
+    for(const g of state.data.games) if(g.title && g._nt == null) g._nt = simSugNorm(g.title);
+  });
+
   window.addEventListener("popstate", () => {   // back/forward navigation
     // reset to defaults, then re-read URL, then refresh everything
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
@@ -5721,11 +5825,38 @@ function init(data){
   const syncSearchClear = () => $("#searchBox").classList.toggle("has-q", !!$("#q").value);
   $("#q").addEventListener("input", e => { state.q = e.target.value; syncSearchClear(); update(); renderSimSug(); });
   $("#q").addEventListener("focus", renderSimSug);
-  $("#q").addEventListener("keydown", e => { if(e.key === "Escape") hideSimSug(); });
+  // focus alone is not enough: Escape closes the list without blurring, so a click back into a
+  // field that never lost focus would leave it shut with no way back but typing.
+  $("#q").addEventListener("click", renderSimSug);
+  $("#q").addEventListener("keydown", e => {
+    // Chromium empties an <input type="search"> on Escape. With the list open that is two
+    // undos at once — the box you were typing in gets wiped when you only meant to dismiss the
+    // suggestions — so the first Escape closes the list and a second one clears the field.
+    if(e.key === "Escape"){
+      const open = !$("#simSug").hidden;
+      hideSimSug();
+      if(open) e.preventDefault();
+      return;
+    }
+    if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+      if(simSugMove(e.key === "ArrowDown" ? 1 : -1)) e.preventDefault();
+      return;
+    }
+    if(e.key === "Enter" && simSugEnter()) e.preventDefault();
+    else if(e.key === "Tab") hideSimSug();
+  });
   // Keep focus in the box while a suggestion is pressed, so blur doesn't close the list first.
   $("#simSug").addEventListener("mousedown", e => e.preventDefault());
+  // Anything outside the search box shuts the list. This has to listen in the capture phase:
+  // on the body it sat behind handlers that call stopPropagation(), so clicking a game row
+  // left the suggestions hanging over the list — the stickiness this whole pass is about.
+  // Suggestion buttons live inside #searchBox, so pressing one is not "outside".
+  document.addEventListener("pointerdown", e => {
+    const t = e.target;
+    if(!(t instanceof Element) || !t.closest("#searchBox")) hideSimSug();
+  }, true);
   $("#qClear").addEventListener("click", () => {
-    const el = $("#q"); el.value = ""; state.q = ""; syncSearchClear(); el.focus(); update();
+    const el = $("#q"); el.value = ""; state.q = ""; syncSearchClear(); hideSimSug(); el.focus(); update();
   });
   // Wishlist input: same persistent-✕ affordance — it just empties the field (Import/Wishlist
   // buttons still do the fetch/clear-results work; #wishClear handles an imported list).
@@ -6064,7 +6195,8 @@ function init(data){
     if(h){ e.preventDefault(); e.stopPropagation(); hideGame(h.dataset.hide); return; }
     const sim = e.target.closest("[data-similar]");
     if(sim){ e.preventDefault(); e.stopPropagation(); findSimilar(sim.dataset.similar); return; }
-    if(!e.target.closest("#searchBox")) hideSimSug();
+    const pick = e.target.closest("[data-pick]");
+    if(pick){ e.preventDefault(); e.stopPropagation(); pickTitle(pick.dataset.pick); return; }
     const more = e.target.closest("[data-more]");
     if(more){ e.preventDefault(); more.closest(".taggroup").classList.toggle("expanded"); return; }
     const t = e.target.closest("[data-tag]");
