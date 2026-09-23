@@ -2400,7 +2400,6 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 // — QTPD, the free-value score, the Length range filter, the sort, CSV — reads it through here.
 function hoursFor(g){ return g.len != null ? g.len : null; }
 let LEN_CAP = 420;    // Length ceiling from length.json (`cap_h`)
-let LEN_BAL = 100;    // above this, Length is balanced with ▼ (length.json `balance_h`)
 let LEN_K = 20;   // top-up target from length.json (`k`): below this many fans, Length leans on the genre
 const fmtLen = h => h >= 10 ? String(Math.round(h)) : (Math.round(h*10)/10).toFixed(1);
 function lengthTip(g){
@@ -2416,8 +2415,6 @@ function lengthTip(g){
     const raw = `${Math.round(g.len_raw).toLocaleString()} h`;
     t += g.len_adj === "cap"
       ? ` ADJUSTED: taken at face value, the reviews say ≈ ${raw} — not a believable play-through. That is idle / achievement-farming time left running in the background, not play. So it is balanced against the players who did NOT recommend it (median ${dn}), and Length never goes above ${LEN_CAP.toLocaleString()} h (14 h a day for 30 days).`
-      : g.len_adj === "long"
-      ? ` ADJUSTED: at face value the reviews say ≈ ${raw}. Few games really take over ${LEN_BAL} h, and long totals are often idle time, so it is balanced against the players who did NOT recommend it (median ${dn}).`
       : ` ADJUSTED: an Idler game racks up hours running in the background, so its fans' playtime (≈ ${raw} at face value) is not play time. Balanced against the players who did NOT recommend it (median ${dn}).`;
   }
   return t;
@@ -6454,7 +6451,6 @@ Promise.all([
   const lenGenres = (lj && Array.isArray(lj.genres)) ? lj.genres : [];
   if(lj && lj.k) LEN_K = lj.k;
   if(lj && lj.cap_h) LEN_CAP = lj.cap_h;
-  if(lj && lj.balance_h) LEN_BAL = lj.balance_h;
   const tagsMap   = (tj && tj.tags)   ? tj.tags   : null;
   const recentMap = (rj && rj.recent) ? rj.recent : null;
   // playtime.json: per-game [median_up_min, median_down_min, n_up, n_down] (positional).

@@ -25,7 +25,7 @@ whether the score uses the **Sale** (discounted) or **Full** price.
 **Length** is one figure: hours to play a game through (story plus some side content),
 estimated from how long the Steam reviewers who **recommend** it played it, calibrated per
 genre against HowLongToBeat and refit weekly (`length_model.py`). Games with few reviews lean
-on their genre's typical length; idle games and anything past 100 h are balanced against the
+on their genre's typical length; idle games and anything past 420 h are balanced against the
 players who did not recommend them, and nothing goes above 420 h. Why this shape: [LENGTH_MODEL.md](LENGTH_MODEL.md).
 
 > For the full engineering deep-dive — architecture rationale, every script explained,
