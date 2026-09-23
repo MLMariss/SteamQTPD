@@ -1,0 +1,36 @@
+name: 3.4 Length apply [2.3 / manual] -> length.json
+
+on:
+  workflow_dispatch:        # run manually any time
+  # NO schedule: like 3.1 / 3.2 this runs as a CHAINED STEP at the end of workflow 2.3
+  # (Game playtime raw), right after playtime.json is refreshed, so Length follows new
+  # reviews every ~3h. This file is the manual escape hatch. (Pure local recompute, ~5s.)
+
+permissions:
+  contents: write           # commits length.json
+
+concurrency:
+  group: steam-length
+  cancel-in-progress: false
+
+jobs:
+  length-apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute review-based Length
+        run: python length_model.py

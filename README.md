@@ -18,13 +18,18 @@ Worker. *(The live Worker this deployment points at is `qhpp-wishlist.mlmariss.w
 its source is **not** checked into this repo; see "Wishlist import" below for what deploying
 your own would take.)*
 
-**QTPD** = `(avg HLTB hours × rating%) ÷ price`. Higher = more quality time
-per dollar. Null for free games and games HLTB can't match. Filter-bar toggles pick whether
-the score uses the **Sale** (discounted) or **Full** price, and which HLTB metric (main /
-extras / completionist / avg) feeds the formula.
+**QTPD** = `(Length hours × rating%) ÷ price`. Higher = more quality time per dollar. Null
+for free games and games with fewer than 3 recommending reviews. A filter-bar toggle picks
+whether the score uses the **Sale** (discounted) or **Full** price.
+
+**Length** is one figure: hours to play a game through (story plus some side content),
+estimated from how long the Steam reviewers who **recommend** it played it, calibrated per
+genre against HowLongToBeat and refit weekly (`length_model.py`). Games with few reviews lean
+on their genre's typical length; idle games and anything past 1,000 h are balanced against the
+players who did not recommend them and capped. Why this shape: [LENGTH_MODEL.md](LENGTH_MODEL.md).
 
 > For the full engineering deep-dive — architecture rationale, every script explained,
-> data schemas, the HLTB estimation system, and the playtime / weighted-rating pipeline —
+> data schemas, the Length model, the HLTB calibration source, and the playtime / weighted-rating pipeline —
 > see **[ARCHITECTURE.md](ARCHITECTURE.md)**. For what's planned, parked, or deliberately
 > not being built, see **[ROADMAP.md](ROADMAP.md)**. Live data coverage is in the generated
 > **[COVERAGE.md](COVERAGE.md)**, and how current that data is — per task, with the next
@@ -50,12 +55,13 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 |-------------------------|----------------------|-----------------------------------------------------|
 | `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state). |
 | `price_and_sale.py`     | `prices.json`        | Live price, discount %, sale end-date (the fast-changing layer). |
-| `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times (static; fetched once per game). Fills partial times from the typical main/extras/completionist ratio (not genre-based — see ARCHITECTURE.md). |
+| `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times. **Calibration input only** since Sep 2026 — the page no longer loads it; `length_model.py --fit` reads its real `extra` values weekly. |
 | `tags_refresh.py`       | `tags.json`          | SteamSpy user tags.                                 |
 | `recent_refresh.py`     | `recent.json`        | 30-day rolling review score (recent-vs-all-time trend). |
 | `playtime_refresh.py`   | `playtime_raw/NN.json` | Per-review playtime + recommendation, keyed by `recommendationid` (the big working set). **Sharded** into 64 files (`(appid//10)%64`) after the monolith hit GitHub's 100 MB wall. |
 | `playtime_summarize.py` | `playtime.json`      | Lean summary: median hours split by ▲ recommend / ▼ not. Chained step of the playtime job; pure local recompute, no Steam calls. |
 | `ratings_summarize.py`  | `ratings.json`       | Playtime-weighted review rating (2×-median-capped). Chained step of the playtime job; pure local recompute, no Steam calls. |
+| `length_model.py`       | `length.json` (+ `length_coefs.json` with `--fit`) | The page's **Length**: ▲ playtime × per-genre coefficient. Applied as a chained step of the playtime job; coefficients refit weekly against real HLTB extra (workflow 3.3). |
 | `updates_refresh.py`    | `updates_raw/NN.json` | Per-game update-event history (major/regular/minor via Steam `event_type`), keyed by event `gid`. **Sharded** like playtime. On the storefront budget, so its own out-of-band job. |
 | `updates_summarize.py`  | `updates.json`       | Lean summary: last major/regular/minor timestamps + windowed big/small counts (month/3mo/6mo/year/over-year). Chained step of the updates job; pure local recompute. |
 | `pics_refresh.py`       | `pics_raw/shard_NN.json` | Steam PICS `common` app-info block, pulled over the **CM protocol** (not the storefront), so it's on its own rate budget. **Sharded** into 64 files. Source of truth for header art, Valve's own tag/genre/feature IDs, Steam Deck rating, AI disclosure, and the review score the main scraper uses as a staleness signal. |
@@ -114,11 +120,9 @@ Header art (hover to enlarge) · title · Steam rating (% positive) + reviews ·
 **Price / Sale** (full price struck through, discounted price below, discount badge inline) ·
 **live** time left on the sale · release date + age · **last-update recency and patch
 cadence** (Updated column) · tags · **median playtime** split by recommendation (Playtime
-column; empty when a game has no playtime data) · How Long To Beat (main / main+extras /
-completionist + avg) · QTPD at the sale & full price. HLTB values **estimated** from the
-typical main/extras/completionist ratio (when HLTB only reports 1–2 of the 3 times — computed
-corpus-wide, not per-genre despite the name this used to go by) are shown in blue with a hover
-tooltip. Adult games are blurred behind an **18+ gate** — click once and it asks "18+?", click
+column; empty when a game has no playtime data) · **Length** (one figure in hours; hover for
+the review count behind it — adjusted idle / capped values are underlined in blue and the hover
+shows the raw figure) · QTPD at the sale & full price. Adult games are blurred behind an **18+ gate** — click once and it asks "18+?", click
 again to reveal. Revealing only reveals: it never opens the store, because the title beside the
 art is the Steam link. **Right-click undoes** — from the "18+?" prompt or from revealed art it
 goes straight back to hidden. Each row also has a slim `[x]` to hide that game for the session.
@@ -144,19 +148,17 @@ They are regenerated after every scrape (`presets.py`) so a shelf that has gone 
 up junk shows as a warning in the build rather than sitting there stale for months. The popular
 shelves need 5,000+ reviews so the results are recognisable; the two "hidden" shelves *cap* at
 5,000 for the opposite reason. **No shelf ever features adult content** — every one of them sets
-`adult=hide` and the build fails if one doesn't.
+`adult=hide` and the build fails if one doesn't. The default landing view hides them too.
 
 ## Frontend filters
 Filters live in four collapsible sections. Defaults are always the **leftmost** button, and any
 control you move off its default lights up gold, so an open section shows at a glance what
 you've touched.
 
-- **Value** — **QTPD price basis** (Sale / Full) · **Length metric** (main / +extras / 100% /
-  avg) · **Length data** (real only — the default — / all incl. estimates) · **price type**
+- **Value** — **QTPD price basis** (Sale / Full) · **price type**
   (All / Full / Sale / Free, independent toggles) · min & max price · **min sale %** (a −5 / +5
   stepper that drops shallow discounts; its resting value is read from the current results, not
-  hard-coded) · **length range in hours** (the twin of price range — it follows the Length metric
-  above it) · **QTPD range** (log-scale slider that fits the current results).
+  hard-coded) · **length range in hours** (the twin of price range) · **QTPD range** (log-scale slider that fits the current results).
 - **Quality** — minimum rating (any / 60+ / 70+ / 80+ / 90+) · **Review period** (30-day /
   all-time — it drives both the rating floor and the score sort) · review trend (improving /
   stable / declining) · minimum reviews (0 / 10 / 100 / 1k / 5k+ bands) · updated-within
@@ -167,7 +169,8 @@ you've touched.
 - **Flags** — Valve's own metadata, from the PICS layer: **Early Access · AI disclosure ·
   Adult content · VR-only · Family-share block · Custom EULA**, each an Any / Exclude / Only
   toggle, plus **Controller** (any / full / partial) and **Steam Deck** (any / verified /
-  playable+ / unsupported).
+  playable+ / unsupported). **Adult content starts on Exclude** (the storefront's adult flag) —
+  the landing view never opens on adult games; pick Any to include them.
 - **Tags** — click a tag to require it, again to exclude, again to clear (a visible
   `✓ require → ✕ exclude → clear` legend says so), plus a **Required tags match: ALL / ANY**
   toggle on the right. Excludes are always AND-NOT. A **tag search box** narrows the tag list
@@ -357,13 +360,13 @@ per-metric fill rates, refresh backlogs, and which lane each game sits in. Don't
 hand-written numbers here or in ARCHITECTURE.md over that file.
 
 ## Known caveats
-- **HLTB** matches by title similarity, so obscure/oddly-named games may not match (shown
-  as `—`). The first full pass is **done** — every game has an entry, ~85% of them with real
-  HLTB values and ~15% estimate-filled. The job now runs a priority re-scrape ladder instead:
-  partial entries every 14 days, no-matches on an escalating back-off, complete ones yearly.
-- **HLTB estimates** fill missing main/extras/completionist times from the typical ratio
-  so the QTPD-driving `avg` isn't skewed; they're clearly marked (blue + tooltip) and
-  replaced automatically once real HLTB data is found.
+- **Length** is an estimate from reviewers' playtime, not a measured completion time. It
+  lands within 2× of HowLongToBeat's "main + extras" for ~84% of games with 100+ recommending
+  reviews; under ~10 reviews it is close to its genre's typical figure. Endless games that are
+  not tagged Idler get their reviewers' (large) hours. Games with fewer than 3 recommending
+  reviews have no Length and no QTPD.
+- **HLTB** (calibration only) matches by title similarity; ~85% of entries carry real values.
+  Only real `extra` values train the Length model.
 - **Weighted rating** needs playtime data (public profiles only) and enough reviews; below
   5 it isn't computed, and 5–9 renders grayed as low-confidence.
 - **Tags** come from Valve's own PICS metadata where available, with SteamSpy as a coverage
