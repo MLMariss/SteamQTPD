@@ -2083,7 +2083,11 @@ bands stay all-time; only the *score* follows the period.
 were merged into one 0-99 band, off by default — 10 reviews say about as little as 0 do. The
 surviving bands keep their URL indices (`rev=0,2,3,4`), so shelf links (`rev=4`, `rev=2,3`) and
 old shared links are unchanged; an old link's `1` (10-99) is read as `0`. The default moved from
-10+ to 100+, which takes ~52k games with 10-99 reviews out of the landing view. Carrying the period into the
+10+ to 100+, which takes ~52k games with 10-99 reviews out of the landing view.
+**Any search lifts that default** (`revFloorOn()`, `searching()`): a typed title search or an
+active Find similar ignores the review bands while they are still at the default, so a
+61-review game looked up by name is shown. Bands the user changed are respected. (Find similar
+lifts only this, not the adult default — its result list is not something the user named.) Carrying the period into the
 **weighted score / QTPD** is a separate, larger question — registered in ROADMAP §3.2, not built,
 because a 16-review sample needs a far stronger prior than the all-time-tuned one.
 

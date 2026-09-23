@@ -2254,6 +2254,15 @@ const ADULT_DEFAULT = "hide";
 // if the user looks for the thing, we show the thing. "hide" (default or chosen) yields to any
 // non-blank search; "only" still applies. Everything that filters on adult reads this, not
 // state.flags.adultF, so the table and the title suggestions agree.
+// The Min reviews DEFAULT (100+) is a landing-view choice, not the user's, so any search lifts it:
+// a typed title search (a 61-review game found by name is shown) and Find similar alike. Bands the
+// user changed themselves still apply. Find similar lifts ONLY this: its results are a broad list
+// the user did not name game by game, so the adult default above stays on for it (CLAUDE.md).
+function searching(){ return !!(state.q && state.q.trim()) || similarActive(); }
+function revFloorOn(){
+  if(state.revBands.size === 0) return false;
+  return !(searching() && sameSet(state.revBands, REV_DEFAULT));
+}
 function adultMode(){
   const af = state.flags.adultF;
   return (af === "hide" && state.q && state.q.trim()) ? "any" : af;
@@ -2747,7 +2756,7 @@ function passNonRange(x){
   // Review-count band toggles. A game passes if its band is enabled. Empty set = no filter.
   // Default {2,3,4} excludes only the 0-99 band (i.e. "100+"). Games with null review_count
   // fall in band 0, so they only show when the 0-99 band is enabled.
-  if(state.revBands.size > 0 && !state.revBands.has(bandOf(x.review_count))) return false;
+  if(revFloorOn() && !state.revBands.has(bandOf(x.review_count))) return false;
   // Min sale % floor. Free games are exempt — they're kept or dropped by the Free price type
   // alone, exactly as the user asked; everything else must clear the floor, which is what
   // pushes full-price games (discount 0) out. IGNORE_MIN_SALE lets computeSaleBounds() ask
