@@ -58,7 +58,9 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   **A typed search is the opposite case** — the user asked for something specific, so a
   non-blank search lifts `hide` (`adultMode()` in `index.html`; owner, 2026-09-23: "if users
   looks for the thing - we show the thing"). Never let a shelf or other unrequested surface
-  carry a `q=` for that reason.
+  carry a `q=` for that reason. The same search exemption lifts the **default Min reviews floor**
+  (100+) for a title search and for Find similar (`revFloorOn()`); Find similar does **not** lift
+  `adult=hide` — its results are a broad list the user did not name.
   **The storefront's adult flag is the definition, and it is the only lock.** Shelves used to
   carry a second one — an `exc=` list naming every tag in `ADULT_TAGS` — because `isAdult()`
   treats the PICS flag as authoritative for any game PICS has covered, so for those games the

@@ -1657,15 +1657,18 @@ raw ▲ figure and a reason (`cap` / `idler`) so the page can show both — a bl
 and a tooltip that quotes the raw number and says why it is not believable (Sep 2026: 5 capped,
 ~2,400 idlers).
 
-**Tightened (Sep 2026, owner's call): cap 420 h, balance from 100 h.** `LENGTH_CAP_H` = 420 h —
-14 h a day for 30 days, the most a person plausibly plays — and `BALANCE_ABOVE_H` = 100 h: any
-game whose ▲-based Length passes 100 h is balanced too, not only those past the cap. Order is
-**clamp first, then blend**: `Length = min(capped, √(capped × coef·▼))` with `capped =
-min(coef·▲_blended, 420)`, so the blend never raises a figure (a game whose detractors played
-longer keeps its fans' Length). New reason `long` for rows balanced between 100 h and the cap.
-Dry run on the data at the time: 760 games change — 33 `cap`, 381 `long`, 2,059 `idler`; Granado
-Espada 1,000 → 420 h, MIR4 844 → 230 h, FINAL FANTASY XIV Online 442 → 149 h. The cap and the
-threshold are policy, not fitted values: apply overrides whatever `length_coefs.json` carries.
+**Tightened (Sep 2026, owner's call): cap 420 h.** `LENGTH_CAP_H` = 420 h — 14 h a day for 30
+days, the most a person plausibly plays. Order is **clamp first, then blend**: `Length =
+min(capped, √(capped × coef·▼))` with `capped = min(coef·▲_blended, 420)`, and the blend never
+raises a figure (an idler whose detractors played longer keeps its fans' Length). vs the 1,000 h
+rule: 378 games change (33 past the cap — Granado Espada 1,000 → 420 h, MIR4 844 → 230 h, FFXIV
+441 → 149 h — and ~345 idlers the old blend had pushed *up*, e.g. Bongo Cat 77 → 65 h). The cap is
+policy, not a fitted value: apply overrides whatever `length_coefs.json` carries.
+*Tried and reverted the same day:* balancing every game past 100 h (`BALANCE_ABOVE_H`). Against
+HLTB extra it helped idle-inflated mid-size games but cut well-known long games far too short
+(Baldur's Gate 3 137 → 74 h vs HLTB 117, Kenshi 107 → 38 vs 134, Dyson Sphere Program 122 → 46
+vs 117); gating it on the fan/detractor gap did not help (Kenshi's gap is 7.7×). Overall accuracy
+barely moved either way (within 2× of HLTB extra 77.0 % vs 77.1 %).
 
 **Fit (weekly, 3.3).** Coefficient per genre = geometric median of `HLTB raw.extra / ▲` over
 games with ≥ 30 fans; typical ▲ = median ▲ of games with ≥ 50 fans. A genre with < 100
@@ -1964,7 +1967,7 @@ after Reviews — it's derived from them — and **Price + Discount are merged**
 - **Length** (Sep 2026, replaced the HLTB main / +extras / 100% / avg stack) shows one value,
   `N h`, same 2-digit/1-digit number rule (`fmtLen`). The hover (`lengthTip`) names the
   recommending-review count and calibration genre, says when a game under 20 fans leans on its
-  genre, and on **adjusted** rows (idlers, anything balanced past 100 h, and anything past the 420 h cap — §9.7) quotes the
+  genre, and on **adjusted** rows (idlers, and anything past the 420 h cap — §9.7) quotes the
   raw figure and why it is not believable; those values carry a **blue dotted underline**. The
   column narrowed from `minmax(132px,164px)` to `minmax(80px,104px)`, dropping the table floor
   from 1324px to 1272px (tags-collapsed 1218 → 1166); the 1366 / 1280 breakpoints were left as
@@ -2083,7 +2086,11 @@ bands stay all-time; only the *score* follows the period.
 were merged into one 0-99 band, off by default — 10 reviews say about as little as 0 do. The
 surviving bands keep their URL indices (`rev=0,2,3,4`), so shelf links (`rev=4`, `rev=2,3`) and
 old shared links are unchanged; an old link's `1` (10-99) is read as `0`. The default moved from
-10+ to 100+, which takes ~52k games with 10-99 reviews out of the landing view. Carrying the period into the
+10+ to 100+, which takes ~52k games with 10-99 reviews out of the landing view.
+**Any search lifts that default** (`revFloorOn()`, `searching()`): a typed title search or an
+active Find similar ignores the review bands while they are still at the default, so a
+61-review game looked up by name is shown. Bands the user changed are respected. (Find similar
+lifts only this, not the adult default — its result list is not something the user named.) Carrying the period into the
 **weighted score / QTPD** is a separate, larger question — registered in ROADMAP §3.2, not built,
 because a 16-review sample needs a far stronger prior than the all-time-tuned one.
 

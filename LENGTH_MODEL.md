@@ -87,10 +87,16 @@ detractors also played ~1,300 h stays at the 1,000 h cap. ~2,400 Idler games are
 (typically ×0.72). Adjusted rows keep the raw figure; the page underlines them and the tooltip
 quotes it.
 
-Tightened later the same day (owner's call): cap **420 h** (14 h/day × 30 days), and the ▼
-balance applies to anything past **100 h**, not only past the cap. Clamp first, then blend:
-`min(capped, √(capped × coef·▼))` — the blend never raises a figure. 760 games change; the
-largest is Granado Espada, 1,000 → 420 h.
+Tightened later the same day (owner's call): cap **420 h** (14 h/day × 30 days). Clamp first,
+then blend: `min(capped, √(capped × coef·▼))` — the blend never raises a figure. 378 games change
+vs the 1,000 h rule; the largest is Granado Espada, 1,000 → 420 h.
+
+A ▼ balance for **every game past 100 h** was tried and reverted. Measured against HLTB (all
+games with a real time, within 2×): Main 66.2 → 66.3 %, Extra 77.0 → 77.1 %, Completionist
+64.8 → 64.7 % — no real gain — while well-known long games were cut far below HLTB extra
+(Baldur's Gate 3 137 → 74 h vs 117; Kenshi 107 → 38 vs 134; Dyson Sphere Program 122 → 46 vs
+117). In deep games the players who quit early *are* the detractors, so ▼ is not an idling
+signal there; gating on the ▲/▼ gap did not separate them (Kenshi 7.7×, idle games 7–170×).
 
 ## 6. What this does to the page
 
