@@ -27,8 +27,9 @@ Two modes, one writer per file:
 
   python length_model.py         every playtime pass (chained in 2.3, or 3.4) -> length.json
       Length(h) = coef[g] × 10^( w·log10(▲) + (1−w)·log10(typical[g]) ),  w = min(n_up, K)/K,
-                  and when that passes LENGTH_CAP_H (1,000 h, idle-farmed playtime):
-                  coef × √(▲_blended × ▼), still capped at LENGTH_CAP_H
+                  capped at LENGTH_CAP_H (420 h); and when the uncapped figure passes
+                  BALANCE_ABOVE_H (100 h), or the game is tagged Idler, it is blended down
+                  with ▼: √(capped × coef·▼), never above the capped figure
 
 Pure local compute over files already in the repo — no network, no rate budget.
 """
@@ -72,7 +73,13 @@ WARN_MOVE = 0.10        # log a warning when a coefficient moves more than this 
 # lands at 44 h; a genuinely endless game whose detractors ALSO played for ages (Granado Espada,
 # ▼ 1,328 h) stays at the cap. 5 games affected (Sep 2026). --fit is unaffected: the coefficients
 # are fitted on raw ▲ from games with a real HLTB time.
-LENGTH_CAP_H = 1000.0
+# Tightened the same month (owner's call): the cap is 420 h — 14 h a day for 30 days, the most a
+# person plausibly plays — and the ▼ balance starts at 100 h rather than at the cap, since few
+# games genuinely take that long and those that do keep big numbers anyway. Order: clamp to the
+# cap FIRST, then blend with ▼ — √(capped × coef·▼) — and never let the blend raise the figure
+# (a game whose detractors played longer than its fans keeps the fans' Length).
+LENGTH_CAP_H = 420.0
+BALANCE_ABOVE_H = 100.0
 # Games whose recommenders' playtime is idle time by design: the same ▼ balance is applied to
 # every game carrying one of these tags, not only to the ones that pass the cap (owner's call,
 # Sep 2026). Tag test = the page's own source order: PICS store tags, SteamSpy as fallback.
@@ -125,12 +132,14 @@ def length_hours(up_h, n_up, genre, coefs, down_h=None, balance=False):
     typical = g.get("typical_up_h", coefs["global"]["typical_up_h"])
     k = coefs.get("k", K)
     cap = coefs.get("cap_h", LENGTH_CAP_H)
+    bal = coefs.get("balance_h", BALANCE_ABOVE_H)
     w = min(n_up, k) / k
     up_eff = 10 ** (w * math.log10(up_h) + (1 - w) * math.log10(typical))
-    h = coef * up_eff
-    if (balance or h > cap) and down_h:   # ▼ balance — see LENGTH_CAP_H / BALANCE_TAGS
-        h = coef * math.sqrt(up_eff * down_h)
-    return min(h, cap)
+    raw = coef * up_eff
+    h = min(raw, cap)
+    if (balance or raw > bal) and down_h:   # ▼ balance — see LENGTH_CAP_H / BALANCE_TAGS
+        h = min(h, math.sqrt(h * coef * down_h))
+    return h
 
 
 def accuracy(pairs):
@@ -182,6 +191,7 @@ def fit(playtime, hltb, pics, id_to_name, previous=None):
         }
 
     coefs = {"generated_at": int(time.time()), "k": K, "min_up": MIN_UP, "cap_h": LENGTH_CAP_H,
+             "balance_h": BALANCE_ABOVE_H,
              "fit_min_up": FIT_MIN_UP, "typical_min_up": TYPICAL_MIN_UP,
              "min_genre_games": MIN_GENRE_GAMES, "target": "hltb_extra",
              "genre_priority": GENRE_PRIORITY, "global": glob, "genres": genres}
@@ -229,12 +239,13 @@ def apply(playtime, pics, id_to_name, coefs, balanced=frozenset()):
         row = [round(h, 2) if h < 10 else round(h, 1), n_up, idx[g]]
         # Adjusted (see LENGTH_CAP_H / BALANCE_TAGS): keep the ▲-only figure and the reason as
         # elements 4 and 5, so the page can show what the reviews literally said and why it
-        # was not used. "cap" = passed the ceiling; "idler" = balanced for its Idler tag.
-        raw = length_hours(up_h, n_up, g, dict(coefs, cap_h=float("inf")))
+        # was not used. "cap" = passed the ceiling; "long" = passed BALANCE_ABOVE_H and was
+        # balanced with ▼; "idler" = balanced for its Idler tag.
+        raw = length_hours(up_h, n_up, g, dict(coefs, cap_h=float("inf"), balance_h=float("inf")))
         if raw > coefs.get("cap_h", LENGTH_CAP_H):
             row += [round(raw), "cap"]
-        elif idler and abs(raw - h) > 0.05:
-            row += [round(raw, 1), "idler"]
+        elif abs(raw - h) > 0.05:
+            row += [round(raw, 1), "idler" if idler else "long"]
         out[a] = row
     return out
 
@@ -284,15 +295,18 @@ def main(argv):
         if "--fit" in argv:
             return 0
 
-    coefs = load(COEF_FILE)
+    # The ceiling and the balance threshold are this file's policy, not a fitted value: a
+    # length_coefs.json written before a change must not hold the old ones in place.
+    coefs = dict(load(COEF_FILE), cap_h=LENGTH_CAP_H, balance_h=BALANCE_ABOVE_H)
     balanced = balanced_games(pics, load(TAG_LOOKUP), load(STEAMSPY_TAGS, "tags"))
     lengths = apply(playtime, pics, id_to_name, coefs, balanced)
     write_json(OUT_FILE, {
         "generated_at": int(time.time()),
         "coefs_generated_at": coefs["generated_at"],
-        "k": coefs["k"], "min_up": coefs["min_up"], "cap_h": coefs.get("cap_h", LENGTH_CAP_H),
+        "k": coefs["k"], "min_up": coefs["min_up"], "cap_h": LENGTH_CAP_H,
+        "balance_h": BALANCE_ABOVE_H,
         "genres": GENRE_PRIORITY + [NONE],
-        "_format": ["hours", "n_up", "genre_idx", "raw_hours?", "reason? (cap|idler)"],
+        "_format": ["hours", "n_up", "genre_idx", "raw_hours?", "reason? (cap|long|idler)"],
         "balance_tags": sorted(BALANCE_TAGS),
         "count": len(lengths),
         "length": lengths})
