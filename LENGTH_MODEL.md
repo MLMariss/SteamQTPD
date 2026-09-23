@@ -87,6 +87,11 @@ detractors also played ~1,300 h stays at the 1,000 h cap. ~2,400 Idler games are
 (typically ×0.72). Adjusted rows keep the raw figure; the page underlines them and the tooltip
 quotes it.
 
+Tightened later the same day (owner's call): cap **420 h** (14 h/day × 30 days), and the ▼
+balance applies to anything past **100 h**, not only past the cap. Clamp first, then blend:
+`min(capped, √(capped × coef·▼))` — the blend never raises a figure. 760 games change; the
+largest is Granado Espada, 1,000 → 420 h.
+
 ## 6. What this does to the page
 
 - Games with a Length (and so a QTPD where priced): ~27k real-HLTB-main → ~96k.

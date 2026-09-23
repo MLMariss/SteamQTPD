@@ -44,14 +44,23 @@ check("n = 3 leans toward typical",
           - 10 ** (0.15 * math.log10(40) + 0.85 * 1)) < 1e-9)
 check("unknown genre falls back to global",
       abs(M.length_hours(4.0, 20, "Strategy", COEFS) - 3.6) < 1e-9)
+check("cap is 420 h, balance starts at 100 h", M.LENGTH_CAP_H == 420.0 and M.BALANCE_ABOVE_H == 100.0)
 check("capped at LENGTH_CAP_H", M.length_hours(50000.0, 500, "Action", COEFS) == M.LENGTH_CAP_H)
-check("over the cap, ▼ balances it (geometric mean)",
-      abs(M.length_hours(10000.0, 500, "Action", COEFS, 0.4) - 4000 ** 0.5) < 1e-9)
+check("over the cap, clamp THEN balance with ▼ (geometric mean)",
+      abs(M.length_hours(10000.0, 500, "Action", COEFS, 0.4) - (420 * 0.4) ** 0.5) < 1e-9)
 check("over the cap with long ▼ stays capped",
       M.length_hours(5000.0, 500, "Action", COEFS, 3000.0) == M.LENGTH_CAP_H)
-check("under the cap, ▼ is ignored",
-      abs(M.length_hours(40.0, 500, "Action", COEFS, 0.1) - 40.0) < 1e-9)
+check("100-420 h: ▼ balances it",
+      abs(M.length_hours(200.0, 500, "Action", COEFS, 2.0) - 20.0) < 1e-9)
+check("100-420 h: a longer ▼ never raises it",
+      abs(M.length_hours(150.0, 500, "Action", COEFS, 400.0) - 150.0) < 1e-9)
+check("100-420 h with no ▼ stays as is", abs(M.length_hours(200.0, 500, "Action", COEFS) - 200.0) < 1e-9)
+check("at or under 100 h, ▼ is ignored",
+      abs(M.length_hours(100.0, 500, "Action", COEFS, 0.1) - 100.0) < 1e-9
+      and abs(M.length_hours(40.0, 500, "Action", COEFS, 0.1) - 40.0) < 1e-9)
 check("cap_h in coefs overrides", M.length_hours(500.0, 500, "Action", dict(COEFS, cap_h=100.0)) == 100.0)
+check("balance_h in coefs overrides",
+      abs(M.length_hours(200.0, 500, "Action", dict(COEFS, balance_h=float("inf")), 2.0) - 200.0) < 1e-9)
 check("one real review still moves the result",
       M.length_hours(80.0, 3, "Action", COEFS) > M.length_hours(40.0, 3, "Action", COEFS))
 
@@ -88,7 +97,12 @@ check("apply covers every fan game", len(L) == 240)
 play["X"] = [600000, 30, 500, 20]          # 10,000 h fans, 0.5 h detractors: idle-farmed
 pics["X"] = {"genres": [1]}
 LX = M.apply(play, pics, IDS, C)["X"]
-check("guarded row carries raw figure + reason", len(LX) == 5 and LX[3] > 1000 and LX[0] < 1000 and LX[4] == "cap")
+check("guarded row carries raw figure + reason", len(LX) == 5 and LX[3] > 420 and LX[0] < 420 and LX[4] == "cap")
+play["G"] = [9000, 60, 500, 20]             # 150 h fans x coef 2 = 300 h, 1 h detractors
+pics["G"] = {"genres": [1]}
+LG = M.apply(play, pics, IDS, C)["G"]
+check("100-420 h row is balanced and says 'long'",
+      len(LG) == 5 and LG[4] == "long" and abs(LG[3] - 300) < 0.5 and abs(LG[0] - (300 * 2.0) ** 0.5) < 0.1)
 play["I"] = [6000, 60, 500, 20]             # 100 h fans, 1 h detractors, tagged Idler
 pics["I"] = {"genres": [1], "tags": [7]}
 LI = M.apply(play, pics, IDS, C, M.balanced_games(pics, {"7": "Idler"}, {}))["I"]
