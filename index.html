@@ -2249,6 +2249,14 @@ const PAGE_SIZE = 66;
 // default ranking at #1. The lock is isAdult() — the storefront flag, not tag names. "Any" is one
 // click away in Flags, and `adult=any` in a link opts back in.
 const ADULT_DEFAULT = "hide";
+// A typed search is asking for something specific, so it is never narrowed by the adult lock:
+// if the user looks for the thing, we show the thing. "hide" (default or chosen) yields to any
+// non-blank search; "only" still applies. Everything that filters on adult reads this, not
+// state.flags.adultF, so the table and the title suggestions agree.
+function adultMode(){
+  const af = state.flags.adultF;
+  return (af === "hide" && state.q && state.q.trim()) ? "any" : af;
+}
 const state = { data:null, q:"", tagQuery:"", similarTo:null, similarTags:null, simSugIdx:-1, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
                 minHours:null, maxHours:null, releasedWithin:"any",
@@ -2796,8 +2804,9 @@ function passNonRange(x){
     if(F.deck === "verified"    && x.deck_cat !== 3) return false;
     if(F.deck === "playable"    && !(x.deck_cat === 3 || x.deck_cat === 2)) return false;
     if(F.deck === "unsupported" && x.deck_cat !== 1) return false;
-    if(F.adultF === "hide" && isAdult(x)) return false;
-    if(F.adultF === "only" && !isAdult(x)) return false;
+    const af = adultMode();
+    if(af === "hide" && isAdult(x)) return false;
+    if(af === "only" && !isAdult(x)) return false;
   }
   if(state.tagsInc.size || state.tagsExc.size){
     const cs = canonSet(x);
@@ -4414,10 +4423,9 @@ function simSugHits(q){
   const out = [];
   // The suggestion list deliberately ignores price, review and length filters — finding a title
   // you half-remember is the point, and a row that reveals we hold the game is useful even when
-  // the current filters exclude it. The adult setting is not one of those: it is a content lock,
-  // so when it is set the list obeys it exactly as the table does. Otherwise a shelf arrived at
-  // with adult=hide would offer an adult title here, and picking it would land on nothing.
-  const af = state.flags.adultF;
+  // the current filters exclude it. The adult setting obeys adultMode() exactly as the table
+  // does, so a picked title always lands on a row: a typed search lifts "hide", "only" holds.
+  const af = adultMode();
   for(const g of state.data.games){
     if(!g.title) continue;
     if(af === "hide" && isAdult(g)) continue;

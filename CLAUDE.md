@@ -55,6 +55,10 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   "featured" surface, `Lucky` if it is ever promoted to the landing view — the surface sets
   `adult=hide`. `presets.py` enforces that at build time and fails the job if a shelf omits it;
   keep that guard, and extend it to any new surface of this kind.
+  **A typed search is the opposite case** — the user asked for something specific, so a
+  non-blank search lifts `hide` (`adultMode()` in `index.html`; owner, 2026-09-23: "if users
+  looks for the thing - we show the thing"). Never let a shelf or other unrequested surface
+  carry a `q=` for that reason.
   **The storefront's adult flag is the definition, and it is the only lock.** Shelves used to
   carry a second one — an `exc=` list naming every tag in `ADULT_TAGS` — because `isAdult()`
   treats the PICS flag as authoritative for any game PICS has covered, so for those games the

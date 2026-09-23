@@ -1778,7 +1778,10 @@ with the Flags → *Adult content* control on **Exclude**, using the same lock a
 (`isAdult()` — the storefront flag, not tag names). The trigger was the Length switch: it gave
 idle-farmed adult titles a QTPD for the first time and one opened the default ranking at #1.
 *Any* is one click away and `adult=any` in a link opts back in; a link with no `adult=` now means
-Exclude.
+Exclude. **A typed search is exempt** (`adultMode()`): someone searching for a title has asked for
+something specific, so while the search box is non-blank *Exclude* is lifted for the table and the
+title suggestions alike — if the user looks for the thing, we show the thing. *Only* still applies.
+Added the same day, after a title search for a flagged game came back empty and read as data loss.
 
 **Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
 But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
