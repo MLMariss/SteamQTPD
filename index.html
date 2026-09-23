@@ -1852,8 +1852,7 @@ try{
         <div class="field" title="Min reviews — show only games whose all-time review count lands in an enabled band. Independent toggles with gaps allowed, so you can show e.g. just 100–999 and 5k+.">
           <label>Min reviews</label>
           <div class="seg" role="group" aria-label="Minimum review count">
-            <button data-rev="0" aria-pressed="false" title="0–9 reviews.">0</button>
-            <button data-rev="1" aria-pressed="true" title="10–99 reviews.">10</button>
+            <button data-rev="0" aria-pressed="false" title="0–99 reviews. Off by default: under 100 reviews says little about a game.">0-99</button>
             <button data-rev="2" aria-pressed="true" title="100–999 reviews.">100</button>
             <button data-rev="3" aria-pressed="true" title="1,000–4,999 reviews.">1k</button>
             <button data-rev="4" aria-pressed="true" title="5,000 or more reviews.">5k+</button>
@@ -2218,20 +2217,22 @@ const TAG_CAT = {};
 TAG_GROUPS.forEach(([g,arr]) => arr.forEach(t => { if(!(t in TAG_CAT)) TAG_CAT[t] = g; }));
 const GROUP_ORDER = TAG_GROUPS.map(g => g[0]).concat(["Other"]);
 const MIN_TAG_COUNT = 10;
-// Min-reviews is a two-handle range across these lower-bound bands (indices 0..4):
-//   0 -> 0-9, 1 -> 10-99, 2 -> 100-999, 3 -> 1k-4999, 4 -> 5000+.
-// Min-reviews is a set of INDEPENDENT band toggles (indices 0..4):
-//   0 -> 0-9, 1 -> 10-99, 2 -> 100-999, 3 -> 1k-4999, 4 -> 5000+.
+// Min-reviews is a set of INDEPENDENT band toggles:
+//   0 -> 0-99, 2 -> 100-999, 3 -> 1k-4999, 4 -> 5000+.
+// There is no band 1 any more. It was 10-99, split from a 0-9 band, and it was dropped
+// (Sep 2026) because 10 reviews say about as little as 0 do. The surviving bands keep their old
+// indices so shelf links (rev=4, rev=2,3) and shared links still mean the same thing; a link
+// carrying the old 1 is read as 0 (see readURL).
 // state.revBands is a Set of enabled band indices; a game passes if the band its
-// review-count falls into is enabled. Gaps are allowed (e.g. {0,4} = "0-9 OR 5000+").
+// review-count falls into is enabled. Gaps are allowed (e.g. {0,4} = "0-99 OR 5000+").
 // Empty set means "no filter" (all pass), same as the trend toggles.
-const REV_BANDS = [0, 10, 100, 1000, 5000];
-// Which band index does a review count fall into? null -> band 0 (treat "no reviews" as 0-9).
+// Default: 100+ — the 0-99 band starts OFF.
+const REV_BANDS = {0:0, 2:100, 3:1000, 4:5000};
+const REV_DEFAULT = [2,3,4];
+// Which band index does a review count fall into? null -> band 0 (treat "no reviews" as 0-99).
 const bandOf = rc => {
   const n = (rc == null) ? 0 : rc;
-  let b = 0;
-  for(let i = 0; i < REV_BANDS.length; i++){ if(n >= REV_BANDS[i]) b = i; }
-  return b;
+  return n >= 5000 ? 4 : n >= 1000 ? 3 : n >= 100 ? 2 : 0;
 };
 
 // How many games one page renders. Fixed, not user-selectable: the old PER PAGE selector let
@@ -2258,7 +2259,7 @@ function adultMode(){
   return (af === "hide" && state.q && state.q.trim()) ? "any" : af;
 }
 const state = { data:null, q:"", tagQuery:"", similarTo:null, similarTags:null, simSugIdx:-1, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
-                qBasis:"after", minScore:0, revBands:new Set([1,2,3,4]), minPrice:null, maxPrice:null,
+                qBasis:"after", minScore:0, revBands:new Set(REV_DEFAULT), minPrice:null, maxPrice:null,
                 minHours:null, maxHours:null, releasedWithin:"any",
                 // Min sale %: null = no floor (the resting position). Any number is a multiple of 5
                 // and means "only discounts at least this deep". saleFloor/saleCeil are the
@@ -2389,7 +2390,8 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 // three HowLongToBeat values (Main / +Extras / 100%) in Sep 2026. Everything that needs "hours"
 // — QTPD, the free-value score, the Length range filter, the sort, CSV — reads it through here.
 function hoursFor(g){ return g.len != null ? g.len : null; }
-let LEN_CAP = 1000;   // Length ceiling from length.json (`cap_h`)
+let LEN_CAP = 420;    // Length ceiling from length.json (`cap_h`)
+let LEN_BAL = 100;    // above this, Length is balanced with ▼ (length.json `balance_h`)
 let LEN_K = 20;   // top-up target from length.json (`k`): below this many fans, Length leans on the genre
 const fmtLen = h => h >= 10 ? String(Math.round(h)) : (Math.round(h*10)/10).toFixed(1);
 function lengthTip(g){
@@ -2404,7 +2406,9 @@ function lengthTip(g){
     const dn = g.pt_down != null ? `${fmtLen(g.pt_down/60)} h` : "far less";
     const raw = `${Math.round(g.len_raw).toLocaleString()} h`;
     t += g.len_adj === "cap"
-      ? ` ADJUSTED: taken at face value, the reviews say ≈ ${raw} — not a believable play-through. That is idle / achievement-farming time left running in the background, not play. So it is balanced against the players who did NOT recommend it (median ${dn}), and Length never goes above ${LEN_CAP.toLocaleString()} h.`
+      ? ` ADJUSTED: taken at face value, the reviews say ≈ ${raw} — not a believable play-through. That is idle / achievement-farming time left running in the background, not play. So it is balanced against the players who did NOT recommend it (median ${dn}), and Length never goes above ${LEN_CAP.toLocaleString()} h (14 h a day for 30 days).`
+      : g.len_adj === "long"
+      ? ` ADJUSTED: at face value the reviews say ≈ ${raw}. Few games really take over ${LEN_BAL} h, and long totals are often idle time, so it is balanced against the players who did NOT recommend it (median ${dn}).`
       : ` ADJUSTED: an Idler game racks up hours running in the background, so its fans' playtime (≈ ${raw} at face value) is not play time. Balanced against the players who did NOT recommend it (median ${dn}).`;
   }
   return t;
@@ -2741,8 +2745,8 @@ function passNonRange(x){
   // Min rating tests the score for the CURRENT period, not always all-time — see periodRating().
   if(state.minScore > 0){ const r = periodRating(x); if(!(r != null && r >= state.minScore)) return false; }
   // Review-count band toggles. A game passes if its band is enabled. Empty set = no filter.
-  // Default {1,2,3,4} excludes only the 0-9 band (i.e. "10+"). Games with null review_count
-  // fall in band 0, so they only show when the 0-9 band is enabled.
+  // Default {2,3,4} excludes only the 0-99 band (i.e. "100+"). Games with null review_count
+  // fall in band 0, so they only show when the 0-99 band is enabled.
   if(state.revBands.size > 0 && !state.revBands.has(bandOf(x.review_count))) return false;
   // Min sale % floor. Free games are exempt — they're kept or dropped by the Free price type
   // alone, exactly as the user asked; everything else must clear the floor, which is what
@@ -4819,7 +4823,7 @@ function openSectionByName(name){
 }
 // Count of non-default filters per section — shown as a small "N active" badge on the header.
 function sectionActiveCounts(){
-  const revActive = sameSet(state.revBands, [1,2,3,4]) ? 0 : 1;
+  const revActive = sameSet(state.revBands, REV_DEFAULT) ? 0 : 1;
   return {
     value: (state.qBasis !== "after" ? 1 : 0)
          + ((state.minPrice != null || state.maxPrice != null) ? 1 : 0) + (state.priceClass.size < 3 ? 1 : 0)
@@ -4861,7 +4865,7 @@ function markChangedControls(){
   setGroup("[data-minscore]",     state.minScore > 0);
   setGroup("[data-ratesrc]",      state.ratingSource !== "recent");
   setGroup("[data-trend]",        state.trendSet.size > 0 && state.trendSet.size < 3);
-  setGroup("[data-rev]",          !sameSet(state.revBands, [1,2,3,4]));
+  setGroup("[data-rev]",          !sameSet(state.revBands, REV_DEFAULT));
   setGroup("[data-upd]",          state.updatedWithin !== "any");
   setGroup("[data-rel]",          state.releasedWithin !== "any");
   setGroup("[data-ptmetric]",     state.ptMetric !== "up");
@@ -4914,7 +4918,7 @@ const SORT_TIPS = {
   playtime:     "Playtime — the median hours Steam reviewers actually played, split by whether they recommended it. Not the same as Length: this is time spent, not time to finish.",
   length:       "Length — estimated hours to play a game through (story plus some side content), from how long its recommending Steam reviewers played it, calibrated per genre against HowLongToBeat. This is the length QTPD divides the price by."
 };
-const REV_LBLS = ["0", "10", "100", "1k", "5k+"];
+const REV_LBLS = {0:"0-99", 2:"100", 3:"1k", 4:"5k+"};
 
 function renderSummary(){
   const host = $("#filterSummary"); if(!host) return;
@@ -4928,7 +4932,7 @@ function renderSummary(){
   // separate so each is independently removable; they just never say the same thing twice.
   if(state.minScore > 0) parts.push(chip("minscore", `rating ≥ ${state.minScore}%${state.ratingSource === "recent" ? " 30d" : ""}`));
   if(state.ratingSource !== "recent") parts.push(chip("ratesrc", "all-time scores"));
-  if(!sameSet(state.revBands, [1,2,3,4])){ const t = [...state.revBands].sort((a,b)=>a-b).map(i => REV_LBLS[i]).join("/"); parts.push(chip("rev", state.revBands.size ? `reviews: ${t}` : "reviews: none")); }
+  if(!sameSet(state.revBands, REV_DEFAULT)){ const t = [...state.revBands].sort((a,b)=>a-b).map(i => REV_LBLS[i]).join("/"); parts.push(chip("rev", state.revBands.size ? `reviews: ${t}` : "reviews: none")); }
   if(state.minPrice != null || state.maxPrice != null){ const lo = state.minPrice != null ? `$${state.minPrice}` : "$0"; const hi = state.maxPrice != null ? `$${state.maxPrice}` : "∞"; parts.push(chip("price", `${lo}–${hi}`)); }
   if(state.priceClass.size < 3){ const lbl = {full:"full price",sale:"on sale",free:"free"}; const t = ["full","sale","free"].filter(c => state.priceClass.has(c)).map(c => lbl[c]).join(" / "); parts.push(chip("pc", t)); }
   if(state.minSale != null) parts.push(chip("minsale", `sale ≥ ${state.minSale}%`));
@@ -4995,7 +4999,7 @@ const SUMMARY_EDITORS = {
   pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
   trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
-  rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0",'[data-rev="0"]',"0"],["10",'[data-rev="1"]',"1"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
+  rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0-99",'[data-rev="0"]',"0"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
   tagmode:  {title:"Required tags match", cur:() => state.tagMode, opts:[["ALL",'[data-tagmode="and"]',"and"],["ANY",'[data-tagmode="or"]',"or"]]},
 };
 function openSummaryEditor(anchor, key){
@@ -5578,7 +5582,7 @@ function syncURL(){
   if(state.priceClass.size < 3) p.set("pc", ["full","sale","free"].filter(c => state.priceClass.has(c)).join(","));
   if(state.qBasis !== "after") p.set("basis", state.qBasis);
   if(state.minScore) p.set("minscore", state.minScore);
-  { const def = [1,2,3,4].join(","), cur = [...state.revBands].sort().join(",");
+  { const def = REV_DEFAULT.join(","), cur = [...state.revBands].sort().join(",");
     if(cur !== def) p.set("rev", cur); }
   if(state.minSale != null) p.set("minsale", state.minSale);
   if(state.minPrice != null) p.set("pmin", state.minPrice);
@@ -5646,7 +5650,7 @@ function loadFromURL(){
   // ignored — an old shared link still opens, just without them.
   setIf("minscore", v => { state.minScore = parseInt(v,10)||0;
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore===String(state.minScore))); });
-  setIf("rev", v => { const idxs = v.split(",").map(n => parseInt(n,10)).filter(n => n>=0 && n<REV_BANDS.length);
+  setIf("rev", v => { const idxs = v.split(",").map(n => parseInt(n,10)).map(n => n === 1 ? 0 : n).filter(n => n in REV_BANDS);
     state.revBands = new Set(idxs);
     syncRevButtons(); });
   // ?minsale=N — a shared link carrying a floor. Read AFTER ?pc (above) so the Full price type,
@@ -5769,7 +5773,7 @@ function init(data){
     // reset to defaults, then re-read URL, then refresh everything
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
     state.similarTo=null; state.similarTags=null; hideSimSug(); state.priceClass=new Set(["full","sale","free"]);
-    state.qBasis="after"; state.minScore=0; state.revBands=new Set([1,2,3,4]);
+    state.qBasis="after"; state.minScore=0; state.revBands=new Set(REV_DEFAULT);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
     state.minHours=null; state.maxHours=null; state.releasedWithin="any";
     state.minSale=null; state.minSaleForcedFull=false;
@@ -6021,7 +6025,7 @@ function init(data){
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
     state.similarTo=null; state.similarTags=null; hideSimSug(); state.priceClass=new Set(["full","sale","free"]);
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode==="and"));
-    state.minScore=0; state.revBands=new Set([1,2,3,4]); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
+    state.minScore=0; state.revBands=new Set(REV_DEFAULT); state.minPrice=null; state.maxPrice=null; state.wishOnly=false;
     state.minSale=null; state.minSaleForcedFull=false;
     state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent"; state.ptMetric="up";
     state.minHours=null; state.maxHours=null; state.releasedWithin="any";
@@ -6441,6 +6445,7 @@ Promise.all([
   const lenGenres = (lj && Array.isArray(lj.genres)) ? lj.genres : [];
   if(lj && lj.k) LEN_K = lj.k;
   if(lj && lj.cap_h) LEN_CAP = lj.cap_h;
+  if(lj && lj.balance_h) LEN_BAL = lj.balance_h;
   const tagsMap   = (tj && tj.tags)   ? tj.tags   : null;
   const recentMap = (rj && rj.recent) ? rj.recent : null;
   // playtime.json: per-game [median_up_min, median_down_min, n_up, n_down] (positional).

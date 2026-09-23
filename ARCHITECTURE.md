@@ -1657,6 +1657,16 @@ raw ▲ figure and a reason (`cap` / `idler`) so the page can show both — a bl
 and a tooltip that quotes the raw number and says why it is not believable (Sep 2026: 5 capped,
 ~2,400 idlers).
 
+**Tightened (Sep 2026, owner's call): cap 420 h, balance from 100 h.** `LENGTH_CAP_H` = 420 h —
+14 h a day for 30 days, the most a person plausibly plays — and `BALANCE_ABOVE_H` = 100 h: any
+game whose ▲-based Length passes 100 h is balanced too, not only those past the cap. Order is
+**clamp first, then blend**: `Length = min(capped, √(capped × coef·▼))` with `capped =
+min(coef·▲_blended, 420)`, so the blend never raises a figure (a game whose detractors played
+longer keeps its fans' Length). New reason `long` for rows balanced between 100 h and the cap.
+Dry run on the data at the time: 760 games change — 33 `cap`, 381 `long`, 2,059 `idler`; Granado
+Espada 1,000 → 420 h, MIR4 844 → 230 h, FINAL FANTASY XIV Online 442 → 149 h. The cap and the
+threshold are policy, not fitted values: apply overrides whatever `length_coefs.json` carries.
+
 **Fit (weekly, 3.3).** Coefficient per genre = geometric median of `HLTB raw.extra / ▲` over
 games with ≥ 30 fans; typical ▲ = median ▲ of games with ≥ 50 fans. A genre with < 100
 calibration games uses the global values. Only `raw` HLTB values — fitting to our own HLTB
@@ -1839,7 +1849,7 @@ labelled **"Start with"**. Eight shelves in two tones: `popular` (the first six)
 - **Review *bands*, not one floor.** Popular shelves floor at **5,000 reviews**; niche shelves
   **ceiling** at 5,000. Without the ceiling the niche shelves are just the popular ones again,
   because well-known games win on absolute quality. Both map onto the existing independent
-  `REV_BANDS` (0/10/100/1k/5k, gaps allowed), so the ceiling cost no new filter — it is simply
+  `REV_BANDS` (0-99/100/1k/5k, gaps allowed), so the ceiling cost no new filter — it is simply
   not selecting the top band. The floor exists because QTPD-descending rewards hours per dollar,
   so at a 100-review gate *Best deals* led with *Tap Heroes* and *New and well-reviewed* led with
   an adult title.
@@ -1954,7 +1964,7 @@ after Reviews — it's derived from them — and **Price + Discount are merged**
 - **Length** (Sep 2026, replaced the HLTB main / +extras / 100% / avg stack) shows one value,
   `N h`, same 2-digit/1-digit number rule (`fmtLen`). The hover (`lengthTip`) names the
   recommending-review count and calibration genre, says when a game under 20 fans leans on its
-  genre, and on **adjusted** rows (idlers, and anything past the 1,000 h cap — §9.7) quotes the
+  genre, and on **adjusted** rows (idlers, anything balanced past 100 h, and anything past the 420 h cap — §9.7) quotes the
   raw figure and why it is not believable; those values carry a **blue dotted underline**. The
   column narrowed from `minmax(132px,164px)` to `minmax(80px,104px)`, dropping the table floor
   from 1324px to 1272px (tags-collapsed 1218 → 1166); the 1366 / 1280 breakpoints were left as
@@ -2066,8 +2076,14 @@ is still judged on its lifetime score (52,601 games) rather than silently vanish
 
 **Min reviews deliberately does NOT follow the period.** Recent counts run one to two orders of
 magnitude below lifetime ones (Occupy Mars: 16 recent vs 3,140 all-time), so pointing the
-0/10/100/1k/5k+ bands at `recent_count` would empty the list at the default `10+` setting. The
-bands stay all-time; only the *score* follows the period. Carrying the period into the
+0-99/100/1k/5k+ bands at `recent_count` would empty the list at the default `100+` setting. The
+bands stay all-time; only the *score* follows the period.
+
+**Min reviews bands (Sep 2026): 0-99 / 100 / 1k / 5k+, default 100+.** The old 0 and 10 bands
+were merged into one 0-99 band, off by default — 10 reviews say about as little as 0 do. The
+surviving bands keep their URL indices (`rev=0,2,3,4`), so shelf links (`rev=4`, `rev=2,3`) and
+old shared links are unchanged; an old link's `1` (10-99) is read as `0`. The default moved from
+10+ to 100+, which takes ~52k games with 10-99 reviews out of the landing view. Carrying the period into the
 **weighted score / QTPD** is a separate, larger question — registered in ROADMAP §3.2, not built,
 because a 16-review sample needs a far stronger prior than the all-time-tuned one.
 

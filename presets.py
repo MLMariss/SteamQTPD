@@ -31,7 +31,7 @@ The two review-band ideas that make the shelves work:
     shelves again — the well-known games dominate on absolute quality. Capping review count is
     what makes "hidden" mean hidden.
 
-Both map onto the frontend's existing independent review bands (REV_BANDS = 0/10/100/1k/5k,
+Both map onto the frontend's existing independent review bands (REV_BANDS = 0-99/100/1k/5k,
 gaps allowed), so a ceiling costs no new filter: it is simply not selecting the top band.
 """
 
