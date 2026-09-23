@@ -33,7 +33,7 @@ source means adding a file + a job, never touching another job's file.
 **Merge in the browser.** The frontend downloads each file and merges them by `appid` into
 one in-memory object per game, in a single O(n) pass at load. QTPD is computed client-side
 from the merged fields (§11) — never stored server-side — so the score responds instantly
-to the price-basis and HLTB-metric toggles without re-scraping.
+to the price-basis toggle without re-scraping.
 
 **Time-budgeted, checkpoint-committing jobs.** Actions cap at 6 hours per job. Scrapers run
 for a `RUN_MINUTES` budget and commit progress on an interval (`CHECKPOINT_SECONDS`), plus
@@ -49,12 +49,15 @@ one checkpoint's worth of work.
    ┌────────────────────────────────────────────────────┐        ┌──────────────────┐
    │ scraper.py ──────────────► games.json + catalog.json│        │                  │
    │ price_and_sale.py ───────► prices.json              │        │   index.html     │
-   │ hltb_refresh.py ─────────► hltb.json                │  read  │  (merges all     │
-   │ tags_refresh.py ─────────► tags.json                │ ─────► │   JSON by appid, │
-   │ recent_refresh.py ───────► recent.json              │        │   computes QTPD) │
-   │ playtime_refresh.py ─────► playtime_raw/NN.json     │        │                  │
-   │        ├─ playtime_summarize.py ─► playtime.json    │        └──────────────────┘
-   │        └─ ratings_summarize.py ──► ratings.json     │
+   │ hltb_refresh.py ─────────► hltb.json (calibration   │  read  │  (merges all     │
+   │                              only, never served)    │ ─────► │   JSON by appid, │
+   │ tags_refresh.py ─────────► tags.json                │        │   computes QTPD) │
+   │ recent_refresh.py ───────► recent.json              │        │                  │
+   │ playtime_refresh.py ─────► playtime_raw/NN.json     │        └──────────────────┘
+   │        ├─ playtime_summarize.py ─► playtime.json    │
+   │        ├─ ratings_summarize.py ──► ratings.json     │
+   │        └─ length_model.py ───────► length.json      │
+   │ length_model.py --fit (weekly) ► length_coefs.json  │
    │ updates_refresh.py ──────► updates_raw/NN.json      │        ┌──────────────────┐
    │        └─ updates_summarize.py ──► updates.json     │        │ Cloudflare Worker │
    │ pics_refresh.py ─────────► pics_raw/shard_NN.json   │wishlist│  (steamid/vanity  │
@@ -77,13 +80,15 @@ proxy (§12) and `qtpd-reviews`, the Review Digest's `appreviews` passthrough (�
 `worker/`).
 
 The frontend fetches **14 files at load**: the eight data layers above (`games`, `prices`,
-`hltb`, `tags`, `recent`, `playtime`, `ratings`, `updates`), the merged `pics.json`,
+`length`, `tags`, `recent`, `playtime`, `ratings`, `updates`), the merged `pics.json`,
 `trailers.json` (§2.1), `presets.json` (§11, the preset shelves), and the three static decode
 maps in `lookups/` (`tags.json`, `genres.json`, `categories.json`, §9.6). `shots/` (§2.2) is
 the one layer fetched **lazily** — one shard per hovered game, never at load; `review_prompt*.md`
 (§17) is fetched lazily too, only when the digest modal first opens. `catalog.json`,
 `trailers_state.json`, `shots_state.json`, the `*_raw/` shard sets, `pics/`, and the three
-generated `.md` files are never served to the browser.
+generated `.md` files are never served to the browser. Nor, since Sep 2026, is `hltb.json`
+(37 MB): HowLongToBeat is calibration input for `length_model.py` (§9.7) and nothing else —
+the page shows one review-based **Length** instead of HLTB's Main / +Extras / 100%.
 
 ### 2.1 The trailer layer (`trailers.py` → `trailers.json`)
 
@@ -411,14 +416,14 @@ pipeline hierarchy:
 | `0.1` | Manual diagnostic against the live site's backend, not a pipeline stage | `review-probe.yml` (§17) |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9) |
-| `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2) |
+| `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**20 workflow files, 19 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **14 of the 20 are cron-scheduled**; the
+**22 workflow files, 21 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **15 of the 22 are cron-scheduled**; the
 rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1,
-playtime-summary 3.1, playtime-ratings 3.2, queue-null-updates). Numbering is cosmetic —
+playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
 `presets.yml` match the scrape workflow's **exact `name:` string**, so renaming `scrape.yml`
 silently breaks both (see the callout below).
@@ -455,17 +460,20 @@ shelves*).
 
 | Workflow / script   | Owns file   | Source    |
 |---------------------|-------------|-----------|
-| `hltb_refresh.py`   | `hltb.json` | HowLongToBeat |
+| `hltb_refresh.py`   | `hltb.json` | HowLongToBeat — **calibration input only** since Sep 2026 (§9.7); not served to the page |
 | `tags_refresh.py`   | `tags.json` | SteamSpy  |
 
 **Summarizers** (pure local recompute — read one file, write another; **no Steam calls**,
-so they touch no rate budget). Both read the sharded `playtime_raw/` set and each writes its
+so they touch no rate budget). The first two read the sharded `playtime_raw/` set; the Length
+model reads `playtime.json` (plus `pics.json`, and `hltb.json` when fitting). Each writes its
 own file, so one-writer-per-file holds:
 
 | Script                  | Writes         | Trigger                              | Concurrency group |
 |-------------------------|----------------|--------------------------------------|-------------------|
 | `playtime_summarize.py` | `playtime.json`| chained step in `playtime-raw.yml`   | (inherits `steam-playtime-raw`) |
 | `ratings_summarize.py`  | `ratings.json` | chained step in `playtime-raw.yml`   | (inherits `steam-playtime-raw`) |
+| `length_model.py`       | `length.json`  | chained step in `playtime-raw.yml` (after the two above); manual `length-apply.yml` (3.4) | (inherits `steam-playtime-raw`) / `steam-length` |
+| `length_model.py --fit` | `length_coefs.json` (+ re-applies `length.json`) | `length-fit.yml` (3.3), `17 3 * * 1` weekly | `steam-length` |
 
 **They run as chained steps at the end of `playtime-raw.yml`**, right after `playtime_refresh.py`
 commits the freshly-updated shards — so the lean frontend files refresh on *every* raw pass
@@ -615,20 +623,40 @@ contained by caching the verdict in `prices.json` and rotating: verdicts younger
 `AVAIL_TTL` (7d) are carried over on rebuild, and at most `AVAIL_MAX_PER_RUN` (60) stale
 ones are re-checked, oldest first — enough to cycle the ~400-app bucket about daily.
 
-**`hltb.json`** — `{ generated_at, count, "hltb": { "<appid>": { main, extra, complete, avg,
+**`hltb.json`** — **backend-only since Sep 2026**: the page no longer downloads it; its one
+consumer is `length_model.py --fit`, which reads `raw.extra` only (§9.7).
+`{ generated_at, count, "hltb": { "<appid>": { main, extra, complete, avg,
 match, fetched_at, raw: { main, extra, complete }, est?: ["extra", …], attempts?: N } } }`.
 The four time fields are **unprefixed** (`main`, not `hltb_main`). `raw` holds the ground-truth
 values as returned by HLTB; the top-level values may include estimates filled from the typical
 main/extras/completionist ratio (§8 — corpus-wide, magnitude-bucketed, not genre-based despite
 the name this feature used to go by). Three keys are conditional or easy to miss:
 - **`est`** (present on 18,829 entries) lists which of the three legs were estimated — this is
-  what drives the blue flag. It is `est`, not `hltb_est`; reading the wrong name is what
+  what drove the blue flag while the page showed HLTB. It is `est`, not `hltb_est`; reading the wrong name is what
   produced an old "0 estimated" claim in COVERAGE.md (§8).
 - **`attempts`** (present on 90,704 entries — every blank) is the miss counter that drives
   Phase B's attempt-scaled blank-retry curve (§8.1). Incremented on a miss, cleared on a match.
 - **`match`** is the HLTB title actually matched (or `null`), useful for auditing a bad match.
 
 `fetched_at` drives the priority re-scrape ordering.
+
+**`length.json`** — the page's one game-length figure, owned by `length_model.py` (§9.7):
+```
+{ "generated_at", "coefs_generated_at", "k": 20, "min_up": 3, "cap_h": 1000,
+  "genres": ["Racing", "Sports", …, "Casual", "none"], "balance_tags": ["Idler"],
+  "_format": ["hours", "n_up", "genre_idx", "raw_hours?", "reason? (cap|idler)"], "count",
+  "length": { "<appid>": [ hours, n_up, genre_idx ]                       // normal row
+              "<appid>": [ hours, n_up, genre_idx, raw_hours, "cap"|"idler" ] } }  // adjusted
+```
+`n_up` is the number of recommending reviews behind it (the tooltip quotes it); `genre_idx`
+indexes `genres`. Elements 4–5 appear **only** on adjusted rows: `raw_hours` is the ▲-only figure
+the reviews literally gave, `reason` says why it was not used. ~96k rows, ~2 MB.
+
+**`length_coefs.json`** — the weekly fit (`length_model.py --fit`): `global` and per-genre
+`{ coef, typical_up_h, n_fit, n_typical, fallback }`, the constants the fit used (`k`, `min_up`,
+`cap_h`, `fit_min_up`, `typical_min_up`, `min_genre_games`, `genre_priority`) and an `accuracy`
+block (share within ±25 % / ±50 % / 2× of real HLTB extra, all games and ≥100-fan games) so a
+drifting model is visible in the weekly diff.
 
 **`tags.json`** — `{ generated_at, count, "tags": { "<appid>": ["Roguelike", …] },
 "store_checked": [appid, …] }`. SteamSpy user tags. `store_checked` is the ledger of appids
@@ -854,6 +882,12 @@ found:
 ---
 
 ## 8. HLTB subsystem (`hltb_refresh.py` + `hltb_estimate.py` → `hltb.json`)
+
+> **Backend-only since Sep 2026.** The page no longer shows HowLongToBeat: its Main / +Extras /
+> 100% / Avg were replaced by one review-based **Length** (§9.7). Everything below still runs —
+> the scraper, matcher and estimator are unchanged — but its output now has one consumer, the
+> weekly Length calibration, which reads real `raw.extra` values only. The `est` estimates and
+> the blue flag no longer reach a user.
 
 HowLongToBeat completion times are static, so each game is fetched **once** (matched by
 title similarity, threshold `HLTB_MIN_SIMILARITY`; obscure/oddly-named games may not match
@@ -1583,6 +1617,60 @@ text drag.
 
 ---
 
+## 9.7 Length model (`length_model.py` → `length.json`, `length_coefs.json`)
+
+**What the page calls Length.** One figure per game: hours to play it through — the story plus
+some side content — estimated from **▲**, the median playtime of reviewers who *recommend* the
+game (`playtime.json`), and calibrated per genre against real HowLongToBeat **extra** times.
+It replaced the three HLTB values in Sep 2026. QTPD, the free-value score, the Length range
+filter, the Length sort and the CSV all read it through `hoursFor()`. The research behind every
+choice below is in `LENGTH_MODEL.md`; the change inventory in `LENGTH_PLAN.md`.
+
+**Why this shape** (measured on ~69k games, Sep 2026):
+- ▲ tracks HLTB better than ▼, the pooled median, or any average of ▲ and ▼ (rank correlation
+  0.83 vs HLTB completionist, against 0.81 for the ▲/▼ mean and 0.67 for ▼). A regression gives
+  ▼ a weight of ~0 once ▲ is known — non-recommenders' hours measure quitting, not length.
+- Uncorrected, ▲ ≈ HLTB **extra** (ratio 1.09), closer than main (1.48) or completionist (0.82),
+  and extra has the least scatter after calibration — so extra is the target.
+- **One genre per game.** The first of `Racing › Sports › Strategy › Simulation › RPG › Action ›
+  Adventure › Casual` the game carries (Indie / F2P / Early Access / MMO / adult are not types);
+  else `none`. On a 20-split holdout: one genre ×1.328 typical error vs global ×1.334; averaging
+  top-5 tags ×1.321; *stacking* tag coefficients ×1.350 — worse than no genre at all.
+- **Top-up to K = 20.** Below 20 fans, each real review counts 1/20 and the rest comes from the
+  genre's typical ▲, blended in log space so every real review moves the answer. K = 20 tested
+  best (within-2× 52.7 % on <50-fan games vs 50.4 % with no top-up); K = 50 erased the gain.
+
+**Formula (apply, every 2.3 pass).**
+`Length = coef[g] × 10^( w·log10 ▲ + (1−w)·log10 typical[g] )`, `w = min(n_up, 20) / 20`.
+**Floor:** 3 recommending reviews (the same floor `playtime.json` publishes a median at).
+
+**Outlier guard and idlers.** ▲ includes time a game spends **running in the background** —
+idle games, achievement / trading-card farming. One $0.99 title's 47 fans had a ~11,000 h median
+(detractors: 0.3 h), which made its Length 9,074 h, its QTPD 7,058 and put it at #1 site-wide.
+So, for (a) any game whose Length would pass `LENGTH_CAP_H` (1,000 h) and (b) every game tagged
+**Idler** (`BALANCE_TAGS`; PICS tags, SteamSpy fallback), ▼ is brought in as a check:
+`Length = coef × √(▲_blended × ▼)` — a geometric mean, since an arithmetic one leaves
+11,000 h and 0.3 h at ~5,700 h — and the result never exceeds 1,000 h. That title lands at 44 h;
+a genuinely endless game whose detractors also played for ages (Granado Espada, ▼ 1,328 h)
+stays at the cap. Idlers without a ▼ median keep the ▲ figure, capped. Adjusted rows carry the
+raw ▲ figure and a reason (`cap` / `idler`) so the page can show both — a blue dotted underline
+and a tooltip that quotes the raw number and says why it is not believable (Sep 2026: 5 capped,
+~2,400 idlers).
+
+**Fit (weekly, 3.3).** Coefficient per genre = geometric median of `HLTB raw.extra / ▲` over
+games with ≥ 30 fans; typical ▲ = median ▲ of games with ≥ 50 fans. A genre with < 100
+calibration games uses the global values. Only `raw` HLTB values — fitting to our own HLTB
+estimates would be circular. A coefficient moving > 10 % in one fit logs a WARNING; the
+`accuracy` block in `length_coefs.json` records within-±25/50 %/2× against real HLTB extra.
+First fit: global 0.90; Racing 1.12 · RPG 0.96 · Strategy 0.96 · Action 0.93 · Simulation 0.90 ·
+Sports 0.89 · Adventure 0.83 · Casual 0.80 · none 0.85. In-sample 77 % within 2× (84 % for
+games with ≥ 100 fans).
+
+**Honest limits.** Genre is a small correction (~1 point of accuracy); the number of reviews
+matters far more — under 10 fans a Length is close to its genre's typical figure. `playtime_forever`
+is a *live* total, so ▲ drifts up as reviewers keep playing. Endless / multiplayer games get a
+Length like any other (owner's decision); the length shelves keep excluding them by tag.
+
 ## 10. Weighted rating (`ratings_summarize.py` → `ratings.json`)
 
 A review rating where each vote counts in proportion to how long that player actually
@@ -1675,11 +1763,22 @@ A single self-contained page. On load it fetches every JSON file, merges them by
 into one object per game (one O(n) pass — important at ~68k+ games), then renders, filters,
 and sorts entirely client-side. Until real JSON exists it renders bundled `SAMPLE` data.
 
-**QTPD computation.** `computeQ(game, basis)` = `(selected HLTB hours × rating%) ÷ price`,
-where *basis* picks the **Sale** (after-discount, the default) or **Full** price, and the
-selected HLTB hours follow the **HLTB metric** toggle (main — the default — / +extras / 100% /
-avg). Null for free games and games with no usable HLTB value. The score is recomputed on
-toggle, never stored. (Internal sort key: `qtpd`.)
+**QTPD computation.** `computeQ(game, basis)` = `(Length hours × rating%) ÷ price`,
+where *basis* picks the **Sale** (after-discount, the default) or **Full** price, and Length is
+the review-based figure from `length.json` (§9.7), read through `hoursFor()`. Null for free
+games and games with no Length (fewer than 3 recommending reviews). The score is recomputed on
+toggle, never stored. (Internal sort key: `qtpd`.) *Until Sep 2026 the hours were HowLongToBeat's,
+picked by an **HLTB metric** toggle (Main / +Extras / 100% / Avg) and an **HLTB data** toggle
+(Real / All incl. estimates); both toggles, their URL params `hltb` / `hq`, chips and editors
+were removed with the switch. Old links carrying them still load and ignore them; `sort=hltb`
+is read as `sort=length`.*
+
+**Landing view hides flagged adult games (Sep 2026).** `ADULT_DEFAULT = "hide"`: the page opens
+with the Flags → *Adult content* control on **Exclude**, using the same lock as the shelves
+(`isAdult()` — the storefront flag, not tag names). The trigger was the Length switch: it gave
+idle-farmed adult titles a QTPD for the first time and one opened the default ranking at #1.
+*Any* is one click away and `adult=any` in a link opts back in; a link with no `adult=` now means
+Exclude.
 
 **Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
 But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
@@ -1742,16 +1841,16 @@ labelled **"Start with"**. Eight shelves in two tones: `popular` (the first six)
   so at a 100-review gate *Best deals* led with *Tap Heroes* and *New and well-reviewed* led with
   an adult title.
 - **Length shelves exclude games with no ending** via `exc=idle,incremental,clicker,idler,
-  mmorpg,massively+multiplayer,free+to+play`. EVE Online's HLTB "main" is 1,777 h, Melvor Idle's
-  1,395 h; divided by a small price they top every value ranking. Excluded from **length shelves
+  mmorpg,massively+multiplayer,free+to+play`. Their Length is enormous — the people who
+  recommend an MMO or an idler have played it for hundreds of hours (it was the same under HLTB:
+  EVE Online's "main" was 1,777 h) — so divided by a small price they top every value ranking. Excluded from **length shelves
   only** — they are legitimate results everywhere else.
 
 **Two filters were built because three shelves could not otherwise be expressed as real filter
 state** — and a preset that is not real filter state cannot show the user what it changed:
 
 - **Length range (hours)** — `state.minHours` / `state.maxHours`, URL `hmin` / `hmax`. The twin
-  of Price range, reading `hoursFor()` so it follows the **Length metric** and **Length data**
-  toggles above it rather than hard-coding `main`. A game with no length for the selected metric
+  of Price range, reading `hoursFor()` — the same Length the column shows. A game with no Length
   is dropped once either bound is set. Leave a box blank for no bound.
 - **Released within** — `state.releasedWithin`, URL `rel`, values `any` / `1mo` / `3mo` / `6mo` /
   `1yr` / `1yr+`. The same shape as the existing *Updated within*, on `release_ts`. `1yr+` means
@@ -1780,7 +1879,7 @@ from the data, as the **shallowest discount currently in the results**, floored 
   does nothing.
 
 **The table (12 columns).** In order: Game · Reviews · Trend · **Weighted** · Price / Sale ·
-Sale ends · Released · **Updated** · Tags · **Playtime** · HLTB · QTPD. (**Trend** sits directly
+Sale ends · Released · **Updated** · Tags · **Playtime** · **Length** · QTPD. (**Trend** sits directly
 after Reviews — it's derived from them — and **Price + Discount are merged** into one
 `Price / Sale` column. The **Updated** column (2026-07) sits after Released: last-update recency
 + a patch-cadence badge, sortable by recency — see §9.5 / §3.1.)
@@ -1849,11 +1948,14 @@ after Reviews — it's derived from them — and **Price + Discount are merged**
   data + tooltip but not shown inline. When a game has **no playtime data the cell renders
   completely empty** (no `—` dash) so it adds **zero height** to the row — previously the dash
   forced a line-height floor that inflated data-sparse rows.
-- **HLTB** shows main / +extras / 100% with `avg` below; the metric selected for QTPD is
-  highlighted, estimates render blue + dotted-underline. Same 2-digit/1-digit number rule.
-  The stack is a **block with both lines `nowrap`** (the three figures on one row, `avg N h`
-  on the next) so large numbers can't wrap into each other — this, plus a raised HLTB column
-  `min-width`, fixes the overlap that showed on wide free-game rows.
+- **Length** (Sep 2026, replaced the HLTB main / +extras / 100% / avg stack) shows one value,
+  `N h`, same 2-digit/1-digit number rule (`fmtLen`). The hover (`lengthTip`) names the
+  recommending-review count and calibration genre, says when a game under 20 fans leans on its
+  genre, and on **adjusted** rows (idlers, and anything past the 1,000 h cap — §9.7) quotes the
+  raw figure and why it is not believable; those values carry a **blue dotted underline**. The
+  column narrowed from `minmax(132px,164px)` to `minmax(80px,104px)`, dropping the table floor
+  from 1324px to 1272px (tags-collapsed 1218 → 1166); the 1366 / 1280 breakpoints were left as
+  measured, so both now have ~50px to spare.
 - **QTPD** shows the value plus a **log-scaled gold value-meter** bar. On a discounted game
   it shows both the **Sale** (primary/gold when that basis is active) and **Full** value
   (`… full`); on a game **not** on sale it shows a single value tagged **`full`** in a
@@ -1931,9 +2033,7 @@ open/closed state persists in `localStorage["qtpd.sections"]` (§3.4 L1). Defaul
 **leftmost** (repo convention, §3.4 R3), and any control moved off its default lights up **gold**
 via `markChangedControls()`.
 
-- **Value** — **QTPD price basis** (Sale *(default)* / Full) · **HLTB metric** (Main *(default)*
-  / +Extras / 100% / Avg) · **HLTB data** (Real *(default)* / All incl. estimates) ·
-  **price type** (All / Full / Sale / Free — an independent multi-toggle, URL `pc`; this
+- **Value** — **QTPD price basis** (Sale *(default)* / Full) · **Length range** · **price type** (All / Full / Sale / Free — an independent multi-toggle, URL `pc`; this
   **replaced the old boolean on-sale-only filter**) · min & max price · **QTPD range**
   log-slider that fits current results.
 - **Quality** — min rating (any/60+/70+/80+/90+) · **Review period** (30-day *(default)* /
@@ -1943,7 +2043,8 @@ via `markChangedControls()`.
 - **Flags** — the PICS cluster (§9.6): six tri-state Any/Exclude/Only presence flags (Early
   Access · AI disclosure · Adult content · VR-only · Family-share block · Custom EULA) plus
   two graded controls (Controller, Steam Deck). Folded by default; no-ops behind the `HAS_PICS`
-  guard when `pics.json` is empty.
+  guard when `pics.json` is empty. **Adult content defaults to Exclude** (`ADULT_DEFAULT`, Sep
+  2026 — see *QTPD computation* above); the other flags default to Any.
 
 **`periodRating(g)` — one resolver for the review period.** *(Sep 2026.)* Min rating and the
 Score-column sort both call it, so a game is judged on the same number whichever way you reach
@@ -2037,13 +2138,14 @@ Two selector toggles live in the filter bar and do **not** sort on their own:
 
 **State in the URL.** Every filter/sort choice is serialized to the querystring by `syncURL()`
 and restored by `loadFromURL()`, so any view is a shareable link. Defaults are omitted (e.g.
-`hq` only appears when not `real`, `pt` only when not `up`), which keeps shared links short and
-means a bare URL is the default view. **The full set is 33 params:**
+`adult` only appears when not `hide`, `pt` only when not `up`), which keeps shared links short and
+means a bare URL is the default view. **The full set is 31 params** (`hltb` and `hq` were retired
+with HLTB in Sep 2026 — read and ignored, never written):
 
 | Group | Params |
 |---|---|
 | Search & tags | `q`, `inc`, `exc`, `tagmode` |
-| Value | `pc`, `basis`, `hltb`, `hq`, `pmin`, `pmax`, `minsale`, `qmin`, `qmax`, `hmin`, `hmax` |
+| Value | `pc`, `basis`, `pmin`, `pmax`, `minsale`, `qmin`, `qmax`, `hmin`, `hmax` |
 | Quality | `minscore`, `rev`, `trend`, `upd`, `rel`, `ratesrc`, `pt` |
 | Flags (PICS, §9.6) | `flags`, `noflags`, `ai`, `adult`, `ctrl`, `deck` |
 | Display | `scheme` |
@@ -2108,8 +2210,9 @@ needed the teaching layer was the one platform with none (`docs/ONBOARDING_PLAN.
 **Plain words over jargon in the labels (Sep 2026).** The QTPD-side controls were named after
 the data source rather than the thing being measured — "HLTB metric", "HLTB data", a `HLTB
 M/E/100%` column header — which asks a first-time visitor to learn an acronym before they can
-use a filter. They now read **Length metric**, **Length data** and **Length · M/E/100%**, with
-HLTB kept as an upright source qualifier beside the value rather than as the label itself. The
+use a filter. They then read **Length metric**, **Length data** and **Length · M/E/100%**, with
+HLTB kept as an upright source qualifier beside the value rather than as the label itself. (All
+three went in Sep 2026, when the page moved to one review-based **Length**, §9.7.) The
 Grid's colour legend was also **exposed to assistive tech**: its key was decorative markup that
 carried meaning only visually.
 
@@ -2198,7 +2301,7 @@ about 34% of the viewport**, leaving three and a half rows of grid on screen.
   the same rule as `openCards` and the hidden-games list: per-device chrome is not part of the
   query a shared link is meant to reproduce. `markStaged()` re-applies the gold "on stage" edge
   after every render (a class alone would vanish on the next filter keystroke) and repaints the
-  meta strip, whose figures move with the price basis, the HLTB metric and free-only mode.
+  meta strip, whose figures move with the price basis and free-only mode.
 
 **Infinite scroll appends in grid view (`growPage`).** Reaching the bottom used to be
 `state.pagesShown += 1; render()`, and render assigns `#gridview.innerHTML` — so it threw away
@@ -2261,7 +2364,8 @@ something."
 | price, discount, sale-end | `prices.json` | `price_and_sale.py` | `scraped_at` | no cooldown — whole non-free base re-batched hourly, on the hour |
 | tags | `tags.json` | `tags_refresh.py` | **none** | fetch-once, **no rescrape** ([ROADMAP.md](ROADMAP.md) §3.5) |
 | recent 30d % / count | `recent.json` | `recent_refresh.py` | `recent_scraped_at` | two-track: active 4d / dormant 30d |
-| HLTB main/extra/complete/avg + `est` | `hltb.json` | `hltb_refresh.py` | `fetched_at` | partial 14d / full 365d; blank backoff 3→30→180d |
+| HLTB main/extra/complete/avg + `est` (**calibration only**, not shown) | `hltb.json` | `hltb_refresh.py` | `fetched_at` | partial 14d / full 365d; blank backoff 3→30→180d |
+| Length (hours, n_up, genre, raw/reason on adjusted rows) | `length.json` ← `playtime.json` + `length_coefs.json` | `length_model.py` (apply on every 2.3 pass; `--fit` weekly) | `generated_at` (file-level) | follows `playtime.json`; coefficients weekly |
 | median playtime ↑/↓ + n | `playtime.json` ← `playtime_raw/` | `playtime_refresh.py` → `playtime_summarize.py` | **none per-game** (proxy: newest review `ts`) | two-track: active 7d / dormant 30d; floor 10 reviews |
 | weighted rating (steam/raw/capped + n) | `ratings.json` ← `playtime_raw/` | `ratings_summarize.py` | inherits `playtime_raw/` | derived on every raw pass |
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
@@ -2586,8 +2690,14 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   (84.8%) carry real values** and 18,829 (15.2%) are estimate-filled. The job's steady state is
   now the priority re-scrape ladder (partials 14d → blanks on the attempt-scaled curve →
   full-real 365d) plus the never-idle drain, not first-pass coverage (§8, §8.1).
-- **HLTB estimates** are clearly marked (blue + tooltip) and auto-replaced once real data
-  arrives; they never train the ratio.
+- **HLTB estimates** are auto-replaced once real data arrives and never train the ratio. Since
+  Sep 2026 neither real nor estimated HLTB values reach the page — HLTB is calibration input for
+  the review-based **Length** (§9.7), which uses real `raw.extra` only.
+- **Length** exists for games with ≥ 3 recommending reviews (~96k, against ~27k that had a real
+  HLTB main). Under ~10 reviews it is close to its genre's typical figure; it is within 2× of
+  HLTB extra for ~84 % of games with ≥ 100 fans. Idle-farmed playtime is balanced and capped
+  (§9.7) and flagged in the UI; an endless game that is *not* tagged Idler and stays under the
+  cap is shown at its reviewers' hours.
 - **Weighted rating** needs public playtime and enough reviews: none below 5, grayed 5–9.
 - **Tags** fall back to Steam genres when SteamSpy lacks a game.
 - **Sale end times** collapse offline when expired — `expireSaleIfEnded()` (§11) actively
@@ -2644,6 +2754,22 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **Length replaces HowLongToBeat on the page (Sep 2026).** The three HLTB values (Main /
+  +Extras / 100% / Avg) and their two toggles were replaced by one review-based **Length**:
+  recommenders' median playtime × a per-genre coefficient fitted weekly against real HLTB extra,
+  topped up toward the genre's typical length below 20 reviews, and — for idlers and anything
+  past 1,000 h — balanced against non-recommenders' playtime and capped (§9.7). New:
+  `length_model.py`, `length.json`, `length_coefs.json`, workflows 3.3 (weekly fit) / 3.4
+  (manual apply), a chained step in 2.3, `test_length.py`, `LENGTH_MODEL.md`, `LENGTH_PLAN.md`.
+  The page stops downloading `hltb.json` (37 MB); games with a QTPD go from ~27k to ~78k.
+  Removed: the Length metric / Length data controls, their chips, editors, URL params
+  (`hltb`, `hq` — read and ignored), the M/E/100% column and its estimate styling; `sort=hltb`
+  is an alias of `sort=length`. `presets.py` takes hours from `length.json`: *Long games* went
+  151 → 460 results and *Short and cheap* 257 → 160, because Length sits near HLTB extra rather
+  than main; the 40 h / 6 h thresholds were kept, since the labels promise hours of Length.
+  Alongside, the **landing view now excludes storefront-flagged adult games by default**
+  (`ADULT_DEFAULT`, §11) — the switch had put one at #1 of the default ranking.
 
 - **Preset shelves — the landing page got a first decision (Sep 2026, PRs #89–#92).** The gap
   between "129,578 games ranked by a metric you don't know" and "78 controls" had nothing in

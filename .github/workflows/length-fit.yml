@@ -1,0 +1,45 @@
+name: 3.3 Length calibration (weekly) -> length_coefs.json
+
+on:
+  workflow_dispatch:        # run manually any time
+  schedule:
+    # Weekly refit of the per-genre coefficients that turn ▲ (recommenders' median
+    # playtime) into the site's Length, calibrated against REAL HowLongToBeat "extra"
+    # times. HLTB is backend-only since Sep 2026: this job is the only consumer of
+    # hltb.json. The coefficients move slowly (each genre fits on hundreds to thousands
+    # of games), so weekly is plenty; the fit logs a WARNING when one moves >10%.
+    # Pure local recompute (~10s), no network. Refits then re-applies, so length.json
+    # picks up new coefficients immediately instead of waiting for the next 2.3 pass.
+    - cron: "17 3 * * 1"    # Mondays 03:17 UTC
+
+permissions:
+  contents: write           # commits length_coefs.json + length.json
+
+concurrency:
+  group: steam-length       # shared with 3.4 so fit and apply never race on length.json
+  cancel-in-progress: false
+
+jobs:
+  length-fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refit genre coefficients against HLTB extra
+        run: python length_model.py --fit
+
+      - name: Re-apply -> length.json
+        run: python length_model.py

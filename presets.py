@@ -69,8 +69,9 @@ ADULT_TAGS = {"Nudity", "Sexual Content", "Mature", "NSFW", "Hentai"}
 # The popular shelves' 5,000-review floor thins both out; it does not reach the niche bands.
 
 
-# Games with no ending. Their HLTB "main" is meaningless-to-enormous (EVE Online 1,777h,
-# Melvor Idle 1,395h), so on any length-based shelf they crowd out everything with an actual
+# Games with no ending. Their Length (reviewers' playtime, length.json) is meaningless-to-
+# enormous — the people who recommend an MMO or an idler have played it for hundreds of hours —
+# so on any length-based shelf they crowd out everything with an actual
 # credits roll. Excluded from length shelves only — they are legitimate results elsewhere.
 # Kept identical to the `exc=` list every length shelf carries below — the query is what the
 # page actually runs, so any tag named here and not there is a count the generator reports and
@@ -148,7 +149,7 @@ PRESETS = [
 
 # Params the frontend's loadFromURL() understands. A preset naming anything else would land
 # the user in a state the page silently ignores, so it is a build error, not a warning.
-KNOWN_PARAMS = {"q", "inc", "exc", "tagmode", "pc", "basis", "hltb", "hq", "pmin", "pmax",
+KNOWN_PARAMS = {"q", "inc", "exc", "tagmode", "pc", "basis", "pmin", "pmax",
                 "minsale", "qmin", "qmax", "hmin", "hmax", "minscore", "rev", "trend", "upd",
                 "rel", "ratesrc", "pt", "flags", "noflags", "ai", "adult", "ctrl", "deck",
                 "sort", "dir", "per", "wishonly"}
@@ -168,7 +169,9 @@ def build():
     games = load("games.json", "games")
     prices = load("prices.json", "prices")
     tags = load("tags.json", "tags")
-    hltb = load("hltb.json", "hltb")
+    # Length is the review-based figure from length_model.py — the same one the page reads.
+    # hltb.json is calibration-only since Sep 2026 and must not feed a shelf.
+    length = load("length.json", "length")
     try:
         pics = load("pics.json", "apps")
     except (OSError, KeyError):
@@ -189,7 +192,7 @@ def build():
     for g in games:
         a = str(g.get("appid"))
         pr = prices.get(a) or {}
-        h = hltb.get(a) or {}
+        ln = length.get(a)
         pi = pics.get(a) or {}
         raw_tags = tags.get(a) or []                      # SteamSpy, the fallback source
         pics_tags = [tag_lk.get(str(i)) for i in (pi.get("tags") or [])]
@@ -205,12 +208,8 @@ def build():
             disc=pr.get("discount_pct", g.get("discount_pct")) or 0,
             free=bool(g.get("is_free")),
             rel=g.get("release_ts"),
-            # Real HLTB only, matching the frontend's default hq=real. "Real" is PER METRIC:
-            # realHours() tests whether the chosen metric appears in the `est` list, so a game
-            # can carry a real `main` and an estimated `complete`. Testing raw-is-not-None
-            # instead (as this did first) both kept games whose main is estimated and dropped
-            # games that have a perfectly real main.
-            hours=(h.get("main") if "main" not in (h.get("est") or []) else None),
+            # Same number the page's hoursFor() returns: length.json [hours, n_up, genre].
+            hours=(ln[0] if ln else None),
             # PICS-covered -> its flag decides, alone. Uncovered -> the raw tag fallback.
             adult=(bool(pi.get("adult")) if pi else bool(ADULT_TAGS & set(raw_tags))),
             no_end=bool(set(NO_ENDING) & tg),
@@ -303,7 +302,7 @@ def build():
             id=p["id"], label=p["label"], blurb=p["blurb"], tone=p["tone"], query=p["q"],
             # Advisory only, and deliberately NOT rendered on the chip. This count comes from
             # a Python re-implementation of passFilters(); mirroring the frontend exactly took
-            # three corrections (PICS tags override SteamSpy, HLTB realness is per-metric, the
+            # three corrections (PICS tags override SteamSpy, HLTB realness was per-metric, the
             # PICS adult flag replaces rather than adds to the tag test) and can drift again on
             # the next frontend change. It is good enough to flag a shelf going thin or broad,
             # which is this file's job; it is not good enough to show a user as fact.

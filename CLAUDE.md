@@ -50,7 +50,8 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
 ## Product rules (non-negotiable)
 
 - **Never highlight or feature adult content. Ever.** Anywhere the site puts games in front of
-  someone who did not ask for something specific — preset shelves, any future "recommended" or
+  someone who did not ask for something specific — preset shelves, the **default landing view**
+  (`ADULT_DEFAULT = "hide"` in `index.html`, since 2026-09-23), any future "recommended" or
   "featured" surface, `Lucky` if it is ever promoted to the landing view — the surface sets
   `adult=hide`. `presets.py` enforces that at build time and fails the job if a shelf omits it;
   keep that guard, and extend it to any new surface of this kind.
@@ -67,6 +68,9 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   flag is unset but whose tags say otherwise now passes; so does a game whose only adult signal
   is its title — no flag, no tag, innocuous SteamSpy tags. Neither is identifiable from the data
   we hold. Say so rather than implying the filtering is complete.
+  The owner reaffirmed this on 2026-09-23 when review-based Length put an unflagged game tagged
+  *Sexual Content / Hentai* at the top of two niche shelves: **no tag-based pushing down** — "we
+  are not making decisions for others". The flag stays the only lock.
 - This rule is not a default to weigh against other goals. It outranks result counts, shelf
   breadth, and "the metric says it is good value".
 

@@ -131,3 +131,10 @@ jobs:
       - name: Summarize playtime-weighted ratings -> ratings.json
         if: always()
         run: python ratings_summarize.py
+
+      # Length (the site's one game-length figure) is ▲ × a per-genre coefficient, so it
+      # is recomputed from the playtime.json written two steps up. Coefficients come from
+      # length_coefs.json (refit weekly by 3.3); this step only applies them.
+      - name: Review-based Length -> length.json
+        if: always()
+        run: python length_model.py

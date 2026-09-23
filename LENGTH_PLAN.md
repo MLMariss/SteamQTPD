@@ -1,5 +1,7 @@
 # Length: from HLTB (3 values) to one review-based Length — change inventory
 
+**Status: executed 2026-09-23** (all items A–D below; additions in E).
+
 Decisions (2026-09-23): one Length = ▲ (recommenders' median playtime) × per-genre coefficient,
 calibrated weekly against real HLTB **Extra**; one genre per game (fixed priority); top-up blend
 toward the genre-typical ▲ with K=20; floor 3 ▲ reviews; endless games treated as today (length
@@ -98,3 +100,15 @@ shelves exclude them); Playtime ▲/▼ column kept; HLTB kept **backend-only** 
 - `presets.py` builds, adult guard passes.
 - Headless Chromium: no console errors; table / card / grid render; `?hltb=extra&hq=loose&sort=hltb` loads cleanly; filter chips/reset/URL round-trip; screenshots.
 - `grep -i hltb index.html` → only the intentional "calibrated against HowLongToBeat" tooltip wording remains.
+
+## E. Added during execution (owner's decisions, 2026-09-23)
+- **Outlier guard + Idler balance** (`length_model.py`): any game whose Length would pass
+  1,000 h, and every Idler-tagged game, uses `coef × √(▲ × ▼)`, capped at 1,000 h. Adjusted rows
+  carry `[…, raw_hours, "cap"|"idler"]`; the page underlines them in blue and the tooltip quotes
+  the raw figure and why it is not believable.
+- **Landing view excludes storefront-flagged adult games by default** (`ADULT_DEFAULT = "hide"`;
+  Exclude moved to the leftmost button so "default = leftmost" still holds; `adult=any` opts in).
+  CLAUDE.md updated.
+- **No tag-based adult filtering** reaffirmed: an unflagged game tagged Sexual Content / Hentai
+  tops two niche shelves; left as is, stated in CLAUDE.md.
+- Table floor 1324 → 1272 px (tags-collapsed 1218 → 1166) from the narrower Length column.
