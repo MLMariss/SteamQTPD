@@ -2789,8 +2789,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   start a run with), so the site trails Steam by about an hour at most; the cron stays as a
   backstop for the other layers. Same change: a pass no longer clears every sale end-date up
   front. A row whose discount % is unchanged keeps its still-future date until pass 2 re-reads
-  it, and pass 2 asks for undated games first. During the sale the hour mark had been cutting
-  pass 2 off at ~37k of 63k, and every mid-pass checkpoint published the rest undated.
+  it, and pass 2 orders its queue by `date_priority`: undated games first, then any known date
+  that may have moved (it expires within `RECHECK_BEFORE`, 2 h, or the game was updated after
+  the date was read, per `games.json` `last_update_ts` / `updates.json` `last_any_ts`), then
+  the rest, oldest read first. Each row records when its date was read (`end_at`), and a
+  Steam answer with no dated discount now clears a carried date. During the sale the hour
+  mark had been cutting pass 2 off at ~37k of 63k, and every mid-pass checkpoint published the
+  rest undated.
 
 - **Length replaces HowLongToBeat on the page (Sep 2026).** The three HLTB values (Main /
   +Extras / 100% / Avg) and their two toggles were replaced by one review-based **Length**:

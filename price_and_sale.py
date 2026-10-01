@@ -85,6 +85,10 @@ STORE_DELAY = 1.6                         # between storefront calls (~200/5min 
 GETITEMS_DELAY = 1.2
 MAX_RETRIES = 4
 PAST_SLACK = 120                          # treat end dates this far past as already-ended
+RECHECK_BEFORE = 2 * 3600                 # a known end-date this close is re-read first
+                                          # (spans the next pass, so an extension lands
+                                          # before the old date expires on the page)
+UPDATES_FILE = HERE / "updates.json"      # read-only (owned by updates_summarize.py)
 AVAIL_TTL = 7 * 86400                     # re-confirm a "not sold" verdict after a week
 AVAIL_MAX_PER_RUN = 60                    # cap on the per-app availability calls (§1c)
 
@@ -418,14 +422,15 @@ def getitems(appids):
 
 
 def fetch_end_dates(appids):
+    """{appid: end} for every item Steam answered for — end is None when the item came
+    back without a dated discount. An appid missing from the result was not answered
+    (failed call), which is different: its known date stands."""
     out = {}
     for item in getitems(appids):
         aid = item.get("appid") or item.get("id")
         if aid is None:
             continue
-        end = _extract_end_date(item)
-        if end is not None:
-            out[int(aid)] = end
+        out[int(aid)] = _extract_end_date(item)
     return out
 
 
@@ -451,6 +456,39 @@ def load_appids():
         return []
     return [int(g["appid"]) for g in d.get("games", [])
             if not g.get("is_free") or g.get("price_initial")]
+
+
+def load_update_signal():
+    """{appid str: newest known update ts} from games.json's News-API last_update_ts and
+    updates.json's last_any_ts. A game updated after its sale end-date was read gets that
+    date re-read first: publishers often re-run or extend a sale alongside an update, and
+    nothing in the price itself changes when only the end-date moves."""
+    sig = {}
+    for path, pick in ((GAMES_FILE, lambda d: ((str(g.get("appid")), g.get("last_update_ts"))
+                                               for g in d.get("games", []))),
+                       (UPDATES_FILE, lambda d: ((k, (v or {}).get("last_any_ts"))
+                                                 for k, v in (d.get("games") or {}).items()))):
+        try:
+            d = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for k, ts in pick(d):
+            if isinstance(ts, (int, float)) and ts > sig.get(k, 0):
+                sig[k] = int(ts)
+    return sig
+
+
+def date_priority(row, updated_ts, now):
+    """Pass 2 order: 0 = no end-date, 1 = known date that needs re-reading (expires before
+    the pass after next could fix it, or the game was updated since it was read), 2 = the
+    rest. Within a tier the oldest read goes first, so dated games rotate too."""
+    end = row.get("discount_end")
+    read_at = row.get("end_at") or row.get("scraped_at") or 0
+    if not end:
+        return (0, read_at)
+    if end <= now + RECHECK_BEFORE or (updated_ts or 0) > read_at:
+        return (1, read_at)
+    return (2, read_at)
 
 
 def save_prices(prices):
@@ -496,6 +534,15 @@ def trigger_deploy():
             else f"  deploy dispatch failed: {(r.stderr or r.stdout).strip()}")
     except Exception as e:
         log(f"  deploy dispatch failed: {e}")
+
+
+def carry_sale(old, new, now):
+    """The fresh row's fields that survive from the old one: the end-date and when it was
+    read (end_at), while carried_end() says the date still applies."""
+    end = carried_end(old, new, now)
+    if not end:
+        return {"discount_end": None}
+    return {"discount_end": end, "end_at": old.get("end_at") or old.get("scraped_at") or now}
 
 
 def carried_end(old, new, now):
@@ -601,7 +648,7 @@ def run_pass(appids, deadline, label, resume_at):
         got = fetch_prices(chunk)
         time.sleep(STORE_DELAY)
         for aid, p in got.items():
-            prices[str(aid)] = {**p, "discount_end": carried_end(prices.get(str(aid)), p, now),
+            prices[str(aid)] = {**p, **carry_sale(prices.get(str(aid)), p, now),
                                 "scraped_at": now}
             touched.append(aid)
             if (p.get("discount_pct") or 0) > 0:
@@ -692,10 +739,12 @@ def run_pass(appids, deadline, label, resume_at):
     log(f"  confirmed {n_notsold} not sold, {stale - n_notsold} still buyable some other way")
 
     # --- pass 2: sale end-dates only for the on-sale subset ---
-    # Undated games first. During a storewide sale this pass is ~1,300 calls and the hour
-    # mark cuts it off around 37k of 63k; the games it never reaches should be ones that
-    # already carry a date from the last pass, not ones that have none.
-    onsale.sort(key=lambda a: prices[str(a)].get("discount_end") is not None)
+    # Undated games first, then dates that need re-reading (date_priority). During a
+    # storewide sale this pass is ~1,300 calls and the hour mark cuts it off around 37k of
+    # 63k; the games it never reaches should be ones whose known date is still good.
+    updated = load_update_signal()
+    onsale = sorted(set(onsale), key=lambda a: date_priority(prices[str(a)],
+                                                             updated.get(str(a)), now))
     log(f"Fetching sale end-dates for {len(onsale)} on-sale games "
         f"({math.ceil(len(onsale)/GETITEMS_BATCH)} batches)")
     n_dated = 0
@@ -707,12 +756,17 @@ def run_pass(appids, deadline, label, resume_at):
         ends = fetch_end_dates(chunk)
         time.sleep(GETITEMS_DELAY)
         for aid, end in ends.items():
-            if end <= now - PAST_SLACK:
-                continue                  # already ended -> leave discount_end null (prune)
             key = str(aid)
-            if key in prices:
-                prices[key]["discount_end"] = end
-                n_dated += 1
+            if key not in prices:
+                continue
+            if end is None or end <= now - PAST_SLACK:
+                # no dated discount, or already ended -> drop any carried date (prune)
+                prices[key]["discount_end"] = None
+                prices[key].pop("end_at", None)
+                continue
+            prices[key]["discount_end"] = end
+            prices[key]["end_at"] = now
+            n_dated += 1
         if time.time() - last_commit > CHECKPOINT_SECONDS:
             save_prices(prices)
             git_checkpoint(f"prices: {len(prices)} priced, {n_dated} sale dates (checkpoint)")
