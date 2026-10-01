@@ -479,6 +479,39 @@ def git_checkpoint(msg):
         log(f"  git checkpoint failed: {e}")
 
 
+def trigger_deploy():
+    """Ask Pages to publish what this pass just pushed. pages.yml's own 30-min cron is
+    dropped and delayed like every other cron on this repo: on 2026-10-01 it published at
+    08:06 and 15:32 and then nothing, so the 17:00 storewide sale (3.5k -> 63k discounted)
+    sat on main for hours while the site showed pre-sale prices. A workflow_dispatch from
+    GITHUB_TOKEN is one of the two events that token IS allowed to start a run with (needs
+    `actions: write` and GH_TOKEN in prices.yml); pages.yml's concurrency group queues it
+    behind a deploy already in flight. Best effort — a failed dispatch leaves the cron."""
+    if not IN_ACTIONS:
+        return
+    try:
+        r = subprocess.run(["gh", "workflow", "run", "pages.yml", "--ref", "main"],
+                           capture_output=True, text=True, timeout=60)
+        log("  deploy requested" if r.returncode == 0
+            else f"  deploy dispatch failed: {(r.stderr or r.stdout).strip()}")
+    except Exception as e:
+        log(f"  deploy dispatch failed: {e}")
+
+
+def carried_end(old, new, now):
+    """The sale end-date a re-priced row keeps until pass 2 re-reads it. Clearing every
+    date at the start of a pass meant each mid-pass checkpoint published thousands of live
+    sales with no end-date, and whatever pass 2 ran out of time for stayed undated all hour.
+    The old date is still the right one while the SAME discount is running and the date is
+    in the future; a changed discount is a different sale, so it waits for pass 2."""
+    if not old or not (new.get("discount_pct") or 0) > 0:
+        return None
+    end = old.get("discount_end")
+    if end and end > now and old.get("discount_pct") == new.get("discount_pct"):
+        return end
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # Pass scheduling
 # --------------------------------------------------------------------------- #
@@ -568,7 +601,8 @@ def run_pass(appids, deadline, label, resume_at):
         got = fetch_prices(chunk)
         time.sleep(STORE_DELAY)
         for aid, p in got.items():
-            prices[str(aid)] = {**p, "discount_end": None, "scraped_at": now}
+            prices[str(aid)] = {**p, "discount_end": carried_end(prices.get(str(aid)), p, now),
+                                "scraped_at": now}
             touched.append(aid)
             if (p.get("discount_pct") or 0) > 0:
                 onsale.append(aid)
@@ -658,6 +692,10 @@ def run_pass(appids, deadline, label, resume_at):
     log(f"  confirmed {n_notsold} not sold, {stale - n_notsold} still buyable some other way")
 
     # --- pass 2: sale end-dates only for the on-sale subset ---
+    # Undated games first. During a storewide sale this pass is ~1,300 calls and the hour
+    # mark cuts it off around 37k of 63k; the games it never reaches should be ones that
+    # already carry a date from the last pass, not ones that have none.
+    onsale.sort(key=lambda a: prices[str(a)].get("discount_end") is not None)
     log(f"Fetching sale end-dates for {len(onsale)} on-sale games "
         f"({math.ceil(len(onsale)/GETITEMS_BATCH)} batches)")
     n_dated = 0
@@ -681,7 +719,10 @@ def run_pass(appids, deadline, label, resume_at):
             last_commit = time.time()
 
     save_prices(prices)
-    git_checkpoint(f"prices: {len(prices)} priced, {len(onsale)} on sale, {n_dated} dated")
+    n_dated_all = sum(1 for a in onsale if prices[str(a)].get("discount_end"))
+    git_checkpoint(f"prices: {len(prices)} priced, {len(onsale)} on sale, {n_dated_all} dated "
+                   f"({n_dated} refreshed)")
+    trigger_deploy()
     log(f"Pass {label} done in {(time.time() - pass_start)/60:.0f} min: "
         f"{len(touched)} re-priced; {n_pkg} from packages; {n_only} sold only inside "
         f"something else; {n_notsold} confirmed not sold; {len(onsale)} on sale; "

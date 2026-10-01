@@ -118,6 +118,39 @@ check("the file is still the whole catalog", len(out) == 20)
 
 
 # --------------------------------------------------------------------------- #
+print("\n== run_pass: a running sale keeps its end-date through the sweep ==")
+
+FUTURE = int(time.time()) + 7 * 86400
+P.PRICES_FILE.write_text(json.dumps({"generated_at": 1, "country": "US", "count": 4, "prices": {
+    "1": {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+          "discount_end": FUTURE, "scraped_at": 100},          # same sale, still running
+    "2": {"price_initial": 10.0, "price_final": 7.0, "discount_pct": 30,
+          "discount_end": FUTURE, "scraped_at": 100},          # discount changed -> new sale
+    "3": {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+          "discount_end": None, "scraped_at": 100},            # undated
+    "4": {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+          "discount_end": FUTURE, "scraped_at": 100},          # same sale, dated
+}}), encoding="utf-8")
+date_calls = []
+P.fetch_end_dates = lambda chunk: (date_calls.append(list(chunk)), {})[1]
+P.GETITEMS_BATCH = 1
+P.fetch_prices = fake_prices                                   # everything 50% off
+P.run_pass([1, 2, 3, 4], time.time() + 300, "test-e", 0)
+out = json.loads(P.PRICES_FILE.read_text())["prices"]
+check("same discount, future end: the date is kept", out["1"]["discount_end"] == FUTURE)
+check("a changed discount drops the old date", out["2"]["discount_end"] is None)
+check("an undated sale stays undated until pass 2 finds one", out["3"]["discount_end"] is None)
+check("pass 2 asks for the undated games first",
+      [c[0] for c in date_calls[:2]] in ([2, 3], [3, 2]) and len(date_calls) == 4)
+check("carried_end never dates a game that is no longer on sale",
+      P.carried_end({"discount_pct": 50, "discount_end": FUTURE}, {"discount_pct": 0}, 1) is None)
+check("carried_end drops a date already past",
+      P.carried_end({"discount_pct": 50, "discount_end": 500}, {"discount_pct": 50}, 1000) is None)
+P.fetch_end_dates = lambda chunk: {}
+P.GETITEMS_BATCH = 50
+
+
+# --------------------------------------------------------------------------- #
 print("\n== run_pass: a short pass hands the rest to the next one ==")
 
 P.PRICE_BATCH = 5                            # 4 batches over the 20-game catalog

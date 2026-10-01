@@ -10,6 +10,9 @@ name: 0. Deploy site to GitHub Pages
 #
 # This workflow decouples "data committed" from "site published":
 #   - data checkpoints push to main freely and get published on the 30-min schedule;
+#   - the prices job (2.1) also dispatches this workflow after every hourly pass, because
+#     this cron is dropped/delayed like the others (2026-10-01: last fire 15:32, so the
+#     17:00 storewide sale sat unpublished on main for hours);
 #   - a push that touches index.html (the only file that changes how the site LOOKS)
 #     publishes immediately.
 # REQUIRES the repo Pages source to be switched from "Deploy from a branch" to
