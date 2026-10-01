@@ -82,6 +82,8 @@ P.CHECKPOINT_SECONDS = 10 ** 9              # no checkpoints during the test
 P.fetch_package_prices = lambda chunk: {}
 P.fetch_end_dates = lambda chunk: {}
 P.confirm_notsold = lambda aid: None
+P.UPDATES_FILE = tmp / "updates.json"     # update signal: never the repo's real files
+P.GAMES_FILE = tmp / "games.json"
 
 CATALOG = list(range(1, 21))                # 20 appids, PRICE_BATCH is 100 -> 1 batch
 seen = []
@@ -115,6 +117,74 @@ out = json.loads(P.PRICES_FILE.read_text())["prices"]
 check("refreshed rows carry the new price", out["1"]["price_final"] == 5.0)
 check("a stale sale end-date is cleared, not inherited", out["1"]["discount_end"] is None)
 check("the file is still the whole catalog", len(out) == 20)
+
+
+# --------------------------------------------------------------------------- #
+print("\n== run_pass: a running sale keeps its end-date through the sweep ==")
+
+FUTURE = int(time.time()) + 7 * 86400
+P.PRICES_FILE.write_text(json.dumps({"generated_at": 1, "country": "US", "count": 4, "prices": {
+    "1": {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+          "discount_end": FUTURE, "scraped_at": 100},          # same sale, still running
+    "2": {"price_initial": 10.0, "price_final": 7.0, "discount_pct": 30,
+          "discount_end": FUTURE, "scraped_at": 100},          # discount changed -> new sale
+    "3": {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+          "discount_end": None, "scraped_at": 100},            # undated
+    "4": {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+          "discount_end": FUTURE, "scraped_at": 100},          # same sale, dated
+}}), encoding="utf-8")
+date_calls = []
+P.fetch_end_dates = lambda chunk: (date_calls.append(list(chunk)), {})[1]
+P.GETITEMS_BATCH = 1
+P.fetch_prices = fake_prices                                   # everything 50% off
+P.run_pass([1, 2, 3, 4], time.time() + 300, "test-e", 0)
+out = json.loads(P.PRICES_FILE.read_text())["prices"]
+check("same discount, future end: the date is kept", out["1"]["discount_end"] == FUTURE)
+check("a changed discount drops the old date", out["2"]["discount_end"] is None)
+check("an undated sale stays undated until pass 2 finds one", out["3"]["discount_end"] is None)
+check("pass 2 asks for the undated games first",
+      [c[0] for c in date_calls[:2]] in ([2, 3], [3, 2]) and len(date_calls) == 4)
+check("carried_end never dates a game that is no longer on sale",
+      P.carried_end({"discount_pct": 50, "discount_end": FUTURE}, {"discount_pct": 0}, 1) is None)
+check("carried_end drops a date already past",
+      P.carried_end({"discount_pct": 50, "discount_end": 500}, {"discount_pct": 50}, 1000) is None)
+
+# --------------------------------------------------------------------------- #
+print("\n== run_pass: dates that may have moved are re-read before good ones ==")
+
+NOW = int(time.time())
+P.UPDATES_FILE.write_text(json.dumps({"games": {"6": {"last_any_ts": NOW - 60}}}))
+P.GAMES_FILE.write_text(json.dumps({"games": [{"appid": 7, "last_update_ts": NOW - 60}]}))
+row = lambda end, read: {"price_initial": 10.0, "price_final": 5.0, "discount_pct": 50,
+                         "discount_end": end, "end_at": read, "scraped_at": read}
+P.PRICES_FILE.write_text(json.dumps({"generated_at": 1, "country": "US", "count": 5, "prices": {
+    "4": row(FUTURE, NOW - 600),           # good date, read recently        -> last
+    "5": row(NOW + 1800, NOW - 600),       # expires before the next pass    -> re-read
+    "6": row(FUTURE, NOW - 3600),          # patched (updates.json) since    -> re-read
+    "7": row(FUTURE, NOW - 3600),          # patched (games.json) since      -> re-read
+    "8": row(None, NOW - 600),             # undated                         -> first
+}}), encoding="utf-8")
+date_calls.clear()
+answers = {5: NOW + 86400, 6: None}        # 5 extended; 6 answered with no dated discount
+P.fetch_end_dates = lambda chunk: (date_calls.append(chunk[0]),
+                                   {a: answers[a] for a in chunk if a in answers})[1]
+P.run_pass([4, 5, 6, 7, 8], time.time() + 300, "test-f", 0)
+out = json.loads(P.PRICES_FILE.read_text())["prices"]
+check("undated first, then the three suspect dates, the good date last",
+      date_calls[0] == 8 and set(date_calls[1:4]) == {5, 6, 7} and date_calls[4] == 4)
+check("an extended sale gets its new date", out["5"]["discount_end"] == NOW + 86400)
+check("...stamped with when it was read", out["5"]["end_at"] >= NOW)
+check("an answer with no dated discount clears the carried date",
+      out["6"]["discount_end"] is None and "end_at" not in out["6"])
+check("an unanswered game keeps the date it had", out["4"]["discount_end"] == FUTURE)
+check("...and when that date was read", out["4"]["end_at"] == NOW - 600)
+check("date_priority: updated before the read -> re-read",
+      P.date_priority(row(FUTURE, 100), 200, NOW)[0] == 1)
+check("date_priority: updated before the read was taken -> fine",
+      P.date_priority(row(FUTURE, 200), 100, NOW)[0] == 2)
+
+P.fetch_end_dates = lambda chunk: {}
+P.GETITEMS_BATCH = 50
 
 
 # --------------------------------------------------------------------------- #

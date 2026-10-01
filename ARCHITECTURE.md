@@ -448,7 +448,7 @@ shelves*).
 | Workflow / script       | Owns file           | Cadence          | Notes |
 |-------------------------|---------------------|------------------|-------|
 | `scraper.py`            | `games.json`, `catalog.json` | long runs, off-peak | The only finder of *new* games. |
-| `price_and_sale.py`     | `prices.json`       | frequent         | Fast-changing layer: price, discount, sale end. |
+| `price_and_sale.py`     | `prices.json`       | hourly passes    | Fast-changing layer: price, discount, sale end. **Dispatches `pages.yml` after every pass** — the Pages cron alone left the 2026-10-01 sale unpublished for hours. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
 | `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (**up to 24 buckets/run, oldest-scraped first** — a staleness sweep that cycles all 64 shards in ~8 h, §9); commits every 30 min + per shard. |
 | `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
@@ -2780,6 +2780,22 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 ---
 
 ## 16. Recent changes
+
+- **The prices job publishes the site itself (Oct 2026).** Steam's 17:00 UTC sale flip took
+  `prices.json` from 3.5k to 63k discounted games by 18:59, but the live site kept showing
+  ~900: `pages.yml`'s 30-min cron had last fired at 15:32 (that day it ran 4 times, not 48).
+  `price_and_sale.py` now runs `gh workflow run pages.yml` after each pass (`actions: write` +
+  `GH_TOKEN` in `prices.yml`; `workflow_dispatch` is one of the two events `GITHUB_TOKEN` may
+  start a run with), so the site trails Steam by about an hour at most; the cron stays as a
+  backstop for the other layers. Same change: a pass no longer clears every sale end-date up
+  front. A row whose discount % is unchanged keeps its still-future date until pass 2 re-reads
+  it, and pass 2 orders its queue by `date_priority`: undated games first, then any known date
+  that may have moved (it expires within `RECHECK_BEFORE`, 2 h, or the game was updated after
+  the date was read, per `games.json` `last_update_ts` / `updates.json` `last_any_ts`), then
+  the rest, oldest read first. Each row records when its date was read (`end_at`), and a
+  Steam answer with no dated discount now clears a carried date. During the sale the hour
+  mark had been cutting pass 2 off at ~37k of 63k, and every mid-pass checkpoint published the
+  rest undated.
 
 - **Length replaces HowLongToBeat on the page (Sep 2026).** The three HLTB values (Main /
   +Extras / 100% / Avg) and their two toggles were replaced by one review-based **Length**:

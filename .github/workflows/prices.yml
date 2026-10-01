@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write           # commits prices.json as it runs
+  actions: write            # dispatches pages.yml after each pass (trigger_deploy)
 
 concurrency:
   group: steam-prices       # never overlap price runs (separate from scraper/recent/hltb)
@@ -46,6 +47,7 @@ jobs:
       - name: Refresh prices and sale end-dates
         env:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          GH_TOKEN: ${{ github.token }}   # `gh workflow run pages.yml` after each pass
           QHPP_CC: "US"
           # 300min budget = ~5 hourly passes per run. A full sweep of the ~110k non-free
           # catalog takes ~52min wall (1,107 batches x 1.6s + the on-sale end-date pass),
