@@ -1526,7 +1526,7 @@ reach the browser are: `name`, `type`, `tags`, `genres`, `pgenre`, `cats`, `rev`
 | `content_desc` | `pics/` | `content_descriptors` | 22.7% | int list; 1=violence 2=gore 3=mature 4=nudity/sexual **5=container (not adult)**. Dropped at merge — the browser reads the derived `adult` flag instead. |
 | `orig_released` | `pics/` | `original_release_date` | 9.0% | unix ts (EA→1.0 carriers only) |
 | `rev_bomb`, `review_bombed` | `pics/` | `review_score_bombs`, `review_percentage_bombs` | 0.1% | de-bombed score; present only when divergent. **Backend only — not surfaced.** |
-| `dev`/`pub` | `pics/` | `associations` | 99.9% / 99.6% | structured names. **Backend only (parked).** |
+| `dev`/`pub` | `pics/` → `companies.json` | `associations` | 99.9% / 99.6% | structured names. Not in `pics.json`; `pics_merge.py` writes them interned to `companies.json`, which the **Publisher / dev** filter fetches lazily (first use, or a `co=` link). |
 | `franchise` | `pics/` | `associations` | 23.5% | structured franchise name(s). **Backend only (parked).** |
 | `langs`/`audio` | `pics/` | `supported_languages` | 99.9% / 44.0% | supported + full-audio codes. **Backend only (parked).** |
 
@@ -1590,7 +1590,12 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
     ~1870px, which is fine.
 - **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
   staleness / review bombing).
-- **Parked backend-only:** dev/publisher, franchise, languages, review-bomb
+- **Publisher / dev filter (2026-10-02):** dev/publisher now reach the browser through
+  `companies.json` (`{names, pub:{appid:[idx]}, dev:{appid:[idx]}}`, ~2.1 MB gz), fetched only
+  when the filter is used. Case-insensitive substring over either role; `co=` in the URL. Lifts
+  the default Min reviews floor like Find similar, but NOT `adult=hide` (a company catalogue is
+  a broad list the user did not name game by game).
+- **Parked backend-only:** franchise, languages, review-bomb
   adjusted score / review-bombing detection (not surfaced; dropped from the
   slim `pics.json` cut entirely).
 
