@@ -85,12 +85,12 @@ jobs:
       # rebase failure it would have committed a merge that keeps OUR side of every
       # conflicting path, silently reverting whatever a sibling had just pushed. A
       # failed rebase here means something is genuinely wrong; abort it and retry.
-      - name: Commit pics_raw + pics + pics.json
+      - name: Commit pics_raw + pics + pics.json + companies.json
         run: |
           set -e
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pics_raw pics pics.json
+          git add pics_raw pics pics.json companies.json
           if git diff --staged --quiet; then
             echo "No changes this run"
             exit 0

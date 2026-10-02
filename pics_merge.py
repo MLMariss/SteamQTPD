@@ -22,6 +22,15 @@ gz (~37% smaller). The adult/ea/vr_only booleans are pre-derived by
 pics_summarize.py, so the raw content_desc / genre lists aren't needed client-side
 for filtering.
 
+Companies side file
+-------------------
+dev / pub stay out of pics.json, but they are ALSO written, interned, to a separate
+`companies.json` that index.html fetches only when someone uses the Publisher / dev
+filter (typed, or a shared link carrying `co=`). Every other visitor never downloads
+it. Shape: {"names": [...], "pub": {appid: [name_idx, ...]}, "dev": {...}} — one
+name table shared by both roles, so a studio that self-publishes is stored once.
+~2.7 MB gz for ~130k games, against ~5 MB gz if the names were repeated inline.
+
 Pattern match: analog of the other *_summarize -> single-file steps. One writer
 (this script) -> one output file (`pics.json`). Reads pics/ read-only.
 
@@ -61,6 +70,7 @@ def shard_path(in_dir, shard):
 
 def merge(in_dir):
     apps = {}
+    companies = {"pub": {}, "dev": {}}
     missing = []
     for shard in range(SHARD_COUNT):
         path = shard_path(in_dir, shard)
@@ -75,30 +85,56 @@ def merge(in_dir):
                 continue
             slim = {k: rec[k] for k in FRONTEND_KEYS if k in rec}
             apps[appid] = slim
-    return apps, missing
+            for role in ("pub", "dev"):
+                names = [n for n in rec.get(role) or [] if isinstance(n, str) and n.strip()]
+                if names:
+                    companies[role][appid] = names
+    return apps, companies, missing
+
+
+def intern_companies(companies):
+    """{role: {appid: [name]}} -> {names, pub: {appid: [idx]}, dev: {appid: [idx]}}.
+    Names sorted so the table (and the committed diff) is stable run to run."""
+    names = sorted({n for role in companies.values() for ns in role.values() for n in ns})
+    idx = {n: i for i, n in enumerate(names)}
+    out = {"_format": "companies_v1", "names": names}
+    for role, by_app in companies.items():
+        out[role] = {a: [idx[n] for n in ns] for a, ns in sorted(by_app.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else 0)}
+    return out
+
+
+def write_json(path, obj):
+    # Compact separators — these files are transfer-optimized, not hand-read.
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, separators=(",", ":"), ensure_ascii=False)
+    os.replace(tmp, path)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="in_dir", default="pics")
     ap.add_argument("--out", dest="out_path", default="pics.json")
+    ap.add_argument("--companies-out", dest="companies_path", default="companies.json")
     args = ap.parse_args()
 
-    apps, missing = merge(args.in_dir)
+    apps, companies, missing = merge(args.in_dir)
 
     out = {
         "_format": OUT_FORMAT,
         "count": len(apps),
         "apps": apps,
     }
-    # Compact separators — this file is transfer-optimized, not hand-read.
-    tmp = args.out_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(out, fh, separators=(",", ":"), ensure_ascii=False)
-    os.replace(tmp, args.out_path)
-
+    write_json(args.out_path, out)
     size_mb = os.path.getsize(args.out_path) / 1024 / 1024
     print(f"merged {len(apps):,} games -> {args.out_path} ({size_mb:.1f} MB raw)")
+
+    co = intern_companies(companies)
+    write_json(args.companies_path, co)
+    size_mb = os.path.getsize(args.companies_path) / 1024 / 1024
+    print(f"  {len(co['names']):,} publisher/developer names "
+          f"({len(co['pub']):,} games with pub, {len(co['dev']):,} with dev) "
+          f"-> {args.companies_path} ({size_mb:.1f} MB raw)")
     if missing:
         print(f"  WARNING: {len(missing)} shard(s) missing: {missing}")
 
