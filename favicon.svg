@@ -1,9 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- "QT" in IBM Plex Sans Bold, converted to outlines: a favicon cannot load web fonts, so
+       live <text> would fall back to whatever system font the browser has. -->
   <rect width="64" height="64" rx="14" fill="#0e1320"/>
-  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" fill="none" stroke="#2c3858" stroke-width="1.5"/>
-  <g font-family="'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif"
-     font-size="30" font-weight="700" letter-spacing="-1" text-anchor="middle">
-    <text x="32" y="27" dominant-baseline="central"><tspan fill="#f1f4fb">Q</tspan><tspan fill="#ffc24d">T</tspan></text>
-    <text x="32" y="47" dominant-baseline="central" fill="#f1f4fb">PD</text>
-  </g>
+  <path fill="#ffffff" d="M29.72 47.4V52.36H25.96Q22.72 52.36 21.24 50.84Q19.76 49.32 19.76 46.44V45.28Q16.8 44.72 14.6 42.94Q12.4 41.16 11.22 38.18Q10.04 35.2 10.04 31.04Q10.04 26.28 11.56 23.08Q13.08 19.88 15.86 18.24Q18.64 16.6 22.32 16.6Q26.04 16.6 28.8 18.24Q31.56 19.88 33.08 23.08Q34.6 26.28 34.6 31.04Q34.6 35.08 33.48 38.02Q32.36 40.96 30.32 42.76Q28.28 44.56 25.44 45.16V47.4ZM22.32 40.08Q24.16 40.08 25.46 39.26Q26.76 38.44 27.46 36.88Q28.16 35.32 28.16 33.12V28.96Q28.16 26.72 27.46 25.18Q26.76 23.64 25.46 22.82Q24.16 22 22.32 22Q20.52 22 19.2 22.82Q17.88 23.64 17.18 25.18Q16.48 26.72 16.48 28.96V33.12Q16.48 35.32 17.18 36.88Q17.88 38.44 19.2 39.26Q20.52 40.08 22.32 40.08Z"/>
+  <path fill="#ffc24d" d="M56.88 22.48H49.32V45H43.24V22.48H35.68V17.08H56.88Z"/>
 </svg>
