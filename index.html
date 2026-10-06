@@ -211,7 +211,7 @@
   /* Left edge: --pad-x inside the card border, matching the table cells below and the filter
      bar above, so "Start with", "View" and the Game column all begin on one line. The row is
      already inside .wrap, so it needs neither its own max-width nor its own centring. */
-  /* seo_snapshot.py's static top picks: only seen before the first render(), or by crawlers */
+  /* seo_snapshot.py's static top picks: inside <noscript>, so only no-JS visitors and crawlers */
   .seo-snap{margin:10px var(--card-inset) 14px; font-family:var(--mono); font-size:12px; color:var(--muted-2)}
   .seo-snap h2{font-size:12px; font-weight:500; text-transform:uppercase; letter-spacing:.06em; margin:0 0 8px; color:var(--muted)}
   .seo-snap h2 span{text-transform:none; letter-spacing:0; color:var(--muted-2)}
@@ -463,6 +463,22 @@
   .rb-key .k-q{font-family:var(--mono); font-size:11.5px; color:var(--gold); font-weight:600}
   .rb-key .k-rev{width:12px; height:12px; background:var(--rate-key,#4ade80); -webkit-mask:var(--thumb-mask); mask:var(--thumb-mask)}
   .rb-key .k-sale{width:13px; height:11px; border:1px solid var(--gold-deep); border-radius:3px}
+  .boot{display:flex; flex-direction:column; align-items:center; gap:14px; padding:72px 16px 80px; text-align:center}
+  .boot-logo{font-weight:700; font-size:44px; letter-spacing:-.04em; line-height:1; color:#fff;
+        animation:boot-pulse 1.6s ease-in-out infinite}
+  .boot-logo b{color:var(--gold)}
+  .boot-bar{position:relative; width:min(320px,80%); height:6px; border-radius:3px; background:var(--panel-2); overflow:hidden}
+  .boot-bar i{position:absolute; inset:0 auto 0 0; width:4%; border-radius:3px; transition:width .35s ease;
+        background:linear-gradient(90deg,var(--gold-deep),var(--gold))}
+  /* a moving sheen, so the bar never looks frozen while one big file is still downloading */
+  .boot-bar::after{content:""; position:absolute; inset:0; width:40%;
+        background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
+        animation:boot-sheen 1.4s linear infinite}
+  .boot-msg{font-family:var(--mono); font-size:13px; color:var(--muted); max-width:520px; line-height:1.6}
+  .tablecard:has(#bootLoader) table{display:none}   /* no bare column header under the loader */
+  @keyframes boot-pulse{50%{opacity:.55}}
+  @keyframes boot-sheen{from{transform:translateX(-100%)} to{transform:translateX(250%)}}
+  @media (prefers-reduced-motion:reduce){ .boot-logo, .boot-bar::after{animation:none} }
   .tablecard{background:linear-gradient(180deg,#1a2336,#151d2d); border:1px solid var(--line); border-radius:14px; margin-top:12px}
   .resultbar + .tablecard{margin-top:9px}
   /* Fluid table (auto layout). Columns size between a per-column min (small-laptop floor,
@@ -2090,7 +2106,8 @@ try{
        so the page degrades to exactly what it was before. -->
   <div class="presetbar" id="presetBar" hidden></div>
   <!-- Plain-HTML top picks for crawlers that do not run JavaScript. Filled at deploy time by
-       seo_snapshot.py (empty in the repo); render() removes it on first paint. -->
+       seo_snapshot.py (empty in the repo) INSIDE a <noscript>, so a visitor with JavaScript
+       never sees it — the boot loader below covers the wait instead. -->
   <!--SEO_SNAPSHOT_START--><!--SEO_SNAPSHOT_END-->
   <div class="resultbar" id="resultBar">
     <span class="rb-lbl">View</span>
@@ -2135,6 +2152,16 @@ try{
     </div>
   </div>
   <div class="tablecard">
+    <!-- Boot loader. The list needs ~14 data files (tens of MB) before anything can render, and
+         the results area used to sit empty under the table header meanwhile. Progress is real:
+         loadLayer() ticks it as each file lands; init() removes it. Hidden without JavaScript,
+         where it would never finish. -->
+    <div class="boot" id="bootLoader" role="status" aria-live="polite">
+      <div class="boot-logo" aria-hidden="true">Q<b>T</b>PD</div>
+      <div class="boot-bar" aria-hidden="true"><i id="bootFill"></i></div>
+      <div class="boot-msg" id="bootMsg">Loading game data…</div>
+    </div>
+    <noscript><style>.boot{display:none}</style></noscript>
     <!-- ── The preview stage (phones only) ─────────────────────────────────────────────
          A docked player that sticks under the nav while the grid keeps scrolling below it.
          It is a THIRD .mediabox — the same contract the hover popup and a grid card's art
@@ -3102,7 +3129,6 @@ function onRangeInput(which){
 
 // ----- rendering -----
 function render(){
-  const snap = document.getElementById("seoSnapshot"); if(snap) snap.remove();   // seo_snapshot.py
   const allGames = visibleGames();
   const tbody = $("#rows"), empty = $("#empty");
   // Pagination: only render the first (pageSize × pagesShown) games; more load on scroll.
@@ -6619,26 +6645,48 @@ function reconcilePriceFlags(game){
 // Anything missing from a layer falls back to whatever games.json still carries (a new
 // game has price/rating from the initial scrape until the refreshers catch up). QTPD is
 // then computed client-side from the merged fields. Past-due sales collapse offline.
+// Boot loader progress. Each data layer reports in as it lands; names are what the status line
+// shows while that file is still outstanding. Same fetch/parse/null-on-failure contract as before.
+const BOOT_NAMES = {"games.json":"game catalog","prices.json":"prices","length.json":"lengths",
+  "tags.json":"tags","recent.json":"recent reviews","playtime.json":"playtime","ratings.json":"ratings",
+  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves"};
+const bootPending = new Set(); let bootDoneN = 0;
+function bootTick(){
+  const total = bootDoneN + bootPending.size, fill = document.getElementById("bootFill"), msg = document.getElementById("bootMsg");
+  if(fill) fill.style.width = Math.max(4, Math.round(100 * bootDoneN / total)) + "%";
+  if(!msg) return;
+  const waiting = [...bootPending].map(u => BOOT_NAMES[u]).filter(Boolean);
+  msg.textContent = bootPending.size
+    ? `Loading game data… ${bootDoneN} of ${total}` + (waiting.length ? ` · still waiting for ${waiting.slice(0, 3).join(", ")}` : "")
+    : "Building the list…";
+}
+function loadLayer(url){
+  bootPending.add(url);
+  return fetch(url, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null)
+    .finally(() => { bootPending.delete(url); bootDoneN++; bootTick(); });
+}
+function bootDone(){ const el = document.getElementById("bootLoader"); if(el) el.remove(); }
+
 Promise.all([
-  fetch("games.json",  {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("prices.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  loadLayer("games.json"),
+  loadLayer("prices.json"),
   // hltb.json (37 MB) is no longer loaded: HowLongToBeat is calibration-only since Sep 2026.
-  fetch("length.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("tags.json",   {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("recent.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("playtime.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("ratings.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("updates.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  loadLayer("length.json"),
+  loadLayer("tags.json"),
+  loadLayer("recent.json"),
+  loadLayer("playtime.json"),
+  loadLayer("ratings.json"),
+  loadLayer("updates.json"),
   // PICS layer: one slim merged file (pics_merge.py) + three tiny decode maps.
-  fetch("pics.json",    {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("lookups/tags.json",      {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("lookups/genres.json",    {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  fetch("lookups/categories.json",{cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  loadLayer("pics.json"),
+  loadLayer("lookups/tags.json"),
+  loadLayer("lookups/genres.json"),
+  loadLayer("lookups/categories.json"),
   // Trailer layer (trailers.py). Purely additive: absent or still-filling, the hover
   // panel just shows the enlarged still exactly as before.
-  fetch("trailers.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  loadLayer("trailers.json"),
   // Preset shelves (presets.py). Additive: absent, the chip row simply never paints.
-  fetch("presets.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  loadLayer("presets.json"),
 ]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj]) => {
   PRESETS = (presetj && Array.isArray(presetj.presets)) ? presetj.presets : null;
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
@@ -6811,6 +6859,7 @@ Promise.all([
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
   });
   init(data);
+  bootDone();
 });
 
 /* ── Custom tooltip engine ─────────────────────────────────────────────────────────────────────
