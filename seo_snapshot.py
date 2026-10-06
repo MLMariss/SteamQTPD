@@ -13,8 +13,9 @@ here would be a second copy of the maths to drift. As a second lock, a shelf who
 `adult=hide` is skipped here too.
 
 Runs in pages.yml against _site/index.html only, so the repo's index.html never churns with
-data. It fills the space between the SEO_SNAPSHOT markers; the page's first render() removes
-the section, so a visitor sees the live list, not this.
+data. It fills the space between the SEO_SNAPSHOT markers, wrapped in <noscript>: visitors with
+JavaScript never see it (the first version showed it until the first render, and it flashed
+past unreadably — 2026-10-06).
 
 Fails soft: no presets.json, or a broken one, leaves the markers empty and exits 0. A missing
 snapshot is a smaller loss than a site that stopped deploying.
@@ -41,9 +42,11 @@ def build(p):
     if not shelves:
         return ""
     day = time.strftime("%Y-%m-%d", time.gmtime(p.get("generated_at", time.time())))
-    return (f'<section class="seo-snap" id="seoSnapshot" aria-label="Top picks">'
+    # <noscript>: a visitor with JavaScript never sees this (the boot loader covers the wait);
+    # crawlers that read raw HTML, and no-JS visitors, get it as ordinary content.
+    return (f'<noscript><section class="seo-snap" id="seoSnapshot" aria-label="Top picks">'
             f'<h2>Top picks right now <span>· updated {day}</span></h2>'
-            f'<div class="snap-grid">{"".join(shelves)}</div></section>')
+            f'<div class="snap-grid">{"".join(shelves)}</div></section></noscript>')
 
 
 def main():
