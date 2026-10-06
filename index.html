@@ -3,8 +3,41 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>QTPD</title>
+<title>QTPD: Steam games ranked by quality time per dollar</title>
+<!-- Search and share metadata. The canonical is the bare page URL on purpose: every filtered
+     view (?q=, ?tags=, ...) is the same page in a different state, so search engines should
+     index one URL, not one per filter combination. -->
+<meta name="description" content="Find the Steam games that give the most well-reviewed hours for your money. Filter thousands of games by price, sale, review score, length and tags." />
+<link rel="canonical" href="https://mlmariss.github.io/SteamQTPD/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="QTPD" />
+<meta property="og:title" content="QTPD: Steam games ranked by quality time per dollar" />
+<meta property="og:description" content="Find the Steam games that give the most well-reviewed hours for your money. Filter thousands of games by price, sale, review score, length and tags." />
+<meta property="og:url" content="https://mlmariss.github.io/SteamQTPD/" />
+<meta property="og:image" content="https://mlmariss.github.io/SteamQTPD/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="QTPD: quality time per dollar, Steam games ranked by value" />
+<meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<!-- Structured data: describes the tool only. No ratings or prices of our own — the markup must
+     state only what the page visibly shows. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "QTPD",
+  "alternateName": "Quality Time Per Dollar",
+  "url": "https://mlmariss.github.io/SteamQTPD/",
+  "description": "Find the Steam games that give the most well-reviewed hours for your money. Filter thousands of games by price, sale, review score, length and tags.",
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "MLMariss", "url": "https://github.com/MLMariss" }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -63,7 +96,8 @@
   .logo:hover b{filter:brightness(1.15)}
   .logo:focus-visible{outline:2px solid var(--gold); outline-offset:3px; border-radius:4px}
   .logo b{color:var(--gold); -webkit-text-fill-color:var(--gold)}
-  .tagline{font-family:var(--mono); font-size:13px; color:var(--muted); letter-spacing:.02em}
+  .tagline{font-family:var(--mono); font-size:13px; color:var(--muted); letter-spacing:.02em;
+        margin:0; font-weight:400}  /* an <h1> (the page's main heading for search) that must look like the old <div> */
   .search{flex:1 1 240px; min-width:180px; position:relative}
   .search input{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
         font-family:var(--sans); font-size:14px; padding:10px 34px 10px 36px; border-radius:9px; outline:none}
@@ -915,6 +949,8 @@
   .empty{padding:54px 20px; text-align:center; color:var(--muted); font-size:15px}
   .empty b{color:var(--text); font-weight:600}
   .foot{margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--muted-2); line-height:1.9}
+  .foot a{color:var(--muted); text-decoration:underline; text-underline-offset:2px}
+  .foot a:hover{color:var(--text)}
 
   /* ═════════════════════════════════════════════════════════════════════════════════════
      Lorenzo-list additions (ARCHITECTURE §3.4): accordion filter sections (L1), collapsed-bar
@@ -1698,7 +1734,7 @@ try{
     <div class="bar-main">
       <div class="brand">
         <button class="logo" id="logoToggle" type="button" title="Back to the start — clear every filter, the search box and the sort, and return to the top of the list." aria-label="Back to the start">Q<b>T</b>PD</button>
-        <div class="tagline">quality time per dollar</div>
+        <h1 class="tagline">quality time per dollar</h1>
       </div>
       <label class="search" id="searchBox" title="Search — type any part of a game's title to filter the list live. Matches anywhere in the name, case-insensitive.">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -2176,7 +2212,11 @@ try{
     <div class="empty" id="empty" style="display:none"></div>
   </div>
 
-  <div class="foot" id="foot"></div>
+  <!-- Static on purpose (was filled by renderFoot()): this is the page's plain-text description,
+       and search / AI crawlers that do not run JavaScript would otherwise see none of it. -->
+  <div class="foot" id="foot">QTPD ranks Steam games by quality time per dollar: how many hours of well-reviewed play each dollar buys. Prices, sales, review scores, length and tags are collected from Steam and refreshed automatically.<br>
+QTPD = (Length hours × rating%) ÷ price. Length is estimated from how long Steam reviewers who recommend a game played it, calibrated per genre against HowLongToBeat. Higher = more quality time per dollar. Null for free games &amp; games with fewer than 3 recommending reviews.<br>
+Tag counts reflect the current results. Variants like Online/Local Co-Op are merged. Thumbnails load lazily from Steam's CDN. Method and source: <a href="https://github.com/MLMariss/SteamQTPD">GitHub</a>.</div>
 </div>
 
 <button class="totop" id="toTop" type="button"
@@ -5405,11 +5445,6 @@ function wrLowConfWhy(g, nStr, totalStr){
   return `Only ${nStr} of this game's ${totalStr} reviews have been read so far — low confidence until the sample deepens.`;
 }
 
-function renderFoot(){
-  $("#foot").innerHTML =
-    `QTPD = (Length hours × rating%) ÷ price. Length is estimated from how long Steam reviewers who recommend a game played it, calibrated per genre against HowLongToBeat. Higher = more quality time per dollar. Null for free games & games with fewer than 3 recommending reviews.<br>`+
-    `Tag counts reflect the current results. Variants like Online/Local Co-Op are merged. Thumbnails load lazily from Steam's CDN.`;
-}
 
 // ----- toasts -----
 function toast(html, type, ms){
@@ -5867,7 +5902,7 @@ function init(data){
   _gameIdx = null;                     // the appid -> game map is derived from this (see gameOf)
   loadFromURL();                       // hydrate state from querystring (if any)
   computeFullCounts(); recomputeDomain(); applyURLRange();
-  buildTagRail(); renderFoot();
+  buildTagRail();
   syncSortArrows();                    // reflect restored sort key/dir in headers
   syncPtHeader();                      // reflect restored playtime-median selection
   syncFlagsUI();                       // reflect restored PICS flag cluster state
