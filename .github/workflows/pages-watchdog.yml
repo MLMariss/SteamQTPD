@@ -1,0 +1,60 @@
+name: 0.2 Pages deploy watchdog
+
+# WHY THIS EXISTS
+# 2026-10-06: deploy run #1364 got stuck in GitHub's "waiting" state at 08:59 UTC and never
+# got a runner. pages.yml allows one deploy at a time (concurrency group "pages"), so every
+# later deploy queued behind it and was cancelled by the next one an hour later. The live site
+# froze for ~9 hours until the stuck run was cancelled by hand.
+#
+# The github-pages environment has no required reviewers and no wait timer, so a healthy
+# deploy never sits in "waiting" — it goes straight from queued to running. A deploy job that
+# has been "waiting" for 20+ minutes is the stuck case, and this cancels it.
+#
+# Deliberately narrow. It NEVER touches:
+#   - in-progress deploys (running, however long they take);
+#   - pending deploys (healthy runs lined up behind the blocker — the ones we want to unblock);
+#   - any workflow other than pages.yml.
+# A mistaken cancel costs nothing: every deploy publishes whatever is on main at that moment,
+# so the next one (30-min schedule, or the hourly prices dispatch) publishes the same content.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15,45 * * * *"     # every 30 min, offset from pages.yml's :00/:30 schedule
+
+permissions:
+  actions: write                # to cancel a run; nothing else
+
+concurrency:
+  group: pages-watchdog         # NOT "pages" — it must never queue behind the run it unblocks
+  cancel-in-progress: false
+
+jobs:
+  unstick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      MAX_WAIT_MIN: 20
+    steps:
+      - name: Cancel Pages deploys stuck in "waiting"
+        run: |
+          now=$(date -u +%s)
+          runs=$(gh api "repos/$REPO/actions/workflows/pages.yml/runs?status=waiting&per_page=20" \
+                   --jq '.workflow_runs[] | "\(.id) \(.run_number)"')
+          if [ -z "$runs" ]; then echo "No Pages deploy in 'waiting'. Nothing to do."; exit 0; fi
+          while read -r id num; do
+            # Age from when the JOB entered waiting, not when the run was created: a run can
+            # sit "pending" behind another deploy for a long time before reaching this state.
+            since=$(gh api "repos/$REPO/actions/runs/$id/jobs" \
+                      --jq '[.jobs[] | select(.status == "waiting") | .created_at] | min // empty')
+            if [ -z "$since" ]; then echo "Run #$num: no job in 'waiting' — leaving it."; continue; fi
+            age=$(( (now - $(date -u -d "$since" +%s)) / 60 ))
+            if [ "$age" -lt "$MAX_WAIT_MIN" ]; then
+              echo "Run #$num: waiting ${age} min (< ${MAX_WAIT_MIN}) — leaving it."
+              continue
+            fi
+            echo "::warning::Cancelling Pages deploy run #$num ($id): stuck in 'waiting' for ${age} min (since $since)."
+            gh api -X POST "repos/$REPO/actions/runs/$id/cancel" --silent
+          done <<< "$runs"
