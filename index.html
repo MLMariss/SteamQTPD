@@ -211,6 +211,15 @@
   /* Left edge: --pad-x inside the card border, matching the table cells below and the filter
      bar above, so "Start with", "View" and the Game column all begin on one line. The row is
      already inside .wrap, so it needs neither its own max-width nor its own centring. */
+  /* seo_snapshot.py's static top picks: only seen before the first render(), or by crawlers */
+  .seo-snap{margin:10px var(--card-inset) 14px; font-family:var(--mono); font-size:12px; color:var(--muted-2)}
+  .seo-snap h2{font-size:12px; font-weight:500; text-transform:uppercase; letter-spacing:.06em; margin:0 0 8px; color:var(--muted)}
+  .seo-snap h2 span{text-transform:none; letter-spacing:0; color:var(--muted-2)}
+  .seo-snap .snap-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px 18px}
+  .seo-snap h3{font-size:13px; margin:0 0 2px; font-weight:600}
+  .seo-snap h3 a{color:var(--text); text-decoration:none}
+  .seo-snap p{margin:0 0 4px}
+  .seo-snap ol{margin:0; padding-left:18px; color:var(--muted)}
   .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
              padding:11px var(--card-inset) 0}
   /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
@@ -2080,6 +2089,9 @@ try{
   <!-- Preset shelves. Rendered from presets.json; hidden entirely when that file is absent,
        so the page degrades to exactly what it was before. -->
   <div class="presetbar" id="presetBar" hidden></div>
+  <!-- Plain-HTML top picks for crawlers that do not run JavaScript. Filled at deploy time by
+       seo_snapshot.py (empty in the repo); render() removes it on first paint. -->
+  <!--SEO_SNAPSHOT_START--><!--SEO_SNAPSHOT_END-->
   <div class="resultbar" id="resultBar">
     <span class="rb-lbl">View</span>
     <div class="seg viewseg" id="viewSwitch" role="group" aria-label="View mode">
@@ -3090,6 +3102,7 @@ function onRangeInput(which){
 
 // ----- rendering -----
 function render(){
+  const snap = document.getElementById("seoSnapshot"); if(snap) snap.remove();   // seo_snapshot.py
   const allGames = visibleGames();
   const tbody = $("#rows"), empty = $("#empty");
   // Pagination: only render the first (pageSize × pagesShown) games; more load on scroll.

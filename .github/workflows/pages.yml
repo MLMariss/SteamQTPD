@@ -26,6 +26,7 @@ on:
     paths:
       - index.html                # a look/layout change -> deploy right away
       - .github/workflows/pages.yml   # a change to WHAT gets published should publish it
+      - seo_snapshot.py               # changes what the published page contains
       - sitemap.xml
       - og-image.png
       - favicon.svg
@@ -85,6 +86,11 @@ jobs:
           # files those tools hand out — drop one in the repo root and it publishes with the site.
           cp favicon.svg sitemap.xml og-image.png _site/
           cp google*.html BingSiteAuth.xml _site/ 2>/dev/null || true
+
+      # Static "top picks" (from presets.json) into the PUBLISHED index.html only, for crawlers
+      # that do not run JavaScript. Fails soft: no snapshot rather than no deploy.
+      - name: Write SEO snapshot into the staged page
+        run: python3 seo_snapshot.py _site/index.html presets.json
 
       - name: Verify every path the frontend fetches is staged
         run: |
