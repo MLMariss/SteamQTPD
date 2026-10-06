@@ -26,6 +26,11 @@ on:
     paths:
       - index.html                # a look/layout change -> deploy right away
       - .github/workflows/pages.yml   # a change to WHAT gets published should publish it
+      - sitemap.xml
+      - og-image.png
+      - favicon.svg
+      - google*.html                  # search-engine ownership-check files
+      - BingSiteAuth.xml
   schedule:
     - cron: "0,30 * * * *"        # republish current main every 30 min, on :00 and :30
 
@@ -74,6 +79,12 @@ jobs:
           cp *.json _site/
           cp -r lookups _site/
           cp -r shots _site/ 2>/dev/null || echo "note: shots/ absent (layer not populated yet)"
+          # Search / sharing files. favicon.svg was never staged, so the live tab icon 404'd.
+          # sitemap.xml is submitted to Google Search Console / Bing Webmaster Tools; og-image.png
+          # is the link-preview card. google*.html / BingSiteAuth.xml are the ownership-check
+          # files those tools hand out — drop one in the repo root and it publishes with the site.
+          cp favicon.svg sitemap.xml og-image.png _site/
+          cp google*.html BingSiteAuth.xml _site/ 2>/dev/null || true
 
       - name: Verify every path the frontend fetches is staged
         run: |
