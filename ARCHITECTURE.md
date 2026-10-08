@@ -2793,6 +2793,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   can't collapse (Playwright-verified at 1700px). §11's *Adding a column* recipe is authoritative.
 
 ---
+- **Runner image (checked 2026-10-08).** Every workflow runs on `ubuntu-latest`, which GitHub
+  moves to Ubuntu 26.04 from 2026-10-19. The jobs do not depend on the OS's own Python: each one
+  installs Python 3.12 through `actions/setup-python` (3.12 has a 26.04 build in
+  `actions/python-versions`), and the pip packages, PICS's `steam`/`gevent`/`protobuf<3.21`
+  included, install as prebuilt wheels for that Python. No apt packages are used. So no change
+  was needed; if a job does break after the switch, pinning that job's `runs-on` to
+  `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
 
