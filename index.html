@@ -23,7 +23,9 @@
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <!-- Structured data: describes the tool only. No ratings or prices of our own — the markup must
-     state only what the page visibly shows. -->
+     state only what the page visibly shows. The author's @id is the same Person node the
+     mlmariss.github.io home page declares, so search engines read the tool, the home page and
+     the YouTube channel as one creator. Keep the @id identical on both sites. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -37,7 +39,13 @@
   "browserRequirements": "Requires JavaScript",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "author": { "@type": "Person", "name": "MLMariss", "url": "https://github.com/MLMariss" }
+  "author": {
+    "@type": "Person",
+    "@id": "https://mlmariss.github.io/#person",
+    "name": "MLMariss",
+    "url": "https://mlmariss.github.io/",
+    "sameAs": ["https://www.youtube.com/@MLMariss", "https://github.com/MLMariss"]
+  }
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -220,6 +228,9 @@
   .seo-snap h3 a{color:var(--text); text-decoration:none}
   .seo-snap p{margin:0 0 4px}
   .seo-snap ol{margin:0; padding-left:18px; color:var(--muted)}
+  .intro{margin:12px var(--card-inset) 0; font-size:13.5px; color:var(--muted-2)}
+  .intro a{color:var(--muted); text-decoration:underline; text-underline-offset:2px}
+  .intro a:hover{color:var(--text)}
   .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
              padding:11px var(--card-inset) 0}
   /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
@@ -2104,6 +2115,11 @@ try{
        their only explanation lived in a hover tooltip. -->
   <!-- Preset shelves. Rendered from presets.json; hidden entirely when that file is absent,
        so the page degrades to exactly what it was before. -->
+  <!-- One-line intro: what QTPD is, for the first-time visitor and for search (the main
+       description otherwise sits in .foot at the very bottom). Shown on the landing view only;
+       renderPresets() hides it as soon as the URL carries any state (search, filter, sort,
+       shelf), when the visitor has stopped needing it. Static HTML, so crawlers read it. -->
+  <p class="intro" id="intro">Steam games ranked by how many well-reviewed hours each dollar buys. Free, no account needed, prices kept current from Steam. <a href="how-it-works.html">How it works</a></p>
   <div class="presetbar" id="presetBar" hidden></div>
   <!-- Plain-HTML top picks for crawlers that do not run JavaScript. Filled at deploy time by
        seo_snapshot.py (empty in the repo) INSIDE a <noscript>, so a visitor with JavaScript
@@ -2257,7 +2273,8 @@ try{
        and search / AI crawlers that do not run JavaScript would otherwise see none of it. -->
   <div class="foot" id="foot">QTPD ranks Steam games by quality time per dollar: how many hours of well-reviewed play each dollar buys. Prices, sales, review scores, length and tags are collected from Steam and refreshed automatically.<br>
 QTPD = (Length hours × rating%) ÷ price. Length is estimated from how long Steam reviewers who recommend a game played it, calibrated per genre against HowLongToBeat. Higher = more quality time per dollar. Null for free games &amp; games with fewer than 3 recommending reviews.<br>
-Tag counts reflect the current results. Variants like Online/Local Co-Op are merged. Thumbnails load lazily from Steam's CDN. Method and source: <a href="https://github.com/MLMariss/SteamQTPD">GitHub</a>.</div>
+Tag counts reflect the current results. Variants like Online/Local Co-Op are merged. Thumbnails load lazily from Steam's CDN. Method and source: <a href="https://github.com/MLMariss/SteamQTPD">GitHub</a> · <a href="how-it-works.html">How QTPD works</a>.<br>
+Made by MLMariss · <a href="https://www.youtube.com/@MLMariss/videos">YouTube</a> · <a href="https://mlmariss.github.io/">Home</a></div>
 </div>
 
 <button class="totop" id="toTop" type="button"
@@ -5409,6 +5426,7 @@ function activePresetId(){
   return hit ? hit.id : null;                           // null = the user's own filters
 }
 function renderPresets(){
+  const intro = $("#intro"); if(intro) intro.hidden = !!presetQueryNow();
   const host = $("#presetBar"); if(!host) return;
   const active = activePresetId();     // "" = default view, null = the user's own filters
   if(!PRESETS){ host.hidden = true; host.innerHTML = ""; return; }
