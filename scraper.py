@@ -72,6 +72,11 @@ TIME_BUFFER = 120               # stop scraping this long before the budget, to 
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
 SEED_RESOLVE_TTL = 24 * 3600    # live term/URL seeds: re-resolve at most once per this interval
+# Undated (TBA) pending games re-probed per run, in rotation (§ select_work). Their only
+# other way out is a last_modified bump after last_sync, which a launch doesn't reliably
+# produce. ~0.9s each -> 1500 is ~23 min of storefront time per run.
+TBA_SWEEP_PER_RUN = int(os.environ.get("TBA_SWEEP_PER_RUN", "1500"))
+COMING_SOON_GRACE_DAYS = 14     # dated coming_soon games stay "ripe" this long past the date
 MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:false retries
                                 # before a game is treated as a permanent skip. success:false
                                 # lumps region-locked (cc=us) + transient blips with dead apps,
@@ -560,21 +565,31 @@ def last_update_from_news(appid):
     return max(stamps) if stamps else None
 
 
-_RELEASE_FORMATS = ("%d %b, %Y", "%b %d, %Y", "%d %B, %Y", "%B %d, %Y", "%b %Y", "%Y")
+_DAY_FORMATS = ("%d %b, %Y", "%b %d, %Y", "%d %B, %Y", "%B %d, %Y")
+_RELEASE_FORMATS = _DAY_FORMATS + ("%b %Y", "%Y")
 
 
 def parse_release(d):
+    """Return (date_string, release_ts, coming_soon).
+
+    For a released game any recognised format gives a ts. For a coming_soon game only a
+    day-precision date does ("6 Oct, 2026"): that's the date it ripens on in the pending
+    waiting room. A vague "Q4 2026" / "October 2026" / "2026" stays None -- "2026" would
+    parse to Jan 1 and ripen on every run. Discarding coming_soon dates entirely (the old
+    behaviour) filed ~58k pending games as undated, so the ripe path never fired and a
+    dated launch like Gears of War: E-Day (3010850) sat in pending after release."""
     rd = d.get("release_date", {}) or {}
     s = (rd.get("date") or "").strip()
+    coming_soon = bool(rd.get("coming_soon"))
     ts = None
-    if s and not rd.get("coming_soon"):
-        for fmt in _RELEASE_FORMATS:
+    if s:
+        for fmt in (_DAY_FORMATS if coming_soon else _RELEASE_FORMATS):
             try:
                 ts = int(datetime.strptime(s, fmt).replace(tzinfo=timezone.utc).timestamp())
                 break
             except ValueError:
                 continue
-    return (s or None), ts
+    return (s or None), ts, coming_soon
 
 
 # --------------------------------------------------------------------------- #
@@ -647,7 +662,16 @@ def build_record(appid, prev=None):
     # strings ("Q4 2026", "2027", "To be announced") give ts=None. Unreleased games
     # go to the pending waiting room (re-checked each run, never permanently skipped)
     # and cost just this one appdetails probe -- no reviews/tags/HLTB/news fetched.
-    release_date, release_ts = parse_release(d)
+    release_date, release_ts, coming_soon = parse_release(d)
+    if coming_soon:
+        # Steam still says "coming soon": never store it, even past its date (launch is
+        # usually later that day, or it slipped). Keep a dated ts so it ripens and is
+        # re-probed each run -- but only for COMING_SOON_GRACE_DAYS past the date, so a
+        # stale/abandoned date can't cost a probe every run forever; after that it is
+        # filed undated and falls to the TBA sweep rotation.
+        if release_ts is not None and time.time() - release_ts > COMING_SOON_GRACE_DAYS * 86400:
+            release_ts = None
+        return ("pending", release_date, release_ts)
     if release_ts is None or release_ts > time.time():
         return ("pending", release_date, release_ts)
 
@@ -751,11 +775,15 @@ def load_catalog():
                 c["pending"] = {int(k): v for k, v in pend.items()}
             else:
                 c["pending"] = {}
+            # tba_probed = {appid: ts} when an undated pending game was last probed;
+            # drives the TBA sweep rotation (oldest-probed first).
+            tp = c.get("tba_probed")
+            c["tba_probed"] = {int(k): int(v) for k, v in tp.items()} if isinstance(tp, dict) else {}
             return c
         except (ValueError, TypeError):
             pass
     return {"last_sync": 0, "skipped": [], "priority": [], "pending": {},
-            "seeds_ledger": {}, "force_refresh": [], "recheck": {}}
+            "seeds_ledger": {}, "force_refresh": [], "recheck": {}, "tba_probed": {}}
 
 
 def save_catalog(c):
@@ -763,6 +791,9 @@ def save_catalog(c):
     out = dict(c)
     out["pending"] = {str(k): v for k, v in (c.get("pending") or {}).items()}
     out["recheck"] = {str(k): v for k, v in (c.get("recheck") or {}).items()}
+    pend = c.get("pending") or {}
+    out["tba_probed"] = {str(k): v for k, v in (c.get("tba_probed") or {}).items()
+                         if k in pend and pend[k] is None}
     CATALOG_FILE.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
 
 
@@ -885,6 +916,17 @@ def select_work(master, has_lm, processed, catalog):
         touched_tba = []
     touched_set = set(touched_tba)
 
+    # TBA sweep: re-probe a capped slice of the remaining undated pending games every run,
+    # least-recently-probed first, then most recently touched store page first (a launch
+    # usually touches it, so big releases surface in the first run). Without this an
+    # undated game whose last_modified doesn't move after last_sync never leaves pending.
+    probed = catalog.get("tba_probed") or {}
+    sweep = sorted((aid for aid, ts in pending.items()
+                    if ts is None and aid not in done
+                    and aid not in ripe_set and aid not in touched_set),
+                   key=lambda a: (probed.get(a, 0), -master.get(a, 0), -a))[:TBA_SWEEP_PER_RUN]
+    sweep_set = set(sweep)
+
     # 2. Genuinely fresh catalog apps: never scraped, never skipped, not already in
     #    the pending waiting room (those are covered by ripe/touched logic above).
     pending_ids = set(pending)
@@ -900,8 +942,11 @@ def select_work(master, has_lm, processed, catalog):
     new_ids = (ripe
                + touched_tba
                + pri
+               + [a for a in sweep if a not in pri_set]
                + [a for a in fresh if a not in pri_set
                   and a not in ripe_set and a not in touched_set])
+    log(f"Pending: {len(ripe)} ripe, {len(touched_tba)} touched-TBA, "
+        f"{len(sweep)} TBA sweep (cap {TBA_SWEEP_PER_RUN})")
 
     # Forced re-scrapes (from '!'-prefixed seeds) jump the refresh queue even though
     # last_modified hasn't moved. Only stored appids make sense to force-refresh.
@@ -1015,6 +1060,7 @@ def main():
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})
     recheck = dict(catalog.get("recheck") or {})   # {appid: attempts} soft-skip retries (§3.1)
+    tba_probed = catalog["tba_probed"]             # mutated in place; pruned on save
     # Drop recheck entries no longer in Steam's app list (delisted + removed): they can't be
     # re-scraped, so they'd otherwise linger forever without ever reaching the strike cap.
     # If such an app is relisted later it re-enters as fresh work with a clean slate.
@@ -1156,6 +1202,8 @@ def main():
             # select_work can promote it the moment its date passes. Never skipped.
             _, _pdate, pts = res
             pending[aid] = pts
+            if pts is None:
+                tba_probed[aid] = int(time.time())   # back of the TBA sweep rotation
             recheck.pop(aid, None)          # it responded -> not a dead app after all
             n_pend += 1
         elif res == "recheck":
