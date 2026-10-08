@@ -573,13 +573,15 @@ refresh trigger in §6 compares against, and `is_free` lives **here**, not in `p
 promo answers `is_free: true` + `discount_percent: 100` on top of the full price, and stored
 verbatim that snapshot outlives the promo (§15).
 
-**`catalog.json`** — the scraper's own state; not read by the frontend. Seven keys:
+**`catalog.json`** — the scraper's own state; not read by the frontend. Eight keys:
 `last_sync` (enumeration watermark), `skipped` (permanent — confirmed non-games), `pending`
 (`{appid: release_ts|null}` — the unreleased waiting room), `priority` (rebuilt each run from
 the active seeds, §6), `force_refresh` (the drained-first forced queue), `seeds_ledger`
 (`{seed_key: {kind, resolved_ts, ids, forced_applied}}`), and **`recheck`** (`{appid:
 strikes}` — apps whose `appdetails` returned `success:false`, retried across runs until they
-resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1). Ints in memory, string keys on
+resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1), and **`tba_probed`**
+(`{appid: ts}` — when each undated pending game was last probed; drives the TBA sweep,
+§6 step 3). Ints in memory, string keys on
 disk.
 
 **`prices.json`** — `{ generated_at, country, count, "prices": { "<appid>": { price_initial,
@@ -772,7 +774,15 @@ The only job that discovers new games. Each run:
    queue can't delay a just-released game.
 3. **Only store released games.** Unreleased ones wait in `catalog["pending"]` and are
    promoted the instant their release date passes (`cleanup_shells.py` files stray "empty
-   shell" entries back into that room).
+   shell" entries back into that room). A coming-soon game keeps its **day-precision** date
+   ("6 Oct, 2026"); vague ones ("Q4 2026", "2026") are filed undated. Until 2026-10-08 every
+   coming-soon date was discarded, so ~58k of ~58k pending games were undated, the "ripe"
+   promotion never fired, and dated launches (Gears of War: E-Day, 3010850) sat in pending
+   after release. A game Steam still flags coming-soon is never stored, even past its date;
+   it stays ripe (re-probed each run) for `COMING_SOON_GRACE_DAYS` (14), then drops to
+   undated. Undated games leave pending two ways: a `last_modified` bump after `last_sync`,
+   or the **TBA sweep** — `TBA_SWEEP_PER_RUN` (1500, ~23 min) per run, least-recently-probed
+   first, then most recent `last_modified` first, tracked in `catalog["tba_probed"]`.
 4. **Run for `RUN_MINUTES`, commit every ~`CHECKPOINT_SECONDS`.** The 6-hour Actions wall
    is therefore never a data-loss risk.
 
