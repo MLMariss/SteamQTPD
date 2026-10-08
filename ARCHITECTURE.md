@@ -3489,9 +3489,9 @@ formula, a threshold or a default changes, update the explainer page too.
   each number comes from, what is left out, the launch video embedded). It has no data and no
   JavaScript, so every crawler reads all of it, and it can rank for "quality time per dollar"
   searches without adding text to the tool's screen. Both are in `sitemap.xml`.
-- **Intro line** (`#intro`, above the preset shelves): a one-sentence definition for first-time
-  visitors and for search. Shown on the landing view only; `renderPresets()` hides it once the
-  URL carries any state. Static HTML, so crawlers always see it.
+- **Help button** (`#helpBtn`, the `?` after CSV and 🔗 in the header): links to the explainer;
+  its tooltip carries the one-line "what is QTPD" description. That sentence was briefly a
+  visible row above the shelves and was moved here because it cost the list a row of space.
 - **Footer** (`.foot`): the plain-text description and formula (static on purpose, see the
   comment there), a link to the explainer, and the "Made by MLMariss · YouTube · Home" line.
 - **Structured data.** `index.html` declares a `WebApplication`; the explainer a `VideoObject`
