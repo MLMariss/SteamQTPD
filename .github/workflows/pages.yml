@@ -25,6 +25,7 @@ on:
     branches: [main]
     paths:
       - index.html                # a look/layout change -> deploy right away
+      - how-it-works.html         # the explainer page
       - .github/workflows/pages.yml   # a change to WHAT gets published should publish it
       - seo_snapshot.py               # changes what the published page contains
       - sitemap.xml
@@ -32,6 +33,8 @@ on:
       - favicon.svg
       - google*.html                  # search-engine ownership-check files
       - BingSiteAuth.xml
+      - a65260491c6f4632ebff3dddf7f40f28.txt   # the IndexNow key file (a named path, not *.txt:
+                                               # seeds_log.txt is a scraper output)
   schedule:
     - cron: "0,30 * * * *"        # republish current main every 30 min, on :00 and :30
 
@@ -86,6 +89,27 @@ jobs:
           # files those tools hand out — drop one in the repo root and it publishes with the site.
           cp favicon.svg sitemap.xml og-image.png _site/
           cp google*.html BingSiteAuth.xml _site/ 2>/dev/null || true
+          # The explainer page (static, links back to the tool) and the IndexNow key file — a
+          # 32-hex-character name with the key as its only content, which is how IndexNow proves
+          # the pings below come from whoever controls this site. Public by design.
+          cp how-it-works.html _site/
+          for f in *.txt; do [[ "$f" =~ ^[0-9a-f]{32}\.txt$ ]] && cp "$f" _site/; done; true
+
+      # Stamp today's date (UTC) as <lastmod> on the tool's own URL in the PUBLISHED sitemap.
+      # Honest because the page's data really does change every day (prices, sales, reviews).
+      # The explainer page gets none: its content changes only with a commit, and this shallow
+      # checkout cannot see per-file history, so any date here would be a guess.
+      - name: Stamp sitemap lastmod
+        run: |
+          python3 - <<'PY'
+          import time
+          p = "_site/sitemap.xml"
+          s = open(p, encoding="utf-8").read()
+          loc = "<loc>https://mlmariss.github.io/SteamQTPD/</loc>"
+          assert s.count(loc) == 1, "sitemap: tool URL not found exactly once"
+          s = s.replace(loc, loc + "\n    <lastmod>" + time.strftime("%Y-%m-%d", time.gmtime()) + "</lastmod>")
+          open(p, "w", encoding="utf-8").write(s)
+          PY
 
       # Static "top picks" (from presets.json) into the PUBLISHED index.html only, for crawlers
       # that do not run JavaScript. Fails soft: no snapshot rather than no deploy.
@@ -115,3 +139,25 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      # IndexNow: tells Bing (which also feeds Copilot and DuckDuckGo), Yandex, Seznam and Naver
+      # that the pages changed, so they recrawl in hours instead of whenever. Google ignores it.
+      # Runs after the deploy, because the engines fetch the key file from the live site.
+      # Throttled: this workflow publishes every 30 minutes, and pinging that often for the same
+      # two URLs is the over-submission IndexNow asks sites not to do. So it pings when a push
+      # changed the site's files, and on runs in the 06:00 UTC hour as the daily data refresh.
+      # Never fails the deploy: a missed ping costs nothing the next one won't fix.
+      - name: Notify IndexNow
+        continue-on-error: true
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] && [ "$(date -u +%H)" != "06" ]; then
+            echo "Not a page change and not the 06:00 UTC hour: skipping the ping."; exit 0
+          fi
+          key=$(ls *.txt | grep -E '^[0-9a-f]{32}\.txt$' | head -1 | sed 's/\.txt$//')
+          [ -n "$key" ] || { echo "No IndexNow key file in the repo root: skipping."; exit 0; }
+          base="https://mlmariss.github.io/SteamQTPD"
+          body=$(printf '{"host":"mlmariss.github.io","key":"%s","keyLocation":"%s/%s.txt","urlList":["%s/","%s/how-it-works.html"]}' \
+                 "$key" "$base" "$key" "$base" "$base")
+          # 200/202 = accepted. Anything else is logged and ignored (see continue-on-error).
+          curl -sS -o /dev/null -w "IndexNow HTTP %{http_code}\n" -X POST "https://api.indexnow.org/indexnow" \
+               -H "Content-Type: application/json; charset=utf-8" --data "$body"

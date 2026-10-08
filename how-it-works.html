@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>How QTPD works: ranking Steam games by quality time per dollar</title>
+<!-- The explainer page for the tool (index.html). It exists as its own URL so the method, the
+     formula and the launch video can rank for "quality time per dollar" style searches without
+     adding text to the tool's own screen. Static on purpose: no data, no JavaScript, so every
+     crawler reads all of it. Facts here must match index.html (computeQ, the .foot text) and
+     README.md — if the formula or a threshold changes there, change it here too. -->
+<meta name="description" content="How QTPD ranks Steam games: review score times estimated playtime, divided by price. Where each number comes from, what is left out, and a video walkthrough." />
+<link rel="canonical" href="https://mlmariss.github.io/SteamQTPD/how-it-works.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="QTPD" />
+<meta property="og:title" content="How QTPD works: Steam games ranked by quality time per dollar" />
+<meta property="og:description" content="Review score times estimated playtime, divided by price: where each number comes from and what is left out." />
+<meta property="og:url" content="https://mlmariss.github.io/SteamQTPD/how-it-works.html" />
+<meta property="og:image" content="https://mlmariss.github.io/SteamQTPD/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="QTPD: quality time per dollar, Steam games ranked by value" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<!-- VideoObject describes the embedded YouTube video, which is the page's main media, so the
+     page can qualify for video results. Every field must match the real video. The author is
+     the same Person node index.html and the mlmariss.github.io home page use. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "VideoObject",
+      "name": "I Built a Tool to Find the Best Steam Sale Deals",
+      "description": "MLMariss walks through QTPD (Quality Time Per Dollar), a free tool that ranks Steam games by well-reviewed hours for your money, and how to use it to find the best deals in a Steam sale.",
+      "thumbnailUrl": "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",
+      "uploadDate": "2026-07-07",
+      "duration": "PT20M46S",
+      "embedUrl": "https://www.youtube.com/embed/VIDEO_ID",
+      "author": { "@id": "https://mlmariss.github.io/#person" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://mlmariss.github.io/#person",
+      "name": "MLMariss",
+      "url": "https://mlmariss.github.io/",
+      "sameAs": ["https://www.youtube.com/@MLMariss", "https://github.com/MLMariss"]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "MLMariss", "item": "https://mlmariss.github.io/" },
+        { "@type": "ListItem", "position": 2, "name": "QTPD", "item": "https://mlmariss.github.io/SteamQTPD/" },
+        { "@type": "ListItem", "position": 3, "name": "How QTPD works" }
+      ]
+    }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Same tokens as index.html, so the two pages read as one site. */
+  :root{
+    --bg:#0e1320; --panel:#192133; --line:#2c3858;
+    --text:#f1f4fb; --title:#ffffff; --muted:#b9c4dd; --muted-2:#94a0c0; --gold:#ffc24d;
+    --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"Chivo Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.6}
+  main{max-width:760px; margin:0 auto; padding:28px 16px 56px}
+  .crumbs{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-bottom:18px}
+  .crumbs a{color:var(--muted)}
+  h1{font-size:2rem; line-height:1.2; margin:0 0 8px; color:var(--title)}
+  h2{font-size:1.3rem; margin:36px 0 8px; color:var(--title)}
+  p,li{color:var(--muted)}
+  a{color:var(--gold)}
+  strong{color:var(--text)}
+  .lede{font-size:1.08rem}
+  .video{position:relative; aspect-ratio:16/9; margin:22px 0 6px; background:var(--panel);
+         border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .video iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
+  .caption{font-size:13px; color:var(--muted-2); margin:0}
+  .formula{font-family:var(--mono); font-size:1.05rem; color:var(--gold); background:var(--panel);
+           border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0}
+  .cta{display:inline-block; margin-top:8px; padding:10px 16px; border:1px solid var(--gold);
+       border-radius:9px; font-weight:600; text-decoration:none}
+  .cta:hover{background:#3a2f17}
+  footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line);
+         font-family:var(--mono); font-size:12px; color:var(--muted-2)}
+  footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://mlmariss.github.io/">MLMariss</a> › <a href="./">QTPD</a> › How it works</nav>
+
+  <h1>How QTPD works</h1>
+  <p class="lede">QTPD (Quality Time Per Dollar) ranks Steam games by how many hours of
+    well-reviewed play each dollar buys. A long, well-reviewed game at a low price scores high;
+    a short or poorly reviewed game at full price scores low. It ranks thousands of
+    Steam games and is free to use, with no account.</p>
+  <a class="cta" href="./">Open QTPD →</a>
+
+  <div class="video">
+    <iframe src="https://www.youtube.com/embed/VIDEO_ID" title="I Built a Tool to Find the Best Steam Sale Deals (MLMariss)"
+            loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  </div>
+  <p class="caption">Video walkthrough: “I Built a Tool to Find the Best Steam Sale Deals” on the MLMariss YouTube channel.</p>
+
+  <h2>The formula</h2>
+  <div class="formula">QTPD = (Length hours × review score %) ÷ price</div>
+  <p>Example: a game that takes <strong>20 hours</strong> to play through, has a
+    <strong>90%</strong> positive review score and costs <strong>$10</strong> scores
+    20 × 0.90 ÷ 10 = <strong>1.8</strong>. The same game at $5 in a sale scores 3.6. Higher means
+    more quality time per dollar.</p>
+
+  <h2>Where each number comes from</h2>
+  <ul>
+    <li><strong>Length</strong> is the hours it takes to play a game through, story plus some side
+      content. It is estimated from how long the Steam reviewers who <em>recommend</em> the game
+      actually played it, calibrated per genre against HowLongToBeat and refit every week. Games
+      with few reviews lean on their genre's typical length, and no game is counted above 420 hours,
+      so idle games and endless sandboxes cannot run away with the ranking.</li>
+    <li><strong>Review score</strong> is the game's all-time Steam review score: the share of
+      reviews that are positive.</li>
+    <li><strong>Price</strong> is the current Steam US store price in US dollars. By default the
+      score uses the sale price when a game is discounted; a switch in the filters scores it on the
+      full price instead.</li>
+  </ul>
+  <p>Prices, sales, review scores, length and tags are collected from Steam and refreshed
+    automatically, so the ranking follows each sale as it starts and ends.</p>
+
+  <h2>What gets left out</h2>
+  <ul>
+    <li><strong>Free games</strong> have no price to divide by, so they get no QTPD score. Filter
+      to free games only and the list ranks them by length × review score instead.</li>
+    <li><strong>Games with fewer than 3 recommending reviews</strong> have no score: there is not
+      enough playtime to estimate a length from.</li>
+    <li>By default the list starts at <strong>100+ reviews</strong> and hides adult-only games.
+      Both are filters you can change.</li>
+  </ul>
+
+  <h2>Using it</h2>
+  <p>Start from one of the ready-made shelves, such as <em>Half off or better</em>, or set your own
+    filters: price range, minimum discount, review score, length, tags, Steam Deck support and
+    more. Every filter is saved in the page address, so a view can be bookmarked or shared. Search
+    a title to see any game's score, or use <em>Find similar</em> to rank games like one you
+    already enjoyed.</p>
+  <a class="cta" href="./">Open QTPD →</a>
+
+  <h2>Who made it</h2>
+  <p>QTPD is built by MLMariss, a PC gaming channel on YouTube about survival, colony-sim,
+    crafting and building games. The code and the full method are public on
+    <a href="https://github.com/MLMariss/SteamQTPD">GitHub</a>.</p>
+
+  <footer>
+    Made by MLMariss · <a href="https://www.youtube.com/@MLMariss">YouTube</a> ·
+    <a href="https://mlmariss.github.io/">Home</a> · <a href="./">QTPD</a>
+  </footer>
+</main>
+</body>
+</html>

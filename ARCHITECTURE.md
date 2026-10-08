@@ -3472,3 +3472,37 @@ a failed digest offers the proxy URL as an editable field and remembers the corr
   does not apply.
 - Workflow `0.1` is numbered in the `0.` tier (§4) because it is a diagnostic against the live
   site's backend, not a pipeline stage. It is **manual-only and must stay that way**.
+
+## 18. Search & discovery (SEO)
+
+What makes the site findable, in one place. Facts on these pages must match the code; when the
+formula, a threshold or a default changes, update the explainer page too.
+
+- **Pages.** `index.html` is the tool; `how-it-works.html` is a static explainer (formula, where
+  each number comes from, what is left out, the launch video embedded). It has no data and no
+  JavaScript, so every crawler reads all of it, and it can rank for "quality time per dollar"
+  searches without adding text to the tool's screen. Both are in `sitemap.xml`.
+- **Intro line** (`#intro`, above the preset shelves): a one-sentence definition for first-time
+  visitors and for search. Shown on the landing view only; `renderPresets()` hides it once the
+  URL carries any state. Static HTML, so crawlers always see it.
+- **Footer** (`.foot`): the plain-text description and formula (static on purpose, see the
+  comment there), a link to the explainer, and the "Made by MLMariss · YouTube · Home" line.
+- **Structured data.** `index.html` declares a `WebApplication`; the explainer a `VideoObject`
+  and a `BreadcrumbList`. Both name the author as the Person `https://mlmariss.github.io/#person`
+  — the same `@id` the `mlmariss.github.io` home page declares, so search engines treat the
+  tool, the home page and the YouTube channel as one creator. Keep that `@id` identical
+  everywhere. Markup describes only what the page visibly shows.
+- **Site name.** Google reads it only from the domain's home page, which is the separate
+  `MLMariss/MLMariss.github.io` repo (site name "MLMariss"). Nothing in this repo can set it.
+  That repo's `robots.txt` is the one crawlers read for the whole address and lists this repo's
+  sitemap.
+- **At deploy** (`pages.yml`): `seo_snapshot.py` writes the `<noscript>` top picks; the
+  published sitemap gets today's date as `<lastmod>` on the tool URL (the data changes daily;
+  the explainer gets none, since a shallow checkout cannot date it honestly); and an
+  **IndexNow** ping tells Bing, Yandex, Seznam and Naver the pages changed. Google ignores
+  IndexNow. The ping runs only on a push that changed site files and in the 06:00 UTC hour,
+  never on every 30-minute republish, and never fails the deploy. The key is the 32-hex
+  `<key>.txt` file in the repo root, public by design; its name is also listed in `pages.yml`'s
+  push paths.
+- **Adult rule.** The explainer shows no games. Any future page that lists games is an
+  unrequested surface and must carry `adult=hide` (see CLAUDE.md, product rules).
