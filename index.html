@@ -228,9 +228,6 @@
   .seo-snap h3 a{color:var(--text); text-decoration:none}
   .seo-snap p{margin:0 0 4px}
   .seo-snap ol{margin:0; padding-left:18px; color:var(--muted)}
-  .intro{margin:12px var(--card-inset) 0; font-size:13.5px; color:var(--muted-2)}
-  .intro a{color:var(--muted); text-decoration:underline; text-underline-offset:2px}
-  .intro a:hover{color:var(--text)}
   .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
              padding:11px var(--card-inset) 0}
   /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
@@ -1079,6 +1076,7 @@
         font-family:var(--mono); font-size:13px; padding:8px 11px; border-radius:8px; cursor:pointer;
         display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
   .util-btn:hover{color:var(--text); border-color:var(--muted-2)}
+  a.util-btn{text-decoration:none}
   .util-btn:focus-visible{outline:2px solid var(--blue); outline-offset:2px}
 
   /* L2 — collapsed-bar filter summary. Rendered ONLY when the nav bar is fully collapsed:
@@ -1815,6 +1813,11 @@ try{
         <button class="util-btn" id="randomBtn" title="Lucky — jump to a random game from the current results.">Lucky</button>
         <button class="util-btn" id="exportBtn" title="CSV — export the current results to a spreadsheet (pick the columns).">CSV</button>
         <button class="util-btn" id="shareBtn" title="Copy a shareable link to this filtered view" aria-label="Copy link">🔗</button>
+        <!-- Help: the "what is QTPD" sentence lives in this tooltip and the explainer page, not
+             in a row above the list (it briefly was one, 2026-10-08, and cost the list a row of
+             space). Crawlers still get the same description from .foot and how-it-works.html. -->
+        <a class="util-btn help-btn" id="helpBtn" href="how-it-works.html" aria-label="How QTPD works"
+           title="How QTPD works — Steam games ranked by how many well-reviewed hours each dollar buys. Opens the explainer: the formula, where each number comes from, and a video walkthrough.">?</a>
       </div>
     </div>
 
@@ -2115,11 +2118,6 @@ try{
        their only explanation lived in a hover tooltip. -->
   <!-- Preset shelves. Rendered from presets.json; hidden entirely when that file is absent,
        so the page degrades to exactly what it was before. -->
-  <!-- One-line intro: what QTPD is, for the first-time visitor and for search (the main
-       description otherwise sits in .foot at the very bottom). Shown on the landing view only;
-       renderPresets() hides it as soon as the URL carries any state (search, filter, sort,
-       shelf), when the visitor has stopped needing it. Static HTML, so crawlers read it. -->
-  <p class="intro" id="intro">Steam games ranked by how many well-reviewed hours each dollar buys. Free, no account needed, prices kept current from Steam. <a href="how-it-works.html">How it works</a></p>
   <div class="presetbar" id="presetBar" hidden></div>
   <!-- Plain-HTML top picks for crawlers that do not run JavaScript. Filled at deploy time by
        seo_snapshot.py (empty in the repo) INSIDE a <noscript>, so a visitor with JavaScript
@@ -5426,7 +5424,6 @@ function activePresetId(){
   return hit ? hit.id : null;                           // null = the user's own filters
 }
 function renderPresets(){
-  const intro = $("#intro"); if(intro) intro.hidden = !!presetQueryNow();
   const host = $("#presetBar"); if(!host) return;
   const active = activePresetId();     // "" = default view, null = the user's own filters
   if(!PRESETS){ host.hidden = true; host.innerHTML = ""; return; }

@@ -2793,6 +2793,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   can't collapse (Playwright-verified at 1700px). §11's *Adding a column* recipe is authoritative.
 
 ---
+- **Runner image (checked 2026-10-08).** Every workflow runs on `ubuntu-latest`, which GitHub
+  moves to Ubuntu 26.04 from 2026-10-19. The jobs do not depend on the OS's own Python: each one
+  installs Python 3.12 through `actions/setup-python` (3.12 has a 26.04 build in
+  `actions/python-versions`), and the pip packages, PICS's `steam`/`gevent`/`protobuf<3.21`
+  included, install as prebuilt wheels for that Python. No apt packages are used. So no change
+  was needed; if a job does break after the switch, pinning that job's `runs-on` to
+  `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
 
@@ -3482,9 +3489,9 @@ formula, a threshold or a default changes, update the explainer page too.
   each number comes from, what is left out, the launch video embedded). It has no data and no
   JavaScript, so every crawler reads all of it, and it can rank for "quality time per dollar"
   searches without adding text to the tool's screen. Both are in `sitemap.xml`.
-- **Intro line** (`#intro`, above the preset shelves): a one-sentence definition for first-time
-  visitors and for search. Shown on the landing view only; `renderPresets()` hides it once the
-  URL carries any state. Static HTML, so crawlers always see it.
+- **Help button** (`#helpBtn`, the `?` after CSV and 🔗 in the header): links to the explainer;
+  its tooltip carries the one-line "what is QTPD" description. That sentence was briefly a
+  visible row above the shelves and was moved here because it cost the list a row of space.
 - **Footer** (`.foot`): the plain-text description and formula (static on purpose, see the
   comment there), a link to the explainer, and the "Made by MLMariss · YouTube · Home" line.
 - **Structured data.** `index.html` declares a `WebApplication`; the explainer a `VideoObject`
