@@ -1,5 +1,5 @@
 {
-  "generated_at": 1791559308,
+  "generated_at": 1791559618,
   "count": 131525,
   "hltb": {
     "10": {
@@ -206,17 +206,17 @@
     },
     "3540": {
       "main": 3.7,
-      "extra": 6.5,
+      "extra": 6.3,
       "complete": 16.1,
-      "avg": 8.8,
+      "avg": 8.7,
       "match": "Peggle Nights",
-      "fetched_at": 1791099509,
+      "fetched_at": 1791559469,
       "raw": {
         "main": 3.7,
-        "extra": 6.5,
+        "extra": 6.3,
         "complete": 16.1
       },
-      "n_comp": 838
+      "n_comp": 840
     },
     "3590": {
       "main": 8.2,
@@ -673,7 +673,7 @@
       "complete": 8.9,
       "avg": 7.5,
       "match": "Primordia",
-      "fetched_at": 1791099422,
+      "fetched_at": 1791559399,
       "raw": {
         "main": 6.1,
         "extra": 7.5,
@@ -979,13 +979,13 @@
       "complete": 42.6,
       "avg": 30.0,
       "match": "Epic Battle Fantasy 4",
-      "fetched_at": 1791099527,
+      "fetched_at": 1791559486,
       "raw": {
         "main": 19.5,
         "extra": 27.9,
         "complete": 42.6
       },
-      "n_comp": 242
+      "n_comp": 244
     },
     "265890": {
       "main": 1.9,
@@ -118066,17 +118066,18 @@
     },
     "3937550": {
       "main": 15.8,
-      "extra": 32.0,
+      "extra": 31.9,
       "complete": 50.9,
       "avg": 32.9,
       "match": "Yakuza Kiwami 3 & Dark Ties",
-      "fetched_at": 1791099320,
+      "fetched_at": 1791559326,
       "raw": {
         "main": 15.8,
-        "extra": 32.0,
+        "extra": 31.9,
         "complete": 50.9
       },
-      "n_comp": 276
+      "n_comp": 279,
+      "comp_grew": true
     },
     "3937580": {
       "main": null,
@@ -119289,13 +119290,13 @@
       "complete": 21.3,
       "avg": 18.3,
       "match": "WWE 2K26",
-      "fetched_at": 1791099429,
+      "fetched_at": 1791559405,
       "raw": {
         "main": 14.5,
         "extra": 19.2,
         "complete": 21.3
       },
-      "n_comp": 25
+      "n_comp": 27
     },
     "3717090": {
       "main": null,
@@ -207974,7 +207975,7 @@
       "complete": 4.8,
       "avg": 3.3,
       "match": "Keep Digging",
-      "fetched_at": 1791099554,
+      "fetched_at": 1791559506,
       "raw": {
         "main": 1.9,
         "extra": 3.1,
@@ -222779,18 +222780,18 @@
       "attempts": 6
     },
     "3634520": {
-      "main": 9.3,
+      "main": 9.6,
       "extra": 15.9,
-      "complete": 27.1,
-      "avg": 17.4,
+      "complete": 26.4,
+      "avg": 17.3,
       "match": "Samson",
-      "fetched_at": 1791099338,
+      "fetched_at": 1791559340,
       "raw": {
-        "main": 9.3,
+        "main": 9.6,
         "extra": 15.9,
-        "complete": 27.1
+        "complete": 26.4
       },
-      "n_comp": 32
+      "n_comp": 33
     },
     "3634590": {
       "main": 9.6,
@@ -254751,14 +254752,13 @@
       "complete": 6.0,
       "avg": 5.5,
       "match": "Astro Prospector",
-      "fetched_at": 1791099516,
+      "fetched_at": 1791559475,
       "raw": {
         "main": 5.0,
         "extra": 5.5,
         "complete": 6.0
       },
-      "n_comp": 113,
-      "comp_grew": true
+      "n_comp": 113
     },
     "3503510": {
       "main": null,
@@ -281849,7 +281849,7 @@
       "complete": 7.5,
       "avg": 6.2,
       "match": "The Jackbox Party Pack 4",
-      "fetched_at": 1791099446,
+      "fetched_at": 1791559419,
       "raw": {
         "main": 3.9,
         "extra": 7.1,
@@ -286898,7 +286898,7 @@
       "complete": 21.9,
       "avg": 17.4,
       "match": "Patron",
-      "fetched_at": 1791099671,
+      "fetched_at": 1791559590,
       "raw": {
         "main": 12.3,
         "extra": 18.1,
@@ -287097,7 +287097,7 @@
       "complete": 13.5,
       "avg": 8.3,
       "match": "My Friendly Neighborhood",
-      "fetched_at": 1791099456,
+      "fetched_at": 1791559427,
       "raw": {
         "main": 4.8,
         "extra": 6.6,
@@ -287538,7 +287538,7 @@
       "complete": 39.5,
       "avg": 33.8,
       "match": "Dungeons 4",
-      "fetched_at": 1791099538,
+      "fetched_at": 1791559493,
       "raw": {
         "main": 25.4,
         "extra": 36.5,
@@ -287740,7 +287740,7 @@
       "complete": 300.0,
       "avg": 145.8,
       "match": "Railroader",
-      "fetched_at": 1791099417,
+      "fetched_at": 1791559395,
       "raw": {
         "main": 37.5,
         "extra": 100.0,
@@ -288999,7 +288999,7 @@
       "complete": 35.4,
       "avg": 23.8,
       "match": "Shadows Over Loathing",
-      "fetched_at": 1791099547,
+      "fetched_at": 1791559500,
       "raw": {
         "main": 13.2,
         "extra": 22.7,
@@ -289119,7 +289119,7 @@
       "complete": 16.0,
       "avg": 9.9,
       "match": "Kingdom Eighties",
-      "fetched_at": 1791099558,
+      "fetched_at": 1791559509,
       "raw": {
         "main": 5.8,
         "extra": 7.9,
@@ -290768,7 +290768,7 @@
       "complete": 67.8,
       "avg": 47.8,
       "match": "Grimshire",
-      "fetched_at": 1791099673,
+      "fetched_at": 1791559591,
       "raw": {
         "main": 31.3,
         "extra": 44.4,
@@ -292340,7 +292340,7 @@
       "complete": 37.3,
       "avg": 19.7,
       "match": "Drop Duchy",
-      "fetched_at": 1791099537,
+      "fetched_at": 1791559492,
       "raw": {
         "main": 4.4,
         "extra": 17.4,
@@ -322498,13 +322498,13 @@
       "complete": 29.4,
       "avg": 18.8,
       "match": "Defense Grid 2",
-      "fetched_at": 1791099424,
+      "fetched_at": 1791559401,
       "raw": {
         "main": 10.4,
         "extra": 16.6,
         "complete": 29.4
       },
-      "n_comp": 328
+      "n_comp": 330
     },
     "223830": {
       "main": 33.2,
@@ -323696,13 +323696,13 @@
       "complete": 26.7,
       "avg": 22.9,
       "match": "Little Big Workshop",
-      "fetched_at": 1791099438,
+      "fetched_at": 1791559413,
       "raw": {
         "main": 20.3,
         "extra": 21.6,
         "complete": 26.7
       },
-      "n_comp": 160
+      "n_comp": 161
     },
     "581320": {
       "main": 22.6,
@@ -323724,7 +323724,7 @@
       "complete": 29.5,
       "avg": 22.8,
       "match": "Production Line",
-      "fetched_at": 1791099330,
+      "fetched_at": 1791559334,
       "raw": {
         "main": 10.0,
         "extra": 29.0,
@@ -325503,7 +325503,7 @@
       "complete": 21.0,
       "avg": 16.1,
       "match": "Gunsmith Simulator",
-      "fetched_at": 1791099531,
+      "fetched_at": 1791559489,
       "raw": {
         "main": 9.0,
         "extra": 18.3,
@@ -326007,7 +326007,7 @@
       "complete": 54.8,
       "avg": 34.7,
       "match": "Meet Your Maker",
-      "fetched_at": 1791099378,
+      "fetched_at": 1791559367,
       "raw": {
         "main": 14.6,
         "extra": 34.7,
@@ -326406,7 +326406,7 @@
       "complete": 12.9,
       "avg": 11.8,
       "match": "Wanderstop",
-      "fetched_at": 1791099706,
+      "fetched_at": 1791559615,
       "raw": {
         "main": 10.2,
         "extra": 12.2,
@@ -326764,7 +326764,7 @@
       "complete": 53.0,
       "avg": 27.2,
       "match": "Fly Corp",
-      "fetched_at": 1791099471,
+      "fetched_at": 1791559439,
       "raw": {
         "main": 2.3,
         "extra": 26.3,
@@ -326949,7 +326949,7 @@
       "complete": 32.0,
       "avg": 21.9,
       "match": "Peripeteia",
-      "fetched_at": 1791099318,
+      "fetched_at": 1791559324,
       "raw": {
         "main": 16.8,
         "extra": 16.9,
@@ -327075,7 +327075,7 @@
       "complete": 58.2,
       "avg": 50.7,
       "match": "Techtonica",
-      "fetched_at": 1791099613,
+      "fetched_at": 1791559553,
       "raw": {
         "main": 39.3,
         "extra": 54.7,
@@ -327281,13 +327281,13 @@
       "complete": 27.8,
       "avg": 24.6,
       "match": "Nova Lands",
-      "fetched_at": 1791099365,
+      "fetched_at": 1791559357,
       "raw": {
         "main": 18.9,
         "extra": 27.0,
         "complete": 27.8
       },
-      "n_comp": 250
+      "n_comp": 251
     },
     "1501690": {
       "main": 3.9,
@@ -328966,7 +328966,7 @@
       "complete": 66.2,
       "avg": 64.3,
       "match": "Our Adventurer Guild",
-      "fetched_at": 1791099544,
+      "fetched_at": 1791559498,
       "raw": {
         "main": 61.2,
         "extra": 65.6,
@@ -332079,14 +332079,13 @@
       "complete": 10.8,
       "avg": 9.4,
       "match": "Winter Burrow",
-      "fetched_at": 1791099533,
+      "fetched_at": 1791559490,
       "raw": {
         "main": 7.4,
         "extra": 9.9,
         "complete": 10.8
       },
-      "n_comp": 119,
-      "comp_grew": true
+      "n_comp": 119
     },
     "3009300": {
       "main": null,
@@ -332170,13 +332169,13 @@
       "complete": 17.4,
       "avg": 15.4,
       "match": "Nordhold",
-      "fetched_at": 1791099452,
+      "fetched_at": 1791559424,
       "raw": {
         "main": 11.8,
         "extra": 17.0,
         "complete": 17.4
       },
-      "n_comp": 27
+      "n_comp": 28
     },
     "3041230": {
       "main": 40.9,
@@ -449210,7 +449209,7 @@
       "complete": 15.4,
       "avg": 11.4,
       "match": "Karate Survivor",
-      "fetched_at": 1791099528,
+      "fetched_at": 1791559487,
       "raw": {
         "main": 6.8,
         "extra": 12.1,
@@ -465407,7 +465406,7 @@
       "complete": 20.5,
       "avg": 10.6,
       "match": "Love Curse: Find Your Soulmate",
-      "fetched_at": 1791099468,
+      "fetched_at": 1791559436,
       "raw": {
         "main": 4.6,
         "extra": 6.7,
@@ -491263,7 +491262,7 @@
       "complete": 2.7,
       "avg": 2.3,
       "match": "Fears to Fathom - Woodbury Getaway",
-      "fetched_at": 1791099327,
+      "fetched_at": 1791559332,
       "raw": {
         "main": 2.0,
         "extra": 2.1,
@@ -499712,7 +499711,7 @@
       "complete": 10.4,
       "avg": 8.6,
       "match": "The Big Catch: Tacklebox",
-      "fetched_at": 1791099499,
+      "fetched_at": 1791559462,
       "raw": {
         "main": 5.9,
         "extra": 9.4,
@@ -514023,13 +514022,13 @@
       "complete": 60.7,
       "avg": 47.4,
       "match": "Atelier Yumia: The Alchemist of Memories & the Envisioned Land",
-      "fetched_at": 1791099581,
+      "fetched_at": 1791559529,
       "raw": {
         "main": 30.0,
         "extra": 51.6,
         "complete": 60.7
       },
-      "n_comp": 163
+      "n_comp": 164
     },
     "3123450": {
       "main": null,
@@ -541747,7 +541746,7 @@
       "complete": 38.1,
       "avg": 29.8,
       "match": "Zero Parades: For Dead Spies",
-      "fetched_at": 1791099588,
+      "fetched_at": 1791559537,
       "raw": {
         "main": 21.3,
         "extra": 30.1,
@@ -547874,7 +547873,7 @@
       "complete": 21.8,
       "avg": 13.7,
       "match": "Harry Potter: Quidditch Champions",
-      "fetched_at": 1791099454,
+      "fetched_at": 1791559426,
       "raw": {
         "main": 4.2,
         "extra": 15.0,
@@ -571110,7 +571109,7 @@
       "complete": 5.2,
       "avg": 3.8,
       "match": "Carry The Glass",
-      "fetched_at": 1791099567,
+      "fetched_at": 1791559517,
       "raw": {
         "main": 2.6,
         "extra": 3.5,
@@ -571852,13 +571851,13 @@
       "complete": 12.2,
       "avg": 11.5,
       "match": "MindsEye",
-      "fetched_at": 1791099556,
+      "fetched_at": 1791559508,
       "raw": {
         "main": 10.3,
         "extra": 11.9,
         "complete": 12.2
       },
-      "n_comp": 133
+      "n_comp": 135
     },
     "3265280": {
       "main": null,
@@ -580951,7 +580950,7 @@
       "complete": 14.6,
       "avg": 12.3,
       "match": "Metro Awakening",
-      "fetched_at": 1791099399,
+      "fetched_at": 1791559382,
       "raw": {
         "main": 10.0,
         "extra": 12.2,
@@ -596313,7 +596312,7 @@
       "complete": 15.1,
       "avg": 10.8,
       "match": "Get To Work",
-      "fetched_at": 1791099323,
+      "fetched_at": 1791559329,
       "raw": {
         "main": 8.4,
         "extra": 8.8,
@@ -626682,7 +626681,7 @@
       "complete": 1.5,
       "avg": 1.2,
       "match": "SUMMERHOUSE",
-      "fetched_at": 1791099461,
+      "fetched_at": 1791559431,
       "raw": {
         "main": 0.6,
         "extra": 1.5,
@@ -673211,14 +673210,13 @@
       "complete": 90.6,
       "avg": 51.3,
       "match": "Final Fantasy VII: Ever Crisis",
-      "fetched_at": 1791099376,
+      "fetched_at": 1791559366,
       "raw": {
         "main": 25.5,
         "extra": 37.7,
         "complete": 90.6
       },
-      "n_comp": 74,
-      "comp_grew": true
+      "n_comp": 74
     },
     "2484120": {
       "main": null,
@@ -701437,13 +701435,13 @@
       "complete": 18.3,
       "avg": 8.3,
       "match": "Invincible VS",
-      "fetched_at": 1791099349,
+      "fetched_at": 1791559343,
       "raw": {
         "main": 1.3,
         "extra": 5.4,
         "complete": 18.3
       },
-      "n_comp": 72
+      "n_comp": 73
     },
     "2353100": {
       "main": null,
@@ -713391,7 +713389,7 @@
       "complete": 1.3,
       "avg": 1.1,
       "match": "Dystopika",
-      "fetched_at": 1791099432,
+      "fetched_at": 1791559408,
       "raw": {
         "main": 1.0,
         "extra": 1.1,
@@ -722289,7 +722287,7 @@
       "complete": 39.7,
       "avg": 19.5,
       "match": "Dungeons & Degenerate Gamblers",
-      "fetched_at": 1791099336,
+      "fetched_at": 1791559339,
       "raw": {
         "main": 4.9,
         "extra": 14.0,
@@ -747860,7 +747858,7 @@
       "complete": 2.3,
       "avg": 1.4,
       "match": "Teleforum",
-      "fetched_at": 1791099316,
+      "fetched_at": 1791559323,
       "raw": {
         "main": 0.8,
         "extra": 1.1,
@@ -797687,7 +797685,7 @@
       "complete": 179.7,
       "avg": 86.2,
       "match": "Islands of Insight",
-      "fetched_at": 1791099570,
+      "fetched_at": 1791559520,
       "raw": {
         "main": 32.1,
         "extra": 46.8,
@@ -814682,7 +814680,7 @@
       "complete": 49.6,
       "avg": 19.0,
       "match": "Gatekeeper",
-      "fetched_at": 1791099463,
+      "fetched_at": 1791559432,
       "raw": {
         "main": 2.8,
         "extra": 4.7,
@@ -815738,7 +815736,7 @@
       "complete": 40.0,
       "avg": 21.2,
       "match": "The Great War: Western Front",
-      "fetched_at": 1791099577,
+      "fetched_at": 1791559526,
       "raw": {
         "main": 8.6,
         "extra": 15.0,
@@ -858523,18 +858521,19 @@
       "attempts": 6
     },
     "1983260": {
-      "main": 15.5,
+      "main": 15.6,
       "extra": 21.3,
       "complete": 26.0,
-      "avg": 20.9,
+      "avg": 21.0,
       "match": "Dungeons of Hinterberg",
-      "fetched_at": 1791099583,
+      "fetched_at": 1791559530,
       "raw": {
-        "main": 15.5,
+        "main": 15.6,
         "extra": 21.3,
         "complete": 26.0
       },
-      "n_comp": 518
+      "n_comp": 521,
+      "comp_grew": true
     },
     "1983270": {
       "main": null,
@@ -876294,7 +876293,7 @@
       "complete": 56.5,
       "avg": 26.2,
       "match": "Aces & Adventures",
-      "fetched_at": 1791099392,
+      "fetched_at": 1791559376,
       "raw": {
         "main": 6.1,
         "extra": 16.1,
@@ -897162,13 +897161,13 @@
       "complete": 5.2,
       "avg": 4.4,
       "match": "7 Days to End with You",
-      "fetched_at": 1791099412,
+      "fetched_at": 1791559391,
       "raw": {
         "main": 3.4,
         "extra": 4.7,
         "complete": 5.2
       },
-      "n_comp": 162
+      "n_comp": 163
     },
     "1859290": {
       "main": null,
@@ -910002,18 +910001,18 @@
       "attempts": 6
     },
     "1723260": {
-      "main": 3.5,
-      "extra": 8.8,
-      "complete": 9.5,
-      "avg": 7.3,
+      "main": 5.1,
+      "extra": 9.2,
+      "complete": 9.3,
+      "avg": 7.9,
       "match": "CaseCracker",
-      "fetched_at": 1791099321,
+      "fetched_at": 1791559327,
       "raw": {
-        "main": 3.5,
-        "extra": 8.8,
-        "complete": 9.5
+        "main": 5.1,
+        "extra": 9.2,
+        "complete": 9.3
       },
-      "n_comp": 27
+      "n_comp": 28
     },
     "1723320": {
       "main": null,
@@ -913825,7 +913824,7 @@
       "complete": 53.6,
       "avg": 35.2,
       "match": "Asterigos: Curse of the Stars",
-      "fetched_at": 1791099401,
+      "fetched_at": 1791559383,
       "raw": {
         "main": 19.9,
         "extra": 32.2,
@@ -921329,13 +921328,13 @@
       "complete": 10.3,
       "avg": 8.9,
       "match": "Momodora: Moonlit Farewell",
-      "fetched_at": 1791099678,
+      "fetched_at": 1791559595,
       "raw": {
         "main": 7.4,
         "extra": 8.9,
         "complete": 10.3
       },
-      "n_comp": 213
+      "n_comp": 215
     },
     "1747790": {
       "main": null,
@@ -927979,7 +927978,7 @@
       "complete": 1.3,
       "avg": 1.2,
       "match": "Fears to Fathom - Norwood Hitchhike",
-      "fetched_at": 1791099565,
+      "fetched_at": 1791559515,
       "raw": {
         "main": 1.1,
         "extra": 1.1,
@@ -934313,7 +934312,7 @@
       "complete": 65.5,
       "avg": 47.9,
       "match": "Soul Hackers 2",
-      "fetched_at": 1791099560,
+      "fetched_at": 1791559511,
       "raw": {
         "main": 30.7,
         "extra": 47.5,
@@ -963667,13 +963666,13 @@
       "complete": 8.3,
       "avg": 7.3,
       "match": "MADiSON",
-      "fetched_at": 1791099476,
+      "fetched_at": 1791559442,
       "raw": {
         "main": 6.2,
         "extra": 7.3,
         "complete": 8.3
       },
-      "n_comp": 226
+      "n_comp": 228
     },
     "1670880": {
       "main": null,
@@ -993379,7 +993378,7 @@
       "complete": 7.4,
       "avg": 5.3,
       "match": "Soda Crisis",
-      "fetched_at": 1791099615,
+      "fetched_at": 1791559554,
       "raw": {
         "main": 3.7,
         "extra": 4.7,
@@ -1001493,7 +1001492,7 @@
       "complete": 21.7,
       "avg": 15.1,
       "match": "Hellslave",
-      "fetched_at": 1791099406,
+      "fetched_at": 1791559377,
       "raw": {
         "main": 10.1,
         "extra": 13.5,
@@ -1003477,13 +1003476,13 @@
       "complete": 13.1,
       "avg": 7.5,
       "match": "Suit for Hire",
-      "fetched_at": 1791099628,
+      "fetched_at": 1791559564,
       "raw": {
         "main": 3.4,
         "extra": 5.9,
         "complete": 13.1
       },
-      "n_comp": 48
+      "n_comp": 49
     },
     "1612480": {
       "main": 0.4,
@@ -1031241,7 +1031240,7 @@
       "complete": 4.9,
       "avg": 4.6,
       "match": "Lego Voyagers",
-      "fetched_at": 1791099677,
+      "fetched_at": 1791559594,
       "raw": {
         "main": 4.1,
         "extra": 4.8,
@@ -1057278,18 +1057277,18 @@
       "attempts": 6
     },
     "1436700": {
-      "main": 18.8,
+      "main": 18.9,
       "extra": 22.6,
       "complete": 24.7,
-      "avg": 22.0,
+      "avg": 22.1,
       "match": "Trine 5: A Clockwork Conspiracy",
-      "fetched_at": 1791099340,
+      "fetched_at": 1791559342,
       "raw": {
-        "main": 18.8,
+        "main": 18.9,
         "extra": 22.6,
         "complete": 24.7
       },
-      "n_comp": 239
+      "n_comp": 241
     },
     "1436810": {
       "main": 1.7,
@@ -1064019,7 +1064018,7 @@
       "complete": 12.8,
       "avg": 9.6,
       "match": "At Dead of Night",
-      "fetched_at": 1791099335,
+      "fetched_at": 1791559337,
       "raw": {
         "main": 7.9,
         "extra": 8.0,
@@ -1095598,13 +1095597,13 @@
       "complete": 31.5,
       "avg": 22.1,
       "match": "Immortals of Aveum",
-      "fetched_at": 1791099682,
+      "fetched_at": 1791559598,
       "raw": {
         "main": 14.3,
         "extra": 20.4,
         "complete": 31.5
       },
-      "n_comp": 576
+      "n_comp": 575
     },
     "2009220": {
       "main": null,
@@ -1097953,7 +1097952,7 @@
       "complete": 60.7,
       "avg": 40.6,
       "match": "Void Stranger",
-      "fetched_at": 1791099353,
+      "fetched_at": 1791559348,
       "raw": {
         "main": 23.2,
         "extra": 37.8,
@@ -1126862,7 +1126861,7 @@
       "complete": 18.4,
       "avg": 10.5,
       "match": "Ragnaröck",
-      "fetched_at": 1791099624,
+      "fetched_at": 1791559561,
       "raw": {
         "main": 3.2,
         "extra": 10.0,
@@ -1130405,7 +1130404,7 @@
       "complete": 25.0,
       "avg": 20.1,
       "match": "Haak",
-      "fetched_at": 1791099397,
+      "fetched_at": 1791559380,
       "raw": {
         "main": 11.7,
         "extra": 23.7,
@@ -1131018,7 +1131017,7 @@
       "complete": 14.2,
       "avg": 11.7,
       "match": "Cat Cafe Manager",
-      "fetched_at": 1791099699,
+      "fetched_at": 1791559610,
       "raw": {
         "main": 9.9,
         "extra": 11.0,
@@ -1149009,7 +1149008,7 @@
       "complete": 8.8,
       "avg": 7.1,
       "match": "Wish",
-      "fetched_at": 1791099593,
+      "fetched_at": 1791559541,
       "raw": {
         "main": 4.7,
         "extra": 7.9,
@@ -1156175,17 +1156174,17 @@
     },
     "1221250": {
       "main": 6.0,
-      "extra": 7.5,
+      "extra": 7.6,
       "complete": 8.1,
       "avg": 7.2,
       "match": "NORCO",
-      "fetched_at": 1791099664,
+      "fetched_at": 1791559584,
       "raw": {
         "main": 6.0,
-        "extra": 7.5,
+        "extra": 7.6,
         "complete": 8.1
       },
-      "n_comp": 752
+      "n_comp": 753
     },
     "1221280": {
       "main": null,
@@ -1161106,16 +1161105,17 @@
     "1231880": {
       "main": 7.2,
       "extra": 9.1,
-      "complete": 11.2,
-      "avg": 9.2,
+      "complete": 11.1,
+      "avg": 9.1,
       "match": "Haiku, the Robot",
-      "fetched_at": 1791099325,
+      "fetched_at": 1791559330,
       "raw": {
         "main": 7.2,
         "extra": 9.1,
-        "complete": 11.2
+        "complete": 11.1
       },
-      "n_comp": 467
+      "n_comp": 470,
+      "comp_grew": true
     },
     "1231900": {
       "main": null,
@@ -1166735,13 +1166735,13 @@
       "complete": 10.1,
       "avg": 6.8,
       "match": "This Bed We Made",
-      "fetched_at": 1791099562,
+      "fetched_at": 1791559512,
       "raw": {
         "main": 4.5,
         "extra": 5.9,
         "complete": 10.1
       },
-      "n_comp": 286
+      "n_comp": 287
     },
     "1243880": {
       "main": 1.0,
@@ -1186403,7 +1186403,7 @@
       "complete": 23.4,
       "avg": 15.8,
       "match": "Deemo -Reborn-",
-      "fetched_at": 1791099505,
+      "fetched_at": 1791559466,
       "raw": {
         "main": 11.5,
         "extra": 12.6,
@@ -1186490,7 +1186490,7 @@
       "complete": 25.3,
       "avg": 21.4,
       "match": "Hard West 2",
-      "fetched_at": 1791099694,
+      "fetched_at": 1791559607,
       "raw": {
         "main": 16.8,
         "extra": 22.1,
@@ -1214726,16 +1214726,16 @@
     "1173780": {
       "main": 20.3,
       "extra": 24.0,
-      "complete": 24.2,
+      "complete": 24.1,
       "avg": 22.8,
       "match": "Final Fantasy II",
-      "fetched_at": 1791099450,
+      "fetched_at": 1791559423,
       "raw": {
         "main": 20.3,
         "extra": 24.0,
-        "complete": 24.2
+        "complete": 24.1
       },
-      "n_comp": 3007,
+      "n_comp": 3017,
       "comp_grew": true
     },
     "1173790": {
@@ -1216420,7 +1216420,7 @@
       "complete": 24.3,
       "avg": 21.6,
       "match": "Space Crew",
-      "fetched_at": 1791099631,
+      "fetched_at": 1791559566,
       "raw": {
         "main": 18.7,
         "extra": 21.7,
@@ -1219285,7 +1219285,7 @@
       "complete": 8.0,
       "avg": 7.6,
       "match": "The Excavation of Hob's Barrow",
-      "fetched_at": 1791099503,
+      "fetched_at": 1791559465,
       "raw": {
         "main": 7.0,
         "extra": 7.8,
@@ -1221352,7 +1221352,7 @@
       "complete": 1.1,
       "avg": 0.8,
       "match": "West Sweety",
-      "fetched_at": 1791099484,
+      "fetched_at": 1791559447,
       "raw": {
         "main": 0.6,
         "extra": 0.7,
@@ -1223097,7 +1223097,7 @@
       "complete": 10.0,
       "avg": 8.6,
       "match": "Card Shark",
-      "fetched_at": 1791099696,
+      "fetched_at": 1791559608,
       "raw": {
         "main": 7.5,
         "extra": 8.3,
@@ -1237780,7 +1237780,7 @@
       "complete": 8.4,
       "avg": 6.6,
       "match": "Trover Saves the Universe",
-      "fetched_at": 1791099617,
+      "fetched_at": 1791559555,
       "raw": {
         "main": 5.1,
         "extra": 6.3,
@@ -1247009,13 +1247009,13 @@
       "complete": 11.4,
       "avg": 10.8,
       "match": "Röki",
-      "fetched_at": 1791099645,
+      "fetched_at": 1791559578,
       "raw": {
         "main": 9.8,
         "extra": 11.2,
         "complete": 11.4
       },
-      "n_comp": 437
+      "n_comp": 438
     },
     "1067560": {
       "main": null,
@@ -1247183,7 +1247183,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "HOME",
-      "fetched_at": 1791099501,
+      "fetched_at": 1791559464,
       "raw": {
         "main": 0.2,
         "extra": 0.2,
@@ -1251287,7 +1251287,7 @@
       "complete": 19.1,
       "avg": 15.1,
       "match": "Banners of Ruin",
-      "fetched_at": 1791099619,
+      "fetched_at": 1791559556,
       "raw": {
         "main": 9.2,
         "extra": 17.0,
@@ -1254244,7 +1254244,7 @@
       "complete": 2.9,
       "avg": 1.8,
       "match": "She Sees Red",
-      "fetched_at": 1791099704,
+      "fetched_at": 1791559614,
       "raw": {
         "main": 0.8,
         "extra": 1.8,
@@ -1272539,7 +1272539,7 @@
       "complete": 6.8,
       "avg": 6.0,
       "match": "Shady Part of Me",
-      "fetched_at": 1791099473,
+      "fetched_at": 1791559440,
       "raw": {
         "main": 5.1,
         "extra": 6.0,
@@ -1295066,7 +1295066,7 @@
       "complete": 6.9,
       "avg": 4.6,
       "match": "Bladed Fury",
-      "fetched_at": 1791099685,
+      "fetched_at": 1791559600,
       "raw": {
         "main": 3.2,
         "extra": 3.7,
@@ -1295703,7 +1295703,7 @@
       "complete": 20.6,
       "avg": 16.4,
       "match": "Swag and Sorcery",
-      "fetched_at": 1791099572,
+      "fetched_at": 1791559521,
       "raw": {
         "main": 12.9,
         "extra": 15.6,
@@ -1298405,13 +1298405,13 @@
       "complete": 24.0,
       "avg": 15.5,
       "match": "American Fugitive",
-      "fetched_at": 1791099579,
+      "fetched_at": 1791559527,
       "raw": {
         "main": 9.2,
         "extra": 13.3,
         "complete": 24.0
       },
-      "n_comp": 294
+      "n_comp": 295
     },
     "934800": {
       "main": null,
@@ -1298461,7 +1298461,7 @@
       "complete": 1.3,
       "avg": 0.9,
       "match": "FrostRunner",
-      "fetched_at": 1791099426,
+      "fetched_at": 1791559403,
       "raw": {
         "main": 0.5,
         "extra": 0.8,
@@ -1298924,13 +1298924,13 @@
       "complete": 20.4,
       "avg": 12.9,
       "match": "Glass Masquerade 2: Illusions",
-      "fetched_at": 1791099633,
+      "fetched_at": 1791559568,
       "raw": {
         "main": 8.3,
         "extra": 10.1,
         "complete": 20.4
       },
-      "n_comp": 367
+      "n_comp": 369
     },
     "935910": {
       "main": null,
@@ -1325795,7 +1325795,7 @@
       "complete": 122.2,
       "avg": 93.1,
       "match": "The Legend of Heroes: Trails of Cold Steel III",
-      "fetched_at": 1791099610,
+      "fetched_at": 1791559551,
       "raw": {
         "main": 60.0,
         "extra": 97.2,
@@ -1348950,7 +1348950,7 @@
       "complete": 59.7,
       "avg": 46.7,
       "match": "One Piece Odyssey",
-      "fetched_at": 1791099383,
+      "fetched_at": 1791559370,
       "raw": {
         "main": 34.0,
         "extra": 46.4,
@@ -1376776,7 +1376776,7 @@
       "complete": 4.5,
       "avg": 4.2,
       "match": "Welcome to the Game II",
-      "fetched_at": 1791099351,
+      "fetched_at": 1791559345,
       "raw": {
         "main": 4.0,
         "extra": 4.2,
@@ -1388017,7 +1388017,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Achievement Clicker",
-      "fetched_at": 1791099444,
+      "fetched_at": 1791559417,
       "raw": {
         "main": 0.4,
         "extra": 0.5,
@@ -1396557,7 +1396557,7 @@
       "complete": 48.6,
       "avg": 42.3,
       "match": "Shenmue I & II",
-      "fetched_at": 1791099606,
+      "fetched_at": 1791559547,
       "raw": {
         "main": 35.9,
         "extra": 42.3,
@@ -1398169,16 +1398169,17 @@
     "761600": {
       "main": 4.5,
       "extra": 5.7,
-      "complete": 11.9,
+      "complete": 12.0,
       "avg": 7.4,
       "match": "Onimusha: Warlords",
-      "fetched_at": 1791099372,
+      "fetched_at": 1791559361,
       "raw": {
         "main": 4.5,
         "extra": 5.7,
-        "complete": 11.9
+        "complete": 12.0
       },
-      "n_comp": 1547
+      "n_comp": 1550,
+      "comp_grew": true
     },
     "761620": {
       "main": 13.1,
@@ -1414322,7 +1414323,7 @@
       "complete": 4.4,
       "avg": 3.9,
       "match": "Doom VFR",
-      "fetched_at": 1791099542,
+      "fetched_at": 1791559495,
       "raw": {
         "main": 3.1,
         "extra": 4.3,
@@ -1429099,13 +1429100,13 @@
       "complete": 41.5,
       "avg": 18.0,
       "match": "Fight'N Rage",
-      "fetched_at": 1791099638,
+      "fetched_at": 1791559572,
       "raw": {
         "main": 2.4,
         "extra": 10.0,
         "complete": 41.5
       },
-      "n_comp": 290
+      "n_comp": 291
     },
     "674550": {
       "main": null,
@@ -1438992,7 +1438993,7 @@
       "complete": 31.7,
       "avg": 25.6,
       "match": "Ash of Gods: Redemption",
-      "fetched_at": 1791099355,
+      "fetched_at": 1791559349,
       "raw": {
         "main": 21.0,
         "extra": 24.1,
@@ -1453880,13 +1453881,13 @@
       "complete": 12.3,
       "avg": 8.6,
       "match": "Snake Pass",
-      "fetched_at": 1791099482,
+      "fetched_at": 1791559446,
       "raw": {
         "main": 5.3,
         "extra": 8.2,
         "complete": 12.3
       },
-      "n_comp": 752
+      "n_comp": 753
     },
     "544370": {
       "main": null,
@@ -1458964,7 +1458965,7 @@
       "complete": 82.5,
       "avg": 55.3,
       "match": "World of Final Fantasy",
-      "fetched_at": 1791099489,
+      "fetched_at": 1791559452,
       "raw": {
         "main": 35.2,
         "extra": 48.1,
@@ -1464934,7 +1464935,7 @@
       "complete": 191.2,
       "avg": 99.3,
       "match": "Fire Pro Wrestling World",
-      "fetched_at": 1791099514,
+      "fetched_at": 1791559474,
       "raw": {
         "main": 27.8,
         "extra": 78.9,
@@ -1467681,13 +1467682,13 @@
       "complete": 0.7,
       "avg": 0.5,
       "match": "Distant Space",
-      "fetched_at": 1791099480,
+      "fetched_at": 1791559445,
       "raw": {
         "main": 0.4,
         "extra": 0.4,
         "complete": 0.7
       },
-      "n_comp": 219
+      "n_comp": 221
     },
     "569630": {
       "main": null,
@@ -1468904,7 +1468905,7 @@
       "complete": 25.3,
       "avg": 14.9,
       "match": "Party Hard 2",
-      "fetched_at": 1791099524,
+      "fetched_at": 1791559483,
       "raw": {
         "main": 6.9,
         "extra": 12.6,
@@ -1473395,7 +1473396,7 @@
       "complete": 24.2,
       "avg": 15.7,
       "match": "Yonder: The Cloud Catcher Chronicles",
-      "fetched_at": 1791099608,
+      "fetched_at": 1791559549,
       "raw": {
         "main": 9.8,
         "extra": 13.2,
@@ -1474849,7 +1474850,7 @@
       "complete": 68.0,
       "avg": 30.7,
       "match": "The End Is Nigh",
-      "fetched_at": 1791099369,
+      "fetched_at": 1791559360,
       "raw": {
         "main": 8.4,
         "extra": 15.7,
@@ -1475973,7 +1475974,7 @@
       "complete": 22.6,
       "avg": 14.0,
       "match": "Street Fighter 30th Anniversary Collection",
-      "fetched_at": 1791099394,
+      "fetched_at": 1791559378,
       "raw": {
         "main": 7.6,
         "extra": 11.8,
@@ -1480486,7 +1480487,7 @@
       "complete": 62.8,
       "avg": 34.1,
       "match": "Immortal Redneck",
-      "fetched_at": 1791099519,
+      "fetched_at": 1791559478,
       "raw": {
         "main": 17.0,
         "extra": 22.6,
@@ -1481382,7 +1481383,7 @@
       "complete": 114.6,
       "avg": 74.0,
       "match": "Sunless Skies",
-      "fetched_at": 1791099364,
+      "fetched_at": 1791559355,
       "raw": {
         "main": 29.8,
         "extra": 77.6,
@@ -1484111,7 +1484112,7 @@
       "complete": 80.9,
       "avg": 51.3,
       "match": "Train Valley 2",
-      "fetched_at": 1791099703,
+      "fetched_at": 1791559612,
       "raw": {
         "main": 30.7,
         "extra": 42.3,
@@ -1488706,7 +1488707,7 @@
       "complete": 20.4,
       "avg": 13.2,
       "match": "Bio Inc. Redemption",
-      "fetched_at": 1791099605,
+      "fetched_at": 1791559546,
       "raw": {
         "main": 7.6,
         "extra": 11.5,
@@ -1490387,7 +1490388,7 @@
       "complete": 8.6,
       "avg": 6.9,
       "match": "Spaceplan",
-      "fetched_at": 1791099442,
+      "fetched_at": 1791559416,
       "raw": {
         "main": 6.0,
         "extra": 6.0,
@@ -1494017,7 +1494018,7 @@
       "complete": 7.8,
       "avg": 7.2,
       "match": "Contradiction",
-      "fetched_at": 1791099597,
+      "fetched_at": 1791559544,
       "raw": {
         "main": 6.9,
         "extra": 7.0,
@@ -1494372,7 +1494373,7 @@
       "complete": 3.8,
       "avg": 2.6,
       "match": "Virginia",
-      "fetched_at": 1791099464,
+      "fetched_at": 1791559433,
       "raw": {
         "main": 1.9,
         "extra": 2.2,
@@ -1502474,7 +1502475,7 @@
       "complete": 8.5,
       "avg": 6.9,
       "match": "Umbrella Corps",
-      "fetched_at": 1791099475,
+      "fetched_at": 1791559438,
       "raw": {
         "main": 4.3,
         "extra": 8.0,
@@ -1504995,7 +1504996,7 @@
       "complete": 1.7,
       "avg": 1.4,
       "match": "Missing Translation",
-      "fetched_at": 1791099521,
+      "fetched_at": 1791559480,
       "raw": {
         "main": 1.1,
         "extra": 1.3,
@@ -1508154,13 +1508155,13 @@
       "complete": 1.8,
       "avg": 1.7,
       "match": "The Park",
-      "fetched_at": 1791099648,
+      "fetched_at": 1791559582,
       "raw": {
         "main": 1.5,
         "extra": 1.8,
         "complete": 1.8
       },
-      "n_comp": 637
+      "n_comp": 639
     },
     "402030": {
       "main": 0.8,
@@ -1515664,7 +1515665,7 @@
       "complete": 1.9,
       "avg": 1.6,
       "match": "Turbo Pug",
-      "fetched_at": 1791099469,
+      "fetched_at": 1791559437,
       "raw": {
         "main": 1.2,
         "extra": 1.6,
@@ -1523157,7 +1523158,7 @@
       "complete": 22.5,
       "avg": 10.0,
       "match": "Half Dead",
-      "fetched_at": 1791099535,
+      "fetched_at": 1791559491,
       "raw": {
         "main": 2.4,
         "extra": 5.0,
@@ -1523679,16 +1523680,16 @@
     "435790": {
       "main": 2.4,
       "extra": 5.8,
-      "complete": 14.0,
-      "avg": 7.4,
+      "complete": 15.2,
+      "avg": 7.8,
       "match": "10 Second Ninja X",
-      "fetched_at": 1791099510,
+      "fetched_at": 1791559471,
       "raw": {
         "main": 2.4,
         "extra": 5.8,
-        "complete": 14.0
+        "complete": 15.2
       },
-      "n_comp": 426
+      "n_comp": 427
     },
     "435800": {
       "main": 7.0,
@@ -1528772,13 +1528773,13 @@
       "complete": 8.5,
       "avg": 6.3,
       "match": "Redeemer",
-      "fetched_at": 1791099670,
+      "fetched_at": 1791559588,
       "raw": {
         "main": 4.2,
         "extra": 6.3,
         "complete": 8.5
       },
-      "n_comp": 242
+      "n_comp": 244
     },
     "447310": {
       "main": 7.6,
@@ -1531482,13 +1531483,14 @@
       "complete": 55.3,
       "avg": 27.1,
       "match": "Sanctum",
-      "fetched_at": 1791099478,
+      "fetched_at": 1791559443,
       "raw": {
         "main": 8.2,
         "extra": 17.9,
         "complete": 55.3
       },
-      "n_comp": 643
+      "n_comp": 646,
+      "comp_grew": true
     },
     "91700": {
       "main": 10.9,
@@ -1532467,7 +1532469,7 @@
       "complete": 51.4,
       "avg": 43.6,
       "match": "Space Pirates and Zombies",
-      "fetched_at": 1791099701,
+      "fetched_at": 1791559611,
       "raw": {
         "main": 30.2,
         "extra": 49.2,
@@ -1532495,13 +1532497,13 @@
       "complete": 13.6,
       "avg": 10.6,
       "match": "Cthulhu Saves The World",
-      "fetched_at": 1791099333,
+      "fetched_at": 1791559336,
       "raw": {
         "main": 7.8,
         "extra": 10.4,
         "complete": 13.6
       },
-      "n_comp": 806
+      "n_comp": 808
     },
     "107600": {
       "main": 1.1,
@@ -1534033,13 +1534035,13 @@
       "complete": 24.7,
       "avg": 17.3,
       "match": "LEGO Harry Potter: Years 5-7",
-      "fetched_at": 1791099498,
+      "fetched_at": 1791559460,
       "raw": {
         "main": 11.1,
         "extra": 16.1,
         "complete": 24.7
       },
-      "n_comp": 2170,
+      "n_comp": 2174,
       "comp_grew": true
     },
     "204180": {
@@ -1536587,7 +1536589,7 @@
       "complete": 8.2,
       "avg": 5.6,
       "match": "Rocketbirds: Hardboiled Chicken",
-      "fetched_at": 1791099709,
+      "fetched_at": 1791559618,
       "raw": {
         "main": 3.5,
         "extra": 5.1,
@@ -1537410,7 +1537412,7 @@
       "complete": 9.6,
       "avg": 8.6,
       "match": "Edna & Harvey: Harvey's New Eyes",
-      "fetched_at": 1791099358,
+      "fetched_at": 1791559351,
       "raw": {
         "main": 7.5,
         "extra": 8.7,
@@ -1538970,13 +1538972,13 @@
       "complete": 4.6,
       "avg": 4.4,
       "match": "Full Throttle Remastered",
-      "fetched_at": 1791099626,
+      "fetched_at": 1791559562,
       "raw": {
         "main": 4.0,
         "extra": 4.5,
         "complete": 4.6
       },
-      "n_comp": 1399
+      "n_comp": 1400
     },
     "228380": {
       "main": 17.7,
@@ -1539328,7 +1539330,7 @@
       "complete": 15.3,
       "avg": 13.1,
       "match": "The Night of the Rabbit",
-      "fetched_at": 1791099385,
+      "fetched_at": 1791559371,
       "raw": {
         "main": 10.0,
         "extra": 14.1,
@@ -1539521,7 +1539523,7 @@
       "complete": 28.2,
       "avg": 20.1,
       "match": "Knights of Pen and Paper +1 Edition",
-      "fetched_at": 1791099569,
+      "fetched_at": 1791559518,
       "raw": {
         "main": 13.2,
         "extra": 19.0,
@@ -1539948,7 +1539950,7 @@
       "complete": 16.4,
       "avg": 13.0,
       "match": "Worms: Clan Wars",
-      "fetched_at": 1791099643,
+      "fetched_at": 1791559577,
       "raw": {
         "main": 8.1,
         "extra": 14.5,
@@ -1540719,7 +1540721,7 @@
       "complete": 5.0,
       "avg": 4.1,
       "match": "Angry Video Game Nerd Adventures",
-      "fetched_at": 1791099692,
+      "fetched_at": 1791559606,
       "raw": {
         "main": 3.1,
         "extra": 4.2,
@@ -1541003,7 +1541005,7 @@
       "complete": 76.5,
       "avg": 57.2,
       "match": "Might and Magic X: Legacy",
-      "fetched_at": 1791099421,
+      "fetched_at": 1791559398,
       "raw": {
         "main": 40.2,
         "extra": 54.8,
@@ -1542257,7 +1542259,7 @@
       "complete": 16.0,
       "avg": 8.7,
       "match": "Electronic Super Joy",
-      "fetched_at": 1791099546,
+      "fetched_at": 1791559499,
       "raw": {
         "main": 3.2,
         "extra": 7.0,
@@ -1545237,13 +1545239,13 @@
       "complete": 9.8,
       "avg": 7.5,
       "match": "ObsCure",
-      "fetched_at": 1791099636,
+      "fetched_at": 1791559571,
       "raw": {
         "main": 5.6,
         "extra": 7.1,
         "complete": 9.8
       },
-      "n_comp": 568
+      "n_comp": 569
     },
     "254480": {
       "main": 7.2,
@@ -1547894,7 +1547896,7 @@
       "complete": 35.8,
       "avg": 22.0,
       "match": "BlazBlue: Calamity Trigger",
-      "fetched_at": 1791099603,
+      "fetched_at": 1791559545,
       "raw": {
         "main": 10.1,
         "extra": 20.0,
@@ -1548078,13 +1548080,14 @@
       "complete": 13.2,
       "avg": 6.7,
       "match": "Mitsurugi Kamui Hikae",
-      "fetched_at": 1791099415,
+      "fetched_at": 1791559394,
       "raw": {
         "main": 2.2,
         "extra": 4.8,
         "complete": 13.2
       },
-      "n_comp": 322
+      "n_comp": 325,
+      "comp_grew": true
     },
     "263640": {
       "main": 3.1,
@@ -1550038,13 +1550041,13 @@
       "complete": 16.6,
       "avg": 11.9,
       "match": "BADLAND: Game of the Year Edition",
-      "fetched_at": 1791099551,
+      "fetched_at": 1791559503,
       "raw": {
         "main": 7.4,
         "extra": 11.7,
         "complete": 16.6
       },
-      "n_comp": 249
+      "n_comp": 250
     },
     "269690": {
       "main": 9.4,
@@ -1554128,13 +1554131,13 @@
       "complete": 6.4,
       "avg": 5.0,
       "match": "Nosferatu: The Wrath of Malachi",
-      "fetched_at": 1791099598,
+      "fetched_at": 1791559533,
       "raw": {
         "main": 4.0,
         "extra": 4.5,
         "complete": 6.4
       },
-      "n_comp": 202
+      "n_comp": 203
     },
     "283310": {
       "main": 39.6,
@@ -1555002,7 +1555005,7 @@
       "complete": 6.3,
       "avg": 4.8,
       "match": "Braveland",
-      "fetched_at": 1791099612,
+      "fetched_at": 1791559552,
       "raw": {
         "main": 3.5,
         "extra": 4.6,
@@ -1555181,7 +1555184,7 @@
       "complete": 7.7,
       "avg": 6.6,
       "match": "Fault - Milestone One",
-      "fetched_at": 1791099591,
+      "fetched_at": 1791559539,
       "raw": {
         "main": 5.1,
         "extra": 7.0,
@@ -1557208,7 +1557211,7 @@
       "complete": 7.1,
       "avg": 4.1,
       "match": "The Hat Man: Shadow Ward",
-      "fetched_at": 1791099523,
+      "fetched_at": 1791559481,
       "raw": {
         "main": 1.7,
         "extra": 3.5,
@@ -1559661,13 +1559664,13 @@
       "complete": 3.2,
       "avg": 2.4,
       "match": "The Culling Of The Cows",
-      "fetched_at": 1791099371,
+      "fetched_at": 1791559363,
       "raw": {
         "main": 1.6,
         "extra": 2.5,
         "complete": 3.2
       },
-      "n_comp": 308
+      "n_comp": 309
     },
     "297070": {
       "main": 4.1,
@@ -1562541,7 +1562544,7 @@
       "complete": 4.4,
       "avg": 3.7,
       "match": "Suicide Guy",
-      "fetched_at": 1791099549,
+      "fetched_at": 1791559502,
       "raw": {
         "main": 3.1,
         "extra": 3.6,
@@ -1565945,14 +1565948,13 @@
       "complete": 73.3,
       "avg": 47.6,
       "match": "Final Fantasy IV (3D)",
-      "fetched_at": 1791099630,
+      "fetched_at": 1791559565,
       "raw": {
         "main": 30.7,
         "extra": 38.9,
         "complete": 73.3
       },
-      "n_comp": 1395,
-      "comp_grew": true
+      "n_comp": 1396
     },
     "312780": {
       "main": 10.2,
@@ -1567157,7 +1567159,7 @@
       "complete": 16.0,
       "avg": 9.9,
       "match": "Mighty No. 9",
-      "fetched_at": 1791099356,
+      "fetched_at": 1791559346,
       "raw": {
         "main": 5.0,
         "extra": 8.8,
@@ -1568498,7 +1568500,7 @@
       "complete": 13.8,
       "avg": 11.2,
       "match": "Squishy the Suicidal Pig",
-      "fetched_at": 1791099465,
+      "fetched_at": 1791559434,
       "raw": {
         "main": 8.6,
         "extra": 11.2,
@@ -1569173,7 +1569175,7 @@
       "complete": 9.2,
       "avg": 5.5,
       "match": "Absolute Drift",
-      "fetched_at": 1791099666,
+      "fetched_at": 1791559585,
       "raw": {
         "main": 2.7,
         "extra": 4.6,
@@ -1570129,7 +1570131,7 @@
       "complete": 3.3,
       "avg": 3.0,
       "match": "FRAMED Collection",
-      "fetched_at": 1791099459,
+      "fetched_at": 1791559429,
       "raw": {
         "main": 2.8,
         "extra": 3.0,
@@ -1570934,13 +1570936,13 @@
       "complete": 12.0,
       "avg": 7.1,
       "match": "Deathmatch Classic",
-      "fetched_at": 1791099526,
+      "fetched_at": 1791559484,
       "raw": {
         "main": 1.2,
         "extra": 8.0,
         "complete": 12.0
       },
-      "n_comp": 340
+      "n_comp": 341
     },
     "50": {
       "main": 5.2,
@@ -1572272,13 +1572274,13 @@
       "complete": 17.2,
       "avg": 11.0,
       "match": "Zuma's Revenge!",
-      "fetched_at": 1791099367,
+      "fetched_at": 1791559358,
       "raw": {
         "main": 4.7,
         "extra": 11.2,
         "complete": 17.2
       },
-      "n_comp": 415
+      "n_comp": 417
     },
     "3700": {
       "main": 13.1,
@@ -1573353,7 +1573355,7 @@
       "complete": 10.8,
       "avg": 8.7,
       "match": "X-Blades",
-      "fetched_at": 1791099622,
+      "fetched_at": 1791559560,
       "raw": {
         "main": 6.8,
         "extra": 8.4,
@@ -1573604,13 +1573606,13 @@
       "complete": 7.6,
       "avg": 6.4,
       "match": "Kane & Lynch: Dead Men",
-      "fetched_at": 1791099404,
+      "fetched_at": 1791559386,
       "raw": {
         "main": 5.1,
         "extra": 6.5,
         "complete": 7.6
       },
-      "n_comp": 1397
+      "n_comp": 1399
     },
     "8100": {
       "main": 5.9,
@@ -1577069,7 +1577071,7 @@
       "complete": 9.3,
       "avg": 6.1,
       "match": "Zeno Clash",
-      "fetched_at": 1791099635,
+      "fetched_at": 1791559569,
       "raw": {
         "main": 3.8,
         "extra": 5.2,
@@ -1577154,13 +1577156,13 @@
       "complete": 16.6,
       "avg": 13.8,
       "match": "Call of Cthulhu: Dark Corners of the Earth",
-      "fetched_at": 1791099494,
+      "fetched_at": 1791559456,
       "raw": {
         "main": 11.6,
         "extra": 13.3,
         "complete": 16.6
       },
-      "n_comp": 561
+      "n_comp": 562
     },
     "22350": {
       "main": 6.5,
@@ -1581162,14 +1581164,13 @@
       "complete": 13.3,
       "avg": 9.4,
       "match": "Serious Sam: The First Encounter",
-      "fetched_at": 1791099428,
+      "fetched_at": 1791559404,
       "raw": {
         "main": 6.5,
         "extra": 8.5,
         "complete": 13.3
       },
-      "n_comp": 1021,
-      "comp_grew": true
+      "n_comp": 1022
     },
     "41070": {
       "main": 10.1,
@@ -1583579,7 +1583580,7 @@
       "complete": 60.1,
       "avg": 44.8,
       "match": "Wargame: European Escalation",
-      "fetched_at": 1791099436,
+      "fetched_at": 1791559411,
       "raw": {
         "main": 28.0,
         "extra": 46.2,
@@ -1587930,7 +1587931,7 @@
       "complete": 38.0,
       "avg": 20.9,
       "match": "Akiba's Trip: Undead & Undressed",
-      "fetched_at": 1791099431,
+      "fetched_at": 1791559407,
       "raw": {
         "main": 9.0,
         "extra": 15.6,
@@ -1591060,14 +1591061,13 @@
       "complete": 50.1,
       "avg": 36.5,
       "match": "Final Fantasy Type-0 HD",
-      "fetched_at": 1791099690,
+      "fetched_at": 1791559604,
       "raw": {
         "main": 23.5,
         "extra": 35.9,
         "complete": 50.1
       },
-      "n_comp": 922,
-      "comp_grew": true
+      "n_comp": 922
     },
     "340190": {
       "main": null,
@@ -1594781,7 +1594781,7 @@
       "complete": 0.3,
       "avg": 0.2,
       "match": "The Old Tree",
-      "fetched_at": 1791099512,
+      "fetched_at": 1791559472,
       "raw": {
         "main": 0.2,
         "extra": 0.2,
@@ -1598811,7 +1598811,7 @@
       "complete": 19.4,
       "avg": 13.5,
       "match": "Train Valley",
-      "fetched_at": 1791099380,
+      "fetched_at": 1791559368,
       "raw": {
         "main": 8.7,
         "extra": 12.5,
@@ -1606037,7 +1606037,7 @@
       "complete": 7.7,
       "avg": 6.7,
       "match": "Seasons After Fall",
-      "fetched_at": 1791099707,
+      "fetched_at": 1791559616,
       "raw": {
         "main": 6.0,
         "extra": 6.5,
@@ -1612351,7 +1612351,7 @@
       "complete": 76.7,
       "avg": 55.8,
       "match": "Megadimension Neptunia VII",
-      "fetched_at": 1791099574,
+      "fetched_at": 1791559523,
       "raw": {
         "main": 35.3,
         "extra": 55.4,
@@ -1625431,18 +1625431,19 @@
       "attempts": 6
     },
     "493840": {
-      "main": 2.2,
-      "extra": 13.8,
-      "complete": 16.0,
-      "avg": 10.7,
-      "match": "Marvel vs. Capcom Origins",
-      "fetched_at": 1791099410,
+      "main": 3.8,
+      "extra": 6.8,
+      "complete": 12.6,
+      "avg": 7.7,
+      "match": "Marvel vs. Capcom: Infinite",
+      "fetched_at": 1791559389,
       "raw": {
-        "main": 2.2,
-        "extra": 13.8,
-        "complete": 16.0
+        "main": 3.8,
+        "extra": 6.8,
+        "complete": 12.6
       },
-      "n_comp": 29
+      "n_comp": 520,
+      "comp_grew": true
     },
     "493920": {
       "main": null,
@@ -1646850,13 +1646851,13 @@
       "complete": 15.7,
       "avg": 12.0,
       "match": "Guacamelee! 2",
-      "fetched_at": 1791099490,
+      "fetched_at": 1791559453,
       "raw": {
         "main": 8.8,
         "extra": 11.4,
         "complete": 15.7
       },
-      "n_comp": 1696,
+      "n_comp": 1701,
       "comp_grew": true
     },
     "534560": {
@@ -1655399,7 +1655400,7 @@
       "complete": 9.0,
       "avg": 8.3,
       "match": "Until You Fall",
-      "fetched_at": 1791099518,
+      "fetched_at": 1791559477,
       "raw": {
         "main": 7.7,
         "extra": 8.3,
@@ -1659244,7 +1659245,7 @@
       "complete": 8.0,
       "avg": 6.0,
       "match": "Tails Noir",
-      "fetched_at": 1791099390,
+      "fetched_at": 1791559375,
       "raw": {
         "main": 4.6,
         "extra": 5.4,
@@ -1659583,7 +1659584,7 @@
       "complete": 7.2,
       "avg": 5.3,
       "match": "Arise: A Simple Story",
-      "fetched_at": 1791099621,
+      "fetched_at": 1791559559,
       "raw": {
         "main": 4.1,
         "extra": 4.6,
@@ -1678529,7 +1678530,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Wet Girl",
-      "fetched_at": 1791099530,
+      "fetched_at": 1791559488,
       "raw": {
         "main": 0.4,
         "extra": 0.5,
@@ -1693846,13 +1693847,13 @@
       "complete": 13.4,
       "avg": 11.0,
       "match": "ScourgeBringer",
-      "fetched_at": 1791099584,
+      "fetched_at": 1791559531,
       "raw": {
         "main": 8.1,
         "extra": 11.5,
         "complete": 13.4
       },
-      "n_comp": 180
+      "n_comp": 181
     },
     "1037080": {
       "main": null,
@@ -1694473,7 +1694474,7 @@
       "complete": 97.7,
       "avg": 40.8,
       "match": "Trials of Fire",
-      "fetched_at": 1791099563,
+      "fetched_at": 1791559514,
       "raw": {
         "main": 4.3,
         "extra": 20.5,
@@ -1695268,7 +1695269,7 @@
       "complete": 42.4,
       "avg": 28.8,
       "match": "Dreamscaper",
-      "fetched_at": 1791099697,
+      "fetched_at": 1791559609,
       "raw": {
         "main": 14.8,
         "extra": 29.1,
@@ -1697118,13 +1697119,13 @@
       "complete": 16.9,
       "avg": 13.8,
       "match": "Eternights",
-      "fetched_at": 1791099414,
+      "fetched_at": 1791559392,
       "raw": {
         "main": 11.3,
         "extra": 13.1,
         "complete": 16.9
       },
-      "n_comp": 377
+      "n_comp": 378
     },
     "1402120": {
       "main": 7.2,
@@ -1697132,7 +1697133,7 @@
       "complete": 10.2,
       "avg": 8.9,
       "match": "9 Years of Shadows",
-      "fetched_at": 1791099457,
+      "fetched_at": 1791559428,
       "raw": {
         "main": 7.2,
         "extra": 9.2,
@@ -1713831,7 +1713832,7 @@
       "complete": 1.9,
       "avg": 1.8,
       "match": "Ticy Adventure Club",
-      "fetched_at": 1791099553,
+      "fetched_at": 1791559505,
       "raw": {
         "main": 1.6,
         "extra": 1.8,
@@ -1742777,7 +1742778,7 @@
       "complete": 100.7,
       "avg": 74.7,
       "match": "F1 Manager 2023",
-      "fetched_at": 1791099642,
+      "fetched_at": 1791559575,
       "raw": {
         "main": 35.5,
         "extra": 88.0,
@@ -1765966,7 +1765967,7 @@
       "complete": 3.9,
       "avg": 2.9,
       "match": "Class of '09: The Flip Side",
-      "fetched_at": 1791099388,
+      "fetched_at": 1791559374,
       "raw": {
         "main": 1.9,
         "extra": 2.9,
@@ -1777763,7 +1777764,7 @@
       "complete": 17.2,
       "avg": 13.4,
       "match": "Revenge of the Savage Planet",
-      "fetched_at": 1791099387,
+      "fetched_at": 1791559372,
       "raw": {
         "main": 9.3,
         "extra": 13.6,
@@ -1788304,7 +1788305,7 @@
       "complete": 1.2,
       "avg": 1.0,
       "match": "Kota`s New Journey",
-      "fetched_at": 1791099407,
+      "fetched_at": 1791559388,
       "raw": {
         "main": 0.9,
         "extra": 1.0,
@@ -1838268,7 +1838269,7 @@
       "complete": 3.1,
       "avg": 2.5,
       "match": "Sizeable",
-      "fetched_at": 1791099434,
+      "fetched_at": 1791559410,
       "raw": {
         "main": 2.0,
         "extra": 2.4,
