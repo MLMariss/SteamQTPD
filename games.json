@@ -1,5 +1,5 @@
 {
-  "generated_at": 1791556181,
+  "generated_at": 1791556792,
   "count": 131534,
   "games": [
     {
@@ -990,17 +990,17 @@
         "Indie"
       ],
       "last_update_ts": 1307572140,
-      "scraped_at": 1791477009
+      "scraped_at": 1791556253
     },
     {
       "appid": 2590,
       "title": "Alpha Prime",
       "url": "https://store.steampowered.com/app/2590",
       "rating_pct": 56,
-      "review_count": 1526,
+      "review_count": 1527,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 7, 2007",
       "release_ts": 1194393600,
@@ -1008,7 +1008,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477012
+      "scraped_at": 1791556255
     },
     {
       "appid": 2600,
@@ -1155,7 +1155,7 @@
         "Strategy"
       ],
       "last_update_ts": 1499913945,
-      "scraped_at": 1791476976
+      "scraped_at": 1791556219
     },
     {
       "appid": 2800,
@@ -1998,8 +1998,8 @@
       "rating_pct": 74,
       "review_count": 351,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 15, 2009",
       "release_ts": 1239753600,
@@ -2007,7 +2007,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477014
+      "scraped_at": 1791556257
     },
     {
       "appid": 3610,
@@ -2125,8 +2125,8 @@
       "rating_pct": 77,
       "review_count": 592,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 14, 2006",
       "release_ts": 1158192000,
@@ -2134,7 +2134,7 @@
         "Action"
       ],
       "last_update_ts": 1524259581,
-      "scraped_at": 1791476974
+      "scraped_at": 1791556217
     },
     {
       "appid": 3810,
@@ -2345,8 +2345,8 @@
       "rating_pct": 75,
       "review_count": 201,
       "price_initial": 39.99,
-      "price_final": 19.99,
-      "discount_pct": 50,
+      "price_final": 39.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 24, 2006",
       "release_ts": 1164326400,
@@ -2354,7 +2354,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477015
+      "scraped_at": 1791556259
     },
     {
       "appid": 4290,
@@ -2391,7 +2391,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477018
+      "scraped_at": 1791556261
     },
     {
       "appid": 4420,
@@ -2437,8 +2437,8 @@
       "rating_pct": 71,
       "review_count": 110,
       "price_initial": 4.99,
-      "price_final": 0.74,
-      "discount_pct": 85,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 18, 2008",
       "release_ts": 1216339200,
@@ -2446,7 +2446,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477020
+      "scraped_at": 1791556263
     },
     {
       "appid": 4520,
@@ -2901,8 +2901,8 @@
       "rating_pct": 73,
       "review_count": 166,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 21, 2006",
       "release_ts": 1166659200,
@@ -2910,7 +2910,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477022
+      "scraped_at": 1791556266
     },
     {
       "appid": 6220,
@@ -2958,8 +2958,8 @@
       "rating_pct": 46,
       "review_count": 206,
       "price_initial": 3.99,
-      "price_final": 0.79,
-      "discount_pct": 80,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 21, 2007",
       "release_ts": 1190332800,
@@ -2967,7 +2967,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477024
+      "scraped_at": 1791556268
     },
     {
       "appid": 6300,
@@ -3512,10 +3512,10 @@
       "title": "Two Worlds II HD",
       "url": "https://store.steampowered.com/app/7520",
       "rating_pct": 64,
-      "review_count": 7041,
+      "review_count": 7044,
       "price_initial": 24.99,
-      "price_final": 7.49,
-      "discount_pct": 70,
+      "price_final": 24.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Feb 3, 2011",
       "release_ts": 1296691200,
@@ -3523,7 +3523,7 @@
         "RPG"
       ],
       "last_update_ts": 1458928043,
-      "scraped_at": 1791476972
+      "scraped_at": 1791556215
     },
     {
       "appid": 7530,
@@ -3532,8 +3532,8 @@
       "rating_pct": 58,
       "review_count": 792,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 14, 2011",
       "release_ts": 1308009600,
@@ -3541,7 +3541,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477026
+      "scraped_at": 1791556269
     },
     {
       "appid": 7600,
@@ -3749,8 +3749,8 @@
       "rating_pct": 56,
       "review_count": 177,
       "price_initial": 2.99,
-      "price_final": 0.59,
-      "discount_pct": 80,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 6, 2009",
       "release_ts": 1241568000,
@@ -3758,7 +3758,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477028
+      "scraped_at": 1791556272
     },
     {
       "appid": 7860,
@@ -3915,8 +3915,8 @@
       "rating_pct": 69,
       "review_count": 388,
       "price_initial": 0.99,
-      "price_final": 0.54,
-      "discount_pct": 45,
+      "price_final": 0.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 17, 2008",
       "release_ts": 1213660800,
@@ -3924,7 +3924,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477031
+      "scraped_at": 1791556274
     },
     {
       "appid": 8400,
@@ -3973,8 +3973,8 @@
       "rating_pct": 86,
       "review_count": 2750,
       "price_initial": 7.99,
-      "price_final": 3.99,
-      "discount_pct": 50,
+      "price_final": 7.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 15, 2007",
       "release_ts": 1192406400,
@@ -3982,7 +3982,7 @@
         "Racing"
       ],
       "last_update_ts": 1446457111,
-      "scraped_at": 1791476970
+      "scraped_at": 1791556213
     },
     {
       "appid": 8780,
@@ -4081,7 +4081,7 @@
       "title": "Freedom Force",
       "url": "https://store.steampowered.com/app/8880",
       "rating_pct": 56,
-      "review_count": 548,
+      "review_count": 549,
       "price_initial": 4.99,
       "price_final": 1.24,
       "discount_pct": 75,
@@ -4093,7 +4093,7 @@
         "Strategy"
       ],
       "last_update_ts": 1600694186,
-      "scraped_at": 1791477033
+      "scraped_at": 1791556276
     },
     {
       "appid": 8890,
@@ -4139,8 +4139,8 @@
       "rating_pct": 74,
       "review_count": 102,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 6, 2010",
       "release_ts": 1286323200,
@@ -4148,7 +4148,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477034
+      "scraped_at": 1791556278
     },
     {
       "appid": 9010,
@@ -4491,8 +4491,8 @@
       "rating_pct": 53,
       "review_count": 36,
       "price_initial": 5.99,
-      "price_final": 0.89,
-      "discount_pct": 85,
+      "price_final": 5.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 28, 2010",
       "release_ts": 1285632000,
@@ -4500,7 +4500,7 @@
         "Adventure"
       ],
       "last_update_ts": 1339451100,
-      "scraped_at": 1791477037
+      "scraped_at": 1791556280
     },
     {
       "appid": 9970,
@@ -4509,8 +4509,8 @@
       "rating_pct": 18,
       "review_count": 38,
       "price_initial": 9.99,
-      "price_final": 1.49,
-      "discount_pct": 85,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 11, 2011",
       "release_ts": 1305072000,
@@ -4518,7 +4518,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477039
+      "scraped_at": 1791556282
     },
     {
       "appid": 9980,
@@ -4527,8 +4527,8 @@
       "rating_pct": 64,
       "review_count": 90,
       "price_initial": 6.99,
-      "price_final": 1.04,
-      "discount_pct": 85,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 10, 2010",
       "release_ts": 1289347200,
@@ -4536,7 +4536,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477041
+      "scraped_at": 1791556285
     },
     {
       "appid": 10090,
@@ -4599,8 +4599,8 @@
       "rating_pct": 56,
       "review_count": 54,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 23, 2009",
       "release_ts": 1248307200,
@@ -4609,7 +4609,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477043
+      "scraped_at": 1791556286
     },
     {
       "appid": 10130,
@@ -4736,7 +4736,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477045
+      "scraped_at": 1791556288
     },
     {
       "appid": 10250,
@@ -4781,8 +4781,8 @@
       "rating_pct": 72,
       "review_count": 1870,
       "price_initial": 9.99,
-      "price_final": 3.99,
-      "discount_pct": 60,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Feb 14, 2014",
       "release_ts": 1392336000,
@@ -4791,7 +4791,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477047
+      "scraped_at": 1791556291
     },
     {
       "appid": 10460,
@@ -4937,7 +4937,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477050
+      "scraped_at": 1791556293
     },
     {
       "appid": 11140,
@@ -5039,8 +5039,8 @@
       "rating_pct": 50,
       "review_count": 642,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 23, 2008",
       "release_ts": 1224720000,
@@ -5050,7 +5050,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477051
+      "scraped_at": 1791556295
     },
     {
       "appid": 11250,
@@ -5059,8 +5059,8 @@
       "rating_pct": 66,
       "review_count": 73,
       "price_initial": 7.99,
-      "price_final": 1.99,
-      "discount_pct": 75,
+      "price_final": 7.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 24, 2008",
       "release_ts": 1214265600,
@@ -5069,7 +5069,7 @@
         "Strategy"
       ],
       "last_update_ts": 1689693914,
-      "scraped_at": 1791477053
+      "scraped_at": 1791556297
     },
     {
       "appid": 11260,
@@ -5136,8 +5136,8 @@
       "rating_pct": 56,
       "review_count": 397,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 30, 2009",
       "release_ts": 1248912000,
@@ -5146,7 +5146,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477056
+      "scraped_at": 1791556299
     },
     {
       "appid": 11390,
@@ -5155,8 +5155,8 @@
       "rating_pct": 58,
       "review_count": 2484,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 27, 2009",
       "release_ts": 1251331200,
@@ -5166,7 +5166,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477058
+      "scraped_at": 1791556301
     },
     {
       "appid": 11450,
@@ -5490,8 +5490,8 @@
       "rating_pct": 71,
       "review_count": 68,
       "price_initial": 4.99,
-      "price_final": 1.49,
-      "discount_pct": 70,
+      "price_final": 0.99,
+      "discount_pct": 80,
       "is_free": false,
       "release_date": "Jun 16, 2009",
       "release_ts": 1245110400,
@@ -5499,7 +5499,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477060
+      "scraped_at": 1791556304
     },
     {
       "appid": 12450,
@@ -5654,8 +5654,8 @@
       "rating_pct": 78,
       "review_count": 36,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 29, 2008",
       "release_ts": 1217289600,
@@ -5663,7 +5663,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477062
+      "scraped_at": 1791556305
     },
     {
       "appid": 12560,
@@ -5672,8 +5672,8 @@
       "rating_pct": 44,
       "review_count": 50,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 29, 2008",
       "release_ts": 1217289600,
@@ -5681,7 +5681,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477064
+      "scraped_at": 1791556307
     },
     {
       "appid": 12570,
@@ -5690,14 +5690,14 @@
       "rating_pct": 47,
       "review_count": 34,
       "price_initial": 9.99,
-      "price_final": 1.49,
-      "discount_pct": 85,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 29, 2008",
       "release_ts": 1217289600,
       "tags": [],
       "last_update_ts": null,
-      "scraped_at": 1791477066
+      "scraped_at": 1791556310
     },
     {
       "appid": 12580,
@@ -5722,8 +5722,8 @@
       "rating_pct": 55,
       "review_count": 69,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 29, 2008",
       "release_ts": 1217289600,
@@ -5731,7 +5731,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477069
+      "scraped_at": 1791556312
     },
     {
       "appid": 12600,
@@ -5740,8 +5740,8 @@
       "rating_pct": 30,
       "review_count": 56,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 29, 2008",
       "release_ts": 1217289600,
@@ -5749,7 +5749,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477070
+      "scraped_at": 1791556313
     },
     {
       "appid": 12640,
@@ -6491,10 +6491,10 @@
       "title": "Oddworld: Abe's Oddysee®",
       "url": "https://store.steampowered.com/app/15700",
       "rating_pct": 85,
-      "review_count": 4544,
+      "review_count": 4545,
       "price_initial": 2.99,
-      "price_final": 1.01,
-      "discount_pct": 66,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 28, 2008",
       "release_ts": 1219881600,
@@ -6502,7 +6502,7 @@
         "Adventure"
       ],
       "last_update_ts": 1339488900,
-      "scraped_at": 1791477072
+      "scraped_at": 1791556316
     },
     {
       "appid": 15710,
@@ -6714,8 +6714,8 @@
       "rating_pct": 62,
       "review_count": 95,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 31, 2008",
       "release_ts": 1225411200,
@@ -6723,7 +6723,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477075
+      "scraped_at": 1791556318
     },
     {
       "appid": 16030,
@@ -6732,8 +6732,8 @@
       "rating_pct": 75,
       "review_count": 154,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 14, 2008",
       "release_ts": 1226620800,
@@ -6741,7 +6741,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477077
+      "scraped_at": 1791556320
     },
     {
       "appid": 16040,
@@ -6768,8 +6768,8 @@
       "rating_pct": 39,
       "review_count": 108,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 29, 2009",
       "release_ts": 1240963200,
@@ -6777,7 +6777,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477078
+      "scraped_at": 1791556322
     },
     {
       "appid": 16100,
@@ -6947,7 +6947,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477081
+      "scraped_at": 1791556324
     },
     {
       "appid": 16600,
@@ -6987,7 +6987,7 @@
         "Sports"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477083
+      "scraped_at": 1791556326
     },
     {
       "appid": 16710,
@@ -7410,7 +7410,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477085
+      "scraped_at": 1791556329
     },
     {
       "appid": 18020,
@@ -7429,7 +7429,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477087
+      "scraped_at": 1791556331
     },
     {
       "appid": 18040,
@@ -7548,7 +7548,7 @@
         "Strategy"
       ],
       "last_update_ts": 1433517969,
-      "scraped_at": 1791477089
+      "scraped_at": 1791556332
     },
     {
       "appid": 18420,
@@ -7660,7 +7660,7 @@
         "Strategy"
       ],
       "last_update_ts": 1234236524,
-      "scraped_at": 1791477091
+      "scraped_at": 1791556335
     },
     {
       "appid": 18700,
@@ -7834,7 +7834,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477094
+      "scraped_at": 1791556337
     },
     {
       "appid": 19680,
@@ -8806,8 +8806,8 @@
       "rating_pct": 74,
       "review_count": 626,
       "price_initial": 9.99,
-      "price_final": 0.99,
-      "discount_pct": 90,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 17, 2010",
       "release_ts": 1289952000,
@@ -8815,7 +8815,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477096
+      "scraped_at": 1791556339
     },
     {
       "appid": 23150,
@@ -8843,8 +8843,8 @@
       "rating_pct": 64,
       "review_count": 222,
       "price_initial": 5.99,
-      "price_final": 2.39,
-      "discount_pct": 60,
+      "price_final": 5.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 26, 2009",
       "release_ts": 1243296000,
@@ -8852,7 +8852,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477097
+      "scraped_at": 1791556341
     },
     {
       "appid": 23380,
@@ -8861,8 +8861,8 @@
       "rating_pct": 52,
       "review_count": 349,
       "price_initial": 5.99,
-      "price_final": 2.39,
-      "discount_pct": 60,
+      "price_final": 5.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 18, 2009",
       "release_ts": 1258502400,
@@ -8870,7 +8870,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477100
+      "scraped_at": 1791556343
     },
     {
       "appid": 23400,
@@ -9050,8 +9050,8 @@
       "rating_pct": 56,
       "review_count": 328,
       "price_initial": 14.99,
-      "price_final": 3.74,
-      "discount_pct": 75,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 27, 2009",
       "release_ts": 1240790400,
@@ -9059,7 +9059,7 @@
         "Casual"
       ],
       "last_update_ts": 1283987160,
-      "scraped_at": 1791477102
+      "scraped_at": 1791556345
     },
     {
       "appid": 24010,
@@ -9331,10 +9331,10 @@
       "title": "Overgrowth",
       "url": "https://store.steampowered.com/app/25000",
       "rating_pct": 81,
-      "review_count": 9112,
+      "review_count": 9115,
       "price_initial": 19.99,
-      "price_final": 5.99,
-      "discount_pct": 70,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 16, 2017",
       "release_ts": 1508112000,
@@ -9343,7 +9343,7 @@
         "Indie"
       ],
       "last_update_ts": 1635258680,
-      "scraped_at": 1791477104
+      "scraped_at": 1791556348
     },
     {
       "appid": 25010,
@@ -9466,8 +9466,8 @@
       "rating_pct": 55,
       "review_count": 65,
       "price_initial": 9.99,
-      "price_final": 4.99,
-      "discount_pct": 50,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 21, 2011",
       "release_ts": 1295568000,
@@ -9475,7 +9475,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477106
+      "scraped_at": 1791556349
     },
     {
       "appid": 25830,
@@ -9709,8 +9709,8 @@
       "rating_pct": 86,
       "review_count": 1180,
       "price_initial": 19.99,
-      "price_final": 1.99,
-      "discount_pct": 90,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 6, 2009",
       "release_ts": 1241568000,
@@ -9719,7 +9719,7 @@
         "Indie"
       ],
       "last_update_ts": 1321974000,
-      "scraped_at": 1791477108
+      "scraped_at": 1791556351
     },
     {
       "appid": 27000,
@@ -9786,8 +9786,8 @@
       "rating_pct": 54,
       "review_count": 50,
       "price_initial": 19.99,
-      "price_final": 3.99,
-      "discount_pct": 80,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 2, 2009",
       "release_ts": 1238630400,
@@ -9795,7 +9795,7 @@
         "Sports"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477110
+      "scraped_at": 1791556354
     },
     {
       "appid": 27400,
@@ -9804,8 +9804,8 @@
       "rating_pct": 60,
       "review_count": 206,
       "price_initial": 19.99,
-      "price_final": 9.99,
-      "discount_pct": 50,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Feb 23, 2009",
       "release_ts": 1235347200,
@@ -9815,7 +9815,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477113
+      "scraped_at": 1791556356
     },
     {
       "appid": 27800,
@@ -9833,7 +9833,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477114
+      "scraped_at": 1791556358
     },
     {
       "appid": 27810,
@@ -9945,7 +9945,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477116
+      "scraped_at": 1791556360
     },
     {
       "appid": 29130,
@@ -10064,7 +10064,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477119
+      "scraped_at": 1791556362
     },
     {
       "appid": 31100,
@@ -11320,8 +11320,8 @@
       "rating_pct": 35,
       "review_count": 17,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 11, 2009",
       "release_ts": 1252627200,
@@ -11330,7 +11330,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477121
+      "scraped_at": 1791556364
     },
     {
       "appid": 33570,
@@ -11546,8 +11546,8 @@
       "rating_pct": 72,
       "review_count": 247,
       "price_initial": 9.99,
-      "price_final": 3.49,
-      "discount_pct": 65,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 23, 2009",
       "release_ts": 1253664000,
@@ -11555,7 +11555,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477123
+      "scraped_at": 1791556367
     },
     {
       "appid": 33760,
@@ -11600,8 +11600,8 @@
       "rating_pct": 53,
       "review_count": 32,
       "price_initial": 19.99,
-      "price_final": 3.99,
-      "discount_pct": 80,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 9, 2011",
       "release_ts": 1307577600,
@@ -11609,7 +11609,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477125
+      "scraped_at": 1791556368
     },
     {
       "appid": 33930,
@@ -11636,10 +11636,10 @@
       "title": "Fish Fillets 2",
       "url": "https://store.steampowered.com/app/33950",
       "rating_pct": 78,
-      "review_count": 309,
+      "review_count": 310,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2010",
       "release_ts": 1288915200,
@@ -11648,7 +11648,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477127
+      "scraped_at": 1791556370
     },
     {
       "appid": 33980,
@@ -11813,7 +11813,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477129
+      "scraped_at": 1791556373
     },
     {
       "appid": 34600,
@@ -11876,8 +11876,8 @@
       "rating_pct": 69,
       "review_count": 162,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 18, 2009",
       "release_ts": 1245283200,
@@ -11885,7 +11885,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477131
+      "scraped_at": 1791556375
     },
     {
       "appid": 34810,
@@ -11894,8 +11894,8 @@
       "rating_pct": 82,
       "review_count": 214,
       "price_initial": 2.99,
-      "price_final": 0.74,
-      "discount_pct": 75,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 14, 2009",
       "release_ts": 1255478400,
@@ -11904,7 +11904,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477133
+      "scraped_at": 1791556376
     },
     {
       "appid": 34820,
@@ -11996,7 +11996,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477135
+      "scraped_at": 1791556379
     },
     {
       "appid": 35000,
@@ -12024,8 +12024,8 @@
       "rating_pct": 53,
       "review_count": 180,
       "price_initial": 3.99,
-      "price_final": 0.95,
-      "discount_pct": 76,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 1, 2009",
       "release_ts": 1254355200,
@@ -12033,7 +12033,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477138
+      "scraped_at": 1791556381
     },
     {
       "appid": 35130,
@@ -12078,10 +12078,10 @@
       "title": "Warfare",
       "url": "https://store.steampowered.com/app/35300",
       "rating_pct": 86,
-      "review_count": 256,
+      "review_count": 257,
       "price_initial": 12.99,
-      "price_final": 6.49,
-      "discount_pct": 50,
+      "price_final": 12.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 20, 2009",
       "release_ts": 1248048000,
@@ -12089,7 +12089,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477140
+      "scraped_at": 1791556383
     },
     {
       "appid": 35310,
@@ -12098,8 +12098,8 @@
       "rating_pct": 72,
       "review_count": 253,
       "price_initial": 9.99,
-      "price_final": 4.99,
-      "discount_pct": 50,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 20, 2009",
       "release_ts": 1248048000,
@@ -12108,7 +12108,7 @@
         "Racing"
       ],
       "last_update_ts": 1347195600,
-      "scraped_at": 1791477141
+      "scraped_at": 1791556385
     },
     {
       "appid": 35320,
@@ -12117,8 +12117,8 @@
       "rating_pct": 83,
       "review_count": 658,
       "price_initial": 14.99,
-      "price_final": 7.49,
-      "discount_pct": 50,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 24, 2012",
       "release_ts": 1327363200,
@@ -12126,7 +12126,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477144
+      "scraped_at": 1791556387
     },
     {
       "appid": 35450,
@@ -12271,7 +12271,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477146
+      "scraped_at": 1791556389
     },
     {
       "appid": 36000,
@@ -12405,7 +12405,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477148
+      "scraped_at": 1791556392
     },
     {
       "appid": 37240,
@@ -12495,7 +12495,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477150
+      "scraped_at": 1791556394
     },
     {
       "appid": 37310,
@@ -12567,7 +12567,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477152
+      "scraped_at": 1791556395
     },
     {
       "appid": 37360,
@@ -12621,7 +12621,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477154
+      "scraped_at": 1791556398
     },
     {
       "appid": 37390,
@@ -12648,8 +12648,8 @@
       "rating_pct": 80,
       "review_count": 697,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 25, 2009",
       "release_ts": 1251158400,
@@ -12658,7 +12658,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477157
+      "scraped_at": 1791556400
     },
     {
       "appid": 37500,
@@ -12771,7 +12771,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477159
+      "scraped_at": 1791556402
     },
     {
       "appid": 38080,
@@ -13574,8 +13574,8 @@
       "rating_pct": 72,
       "review_count": 405,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 20, 2010",
       "release_ts": 1271721600,
@@ -13583,7 +13583,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477160
+      "scraped_at": 1791556404
     },
     {
       "appid": 39640,
@@ -13722,8 +13722,8 @@
       "rating_pct": 47,
       "review_count": 32,
       "price_initial": 4.99,
-      "price_final": 3.99,
-      "discount_pct": 20,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 26, 2010",
       "release_ts": 1269561600,
@@ -13731,7 +13731,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477163
+      "scraped_at": 1791556406
     },
     {
       "appid": 40100,
@@ -13767,7 +13767,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477165
+      "scraped_at": 1791556408
     },
     {
       "appid": 40210,
@@ -13785,7 +13785,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477167
+      "scraped_at": 1791556411
     },
     {
       "appid": 40300,
@@ -14470,7 +14470,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477169
+      "scraped_at": 1791556412
     },
     {
       "appid": 42120,
@@ -14813,8 +14813,8 @@
       "rating_pct": 65,
       "review_count": 37,
       "price_initial": 1.99,
-      "price_final": 0.59,
-      "discount_pct": 70,
+      "price_final": 1.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 3, 2009",
       "release_ts": 1259798400,
@@ -14822,7 +14822,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477171
+      "scraped_at": 1791556414
     },
     {
       "appid": 42940,
@@ -14976,8 +14976,8 @@
       "rating_pct": 41,
       "review_count": 190,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 19, 2010",
       "release_ts": 1271635200,
@@ -14986,7 +14986,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477173
+      "scraped_at": 1791556417
     },
     {
       "appid": 43600,
@@ -15090,8 +15090,8 @@
       "rating_pct": 82,
       "review_count": 1657,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Feb 3, 2010",
       "release_ts": 1265155200,
@@ -15100,7 +15100,7 @@
         "Indie"
       ],
       "last_update_ts": 1413462861,
-      "scraped_at": 1791477176
+      "scraped_at": 1791556419
     },
     {
       "appid": 45200,
@@ -15569,7 +15569,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477177
+      "scraped_at": 1791556421
     },
     {
       "appid": 46440,
@@ -15876,8 +15876,8 @@
       "rating_pct": 24,
       "review_count": 55,
       "price_initial": 8.99,
-      "price_final": 1.79,
-      "discount_pct": 80,
+      "price_final": 8.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 28, 2010",
       "release_ts": 1272412800,
@@ -15885,7 +15885,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477179
+      "scraped_at": 1791556423
     },
     {
       "appid": 46740,
@@ -15894,8 +15894,8 @@
       "rating_pct": 31,
       "review_count": 126,
       "price_initial": 3.99,
-      "price_final": 0.79,
-      "discount_pct": 80,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 21, 2010",
       "release_ts": 1271808000,
@@ -15903,7 +15903,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477182
+      "scraped_at": 1791556425
     },
     {
       "appid": 46750,
@@ -16023,8 +16023,8 @@
       "rating_pct": 57,
       "review_count": 63,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 20, 2011",
       "release_ts": 1303257600,
@@ -16032,7 +16032,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477184
+      "scraped_at": 1791556427
     },
     {
       "appid": 47110,
@@ -16421,7 +16421,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477186
+      "scraped_at": 1791556430
     },
     {
       "appid": 49000,
@@ -16466,8 +16466,8 @@
       "rating_pct": 53,
       "review_count": 62,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 2, 2010",
       "release_ts": 1288656000,
@@ -16475,7 +16475,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477188
+      "scraped_at": 1791556431
     },
     {
       "appid": 49330,
@@ -17001,10 +17001,10 @@
       "title": "Red Faction®: Armageddon™",
       "url": "https://store.steampowered.com/app/55110",
       "rating_pct": 73,
-      "review_count": 5040,
+      "review_count": 5042,
       "price_initial": 19.99,
-      "price_final": 1.99,
-      "discount_pct": 90,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 6, 2011",
       "release_ts": 1307318400,
@@ -17012,7 +17012,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477190
+      "scraped_at": 1791556433
     },
     {
       "appid": 55140,
@@ -17419,8 +17419,8 @@
       "rating_pct": 68,
       "review_count": 124,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 25, 2011",
       "release_ts": 1295913600,
@@ -17430,7 +17430,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477192
+      "scraped_at": 1791556436
     },
     {
       "appid": 60350,
@@ -17439,8 +17439,8 @@
       "rating_pct": 90,
       "review_count": 184,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 30, 2011",
       "release_ts": 1317340800,
@@ -17450,7 +17450,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477195
+      "scraped_at": 1791556438
     },
     {
       "appid": 60600,
@@ -17534,8 +17534,8 @@
       "rating_pct": 75,
       "review_count": 217,
       "price_initial": 6.99,
-      "price_final": 2.79,
-      "discount_pct": 60,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 29, 2011",
       "release_ts": 1322524800,
@@ -17544,7 +17544,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477196
+      "scraped_at": 1791556439
     },
     {
       "appid": 61500,
@@ -17746,8 +17746,8 @@
       "rating_pct": 78,
       "review_count": 1061,
       "price_initial": 5.99,
-      "price_final": 0.89,
-      "discount_pct": 85,
+      "price_final": 5.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 2, 2010",
       "release_ts": 1291248000,
@@ -17758,7 +17758,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477198
+      "scraped_at": 1791556442
     },
     {
       "appid": 63610,
@@ -17876,7 +17876,7 @@
         "Strategy"
       ],
       "last_update_ts": 1309358520,
-      "scraped_at": 1791477201
+      "scraped_at": 1791556444
     },
     {
       "appid": 63900,
@@ -18004,7 +18004,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477203
+      "scraped_at": 1791556446
     },
     {
       "appid": 65080,
@@ -18088,8 +18088,8 @@
       "rating_pct": 61,
       "review_count": 223,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 4, 2010",
       "release_ts": 1286150400,
@@ -18097,7 +18097,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477204
+      "scraped_at": 1791556448
     },
     {
       "appid": 65530,
@@ -18160,10 +18160,10 @@
       "title": "Gothic 3: Forsaken Gods Enhanced Edition",
       "url": "https://store.steampowered.com/app/65600",
       "rating_pct": 48,
-      "review_count": 1382,
+      "review_count": 1383,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 22, 2011",
       "release_ts": 1300752000,
@@ -18171,7 +18171,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477207
+      "scraped_at": 1791556450
     },
     {
       "appid": 65610,
@@ -18216,8 +18216,8 @@
       "rating_pct": 48,
       "review_count": 1186,
       "price_initial": 32.99,
-      "price_final": 6.59,
-      "discount_pct": 80,
+      "price_final": 32.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 28, 2012",
       "release_ts": 1348790400,
@@ -18226,7 +18226,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477209
+      "scraped_at": 1791556452
     },
     {
       "appid": 65780,
@@ -18909,7 +18909,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477211
+      "scraped_at": 1791556455
     },
     {
       "appid": 80310,
@@ -19312,7 +19312,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477213
+      "scraped_at": 1791556457
     },
     {
       "appid": 92800,
@@ -19340,8 +19340,8 @@
       "rating_pct": 50,
       "review_count": 183,
       "price_initial": 2.99,
-      "price_final": 1.19,
-      "discount_pct": 60,
+      "price_final": 0.8,
+      "discount_pct": 73,
       "is_free": false,
       "release_date": "Feb 23, 2011",
       "release_ts": 1298419200,
@@ -19353,7 +19353,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477215
+      "scraped_at": 1791556458
     },
     {
       "appid": 93200,
@@ -19499,8 +19499,8 @@
       "rating_pct": 76,
       "review_count": 1105,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 29, 2011",
       "release_ts": 1304035200,
@@ -19509,7 +19509,7 @@
         "Indie"
       ],
       "last_update_ts": 1529375670,
-      "scraped_at": 1791477217
+      "scraped_at": 1791556461
     },
     {
       "appid": 95400,
@@ -19557,8 +19557,8 @@
       "rating_pct": 70,
       "review_count": 473,
       "price_initial": 5.99,
-      "price_final": 2.09,
-      "discount_pct": 65,
+      "price_final": 1.49,
+      "discount_pct": 75,
       "is_free": false,
       "release_date": "Sep 30, 2011",
       "release_ts": 1317340800,
@@ -19567,7 +19567,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477220
+      "scraped_at": 1791556463
     },
     {
       "appid": 96000,
@@ -19653,8 +19653,8 @@
       "rating_pct": 55,
       "review_count": 55,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 14, 2013",
       "release_ts": 1363219200,
@@ -19664,7 +19664,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477222
+      "scraped_at": 1791556465
     },
     {
       "appid": 97000,
@@ -19760,7 +19760,7 @@
         "Indie"
       ],
       "last_update_ts": 1397836800,
-      "scraped_at": 1791477223
+      "scraped_at": 1791556467
     },
     {
       "appid": 98200,
@@ -19984,8 +19984,8 @@
       "rating_pct": 32,
       "review_count": 149,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 24, 2012",
       "release_ts": 1348444800,
@@ -19994,7 +19994,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477226
+      "scraped_at": 1791556469
     },
     {
       "appid": 99700,
@@ -20100,7 +20100,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477228
+      "scraped_at": 1791556471
     },
     {
       "appid": 102600,
@@ -20218,7 +20218,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477230
+      "scraped_at": 1791556474
     },
     {
       "appid": 104100,
@@ -20802,7 +20802,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477232
+      "scraped_at": 1791556476
     },
     {
       "appid": 110610,
@@ -20821,7 +20821,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477234
+      "scraped_at": 1791556477
     },
     {
       "appid": 110630,
@@ -20840,7 +20840,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477236
+      "scraped_at": 1791556480
     },
     {
       "appid": 110800,
@@ -20918,7 +20918,7 @@
         "Racing"
       ],
       "last_update_ts": 1349118300,
-      "scraped_at": 1791477239
+      "scraped_at": 1791556482
     },
     {
       "appid": 111300,
@@ -20985,8 +20985,8 @@
       "rating_pct": 78,
       "review_count": 786,
       "price_initial": 4.99,
-      "price_final": 1.99,
-      "discount_pct": 60,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 19, 2011",
       "release_ts": 1313712000,
@@ -20997,7 +20997,7 @@
         "Strategy"
       ],
       "last_update_ts": 1396797085,
-      "scraped_at": 1791477240
+      "scraped_at": 1791556484
     },
     {
       "appid": 112100,
@@ -21289,7 +21289,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477242
+      "scraped_at": 1791556486
     },
     {
       "appid": 200010,
@@ -21317,8 +21317,8 @@
       "rating_pct": 54,
       "review_count": 563,
       "price_initial": 6.99,
-      "price_final": 0.76,
-      "discount_pct": 89,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 26, 2011",
       "release_ts": 1319587200,
@@ -21326,7 +21326,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477245
+      "scraped_at": 1791556488
     },
     {
       "appid": 200080,
@@ -21742,8 +21742,8 @@
       "rating_pct": 88,
       "review_count": 50,
       "price_initial": 19.99,
-      "price_final": 7.99,
-      "discount_pct": 60,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 1, 2006",
       "release_ts": 1162339200,
@@ -21753,7 +21753,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477247
+      "scraped_at": 1791556490
     },
     {
       "appid": 201010,
@@ -22116,7 +22116,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477249
+      "scraped_at": 1791556493
     },
     {
       "appid": 202410,
@@ -22142,7 +22142,7 @@
       "title": "Sonic the Hedgehog 4 - Episode I",
       "url": "https://store.steampowered.com/app/202530",
       "rating_pct": 40,
-      "review_count": 3909,
+      "review_count": 3912,
       "price_initial": 9.99,
       "price_final": 4.99,
       "discount_pct": 50,
@@ -22151,7 +22151,7 @@
       "release_ts": 1326931200,
       "tags": [],
       "last_update_ts": null,
-      "scraped_at": 1791477251
+      "scraped_at": 1791556494
     },
     {
       "appid": 202670,
@@ -22434,7 +22434,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477253
+      "scraped_at": 1791556496
     },
     {
       "appid": 203750,
@@ -22626,7 +22626,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477255
+      "scraped_at": 1791556499
     },
     {
       "appid": 204240,
@@ -22793,8 +22793,8 @@
       "rating_pct": 27,
       "review_count": 365,
       "price_initial": 9.99,
-      "price_final": 1.99,
-      "discount_pct": 80,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 4, 2012",
       "release_ts": 1333497600,
@@ -22804,7 +22804,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477258
+      "scraped_at": 1791556501
     },
     {
       "appid": 204580,
@@ -22813,8 +22813,8 @@
       "rating_pct": 86,
       "review_count": 49,
       "price_initial": 4.99,
-      "price_final": 0.74,
-      "discount_pct": 85,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 11, 2012",
       "release_ts": 1349913600,
@@ -22823,7 +22823,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477259
+      "scraped_at": 1791556502
     },
     {
       "appid": 204630,
@@ -22853,8 +22853,8 @@
       "rating_pct": 72,
       "review_count": 793,
       "price_initial": 7.99,
-      "price_final": 0.79,
-      "discount_pct": 90,
+      "price_final": 7.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 12, 2012",
       "release_ts": 1334188800,
@@ -22863,7 +22863,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477261
+      "scraped_at": 1791556505
     },
     {
       "appid": 204880,
@@ -23182,8 +23182,8 @@
       "rating_pct": 93,
       "review_count": 369,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 1, 2012",
       "release_ts": 1330560000,
@@ -23193,7 +23193,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477264
+      "scraped_at": 1791556507
     },
     {
       "appid": 205840,
@@ -23293,9 +23293,9 @@
       "url": "https://store.steampowered.com/app/206040",
       "rating_pct": 86,
       "review_count": 43,
-      "price_initial": 11.99,
-      "price_final": 4.79,
-      "discount_pct": 60,
+      "price_initial": 4.99,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 11, 2012",
       "release_ts": 1336694400,
@@ -23304,7 +23304,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477266
+      "scraped_at": 1791556509
     },
     {
       "appid": 206060,
@@ -23361,7 +23361,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477267
+      "scraped_at": 1791556511
     },
     {
       "appid": 206250,
@@ -23624,8 +23624,8 @@
       "rating_pct": 92,
       "review_count": 1893,
       "price_initial": 9.99,
-      "price_final": 4.99,
-      "discount_pct": 50,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 12, 2012",
       "release_ts": 1339459200,
@@ -23633,7 +23633,7 @@
         "Indie"
       ],
       "last_update_ts": 1401727927,
-      "scraped_at": 1791477270
+      "scraped_at": 1791556513
     },
     {
       "appid": 207140,
@@ -23684,8 +23684,8 @@
       "rating_pct": 56,
       "review_count": 190,
       "price_initial": 7.99,
-      "price_final": 1.59,
-      "discount_pct": 80,
+      "price_final": 7.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 25, 2012",
       "release_ts": 1335312000,
@@ -23695,7 +23695,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477272
+      "scraped_at": 1791556515
     },
     {
       "appid": 207230,
@@ -23783,8 +23783,8 @@
       "rating_pct": 70,
       "review_count": 1011,
       "price_initial": 2.99,
-      "price_final": 2.24,
-      "discount_pct": 25,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 14, 2012",
       "release_ts": 1331683200,
@@ -23794,7 +23794,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477274
+      "scraped_at": 1791556518
     },
     {
       "appid": 207430,
@@ -23898,8 +23898,8 @@
       "rating_pct": 56,
       "review_count": 750,
       "price_initial": 9.99,
-      "price_final": 4.99,
-      "discount_pct": 50,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 1, 2012",
       "release_ts": 1343779200,
@@ -23909,7 +23909,7 @@
         "Strategy"
       ],
       "last_update_ts": 1780865256,
-      "scraped_at": 1791477277
+      "scraped_at": 1791556520
     },
     {
       "appid": 207670,
@@ -24034,8 +24034,8 @@
       "rating_pct": 69,
       "review_count": 1199,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 16, 2013",
       "release_ts": 1366070400,
@@ -24043,7 +24043,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477278
+      "scraped_at": 1791556521
     },
     {
       "appid": 208110,
@@ -24203,8 +24203,8 @@
       "rating_pct": 67,
       "review_count": 156,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 28, 2012",
       "release_ts": 1332892800,
@@ -24213,7 +24213,7 @@
         "Casual"
       ],
       "last_update_ts": 1394488567,
-      "scraped_at": 1791477280
+      "scraped_at": 1791556524
     },
     {
       "appid": 208630,
@@ -24222,8 +24222,8 @@
       "rating_pct": 75,
       "review_count": 128,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 28, 2012",
       "release_ts": 1332892800,
@@ -24232,7 +24232,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477283
+      "scraped_at": 1791556526
     },
     {
       "appid": 208640,
@@ -24241,8 +24241,8 @@
       "rating_pct": 87,
       "review_count": 99,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 28, 2012",
       "release_ts": 1332892800,
@@ -24251,7 +24251,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477285
+      "scraped_at": 1791556528
     },
     {
       "appid": 208650,
@@ -24308,7 +24308,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477286
+      "scraped_at": 1791556530
     },
     {
       "appid": 208730,
@@ -24656,7 +24656,7 @@
         "Casual"
       ],
       "last_update_ts": 1345050037,
-      "scraped_at": 1791477289
+      "scraped_at": 1791556532
     },
     {
       "appid": 209730,
@@ -24665,8 +24665,8 @@
       "rating_pct": 51,
       "review_count": 843,
       "price_initial": 4.99,
-      "price_final": 0.74,
-      "discount_pct": 85,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 11, 2012",
       "release_ts": 1349913600,
@@ -24675,7 +24675,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477291
+      "scraped_at": 1791556534
     },
     {
       "appid": 209750,
@@ -24684,8 +24684,8 @@
       "rating_pct": 54,
       "review_count": 184,
       "price_initial": 14.99,
-      "price_final": 7.49,
-      "discount_pct": 50,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 6, 2012",
       "release_ts": 1344211200,
@@ -24693,7 +24693,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477293
+      "scraped_at": 1791556537
     },
     {
       "appid": 209790,
@@ -24754,7 +24754,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477295
+      "scraped_at": 1791556538
     },
     {
       "appid": 209950,
@@ -24929,7 +24929,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477297
+      "scraped_at": 1791556540
     },
     {
       "appid": 211180,
@@ -25026,7 +25026,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477299
+      "scraped_at": 1791556543
     },
     {
       "appid": 211400,
@@ -25053,7 +25053,7 @@
       "title": "Adventures of Shuggy",
       "url": "https://store.steampowered.com/app/211440",
       "rating_pct": 85,
-      "review_count": 1211,
+      "review_count": 1212,
       "price_initial": 4.99,
       "price_final": 4.99,
       "discount_pct": 0,
@@ -25064,7 +25064,7 @@
         "Indie"
       ],
       "last_update_ts": 1446232965,
-      "scraped_at": 1791477302
+      "scraped_at": 1791556545
     },
     {
       "appid": 211500,
@@ -25240,7 +25240,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477303
+      "scraped_at": 1791556547
     },
     {
       "appid": 212010,
@@ -25504,7 +25504,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477305
+      "scraped_at": 1791556549
     },
     {
       "appid": 212780,
@@ -25544,7 +25544,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477308
+      "scraped_at": 1791556551
     },
     {
       "appid": 213030,
@@ -25895,8 +25895,8 @@
       "rating_pct": 77,
       "review_count": 321,
       "price_initial": 7.99,
-      "price_final": 3.19,
-      "discount_pct": 60,
+      "price_final": 7.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 27, 2012",
       "release_ts": 1348704000,
@@ -25904,7 +25904,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477310
+      "scraped_at": 1791556553
     },
     {
       "appid": 214590,
@@ -26087,10 +26087,10 @@
       "title": "Intrusion 2",
       "url": "https://store.steampowered.com/app/214970",
       "rating_pct": 90,
-      "review_count": 2330,
+      "review_count": 2331,
       "price_initial": 9.99,
-      "price_final": 2.29,
-      "discount_pct": 77,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 11, 2012",
       "release_ts": 1347321600,
@@ -26099,7 +26099,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477312
+      "scraped_at": 1791556556
     },
     {
       "appid": 215080,
@@ -26331,8 +26331,8 @@
       "rating_pct": 79,
       "review_count": 1442,
       "price_initial": 14.99,
-      "price_final": 2.99,
-      "discount_pct": 80,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 30, 2013",
       "release_ts": 1367280000,
@@ -26341,7 +26341,7 @@
         "Indie"
       ],
       "last_update_ts": 1674310810,
-      "scraped_at": 1791477314
+      "scraped_at": 1791556557
     },
     {
       "appid": 215710,
@@ -26370,8 +26370,8 @@
       "rating_pct": 54,
       "review_count": 127,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 4, 2012",
       "release_ts": 1346716800,
@@ -26381,7 +26381,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477316
+      "scraped_at": 1791556559
     },
     {
       "appid": 215790,
@@ -26446,9 +26446,9 @@
       "url": "https://store.steampowered.com/app/216090",
       "rating_pct": 87,
       "review_count": 629,
-      "price_initial": 11.99,
-      "price_final": 2.39,
-      "discount_pct": 80,
+      "price_initial": 9.99,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 14, 2013",
       "release_ts": 1363219200,
@@ -26458,7 +26458,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477318
+      "scraped_at": 1791556562
     },
     {
       "appid": 216130,
@@ -26641,8 +26641,8 @@
       "rating_pct": 77,
       "review_count": 79,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 3, 2012",
       "release_ts": 1346630400,
@@ -26650,7 +26650,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477321
+      "scraped_at": 1791556564
     },
     {
       "appid": 217100,
@@ -26734,8 +26734,8 @@
       "rating_pct": 71,
       "review_count": 396,
       "price_initial": 3.99,
-      "price_final": 0.79,
-      "discount_pct": 80,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 3, 2012",
       "release_ts": 1354492800,
@@ -26745,7 +26745,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477322
+      "scraped_at": 1791556565
     },
     {
       "appid": 217290,
@@ -26970,8 +26970,8 @@
       "rating_pct": 73,
       "review_count": 1241,
       "price_initial": 11.99,
-      "price_final": 2.39,
-      "discount_pct": 80,
+      "price_final": 11.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 27, 2012",
       "release_ts": 1348704000,
@@ -26980,7 +26980,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477324
+      "scraped_at": 1791556568
     },
     {
       "appid": 218620,
@@ -27068,8 +27068,8 @@
       "rating_pct": 71,
       "review_count": 155,
       "price_initial": 13.99,
-      "price_final": 4.61,
-      "discount_pct": 67,
+      "price_final": 13.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 7, 2013",
       "release_ts": 1357516800,
@@ -27078,7 +27078,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477327
+      "scraped_at": 1791556570
     },
     {
       "appid": 218740,
@@ -27625,8 +27625,8 @@
       "rating_pct": 84,
       "review_count": 3941,
       "price_initial": 4.99,
-      "price_final": 1.09,
-      "discount_pct": 78,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 25, 2012",
       "release_ts": 1348531200,
@@ -27636,7 +27636,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477329
+      "scraped_at": 1791556572
     },
     {
       "appid": 220900,
@@ -27657,7 +27657,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477331
+      "scraped_at": 1791556574
     },
     {
       "appid": 221020,
@@ -28223,8 +28223,8 @@
       "rating_pct": 86,
       "review_count": 314,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 24, 2012",
       "release_ts": 1351036800,
@@ -28233,7 +28233,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477333
+      "scraped_at": 1791556576
     },
     {
       "appid": 223100,
@@ -28443,8 +28443,8 @@
       "rating_pct": 87,
       "review_count": 515,
       "price_initial": 9.99,
-      "price_final": 0.99,
-      "discount_pct": 90,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 9, 2012",
       "release_ts": 1352419200,
@@ -28454,7 +28454,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477335
+      "scraped_at": 1791556578
     },
     {
       "appid": 223750,
@@ -28965,8 +28965,8 @@
       "rating_pct": 57,
       "review_count": 2551,
       "price_initial": 19.99,
-      "price_final": 4.99,
-      "discount_pct": 75,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 2, 2013",
       "release_ts": 1364860800,
@@ -28975,7 +28975,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477337
+      "scraped_at": 1791556581
     },
     {
       "appid": 225540,
@@ -29064,8 +29064,8 @@
       "rating_pct": 66,
       "review_count": 624,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 19, 2013",
       "release_ts": 1363651200,
@@ -29076,7 +29076,7 @@
         "Strategy"
       ],
       "last_update_ts": 1416506547,
-      "scraped_at": 1791477339
+      "scraped_at": 1791556583
     },
     {
       "appid": 226280,
@@ -29258,8 +29258,8 @@
       "rating_pct": 69,
       "review_count": 625,
       "price_initial": 14.99,
-      "price_final": 7.49,
-      "discount_pct": 50,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 18, 2013",
       "release_ts": 1379462400,
@@ -29269,7 +29269,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477341
+      "scraped_at": 1791556584
     },
     {
       "appid": 227000,
@@ -29831,8 +29831,8 @@
       "rating_pct": 62,
       "review_count": 545,
       "price_initial": 2.99,
-      "price_final": 0.74,
-      "discount_pct": 75,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 28, 2013",
       "release_ts": 1364428800,
@@ -29842,7 +29842,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477343
+      "scraped_at": 1791556587
     },
     {
       "appid": 229560,
@@ -30023,10 +30023,10 @@
       "title": "Incredipede",
       "url": "https://store.steampowered.com/app/230150",
       "rating_pct": 73,
-      "review_count": 364,
+      "review_count": 365,
       "price_initial": 9.99,
-      "price_final": 3.99,
-      "discount_pct": 60,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 18, 2013",
       "release_ts": 1363564800,
@@ -30038,7 +30038,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477346
+      "scraped_at": 1791556589
     },
     {
       "appid": 230190,
@@ -30708,8 +30708,8 @@
       "rating_pct": 47,
       "review_count": 782,
       "price_initial": 19.99,
-      "price_final": 4.99,
-      "discount_pct": 75,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 28, 2013",
       "release_ts": 1364428800,
@@ -30717,7 +30717,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477348
+      "scraped_at": 1791556591
     },
     {
       "appid": 232970,
@@ -31315,8 +31315,8 @@
       "rating_pct": 82,
       "review_count": 170,
       "price_initial": 9.99,
-      "price_final": 3.29,
-      "discount_pct": 67,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 13, 2013",
       "release_ts": 1368403200,
@@ -31324,7 +31324,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477349
+      "scraped_at": 1791556593
     },
     {
       "appid": 234370,
@@ -31333,8 +31333,8 @@
       "rating_pct": 30,
       "review_count": 93,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 18, 2013",
       "release_ts": 1363564800,
@@ -31344,7 +31344,7 @@
         "Indie"
       ],
       "last_update_ts": 1405098018,
-      "scraped_at": 1791477352
+      "scraped_at": 1791556595
     },
     {
       "appid": 234390,
@@ -31522,7 +31522,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477354
+      "scraped_at": 1791556597
     },
     {
       "appid": 235210,
@@ -31768,7 +31768,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477356
+      "scraped_at": 1791556600
     },
     {
       "appid": 235800,
@@ -31946,7 +31946,7 @@
         "Casual"
       ],
       "last_update_ts": 1370546627,
-      "scraped_at": 1791477358
+      "scraped_at": 1791556601
     },
     {
       "appid": 236370,
@@ -32170,8 +32170,8 @@
       "rating_pct": 49,
       "review_count": 78,
       "price_initial": 9.99,
-      "price_final": 0.99,
-      "discount_pct": 90,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 28, 2013",
       "release_ts": 1372377600,
@@ -32179,7 +32179,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477360
+      "scraped_at": 1791556603
     },
     {
       "appid": 237310,
@@ -32432,8 +32432,8 @@
       "rating_pct": 66,
       "review_count": 538,
       "price_initial": 6.99,
-      "price_final": 1.39,
-      "discount_pct": 80,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 6, 2014",
       "release_ts": 1388966400,
@@ -32442,7 +32442,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477362
+      "scraped_at": 1791556606
     },
     {
       "appid": 237970,
@@ -32451,8 +32451,8 @@
       "rating_pct": 69,
       "review_count": 143,
       "price_initial": 24.99,
-      "price_final": 4.99,
-      "discount_pct": 80,
+      "price_final": 24.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 13, 2014",
       "release_ts": 1399939200,
@@ -32461,7 +32461,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477365
+      "scraped_at": 1791556608
     },
     {
       "appid": 237990,
@@ -32762,8 +32762,8 @@
       "rating_pct": 46,
       "review_count": 329,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 23, 2013",
       "release_ts": 1369267200,
@@ -32773,7 +32773,7 @@
         "Strategy"
       ],
       "last_update_ts": 1405097768,
-      "scraped_at": 1791477367
+      "scraped_at": 1791556610
     },
     {
       "appid": 238910,
@@ -32800,10 +32800,10 @@
       "title": "7 Grand Steps: What Ancients Begat",
       "url": "https://store.steampowered.com/app/238930",
       "rating_pct": 54,
-      "review_count": 771,
+      "review_count": 770,
       "price_initial": 19.99,
-      "price_final": 9.99,
-      "discount_pct": 50,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 7, 2013",
       "release_ts": 1370563200,
@@ -32814,7 +32814,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477368
+      "scraped_at": 1791556612
     },
     {
       "appid": 238960,
@@ -33569,8 +33569,8 @@
       "rating_pct": 62,
       "review_count": 454,
       "price_initial": 14.99,
-      "price_final": 1.49,
-      "discount_pct": 90,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 24, 2013",
       "release_ts": 1372032000,
@@ -33581,7 +33581,7 @@
         "Racing"
       ],
       "last_update_ts": 1383058839,
-      "scraped_at": 1791477371
+      "scraped_at": 1791556614
     },
     {
       "appid": 242130,
@@ -33610,8 +33610,8 @@
       "rating_pct": 68,
       "review_count": 456,
       "price_initial": 9.99,
-      "price_final": 1.99,
-      "discount_pct": 80,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 29, 2013",
       "release_ts": 1377734400,
@@ -33619,7 +33619,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477373
+      "scraped_at": 1791556616
     },
     {
       "appid": 242550,
@@ -33917,7 +33917,7 @@
       "title": "Daikatana",
       "url": "https://store.steampowered.com/app/242980",
       "rating_pct": 53,
-      "review_count": 1175,
+      "review_count": 1178,
       "price_initial": 6.99,
       "price_final": 0.97,
       "discount_pct": 86,
@@ -33928,7 +33928,7 @@
         "Action"
       ],
       "last_update_ts": 1779288245,
-      "scraped_at": 1791477375
+      "scraped_at": 1791556619
     },
     {
       "appid": 243000,
@@ -34143,7 +34143,7 @@
       "title": "PixelJunk™ Monsters Ultimate",
       "url": "https://store.steampowered.com/app/243780",
       "rating_pct": 81,
-      "review_count": 1318,
+      "review_count": 1319,
       "price_initial": 9.99,
       "price_final": 9.99,
       "discount_pct": 0,
@@ -34154,7 +34154,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477377
+      "scraped_at": 1791556620
     },
     {
       "appid": 243800,
@@ -34298,8 +34298,8 @@
       "rating_pct": 63,
       "review_count": 463,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -34308,7 +34308,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477379
+      "scraped_at": 1791556622
     },
     {
       "appid": 244160,
@@ -34427,7 +34427,7 @@
         "Sports"
       ],
       "last_update_ts": 1416157783,
-      "scraped_at": 1791477381
+      "scraped_at": 1791556625
     },
     {
       "appid": 244690,
@@ -34597,9 +34597,9 @@
       "url": "https://store.steampowered.com/app/244890",
       "rating_pct": 75,
       "review_count": 284,
-      "price_initial": 13.99,
-      "price_final": 1.39,
-      "discount_pct": 90,
+      "price_initial": 9.99,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 12, 2013",
       "release_ts": 1386806400,
@@ -34608,7 +34608,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477384
+      "scraped_at": 1791556627
     },
     {
       "appid": 244910,
@@ -34647,7 +34647,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477385
+      "scraped_at": 1791556628
     },
     {
       "appid": 245010,
@@ -35033,7 +35033,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477387
+      "scraped_at": 1791556631
     },
     {
       "appid": 246420,
@@ -35119,8 +35119,8 @@
       "rating_pct": 35,
       "review_count": 81,
       "price_initial": 6.99,
-      "price_final": 1.74,
-      "discount_pct": 75,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 15, 2014",
       "release_ts": 1405382400,
@@ -35130,7 +35130,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477390
+      "scraped_at": 1791556633
     },
     {
       "appid": 246740,
@@ -35252,7 +35252,7 @@
         "Early Access"
       ],
       "last_update_ts": 1436824848,
-      "scraped_at": 1791477392
+      "scraped_at": 1791556635
     },
     {
       "appid": 246900,
@@ -35508,7 +35508,7 @@
         "Indie"
       ],
       "last_update_ts": 1384538462,
-      "scraped_at": 1791477393
+      "scraped_at": 1791556637
     },
     {
       "appid": 247430,
@@ -35821,7 +35821,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477396
+      "scraped_at": 1791556639
     },
     {
       "appid": 248510,
@@ -36210,8 +36210,8 @@
       "rating_pct": 49,
       "review_count": 380,
       "price_initial": 3.99,
-      "price_final": 1.99,
-      "discount_pct": 50,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 29, 2014",
       "release_ts": 1390953600,
@@ -36221,7 +36221,7 @@
         "Strategy"
       ],
       "last_update_ts": 1510785109,
-      "scraped_at": 1791477398
+      "scraped_at": 1791556641
     },
     {
       "appid": 249590,
@@ -36351,8 +36351,8 @@
       "rating_pct": 48,
       "review_count": 63,
       "price_initial": 19.99,
-      "price_final": 7.99,
-      "discount_pct": 60,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 18, 2013",
       "release_ts": 1379462400,
@@ -36360,7 +36360,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477400
+      "scraped_at": 1791556644
     },
     {
       "appid": 249950,
@@ -37059,8 +37059,8 @@
       "rating_pct": 57,
       "review_count": 366,
       "price_initial": 14.99,
-      "price_final": 2.24,
-      "discount_pct": 85,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 16, 2013",
       "release_ts": 1381881600,
@@ -37069,7 +37069,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477402
+      "scraped_at": 1791556646
     },
     {
       "appid": 251370,
@@ -37202,7 +37202,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477404
+      "scraped_at": 1791556647
     },
     {
       "appid": 251530,
@@ -37559,8 +37559,8 @@
       "rating_pct": 11,
       "review_count": 312,
       "price_initial": 6.99,
-      "price_final": 0.83,
-      "discount_pct": 88,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 28, 2014",
       "release_ts": 1395964800,
@@ -37568,14 +37568,14 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477406
+      "scraped_at": 1791556650
     },
     {
       "appid": 252070,
       "title": "Gimbal",
       "url": "https://store.steampowered.com/app/252070",
       "rating_pct": 72,
-      "review_count": 244,
+      "review_count": 243,
       "price_initial": 14.99,
       "price_final": 14.99,
       "discount_pct": 0,
@@ -37587,7 +37587,7 @@
         "Indie"
       ],
       "last_update_ts": 1425744725,
-      "scraped_at": 1791477409
+      "scraped_at": 1791556652
     },
     {
       "appid": 252090,
@@ -38097,8 +38097,8 @@
       "rating_pct": 78,
       "review_count": 244,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -38108,7 +38108,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477411
+      "scraped_at": 1791556654
     },
     {
       "appid": 252750,
@@ -38117,8 +38117,8 @@
       "rating_pct": 89,
       "review_count": 329,
       "price_initial": 9.99,
-      "price_final": 1.49,
-      "discount_pct": 85,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 8, 2014",
       "release_ts": 1404777600,
@@ -38130,7 +38130,7 @@
         "Strategy"
       ],
       "last_update_ts": 1703271750,
-      "scraped_at": 1791477412
+      "scraped_at": 1791556656
     },
     {
       "appid": 252830,
@@ -38209,7 +38209,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477415
+      "scraped_at": 1791556658
     },
     {
       "appid": 252970,
@@ -38695,8 +38695,8 @@
       "rating_pct": 68,
       "review_count": 668,
       "price_initial": 6.99,
-      "price_final": 3.49,
-      "discount_pct": 50,
+      "price_final": 6.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 15, 2013",
       "release_ts": 1384473600,
@@ -38704,7 +38704,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477417
+      "scraped_at": 1791556660
     },
     {
       "appid": 253880,
@@ -39167,8 +39167,8 @@
       "rating_pct": 69,
       "review_count": 16,
       "price_initial": 4.99,
-      "price_final": 1.49,
-      "discount_pct": 70,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 3, 2019",
       "release_ts": 1575331200,
@@ -39176,7 +39176,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477419
+      "scraped_at": 1791556663
     },
     {
       "appid": 254920,
@@ -39242,8 +39242,8 @@
       "rating_pct": 63,
       "review_count": 2536,
       "price_initial": 14.99,
-      "price_final": 2.99,
-      "discount_pct": 80,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 15, 2014",
       "release_ts": 1405382400,
@@ -39253,7 +39253,7 @@
         "Indie"
       ],
       "last_update_ts": 1444937358,
-      "scraped_at": 1791477421
+      "scraped_at": 1791556665
     },
     {
       "appid": 255163,
@@ -39271,7 +39271,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477423
+      "scraped_at": 1791556666
     },
     {
       "appid": 255260,
@@ -39375,8 +39375,8 @@
       "rating_pct": 67,
       "review_count": 773,
       "price_initial": 9.99,
-      "price_final": 2.99,
-      "discount_pct": 70,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 20, 2014",
       "release_ts": 1390176000,
@@ -39385,7 +39385,7 @@
         "Indie"
       ],
       "last_update_ts": 1700492423,
-      "scraped_at": 1791477425
+      "scraped_at": 1791556669
     },
     {
       "appid": 255390,
@@ -39992,8 +39992,8 @@
       "rating_pct": 64,
       "review_count": 103,
       "price_initial": 9.99,
-      "price_final": 0.99,
-      "discount_pct": 90,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 18, 2013",
       "release_ts": 1384732800,
@@ -40003,7 +40003,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477428
+      "scraped_at": 1791556671
     },
     {
       "appid": 257790,
@@ -40182,7 +40182,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477430
+      "scraped_at": 1791556673
     },
     {
       "appid": 258090,
@@ -40231,8 +40231,8 @@
       "rating_pct": 64,
       "review_count": 1070,
       "price_initial": 9.99,
-      "price_final": 1.99,
-      "discount_pct": 80,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 13, 2013",
       "release_ts": 1384300800,
@@ -40241,7 +40241,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477432
+      "scraped_at": 1791556675
     },
     {
       "appid": 258520,
@@ -40269,8 +40269,8 @@
       "rating_pct": 71,
       "review_count": 41,
       "price_initial": 24.99,
-      "price_final": 9.99,
-      "discount_pct": 60,
+      "price_final": 24.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 10, 2014",
       "release_ts": 1397088000,
@@ -40278,7 +40278,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477434
+      "scraped_at": 1791556677
     },
     {
       "appid": 258760,
@@ -40872,7 +40872,7 @@
         "Indie"
       ],
       "last_update_ts": 1395070179,
-      "scraped_at": 1791477436
+      "scraped_at": 1791556679
     },
     {
       "appid": 259870,
@@ -40913,7 +40913,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477438
+      "scraped_at": 1791556682
     },
     {
       "appid": 259940,
@@ -40922,8 +40922,8 @@
       "rating_pct": 87,
       "review_count": 107,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -40933,7 +40933,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477440
+      "scraped_at": 1791556683
     },
     {
       "appid": 259960,
@@ -40962,8 +40962,8 @@
       "rating_pct": 89,
       "review_count": 178,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -40973,7 +40973,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477442
+      "scraped_at": 1791556685
     },
     {
       "appid": 260000,
@@ -40982,8 +40982,8 @@
       "rating_pct": 61,
       "review_count": 97,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -40993,7 +40993,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477444
+      "scraped_at": 1791556688
     },
     {
       "appid": 260020,
@@ -41002,8 +41002,8 @@
       "rating_pct": 62,
       "review_count": 60,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -41013,7 +41013,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477447
+      "scraped_at": 1791556690
     },
     {
       "appid": 260040,
@@ -41022,8 +41022,8 @@
       "rating_pct": 70,
       "review_count": 71,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -41033,7 +41033,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477448
+      "scraped_at": 1791556692
     },
     {
       "appid": 260060,
@@ -41042,8 +41042,8 @@
       "rating_pct": 71,
       "review_count": 80,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 5, 2013",
       "release_ts": 1383609600,
@@ -41053,7 +41053,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477450
+      "scraped_at": 1791556694
     },
     {
       "appid": 260080,
@@ -41245,7 +41245,7 @@
         "Strategy"
       ],
       "last_update_ts": 1393186348,
-      "scraped_at": 1791477453
+      "scraped_at": 1791556696
     },
     {
       "appid": 260410,
@@ -41265,7 +41265,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477455
+      "scraped_at": 1791556698
     },
     {
       "appid": 260430,
@@ -41295,8 +41295,8 @@
       "rating_pct": 16,
       "review_count": 108,
       "price_initial": 3.99,
-      "price_final": 0.79,
-      "discount_pct": 80,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 18, 2013",
       "release_ts": 1384732800,
@@ -41304,7 +41304,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477456
+      "scraped_at": 1791556700
     },
     {
       "appid": 260530,
@@ -41371,8 +41371,8 @@
       "rating_pct": 69,
       "review_count": 303,
       "price_initial": 4.99,
-      "price_final": 1.24,
-      "discount_pct": 75,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 8, 2014",
       "release_ts": 1389139200,
@@ -41380,7 +41380,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477459
+      "scraped_at": 1791556702
     },
     {
       "appid": 260690,
@@ -41463,8 +41463,8 @@
       "rating_pct": 82,
       "review_count": 773,
       "price_initial": 14.99,
-      "price_final": 11.24,
-      "discount_pct": 25,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 3, 2014",
       "release_ts": 1401753600,
@@ -41474,7 +41474,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477461
+      "scraped_at": 1791556704
     },
     {
       "appid": 260930,
@@ -41586,7 +41586,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477463
+      "scraped_at": 1791556707
     },
     {
       "appid": 261530,
@@ -41807,7 +41807,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477465
+      "scraped_at": 1791556709
     },
     {
       "appid": 261960,
@@ -41827,7 +41827,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477467
+      "scraped_at": 1791556710
     },
     {
       "appid": 262000,
@@ -41884,7 +41884,7 @@
         "Indie"
       ],
       "last_update_ts": 1396734709,
-      "scraped_at": 1791477469
+      "scraped_at": 1791556713
     },
     {
       "appid": 262100,
@@ -42005,7 +42005,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477472
+      "scraped_at": 1791556715
     },
     {
       "appid": 262260,
@@ -42053,8 +42053,8 @@
       "rating_pct": 62,
       "review_count": 56,
       "price_initial": 29.99,
-      "price_final": 14.99,
-      "discount_pct": 50,
+      "price_final": 29.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 31, 2012",
       "release_ts": 1338422400,
@@ -42064,7 +42064,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477474
+      "scraped_at": 1791556717
     },
     {
       "appid": 262370,
@@ -42178,8 +42178,8 @@
       "rating_pct": 59,
       "review_count": 76,
       "price_initial": 9.99,
-      "price_final": 2.49,
-      "discount_pct": 75,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jun 9, 2016",
       "release_ts": 1465430400,
@@ -42188,7 +42188,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477475
+      "scraped_at": 1791556719
     },
     {
       "appid": 262550,
@@ -42337,8 +42337,8 @@
       "rating_pct": 56,
       "review_count": 189,
       "price_initial": 11.99,
-      "price_final": 2.39,
-      "discount_pct": 80,
+      "price_final": 11.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 8, 2017",
       "release_ts": 1512691200,
@@ -42347,7 +42347,7 @@
         "Indie"
       ],
       "last_update_ts": 1542825466,
-      "scraped_at": 1791477478
+      "scraped_at": 1791556721
     },
     {
       "appid": 262830,
@@ -42434,8 +42434,8 @@
       "rating_pct": 56,
       "review_count": 41,
       "price_initial": 14.99,
-      "price_final": 1.49,
-      "discount_pct": 90,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 22, 2014",
       "release_ts": 1411344000,
@@ -42444,7 +42444,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477480
+      "scraped_at": 1791556723
     },
     {
       "appid": 262940,
@@ -42613,8 +42613,8 @@
       "rating_pct": 40,
       "review_count": 186,
       "price_initial": 2.99,
-      "price_final": 1.49,
-      "discount_pct": 50,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 3, 2013",
       "release_ts": 1386028800,
@@ -42624,7 +42624,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477482
+      "scraped_at": 1791556726
     },
     {
       "appid": 263180,
@@ -42724,7 +42724,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477484
+      "scraped_at": 1791556727
     },
     {
       "appid": 263360,
@@ -42773,8 +42773,8 @@
       "rating_pct": 87,
       "review_count": 543,
       "price_initial": 9.99,
-      "price_final": 4.99,
-      "discount_pct": 50,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 10, 2014",
       "release_ts": 1389312000,
@@ -42784,7 +42784,7 @@
         "Strategy"
       ],
       "last_update_ts": 1395248379,
-      "scraped_at": 1791477486
+      "scraped_at": 1791556729
     },
     {
       "appid": 263420,
@@ -43055,8 +43055,8 @@
       "rating_pct": 10,
       "review_count": 20,
       "price_initial": 9.99,
-      "price_final": 1.99,
-      "discount_pct": 80,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 12, 2013",
       "release_ts": 1386806400,
@@ -43064,7 +43064,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477488
+      "scraped_at": 1791556732
     },
     {
       "appid": 263820,
@@ -43542,7 +43542,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477491
+      "scraped_at": 1791556734
     },
     {
       "appid": 264560,
@@ -43571,8 +43571,8 @@
       "rating_pct": 52,
       "review_count": 135,
       "price_initial": 4.99,
-      "price_final": 1.74,
-      "discount_pct": 65,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 15, 2014",
       "release_ts": 1397520000,
@@ -43581,7 +43581,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477492
+      "scraped_at": 1791556736
     },
     {
       "appid": 264690,
@@ -43626,10 +43626,10 @@
       "title": "Deadly 30",
       "url": "https://store.steampowered.com/app/264730",
       "rating_pct": 77,
-      "review_count": 1876,
+      "review_count": 1877,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 8, 2014",
       "release_ts": 1389139200,
@@ -43638,7 +43638,7 @@
         "Indie"
       ],
       "last_update_ts": 1390851155,
-      "scraped_at": 1791477494
+      "scraped_at": 1791556738
     },
     {
       "appid": 265000,
@@ -43697,7 +43697,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477497
+      "scraped_at": 1791556740
     },
     {
       "appid": 265210,
@@ -43736,7 +43736,7 @@
         "Strategy"
       ],
       "last_update_ts": 1457120243,
-      "scraped_at": 1791477499
+      "scraped_at": 1791556742
     },
     {
       "appid": 265300,
@@ -43918,8 +43918,8 @@
       "rating_pct": 67,
       "review_count": 12,
       "price_initial": 12.99,
-      "price_final": 6.49,
-      "discount_pct": 50,
+      "price_final": 12.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 4, 2019",
       "release_ts": 1554336000,
@@ -43931,7 +43931,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477512
+      "scraped_at": 1791556745
     },
     {
       "appid": 265750,
@@ -43959,8 +43959,8 @@
       "rating_pct": 60,
       "review_count": 121,
       "price_initial": 1.99,
-      "price_final": 0.99,
-      "discount_pct": 50,
+      "price_final": 1.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Aug 1, 2014",
       "release_ts": 1406851200,
@@ -43969,7 +43969,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477513
+      "scraped_at": 1791556746
     },
     {
       "appid": 265810,
@@ -44217,8 +44217,8 @@
       "rating_pct": 80,
       "review_count": 1255,
       "price_initial": 14.99,
-      "price_final": 3.74,
-      "discount_pct": 75,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 4, 2014",
       "release_ts": 1393891200,
@@ -44227,7 +44227,7 @@
         "Indie"
       ],
       "last_update_ts": 1637776523,
-      "scraped_at": 1791477516
+      "scraped_at": 1791556748
     },
     {
       "appid": 266130,
@@ -44337,8 +44337,8 @@
       "rating_pct": 91,
       "review_count": 131,
       "price_initial": 3.99,
-      "price_final": 1.99,
-      "discount_pct": 50,
+      "price_final": 3.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Feb 26, 2014",
       "release_ts": 1393372800,
@@ -44347,7 +44347,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477518
+      "scraped_at": 1791556751
     },
     {
       "appid": 266270,
@@ -44553,8 +44553,8 @@
       "rating_pct": 68,
       "review_count": 28,
       "price_initial": 5.99,
-      "price_final": 0.89,
-      "discount_pct": 85,
+      "price_final": 5.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 26, 2014",
       "release_ts": 1416960000,
@@ -44562,7 +44562,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477520
+      "scraped_at": 1791556753
     },
     {
       "appid": 267060,
@@ -44612,8 +44612,8 @@
       "rating_pct": 72,
       "review_count": 344,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 11, 2014",
       "release_ts": 1397174400,
@@ -44623,7 +44623,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477522
+      "scraped_at": 1791556754
     },
     {
       "appid": 267360,
@@ -44632,8 +44632,8 @@
       "rating_pct": 91,
       "review_count": 485,
       "price_initial": 9.99,
-      "price_final": 8.49,
-      "discount_pct": 15,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 6, 2013",
       "release_ts": 1386288000,
@@ -44641,7 +44641,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477524
+      "scraped_at": 1791556757
     },
     {
       "appid": 267390,
@@ -44715,7 +44715,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477526
+      "scraped_at": 1791556759
     },
     {
       "appid": 267670,
@@ -44733,7 +44733,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477529
+      "scraped_at": 1791556761
     },
     {
       "appid": 267730,
@@ -44779,8 +44779,8 @@
       "rating_pct": 81,
       "review_count": 1140,
       "price_initial": 2.99,
-      "price_final": 0.74,
-      "discount_pct": 75,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 16, 2014",
       "release_ts": 1389830400,
@@ -44788,7 +44788,7 @@
         "Action"
       ],
       "last_update_ts": 1777642161,
-      "scraped_at": 1791477530
+      "scraped_at": 1791556764
     },
     {
       "appid": 267940,
@@ -44797,8 +44797,8 @@
       "rating_pct": 28,
       "review_count": 470,
       "price_initial": 2.99,
-      "price_final": 0.74,
-      "discount_pct": 75,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 23, 2014",
       "release_ts": 1390435200,
@@ -44807,7 +44807,7 @@
         "Racing"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477532
+      "scraped_at": 1791556765
     },
     {
       "appid": 267960,
@@ -44834,8 +44834,8 @@
       "rating_pct": 77,
       "review_count": 476,
       "price_initial": 2.99,
-      "price_final": 0.74,
-      "discount_pct": 75,
+      "price_final": 2.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 30, 2014",
       "release_ts": 1391040000,
@@ -44843,7 +44843,7 @@
         "Strategy"
       ],
       "last_update_ts": 1777642167,
-      "scraped_at": 1791477535
+      "scraped_at": 1791556767
     },
     {
       "appid": 268050,
@@ -44930,8 +44930,8 @@
       "rating_pct": 85,
       "review_count": 793,
       "price_initial": 4.99,
-      "price_final": 0.79,
-      "discount_pct": 84,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 15, 2014",
       "release_ts": 1397520000,
@@ -44941,7 +44941,7 @@
         "Indie"
       ],
       "last_update_ts": 1398701409,
-      "scraped_at": 1791477537
+      "scraped_at": 1791556770
     },
     {
       "appid": 268320,
@@ -45025,8 +45025,8 @@
       "rating_pct": 53,
       "review_count": 74,
       "price_initial": 9.99,
-      "price_final": 0.99,
-      "discount_pct": 90,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 15, 2014",
       "release_ts": 1400112000,
@@ -45036,7 +45036,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477539
+      "scraped_at": 1791556772
     },
     {
       "appid": 268540,
@@ -45139,7 +45139,7 @@
         "Indie"
       ],
       "last_update_ts": 1541695682,
-      "scraped_at": 1791477541
+      "scraped_at": 1791556773
     },
     {
       "appid": 268870,
@@ -45710,10 +45710,10 @@
       "title": "Tumblestone",
       "url": "https://store.steampowered.com/app/269710",
       "rating_pct": 77,
-      "review_count": 1976,
+      "review_count": 1975,
       "price_initial": 24.99,
-      "price_final": 6.24,
-      "discount_pct": 75,
+      "price_final": 24.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 12, 2016",
       "release_ts": 1468281600,
@@ -45724,7 +45724,7 @@
         "Strategy"
       ],
       "last_update_ts": 1629494674,
-      "scraped_at": 1791477543
+      "scraped_at": 1791556776
     },
     {
       "appid": 269770,
@@ -45773,8 +45773,8 @@
       "rating_pct": 55,
       "review_count": 101,
       "price_initial": 19.99,
-      "price_final": 4.99,
-      "discount_pct": 75,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 28, 2021",
       "release_ts": 1627430400,
@@ -45784,7 +45784,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477545
+      "scraped_at": 1791556778
     },
     {
       "appid": 269890,
@@ -45920,7 +45920,7 @@
         "Indie"
       ],
       "last_update_ts": 1446987750,
-      "scraped_at": 1791477548
+      "scraped_at": 1791556780
     },
     {
       "appid": 270110,
@@ -45950,8 +45950,8 @@
       "rating_pct": 83,
       "review_count": 1524,
       "price_initial": 14.99,
-      "price_final": 7.49,
-      "discount_pct": 50,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 5, 2016",
       "release_ts": 1459814400,
@@ -45961,7 +45961,7 @@
         "Indie"
       ],
       "last_update_ts": 1489174962,
-      "scraped_at": 1791477549
+      "scraped_at": 1791556782
     },
     {
       "appid": 270150,
@@ -46048,8 +46048,8 @@
       "rating_pct": 84,
       "review_count": 157,
       "price_initial": 19.99,
-      "price_final": 9.99,
-      "discount_pct": 50,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Nov 6, 2015",
       "release_ts": 1446768000,
@@ -46059,7 +46059,7 @@
         "Indie"
       ],
       "last_update_ts": 1495574202,
-      "scraped_at": 1791477551
+      "scraped_at": 1791556784
     },
     {
       "appid": 270270,
@@ -46098,7 +46098,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477554
+      "scraped_at": 1791556786
     },
     {
       "appid": 270330,
@@ -46118,7 +46118,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477556
+      "scraped_at": 1791556789
     },
     {
       "appid": 270430,
@@ -46260,7 +46260,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477557
+      "scraped_at": 1791556790
     },
     {
       "appid": 270610,
@@ -46319,7 +46319,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791477560
+      "scraped_at": 1791556792
     },
     {
       "appid": 270760,
@@ -58914,8 +58914,8 @@
       "rating_pct": 74,
       "review_count": 3447,
       "price_initial": 4.99,
-      "price_final": 0.99,
-      "discount_pct": 80,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "May 9, 2014",
       "release_ts": 1399593600,
@@ -58926,7 +58926,7 @@
         "Strategy"
       ],
       "last_update_ts": 1459557631,
-      "scraped_at": 1791476999
+      "scraped_at": 1791556242
     },
     {
       "appid": 297060,
@@ -61610,7 +61610,7 @@
         "Strategy"
       ],
       "last_update_ts": 1780957514,
-      "scraped_at": 1791477001
+      "scraped_at": 1791556244
     },
     {
       "appid": 301760,
@@ -75373,8 +75373,8 @@
       "rating_pct": 74,
       "review_count": 543,
       "price_initial": 9.99,
-      "price_final": 1.99,
-      "discount_pct": 80,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 23, 2015",
       "release_ts": 1437609600,
@@ -75383,7 +75383,7 @@
         "Indie"
       ],
       "last_update_ts": 1452899295,
-      "scraped_at": 1791476987
+      "scraped_at": 1791556230
     },
     {
       "appid": 327070,
@@ -126438,8 +126438,8 @@
       "rating_pct": 88,
       "review_count": 69,
       "price_initial": 4.99,
-      "price_final": 3.24,
-      "discount_pct": 35,
+      "price_final": 4.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Sep 25, 2015",
       "release_ts": 1443139200,
@@ -126448,7 +126448,7 @@
         "Indie"
       ],
       "last_update_ts": 1769863020,
-      "scraped_at": 1791477003
+      "scraped_at": 1791556247
     },
     {
       "appid": 399230,
@@ -233609,8 +233609,8 @@
       "rating_pct": 88,
       "review_count": 24,
       "price_initial": 8.99,
-      "price_final": 4.49,
-      "discount_pct": 50,
+      "price_final": 8.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Dec 13, 2016",
       "release_ts": 1481587200,
@@ -233619,7 +233619,7 @@
         "Indie"
       ],
       "last_update_ts": 1490285604,
-      "scraped_at": 1791476984
+      "scraped_at": 1791556228
     },
     {
       "appid": 567890,
@@ -365979,8 +365979,8 @@
       "rating_pct": 73,
       "review_count": 601,
       "price_initial": 29.99,
-      "price_final": 8.99,
-      "discount_pct": 70,
+      "price_final": 29.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 8, 2018",
       "release_ts": 1520467200,
@@ -365991,7 +365991,7 @@
         "Strategy"
       ],
       "last_update_ts": 1702047838,
-      "scraped_at": 1791476982
+      "scraped_at": 1791556225
     },
     {
       "appid": 761040,
@@ -651567,8 +651567,8 @@
       "rating_pct": 50,
       "review_count": 114,
       "price_initial": 9.99,
-      "price_final": 7.99,
-      "discount_pct": 20,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jul 8, 2022",
       "release_ts": 1657238400,
@@ -651581,7 +651581,7 @@
         "Strategy"
       ],
       "last_update_ts": 1657562125,
-      "scraped_at": 1791476978
+      "scraped_at": 1791556222
     },
     {
       "appid": 1163960,
@@ -959894,8 +959894,8 @@
       "rating_pct": 78,
       "review_count": 76,
       "price_initial": 19.99,
-      "price_final": 5.99,
-      "discount_pct": 70,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 21, 2021",
       "release_ts": 1634774400,
@@ -959903,7 +959903,7 @@
         "Strategy"
       ],
       "last_update_ts": 1656993380,
-      "scraped_at": 1791476995
+      "scraped_at": 1791556238
     },
     {
       "appid": 1607100,
@@ -985912,8 +985912,8 @@
       "rating_pct": 79,
       "review_count": 519,
       "price_initial": 19.99,
-      "price_final": 9.99,
-      "discount_pct": 50,
+      "price_final": 19.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 13, 2023",
       "release_ts": 1681344000,
@@ -985923,7 +985923,7 @@
         "RPG"
       ],
       "last_update_ts": 1770715190,
-      "scraped_at": 1791476993
+      "scraped_at": 1791556236
     },
     {
       "appid": 1649790,
@@ -1187498,8 +1187498,8 @@
       "rating_pct": 70,
       "review_count": 130,
       "price_initial": 9.99,
-      "price_final": 3.99,
-      "discount_pct": 60,
+      "price_final": 9.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Apr 25, 2024",
       "release_ts": 1714003200,
@@ -1187511,7 +1187511,7 @@
         "Strategy"
       ],
       "last_update_ts": 1715170031,
-      "scraped_at": 1791476990
+      "scraped_at": 1791556234
     },
     {
       "appid": 1959530,
@@ -1312241,8 +1312241,8 @@
       "rating_pct": 82,
       "review_count": 55,
       "price_initial": 14.99,
-      "price_final": 7.49,
-      "discount_pct": 50,
+      "price_final": 14.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Jan 9, 2023",
       "release_ts": 1673222400,
@@ -1312250,7 +1312250,7 @@
         "Casual"
       ],
       "last_update_ts": 1685571053,
-      "scraped_at": 1791476988
+      "scraped_at": 1791556232
     },
     {
       "appid": 2178890,
@@ -1347888,7 +1347888,7 @@
         "Free To Play"
       ],
       "last_update_ts": 1763588717,
-      "scraped_at": 1791477005
+      "scraped_at": 1791556249
     },
     {
       "appid": 2233770,
@@ -1871062,7 +1871062,7 @@
         "Indie"
       ],
       "last_update_ts": 1750024239,
-      "scraped_at": 1791476997
+      "scraped_at": 1791556241
     },
     {
       "appid": 3151030,
@@ -1883161,8 +1883161,8 @@
       "rating_pct": 84,
       "review_count": 38,
       "price_initial": 8.99,
-      "price_final": 4.13,
-      "discount_pct": 54,
+      "price_final": 8.99,
+      "discount_pct": 0,
       "is_free": false,
       "release_date": "Mar 7, 2025",
       "release_ts": 1741305600,
@@ -1883173,7 +1883173,7 @@
         "Strategy"
       ],
       "last_update_ts": 1748920773,
-      "scraped_at": 1791477007
+      "scraped_at": 1791556250
     },
     {
       "appid": 3174170,
@@ -2032372,7 +2032372,7 @@
         "Early Access"
       ],
       "last_update_ts": 1761584447,
-      "scraped_at": 1791476981
+      "scraped_at": 1791556223
     },
     {
       "appid": 3467540,
@@ -2537691,7 +2537691,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791512851
+      "scraped_at": 1791556211
     },
     {
       "appid": 4815350,
@@ -2598763,7 +2598763,7 @@
         "Indie"
       ],
       "last_update_ts": 1791244608,
-      "scraped_at": 1791469588
+      "scraped_at": 1791556209
     },
     {
       "appid": 5087530,
@@ -2603234,7 +2603234,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791512849
+      "scraped_at": 1791556206
     },
     {
       "appid": 5117120,
@@ -2607488,7 +2607488,7 @@
         "Indie"
       ],
       "last_update_ts": 1791462545,
-      "scraped_at": 1791469582
+      "scraped_at": 1791556205
     },
     {
       "appid": 5156430,
@@ -2616057,7 +2616057,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791512847
+      "scraped_at": 1791556203
     },
     {
       "appid": 5251580,
@@ -2616197,7 +2616197,7 @@
         "Free To Play"
       ],
       "last_update_ts": 1791059400,
-      "scraped_at": 1791512844
+      "scraped_at": 1791556200
     },
     {
       "appid": 5254070,
@@ -2616338,7 +2616338,7 @@
         "Simulation"
       ],
       "last_update_ts": 1791141557,
-      "scraped_at": 1791512843
+      "scraped_at": 1791556198
     },
     {
       "appid": 5256480,
@@ -2616357,7 +2616357,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791512841
+      "scraped_at": 1791556196
     },
     {
       "appid": 5256950,
@@ -2616667,7 +2616667,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791512838
+      "scraped_at": 1791556194
     },
     {
       "appid": 5261780,
@@ -2616768,7 +2616768,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791512836
+      "scraped_at": 1791556192
     },
     {
       "appid": 5265230,
