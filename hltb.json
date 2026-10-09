@@ -1,6 +1,6 @@
 {
-  "generated_at": 1791530483,
-  "count": 131498,
+  "generated_at": 1791555894,
+  "count": 131525,
   "hltb": {
     "10": {
       "main": 25.4,
@@ -346780,20 +346780,19 @@
     "4200560": {
       "main": 0.6,
       "extra": 0.8,
-      "complete": 1.2,
-      "avg": 0.9,
+      "complete": 3.0,
+      "avg": 1.5,
       "match": "Stitchlings",
-      "fetched_at": 1790689160,
+      "fetched_at": 1791555650,
       "raw": {
         "main": 0.6,
         "extra": null,
-        "complete": null
+        "complete": 3.0
       },
       "est": [
-        "extra",
-        "complete"
+        "extra"
       ],
-      "n_comp": 3
+      "n_comp": 4
     },
     "4200720": {
       "main": null,
@@ -566326,7 +566325,7 @@
       "complete": 10.5,
       "avg": 8.2,
       "match": "KilaFlow",
-      "fetched_at": 1790325555,
+      "fetched_at": 1791555879,
       "raw": {
         "main": null,
         "extra": 7.9,
@@ -575893,11 +575892,11 @@
     },
     "2655960": {
       "main": 18.5,
-      "extra": 30.3,
+      "extra": 30.2,
       "complete": 49.9,
       "avg": 32.9,
       "match": "Lust Academy - Season 3",
-      "fetched_at": 1790325375,
+      "fetched_at": 1791555695,
       "raw": {
         "main": null,
         "extra": null,
@@ -588119,7 +588118,7 @@
       "complete": 1.8,
       "avg": 1.4,
       "match": "Churn Vector",
-      "fetched_at": 1790689161,
+      "fetched_at": 1791555653,
       "raw": {
         "main": null,
         "extra": null,
@@ -597604,10 +597603,10 @@
     "2708790": {
       "main": 1.4,
       "extra": 1.9,
-      "complete": 2.7,
+      "complete": 2.8,
       "avg": 2.0,
       "match": "Together After Dark",
-      "fetched_at": 1790325353,
+      "fetched_at": 1791555668,
       "raw": {
         "main": 1.4,
         "extra": null,
@@ -604201,7 +604200,7 @@
       "complete": 0.9,
       "avg": 0.8,
       "match": "HER TREES: THE PUZZLE HOUSE",
-      "fetched_at": 1790689157,
+      "fetched_at": 1791555646,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -619893,7 +619892,7 @@
       "complete": 3.8,
       "avg": 3.1,
       "match": "ENTITY: THE BLACK DAY",
-      "fetched_at": 1790689166,
+      "fetched_at": 1791555651,
       "raw": {
         "main": null,
         "extra": null,
@@ -648056,10 +648055,10 @@
     "2425130": {
       "main": 1.8,
       "extra": 2.4,
-      "complete": 3.5,
+      "complete": 3.6,
       "avg": 2.6,
       "match": "Hacked: The Streamer",
-      "fetched_at": 1790325410,
+      "fetched_at": 1791555730,
       "raw": {
         "main": 1.8,
         "extra": null,
@@ -676930,7 +676929,7 @@
       "complete": 8.8,
       "avg": 6.4,
       "match": "With Eyes Closed - Season 1",
-      "fetched_at": 1790325434,
+      "fetched_at": 1791555761,
       "raw": {
         "main": 4.5,
         "extra": null,
@@ -882947,7 +882946,7 @@
       "complete": 7.5,
       "avg": 5.5,
       "match": "Before The Night",
-      "fetched_at": 1790325349,
+      "fetched_at": 1791555660,
       "raw": {
         "main": 3.8,
         "extra": null,
@@ -883183,7 +883182,7 @@
       "complete": 0.6,
       "avg": 0.6,
       "match": "Cute Cats 2",
-      "fetched_at": 1790325525,
+      "fetched_at": 1791555848,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -883682,7 +883681,7 @@
       "complete": 0.6,
       "avg": 0.5,
       "match": "Cow Girls",
-      "fetched_at": 1790325404,
+      "fetched_at": 1791555728,
       "raw": {
         "main": null,
         "extra": null,
@@ -887014,7 +887013,7 @@
       "complete": 5.0,
       "avg": 4.4,
       "match": "Chicken Journey",
-      "fetched_at": 1790325351,
+      "fetched_at": 1791555663,
       "raw": {
         "main": null,
         "extra": 4.5,
@@ -888489,7 +888488,7 @@
       "complete": 10.0,
       "avg": 6.1,
       "match": "Apocalyptic Vibes",
-      "fetched_at": 1790325414,
+      "fetched_at": 1791555739,
       "raw": {
         "main": 3.6,
         "extra": null,
@@ -888498,7 +888497,7 @@
       "est": [
         "extra"
       ],
-      "n_comp": 6
+      "n_comp": 7
     },
     "1840620": {
       "main": null,
@@ -889039,7 +889038,7 @@
       "complete": 12.3,
       "avg": 8.0,
       "match": "Queen's Loyalty",
-      "fetched_at": 1790325460,
+      "fetched_at": 1791555785,
       "raw": {
         "main": 5.0,
         "extra": null,
@@ -889529,7 +889528,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "NeuraGun",
-      "fetched_at": 1790325477,
+      "fetched_at": 1791555817,
       "raw": {
         "main": null,
         "extra": null,
@@ -889594,7 +889593,7 @@
       "complete": 35.2,
       "avg": 23.2,
       "match": "Station Manager",
-      "fetched_at": 1790325537,
+      "fetched_at": 1791555828,
       "raw": {
         "main": null,
         "extra": null,
@@ -889612,7 +889611,7 @@
       "complete": 3.9,
       "avg": 2.9,
       "match": "Nightmare: The Lunatic",
-      "fetched_at": 1790325454,
+      "fetched_at": 1791555782,
       "raw": {
         "main": 2.0,
         "extra": null,
@@ -889858,7 +889857,7 @@
       "complete": 1.4,
       "avg": 1.2,
       "match": "RUKIMIN's Disappointing Adventure!",
-      "fetched_at": 1790325397,
+      "fetched_at": 1791555716,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -890739,20 +890738,20 @@
     },
     "1845670": {
       "main": 11.9,
-      "extra": 13.8,
-      "complete": 19.7,
-      "avg": 15.1,
+      "extra": 12.2,
+      "complete": 17.4,
+      "avg": 13.8,
       "match": "Islands of the Caliph",
-      "fetched_at": 1790325450,
+      "fetched_at": 1791555775,
       "raw": {
         "main": 11.9,
-        "extra": 13.8,
+        "extra": 12.2,
         "complete": null
       },
       "est": [
         "complete"
       ],
-      "n_comp": 7
+      "n_comp": 8
     },
     "1845700": {
       "main": null,
@@ -891448,10 +891447,10 @@
     "1847150": {
       "main": 28.0,
       "extra": 50.5,
-      "complete": 82.8,
+      "complete": 82.9,
       "avg": 53.8,
       "match": "Touhou Genso Wanderer -FORESIGHT-",
-      "fetched_at": 1790325426,
+      "fetched_at": 1791555754,
       "raw": {
         "main": null,
         "extra": 50.5,
@@ -892181,7 +892180,7 @@
       "complete": 1.0,
       "avg": 0.7,
       "match": "Fruit Salad",
-      "fetched_at": 1790325420,
+      "fetched_at": 1791555745,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -892919,7 +892918,7 @@
       "complete": 1.1,
       "avg": 0.9,
       "match": "Neko Maid",
-      "fetched_at": 1790325421,
+      "fetched_at": 1791555747,
       "raw": {
         "main": null,
         "extra": null,
@@ -893602,7 +893601,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Happy's Humble Burger Barn",
-      "fetched_at": 1790325372,
+      "fetched_at": 1791555692,
       "raw": {
         "main": 0.5,
         "extra": 0.6,
@@ -893738,7 +893737,7 @@
       "complete": 13.8,
       "avg": 9.7,
       "match": "River Tails: Stronger Together",
-      "fetched_at": 1790325506,
+      "fetched_at": 1791555825,
       "raw": {
         "main": 5.7,
         "extra": 9.7,
@@ -894225,7 +894224,7 @@
       "complete": 1.9,
       "avg": 1.7,
       "match": "SPACE ACCIDENT",
-      "fetched_at": 1790325429,
+      "fetched_at": 1791555700,
       "raw": {
         "main": 1.4,
         "extra": null,
@@ -897198,10 +897197,10 @@
     "1859370": {
       "main": 4.9,
       "extra": 6.5,
-      "complete": 9.6,
+      "complete": 9.7,
       "avg": 7.0,
       "match": "Dream House Days DX",
-      "fetched_at": 1790325423,
+      "fetched_at": 1791555750,
       "raw": {
         "main": 4.9,
         "extra": null,
@@ -898886,7 +898885,7 @@
       "complete": 1.7,
       "avg": 1.4,
       "match": "Bash the Teacher!",
-      "fetched_at": 1790325394,
+      "fetched_at": 1791555713,
       "raw": {
         "main": null,
         "extra": null,
@@ -899006,7 +899005,7 @@
       "complete": 10.4,
       "avg": 8.1,
       "match": "Beat Invaders",
-      "fetched_at": 1790325532,
+      "fetched_at": 1791555858,
       "raw": {
         "main": null,
         "extra": 7.8,
@@ -900144,7 +900143,7 @@
       "complete": 14.3,
       "avg": 10.5,
       "match": "Gensokyo Odyssey",
-      "fetched_at": 1790325390,
+      "fetched_at": 1791555701,
       "raw": {
         "main": null,
         "extra": 10.0,
@@ -900518,10 +900517,10 @@
     "1866630": {
       "main": 4.0,
       "extra": 5.3,
-      "complete": 7.8,
+      "complete": 7.9,
       "avg": 5.7,
       "match": "Throne of Bone",
-      "fetched_at": 1790325411,
+      "fetched_at": 1791555735,
       "raw": {
         "main": 4.0,
         "extra": null,
@@ -900697,7 +900696,7 @@
       "complete": 22.1,
       "avg": 17.4,
       "match": "Worlds of Aria",
-      "fetched_at": 1790325417,
+      "fetched_at": 1791555741,
       "raw": {
         "main": 14.5,
         "extra": 15.5,
@@ -900819,7 +900818,7 @@
       "complete": 3.2,
       "avg": 2.4,
       "match": "Wordle 5",
-      "fetched_at": 1790325427,
+      "fetched_at": 1791555756,
       "raw": {
         "main": 1.7,
         "extra": null,
@@ -903539,7 +903538,7 @@
       "complete": 6.9,
       "avg": 5.0,
       "match": "Luckitown",
-      "fetched_at": 1790325457,
+      "fetched_at": 1791555784,
       "raw": {
         "main": 3.5,
         "extra": null,
@@ -904410,7 +904409,7 @@
       "complete": 0.4,
       "avg": 0.4,
       "match": "Elf World Adventure: Part 1",
-      "fetched_at": 1790325344,
+      "fetched_at": 1791555656,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -904427,7 +904426,7 @@
       "complete": 0.9,
       "avg": 0.8,
       "match": "Secret Series: BJ",
-      "fetched_at": 1790325530,
+      "fetched_at": 1791555857,
       "raw": {
         "main": null,
         "extra": 0.9,
@@ -905253,19 +905252,19 @@
     "1876850": {
       "main": 2.2,
       "extra": 2.8,
-      "complete": 3.0,
-      "avg": 2.7,
+      "complete": 4.0,
+      "avg": 3.0,
       "match": "Babushka's Glitch Dungeon Crystal",
-      "fetched_at": 1790325464,
+      "fetched_at": 1791555791,
       "raw": {
         "main": null,
         "extra": 2.8,
-        "complete": 3.0
+        "complete": 4.0
       },
       "est": [
         "main"
       ],
-      "n_comp": 11
+      "n_comp": 12
     },
     "1876910": {
       "main": null,
@@ -905810,7 +905809,7 @@
       "complete": 1.6,
       "avg": 1.2,
       "match": "Roma Invicta",
-      "fetched_at": 1790325472,
+      "fetched_at": 1791555800,
       "raw": {
         "main": 0.8,
         "extra": null,
@@ -907006,7 +907005,7 @@
       "complete": 14.3,
       "avg": 9.4,
       "match": "Tuition Academia",
-      "fetched_at": 1790325406,
+      "fetched_at": 1791555729,
       "raw": {
         "main": 3.8,
         "extra": 10.0,
@@ -907761,11 +907760,11 @@
     },
     "1882240": {
       "main": 21.0,
-      "extra": 30.5,
+      "extra": 30.4,
       "complete": 27.5,
       "avg": 26.3,
       "match": "Forgotten Realms: The Archives - Collection One",
-      "fetched_at": 1790325445,
+      "fetched_at": 1791555771,
       "raw": {
         "main": 21.0,
         "extra": null,
@@ -907796,7 +907795,7 @@
       "complete": 20.0,
       "avg": 12.9,
       "match": "Forgotten Realms: The Archives - Collection Two",
-      "fetched_at": 1790325453,
+      "fetched_at": 1791555778,
       "raw": {
         "main": 8.0,
         "extra": null,
@@ -907921,7 +907920,7 @@
       "complete": 1.1,
       "avg": 1.2,
       "match": "FALL GIRLS",
-      "fetched_at": 1790325533,
+      "fetched_at": 1791555809,
       "raw": {
         "main": 1.1,
         "extra": null,
@@ -908898,7 +908897,7 @@
       "complete": 4.1,
       "avg": 2.9,
       "match": "Skala",
-      "fetched_at": 1790325422,
+      "fetched_at": 1791555748,
       "raw": {
         "main": 2.0,
         "extra": null,
@@ -909488,7 +909487,7 @@
       "complete": 9.5,
       "avg": 7.7,
       "match": "Neon Sundown",
-      "fetched_at": 1790325360,
+      "fetched_at": 1791555676,
       "raw": {
         "main": null,
         "extra": null,
@@ -909593,7 +909592,7 @@
       "complete": 15.7,
       "avg": 11.6,
       "match": "Old Coin Pusher Friends",
-      "fetched_at": 1790325384,
+      "fetched_at": 1791555705,
       "raw": {
         "main": null,
         "extra": 11.0,
@@ -909848,7 +909847,7 @@
       "complete": 11.3,
       "avg": 5.6,
       "match": "My Singing Monsters Playground",
-      "fetched_at": 1790325424,
+      "fetched_at": 1791555751,
       "raw": {
         "main": 2.3,
         "extra": null,
@@ -910371,7 +910370,7 @@
       "complete": 7.1,
       "avg": 5.2,
       "match": "Eyes of Hellfire",
-      "fetched_at": 1790325459,
+      "fetched_at": 1791555781,
       "raw": {
         "main": 3.6,
         "extra": null,
@@ -911626,7 +911625,7 @@
       "complete": 12.8,
       "avg": 9.5,
       "match": "YuuYuu Jiteki no Yuukarin",
-      "fetched_at": 1790325451,
+      "fetched_at": 1791555776,
       "raw": {
         "main": 6.8,
         "extra": 9.0,
@@ -911904,7 +911903,7 @@
       "complete": 8.9,
       "avg": 6.8,
       "match": "Yamafuda! 2nd station",
-      "fetched_at": 1790325461,
+      "fetched_at": 1791555788,
       "raw": {
         "main": 4.7,
         "extra": 6.7,
@@ -914200,7 +914199,7 @@
       "complete": 11.4,
       "avg": 6.6,
       "match": "Viral Firar",
-      "fetched_at": 1790325495,
+      "fetched_at": 1791555813,
       "raw": {
         "main": 0.5,
         "extra": 8.0,
@@ -914262,7 +914261,7 @@
       "complete": 11.8,
       "avg": 8.5,
       "match": "Love Season",
-      "fetched_at": 1790325385,
+      "fetched_at": 1791555706,
       "raw": {
         "main": null,
         "extra": null,
@@ -916052,10 +916051,10 @@
     "1736550": {
       "main": 9.9,
       "extra": 13.1,
-      "complete": 19.2,
+      "complete": 19.3,
       "avg": 14.1,
       "match": "Deflector",
-      "fetched_at": 1790325403,
+      "fetched_at": 1791555726,
       "raw": {
         "main": 9.9,
         "extra": null,
@@ -917087,7 +917086,7 @@
       "complete": 12.1,
       "avg": 8.9,
       "match": "Bone's Cafe",
-      "fetched_at": 1790325398,
+      "fetched_at": 1791555723,
       "raw": {
         "main": null,
         "extra": 8.5,
@@ -917433,7 +917432,7 @@
       "complete": 2.8,
       "avg": 2.2,
       "match": "Blood And Zombies",
-      "fetched_at": 1790325357,
+      "fetched_at": 1791555666,
       "raw": {
         "main": null,
         "extra": null,
@@ -917518,14 +917517,14 @@
       "attempts": 6
     },
     "1740070": {
-      "main": 2.1,
-      "extra": 2.8,
-      "complete": 4.1,
-      "avg": 3.0,
+      "main": 2.5,
+      "extra": 3.3,
+      "complete": 4.9,
+      "avg": 3.6,
       "match": "Heliopedia",
-      "fetched_at": 1790325526,
+      "fetched_at": 1791555850,
       "raw": {
-        "main": 2.1,
+        "main": 2.5,
         "extra": null,
         "complete": null
       },
@@ -917533,7 +917532,7 @@
         "extra",
         "complete"
       ],
-      "n_comp": 9
+      "n_comp": 10
     },
     "1740080": {
       "main": null,
@@ -918595,7 +918594,7 @@
       "complete": 7.0,
       "avg": 4.2,
       "match": "My Newborn Life In A Harem",
-      "fetched_at": 1790325412,
+      "fetched_at": 1791555736,
       "raw": {
         "main": 2.4,
         "extra": null,
@@ -920031,7 +920030,7 @@
       "complete": 2.0,
       "avg": 1.4,
       "match": "Phantom Project",
-      "fetched_at": 1790325500,
+      "fetched_at": 1791555819,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -920184,7 +920183,7 @@
       "complete": 9.2,
       "avg": 7.4,
       "match": "Deluge: Threnody of Crashing Waves",
-      "fetched_at": 1790325463,
+      "fetched_at": 1791555790,
       "raw": {
         "main": null,
         "extra": null,
@@ -921504,7 +921503,7 @@
       "complete": 2.7,
       "avg": 2.0,
       "match": "A Sinful Camp",
-      "fetched_at": 1790325443,
+      "fetched_at": 1791555769,
       "raw": {
         "main": 1.4,
         "extra": null,
@@ -921863,10 +921862,10 @@
     "1748750": {
       "main": 20.0,
       "extra": 29.0,
-      "complete": 44.6,
-      "avg": 31.2,
+      "complete": 44.4,
+      "avg": 31.1,
       "match": "Crystarise",
-      "fetched_at": 1790325466,
+      "fetched_at": 1791555793,
       "raw": {
         "main": 20.0,
         "extra": null,
@@ -923232,7 +923231,7 @@
       "complete": 0.9,
       "avg": 0.5,
       "match": "The Savior From Above",
-      "fetched_at": 1790325391,
+      "fetched_at": 1791555709,
       "raw": {
         "main": 0.3,
         "extra": null,
@@ -924511,7 +924510,7 @@
       "complete": 3.1,
       "avg": 2.4,
       "match": "Moon Runner",
-      "fetched_at": 1790325441,
+      "fetched_at": 1791555768,
       "raw": {
         "main": null,
         "extra": 2.3,
@@ -924875,7 +924874,7 @@
       "complete": 5.9,
       "avg": 4.7,
       "match": "Island of Lust",
-      "fetched_at": 1790325528,
+      "fetched_at": 1791555854,
       "raw": {
         "main": 3.7,
         "extra": 4.4,
@@ -925092,7 +925091,7 @@
       "complete": 5.3,
       "avg": 3.2,
       "match": "CARNAGE OFFERING",
-      "fetched_at": 1790325512,
+      "fetched_at": 1791555832,
       "raw": {
         "main": 1.8,
         "extra": null,
@@ -925101,7 +925100,7 @@
       "est": [
         "extra"
       ],
-      "n_comp": 3
+      "n_comp": 0
     },
     "1756210": {
       "main": null,
@@ -925783,7 +925782,7 @@
       "complete": 0.3,
       "avg": 0.3,
       "match": "My Stepsis is a Futanari",
-      "fetched_at": 1790325535,
+      "fetched_at": 1791555860,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -929107,7 +929106,7 @@
       "complete": 1.1,
       "avg": 1.1,
       "match": "The Red Button",
-      "fetched_at": 1790325549,
+      "fetched_at": 1791555894,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -931487,7 +931486,7 @@
       "complete": 6.2,
       "avg": 5.1,
       "match": "Long and Hard... Summer!",
-      "fetched_at": 1790325444,
+      "fetched_at": 1791555770,
       "raw": {
         "main": null,
         "extra": 5.0,
@@ -933423,11 +933422,11 @@
     },
     "1775550": {
       "main": 350.0,
-      "extra": 604.1,
+      "extra": 652.1,
       "complete": 1324.4,
-      "avg": 759.5,
+      "avg": 775.5,
       "match": "Gary Grigsby's War in the East 2",
-      "fetched_at": 1790325358,
+      "fetched_at": 1791555665,
       "raw": {
         "main": 350.0,
         "extra": null,
@@ -935158,7 +935157,7 @@
       "complete": 26.6,
       "avg": 12.5,
       "match": "Knight's Try",
-      "fetched_at": 1790325482,
+      "fetched_at": 1791555810,
       "raw": {
         "main": 4.7,
         "extra": null,
@@ -935633,7 +935632,7 @@
       "complete": 40.6,
       "avg": 26.8,
       "match": "Seeds of Calamity",
-      "fetched_at": 1790325401,
+      "fetched_at": 1791555722,
       "raw": {
         "main": null,
         "extra": null,
@@ -935807,7 +935806,7 @@
       "complete": 4.1,
       "avg": 2.9,
       "match": "Mr. Rainer's Solve-It Service",
-      "fetched_at": 1790325407,
+      "fetched_at": 1791555732,
       "raw": {
         "main": 1.6,
         "extra": 3.1,
@@ -936010,7 +936009,7 @@
       "complete": 0.6,
       "avg": 0.4,
       "match": "The Tale of Fighting Nymphs",
-      "fetched_at": 1790325513,
+      "fetched_at": 1791555836,
       "raw": {
         "main": 0.3,
         "extra": null,
@@ -939154,7 +939153,7 @@
       "complete": 0.6,
       "avg": 0.5,
       "match": "AZUR BEAM",
-      "fetched_at": 1790325480,
+      "fetched_at": 1791555807,
       "raw": {
         "main": null,
         "extra": null,
@@ -939164,7 +939163,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 5
+      "n_comp": 6
     },
     "1891680": {
       "main": null,
@@ -939405,7 +939404,7 @@
       "complete": 17.4,
       "avg": 10.1,
       "match": "Riding to Bounce City",
-      "fetched_at": 1790325350,
+      "fetched_at": 1791555662,
       "raw": {
         "main": 5.6,
         "extra": null,
@@ -939653,7 +939652,7 @@
       "complete": 2.2,
       "avg": 1.8,
       "match": "Polimines",
-      "fetched_at": 1790325536,
+      "fetched_at": 1791555835,
       "raw": {
         "main": null,
         "extra": null,
@@ -940867,10 +940866,10 @@
     "1895780": {
       "main": 13.5,
       "extra": 17.9,
-      "complete": 26.2,
+      "complete": 26.3,
       "avg": 19.2,
       "match": "Sexy Space Airlines",
-      "fetched_at": 1790325523,
+      "fetched_at": 1791555847,
       "raw": {
         "main": 13.5,
         "extra": null,
@@ -940901,7 +940900,7 @@
       "complete": 19.8,
       "avg": 14.5,
       "match": "Greedventory",
-      "fetched_at": 1790325456,
+      "fetched_at": 1791555779,
       "raw": {
         "main": 10.2,
         "extra": null,
@@ -940911,7 +940910,7 @@
         "extra",
         "complete"
       ],
-      "n_comp": 7
+      "n_comp": 8
     },
     "1895860": {
       "main": null,
@@ -941645,10 +941644,10 @@
     "1897110": {
       "main": 12.1,
       "extra": 15.8,
-      "complete": 22.5,
+      "complete": 22.6,
       "avg": 16.8,
       "match": "Edge of Sanity",
-      "fetched_at": 1790325476,
+      "fetched_at": 1791555803,
       "raw": {
         "main": 12.1,
         "extra": 15.8,
@@ -942231,11 +942230,11 @@
     },
     "1898210": {
       "main": 330.0,
-      "extra": 621.4,
+      "extra": 614.8,
       "complete": 1248.7,
-      "avg": 733.4,
+      "avg": 731.2,
       "match": "Eros Fantasy",
-      "fetched_at": 1790325346,
+      "fetched_at": 1791555657,
       "raw": {
         "main": 330.0,
         "extra": null,
@@ -943394,7 +943393,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "DANGO!",
-      "fetched_at": 1790325369,
+      "fetched_at": 1791555689,
       "raw": {
         "main": null,
         "extra": null,
@@ -943572,7 +943571,7 @@
       "complete": 1.9,
       "avg": 1.5,
       "match": "Memoir",
-      "fetched_at": 1790325447,
+      "fetched_at": 1791555773,
       "raw": {
         "main": null,
         "extra": null,
@@ -943647,7 +943646,7 @@
       "complete": 0.6,
       "avg": 0.6,
       "match": "Cute Cats 3",
-      "fetched_at": 1790325473,
+      "fetched_at": 1791555801,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -945192,7 +945191,7 @@
       "complete": 11.7,
       "avg": 8.6,
       "match": "Ants Took My Eyeball",
-      "fetched_at": 1790325469,
+      "fetched_at": 1791555795,
       "raw": {
         "main": 6.0,
         "extra": null,
@@ -946172,7 +946171,7 @@
       "complete": 108.0,
       "avg": 62.8,
       "match": "Paint Drying Simulator",
-      "fetched_at": 1790325388,
+      "fetched_at": 1791555708,
       "raw": {
         "main": null,
         "extra": null,
@@ -946218,7 +946217,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "Neko Beach",
-      "fetched_at": 1790325432,
+      "fetched_at": 1791555759,
       "raw": {
         "main": null,
         "extra": null,
@@ -946911,7 +946910,7 @@
       "complete": 1.0,
       "avg": 0.8,
       "match": "PolyClassic: Wild",
-      "fetched_at": 1790325449,
+      "fetched_at": 1791555787,
       "raw": {
         "main": null,
         "extra": null,
@@ -949121,7 +949120,7 @@
       "complete": 3.5,
       "avg": 2.6,
       "match": "Sweet Shine",
-      "fetched_at": 1790325381,
+      "fetched_at": 1791555698,
       "raw": {
         "main": null,
         "extra": 2.4,
@@ -949442,10 +949441,10 @@
     "1637230": {
       "main": 15.6,
       "extra": 25.5,
-      "complete": 39.0,
+      "complete": 38.9,
       "avg": 26.7,
       "match": "Metal Max Xeno Reborn",
-      "fetched_at": 1790325356,
+      "fetched_at": 1791555673,
       "raw": {
         "main": 15.6,
         "extra": 25.5,
@@ -950133,7 +950132,7 @@
       "complete": 6.7,
       "avg": 4.9,
       "match": "Zombie Builder Defense 2",
-      "fetched_at": 1790325505,
+      "fetched_at": 1791555823,
       "raw": {
         "main": 3.4,
         "extra": null,
@@ -950507,7 +950506,7 @@
       "complete": 0.5,
       "avg": 0.6,
       "match": "Mirlo Above the Sun",
-      "fetched_at": 1790325510,
+      "fetched_at": 1791555829,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -950996,7 +950995,7 @@
       "complete": 0.8,
       "avg": 0.8,
       "match": "WTF Is Wrong With You?",
-      "fetched_at": 1790325400,
+      "fetched_at": 1791555725,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -952815,7 +952814,7 @@
       "complete": 0.3,
       "avg": 0.3,
       "match": "Project H",
-      "fetched_at": 1790325363,
+      "fetched_at": 1791555681,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -952894,7 +952893,7 @@
       "complete": 4.9,
       "avg": 3.9,
       "match": "Kittens and Yarn",
-      "fetched_at": 1790325515,
+      "fetched_at": 1791555838,
       "raw": {
         "main": null,
         "extra": null,
@@ -953624,7 +953623,7 @@
       "complete": 112.8,
       "avg": 65.6,
       "match": "POLE",
-      "fetched_at": 1790325382,
+      "fetched_at": 1791555704,
       "raw": {
         "main": null,
         "extra": null,
@@ -954030,7 +954029,7 @@
       "complete": 17.1,
       "avg": 11.8,
       "match": "GROSS",
-      "fetched_at": 1790325435,
+      "fetched_at": 1791555763,
       "raw": {
         "main": 6.2,
         "extra": 12.0,
@@ -954120,7 +954119,7 @@
       "complete": 5.0,
       "avg": 2.6,
       "match": "Zool Redimensioned",
-      "fetched_at": 1790325520,
+      "fetched_at": 1791555842,
       "raw": {
         "main": 1.2,
         "extra": null,
@@ -954777,7 +954776,7 @@
       "complete": 2.7,
       "avg": 1.7,
       "match": "Berserk Mode",
-      "fetched_at": 1790325496,
+      "fetched_at": 1791555814,
       "raw": {
         "main": null,
         "extra": 1.4,
@@ -955211,7 +955210,7 @@
       "complete": 14.1,
       "avg": 12.7,
       "match": "Workshop Simulator",
-      "fetched_at": 1790325428,
+      "fetched_at": 1791555757,
       "raw": {
         "main": 10.3,
         "extra": null,
@@ -955559,7 +955558,7 @@
       "complete": 34.5,
       "avg": 24.0,
       "match": "Tiny Life",
-      "fetched_at": 1790325374,
+      "fetched_at": 1791555693,
       "raw": {
         "main": null,
         "extra": 22.6,
@@ -957255,7 +957254,7 @@
       "complete": 1.6,
       "avg": 1.3,
       "match": "Orakyubu",
-      "fetched_at": 1790325437,
+      "fetched_at": 1791555764,
       "raw": {
         "main": null,
         "extra": null,
@@ -957820,7 +957819,7 @@
       "complete": 1.1,
       "avg": 1.1,
       "match": "My Sexy Waitress",
-      "fetched_at": 1790325366,
+      "fetched_at": 1791555686,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -957829,7 +957828,7 @@
       "est": [
         "extra"
       ],
-      "n_comp": 11
+      "n_comp": 13
     },
     "1656300": {
       "main": null,
@@ -958784,7 +958783,7 @@
       "complete": 25.1,
       "avg": 18.1,
       "match": "Blazing Aries",
-      "fetched_at": 1790325387,
+      "fetched_at": 1791555707,
       "raw": {
         "main": null,
         "extra": null,
@@ -959227,7 +959226,7 @@
       "complete": 1.7,
       "avg": 1.4,
       "match": "Sweet House",
-      "fetched_at": 1790325354,
+      "fetched_at": 1791555670,
       "raw": {
         "main": null,
         "extra": null,
@@ -959409,7 +959408,7 @@
       "complete": 12.5,
       "avg": 6.0,
       "match": "Monmusu Gladiator",
-      "fetched_at": 1790325544,
+      "fetched_at": 1791555872,
       "raw": {
         "main": null,
         "extra": 3.0,
@@ -961174,10 +961173,10 @@
     "1664410": {
       "main": 1.4,
       "extra": 1.9,
-      "complete": 2.7,
+      "complete": 2.8,
       "avg": 2.0,
       "match": "東方実在相 ～ Dream Logical World",
-      "fetched_at": 1790325419,
+      "fetched_at": 1791555744,
       "raw": {
         "main": 1.4,
         "extra": null,
@@ -961909,7 +961908,7 @@
       "complete": 12.8,
       "avg": 8.3,
       "match": "Magical Valkyrie Lyristia",
-      "fetched_at": 1790325409,
+      "fetched_at": 1791555733,
       "raw": {
         "main": 3.0,
         "extra": 9.0,
@@ -962408,7 +962407,7 @@
       "complete": 18.0,
       "avg": 8.3,
       "match": "Geometry Arena 2",
-      "fetched_at": 1790325359,
+      "fetched_at": 1791555675,
       "raw": {
         "main": 3.0,
         "extra": null,
@@ -962656,7 +962655,7 @@
       "complete": 12.4,
       "avg": 9.7,
       "match": "24 Killers",
-      "fetched_at": 1790325365,
+      "fetched_at": 1791555683,
       "raw": {
         "main": 7.9,
         "extra": 8.7,
@@ -962687,7 +962686,7 @@
       "complete": 4.0,
       "avg": 3.0,
       "match": "The Fancy Pants Adventures: Classic Pack",
-      "fetched_at": 1790325368,
+      "fetched_at": 1791555687,
       "raw": {
         "main": 1.9,
         "extra": 3.0,
@@ -964034,10 +964033,10 @@
     "1671510": {
       "main": 4.0,
       "extra": 5.3,
-      "complete": 7.8,
+      "complete": 7.9,
       "avg": 5.7,
       "match": "Like an Angel",
-      "fetched_at": 1790325483,
+      "fetched_at": 1791555812,
       "raw": {
         "main": 4.0,
         "extra": null,
@@ -964169,7 +964168,7 @@
       "complete": 15.7,
       "avg": 11.0,
       "match": "Athenian Rhapsody",
-      "fetched_at": 1790325396,
+      "fetched_at": 1791555714,
       "raw": {
         "main": 6.3,
         "extra": 11.0,
@@ -965079,7 +965078,7 @@
       "complete": 4.3,
       "avg": 3.5,
       "match": "Destined To Die",
-      "fetched_at": 1790325518,
+      "fetched_at": 1791555839,
       "raw": {
         "main": null,
         "extra": null,
@@ -965607,7 +965606,7 @@
       "complete": 38.4,
       "avg": 18.2,
       "match": "TFC: The Fertile Crescent",
-      "fetched_at": 1790325393,
+      "fetched_at": 1791555711,
       "raw": {
         "main": 7.0,
         "extra": null,
@@ -966490,7 +966489,7 @@
       "complete": 0.3,
       "avg": 0.3,
       "match": "My Stepmom is a Futanari",
-      "fetched_at": 1790325361,
+      "fetched_at": 1791555678,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -966665,7 +966664,7 @@
       "complete": 3.1,
       "avg": 2.4,
       "match": "ECO HOLE",
-      "fetched_at": 1790325467,
+      "fetched_at": 1791555794,
       "raw": {
         "main": null,
         "extra": 2.3,
@@ -968447,7 +968446,7 @@
       "complete": 3.1,
       "avg": 2.5,
       "match": "Succubus With Guns",
-      "fetched_at": 1790325470,
+      "fetched_at": 1791555797,
       "raw": {
         "main": null,
         "extra": null,
@@ -970495,7 +970494,7 @@
       "complete": 5.9,
       "avg": 4.3,
       "match": "Toroom",
-      "fetched_at": 1790325546,
+      "fetched_at": 1791555876,
       "raw": {
         "main": 3.0,
         "extra": null,
@@ -970657,7 +970656,7 @@
       "complete": 4.7,
       "avg": 3.9,
       "match": "Best Month Ever!",
-      "fetched_at": 1790325538,
+      "fetched_at": 1791555863,
       "raw": {
         "main": 3.4,
         "extra": 3.5,
@@ -970762,7 +970761,7 @@
       "complete": 13.8,
       "avg": 10.1,
       "match": "Best Forklift Operator",
-      "fetched_at": 1790325497,
+      "fetched_at": 1791555816,
       "raw": {
         "main": 7.1,
         "extra": null,
@@ -971003,11 +971002,11 @@
     },
     "1685460": {
       "main": 65.0,
-      "extra": 99.3,
-      "complete": 156.9,
-      "avg": 107.1,
+      "extra": 99.4,
+      "complete": 155.6,
+      "avg": 106.7,
       "match": "A-Train: All Aboard! Tourism",
-      "fetched_at": 1790325543,
+      "fetched_at": 1791555864,
       "raw": {
         "main": 65.0,
         "extra": null,
@@ -971196,7 +971195,7 @@
       "complete": 18.5,
       "avg": 13.6,
       "match": "Near-Mage",
-      "fetched_at": 1790325499,
+      "fetched_at": 1791555818,
       "raw": {
         "main": 9.2,
         "extra": 13.0,
@@ -971987,20 +971986,19 @@
     "1687210": {
       "main": 7.1,
       "extra": 9.4,
-      "complete": 13.8,
-      "avg": 10.1,
+      "complete": 57.0,
+      "avg": 24.5,
       "match": "Tell Some Story: Foz",
-      "fetched_at": 1790325541,
+      "fetched_at": 1791555868,
       "raw": {
         "main": 7.1,
         "extra": null,
-        "complete": null
+        "complete": 57.0
       },
       "est": [
-        "extra",
-        "complete"
+        "extra"
       ],
-      "n_comp": 2
+      "n_comp": 3
     },
     "1687250": {
       "main": 3.6,
@@ -972008,7 +972006,7 @@
       "complete": 6.0,
       "avg": 4.7,
       "match": "ARIA: Genesis",
-      "fetched_at": 1790325438,
+      "fetched_at": 1791555766,
       "raw": {
         "main": null,
         "extra": 4.5,
@@ -972909,7 +972907,7 @@
       "complete": 9.6,
       "avg": 4.4,
       "match": "RAYZE",
-      "fetched_at": 1790325551,
+      "fetched_at": 1791555845,
       "raw": {
         "main": 1.5,
         "extra": null,
@@ -973165,7 +973163,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "13:ORIGIN - Prologue",
-      "fetched_at": 1790325522,
+      "fetched_at": 1791555844,
       "raw": {
         "main": null,
         "extra": null,
@@ -973228,7 +973226,7 @@
       "complete": 3.5,
       "avg": 3.8,
       "match": "Meridian 157: Chapter 3",
-      "fetched_at": 1790325371,
+      "fetched_at": 1791555690,
       "raw": {
         "main": 3.4,
         "extra": null,
@@ -973954,7 +973952,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "The Market of Light",
-      "fetched_at": 1790325379,
+      "fetched_at": 1791555697,
       "raw": {
         "main": 0.2,
         "extra": 0.3,
@@ -974026,7 +974024,7 @@
       "complete": 5.8,
       "avg": 3.9,
       "match": "Mido and Di",
-      "fetched_at": 1790325364,
+      "fetched_at": 1791555684,
       "raw": {
         "main": 2.5,
         "extra": null,
@@ -974422,7 +974420,7 @@
       "complete": 0.7,
       "avg": 0.7,
       "match": "Larry The Unlucky - Part 1",
-      "fetched_at": 1790325509,
+      "fetched_at": 1791555827,
       "raw": {
         "main": 0.6,
         "extra": null,
@@ -976471,10 +976469,10 @@
     "1696720": {
       "main": 8.4,
       "extra": 14.4,
-      "complete": 20.5,
-      "avg": 14.4,
+      "complete": 20.6,
+      "avg": 14.5,
       "match": "PsiloSybil",
-      "fetched_at": 1790325478,
+      "fetched_at": 1791555804,
       "raw": {
         "main": 8.4,
         "extra": 14.4,
@@ -977258,7 +977256,7 @@
       "complete": 2.6,
       "avg": 2.1,
       "match": "Simple Fish Adventure",
-      "fetched_at": 1790325355,
+      "fetched_at": 1791555672,
       "raw": {
         "main": null,
         "extra": 2.1,
@@ -978479,7 +978477,7 @@
       "complete": 2.4,
       "avg": 2.0,
       "match": "Chessformer",
-      "fetched_at": 1790325418,
+      "fetched_at": 1791555742,
       "raw": {
         "main": 1.6,
         "extra": null,
@@ -978638,7 +978636,7 @@
       "complete": 16.1,
       "avg": 12.3,
       "match": "RUINSMAGUS",
-      "fetched_at": 1790325503,
+      "fetched_at": 1791555822,
       "raw": {
         "main": 9.4,
         "extra": 11.3,
@@ -979253,7 +979251,7 @@
       "complete": 5.0,
       "avg": 4.0,
       "match": "Kibbi Keeper",
-      "fetched_at": 1790325519,
+      "fetched_at": 1791555841,
       "raw": {
         "main": null,
         "extra": null,
@@ -979289,7 +979287,7 @@
       "complete": 2.0,
       "avg": 1.4,
       "match": "Legend of the Outlaw Mage",
-      "fetched_at": 1790325425,
+      "fetched_at": 1791555753,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -979487,7 +979485,7 @@
       "complete": 3.3,
       "avg": 2.6,
       "match": "Hey Stranger! I Dare You To Love Me!",
-      "fetched_at": 1790325481,
+      "fetched_at": 1791555806,
       "raw": {
         "main": 1.9,
         "extra": null,
@@ -981723,10 +981721,10 @@
     "1572270": {
       "main": 1.5,
       "extra": 2.0,
-      "complete": 2.9,
-      "avg": 2.1,
+      "complete": 3.0,
+      "avg": 2.2,
       "match": "F.I.S.H.",
-      "fetched_at": 1790325539,
+      "fetched_at": 1791555867,
       "raw": {
         "main": 1.5,
         "extra": null,
@@ -981772,7 +981770,7 @@
       "complete": 14.8,
       "avg": 10.0,
       "match": "Ark of Artemis",
-      "fetched_at": 1790325439,
+      "fetched_at": 1791555767,
       "raw": {
         "main": 4.9,
         "extra": 10.4,
@@ -981818,7 +981816,7 @@
       "complete": 0.2,
       "avg": 0.1,
       "match": "Femboy Besties",
-      "fetched_at": 1790325347,
+      "fetched_at": 1791555659,
       "raw": {
         "main": 0.1,
         "extra": null,
@@ -982864,20 +982862,17 @@
     },
     "1574570": {
       "main": 1.0,
-      "extra": 1.3,
-      "complete": 4.4,
-      "avg": 2.2,
+      "extra": 3.6,
+      "complete": 5.5,
+      "avg": 3.4,
       "match": "Choice of Life: Samosbor",
-      "fetched_at": 1790325475,
+      "fetched_at": 1791555798,
       "raw": {
         "main": 1.0,
-        "extra": null,
-        "complete": 4.4
+        "extra": 3.6,
+        "complete": 5.5
       },
-      "est": [
-        "extra"
-      ],
-      "n_comp": 5
+      "n_comp": 6
     },
     "1574580": {
       "main": 5.7,
@@ -983601,7 +983596,7 @@
       "complete": 8.4,
       "avg": 6.1,
       "match": "ArcRunner",
-      "fetched_at": 1790325502,
+      "fetched_at": 1791555820,
       "raw": {
         "main": 4.3,
         "extra": null,
@@ -983719,7 +983714,7 @@
       "complete": 13.5,
       "avg": 14.2,
       "match": "UsoNatsu ~The Summer Romance Bloomed From A Lie~",
-      "fetched_at": 1790325362,
+      "fetched_at": 1791555679,
       "raw": {
         "main": 12.5,
         "extra": null,
@@ -983728,7 +983723,7 @@
       "est": [
         "extra"
       ],
-      "n_comp": 11
+      "n_comp": 12
     },
     "1576000": {
       "main": 12.0,
@@ -983944,7 +983939,7 @@
       "complete": 7.7,
       "avg": 6.0,
       "match": "Blair Witch VR",
-      "fetched_at": 1790325529,
+      "fetched_at": 1791555855,
       "raw": {
         "main": null,
         "extra": 5.8,
@@ -985063,7 +985058,7 @@
       "complete": 8.5,
       "avg": 7.9,
       "match": "Bots Are Stupid",
-      "fetched_at": 1790325507,
+      "fetched_at": 1791555826,
       "raw": {
         "main": 6.5,
         "extra": null,
@@ -985640,7 +985635,7 @@
       "complete": 7.5,
       "avg": 5.5,
       "match": "Golfie",
-      "fetched_at": 1790325378,
+      "fetched_at": 1791555696,
       "raw": {
         "main": 3.5,
         "extra": 5.6,
@@ -987186,7 +987181,7 @@
       "complete": 2.8,
       "avg": 2.6,
       "match": "Wild Wet West",
-      "fetched_at": 1790325545,
+      "fetched_at": 1791555875,
       "raw": {
         "main": 2.2,
         "extra": null,
@@ -988140,11 +988135,11 @@
     },
     "1583500": {
       "main": 15.0,
-      "extra": 21.8,
+      "extra": 21.7,
       "complete": 16.2,
-      "avg": 17.7,
+      "avg": 17.6,
       "match": "Eternal Dread 3",
-      "fetched_at": 1790325413,
+      "fetched_at": 1791555738,
       "raw": {
         "main": 15.0,
         "extra": null,
@@ -988886,7 +988881,7 @@
       "complete": 25.3,
       "avg": 18.5,
       "match": "TrinityS",
-      "fetched_at": 1790325516,
+      "fetched_at": 1791555833,
       "raw": {
         "main": 13.0,
         "extra": null,
@@ -1101716,7 +1101711,7 @@
       "complete": 588.3,
       "avg": 293.0,
       "match": "Siralim",
-      "fetched_at": 1791100528,
+      "fetched_at": 1791555638,
       "raw": {
         "main": 21.7,
         "extra": 269.0,
@@ -1545577,7 +1545572,7 @@
       "complete": 1.0,
       "avg": 0.7,
       "match": "Max",
-      "fetched_at": 1791121267,
+      "fetched_at": 1791555643,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -1576630,7 +1576625,7 @@
       "complete": 13.2,
       "avg": 9.7,
       "match": "Tom Clancy's Rainbow Six 3",
-      "fetched_at": 1791120295,
+      "fetched_at": 1791555641,
       "raw": {
         "main": 6.8,
         "extra": null,
@@ -1803783,7 +1803778,7 @@
       "complete": 4.0,
       "avg": 3.9,
       "match": "Carpet Cleaning Simulator",
-      "fetched_at": 1790689169,
+      "fetched_at": 1791555654,
       "raw": {
         "main": 3.3,
         "extra": null,
@@ -1864850,7 +1864845,7 @@
       "complete": 3.9,
       "avg": 2.9,
       "match": "Stripjong - Super Real Mahjong Venus Returns",
-      "fetched_at": 1790689159,
+      "fetched_at": 1791555648,
       "raw": {
         "main": 2.0,
         "extra": null,
@@ -1905840,20 +1905835,19 @@
     "4184190": {
       "main": 1.5,
       "extra": 2.0,
-      "complete": 2.9,
-      "avg": 2.1,
+      "complete": 2.3,
+      "avg": 1.9,
       "match": "Onigotchi",
-      "fetched_at": 1790325194,
+      "fetched_at": 1791555870,
       "raw": {
         "main": 1.5,
         "extra": null,
-        "complete": null
+        "complete": 2.3
       },
       "est": [
-        "extra",
-        "complete"
+        "extra"
       ],
-      "n_comp": 3
+      "n_comp": 5
     },
     "4235690": {
       "main": null,
@@ -1921022,6 +1921016,393 @@
         "complete": null
       },
       "attempts": 2
+    },
+    "4718490": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555589,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "4744800": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555590,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "4744820": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555593,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "4744830": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555595,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "4848160": {
+      "main": 0.6,
+      "extra": 0.8,
+      "complete": 1.2,
+      "avg": 0.9,
+      "match": "Venture",
+      "fetched_at": 1791555598,
+      "raw": {
+        "main": 0.6,
+        "extra": null,
+        "complete": null
+      },
+      "est": [
+        "extra",
+        "complete"
+      ],
+      "n_comp": 11
+    },
+    "4909290": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555599,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "4932510": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555602,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "4968640": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": "Japanese Ramen Simulator",
+      "fetched_at": 1791555604,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "n_comp": 0,
+      "attempts": 1
+    },
+    "4998750": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555605,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5034450": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555607,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5044700": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555610,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5073130": {
+      "main": 0.1,
+      "extra": 0.1,
+      "complete": 0.2,
+      "avg": 0.1,
+      "match": "Tesserae",
+      "fetched_at": 1791555611,
+      "raw": {
+        "main": 0.1,
+        "extra": null,
+        "complete": null
+      },
+      "est": [
+        "extra",
+        "complete"
+      ],
+      "n_comp": 2
+    },
+    "5088650": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555614,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5104830": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555615,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5159730": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555617,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5162540": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555618,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5204630": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555620,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5208820": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555621,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5223810": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555623,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5248650": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555624,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5268260": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555627,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5275800": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555629,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5276570": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555630,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5287910": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555631,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5306270": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555632,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5317460": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555633,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
+    },
+    "5343270": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1791555636,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 1
     }
   }
 }
