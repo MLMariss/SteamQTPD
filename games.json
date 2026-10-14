@@ -1,6 +1,6 @@
 {
-  "generated_at": 1791969135,
-  "count": 131766,
+  "generated_at": 1791978132,
+  "count": 131774,
   "games": [
     {
       "appid": 10,
@@ -2410679,12 +2410679,13 @@
       "release_date": "Oct 11, 2026",
       "release_ts": 1791676800,
       "tags": [
+        "Action",
         "Casual",
         "Indie",
         "Strategy"
       ],
       "last_update_ts": 1791721220,
-      "scraped_at": 1791931669
+      "scraped_at": 1791978070
     },
     {
       "appid": 4388920,
@@ -2512253,8 +2512254,8 @@
       "appid": 4725520,
       "title": "Atlantis Fantasy: Reborn",
       "url": "https://store.steampowered.com/app/4725520",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 0,
+      "review_count": 2,
       "price_initial": null,
       "price_final": null,
       "discount_pct": 0,
@@ -2512267,7 +2512268,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954330
+      "scraped_at": 1791977966
     },
     {
       "appid": 4725600,
@@ -2526213,7 +2526214,7 @@
       "title": "For The Cat! Sorcerer's Revenge",
       "url": "https://store.steampowered.com/app/4773180",
       "rating_pct": 100,
-      "review_count": 32,
+      "review_count": 36,
       "price_initial": 5.99,
       "price_final": 5.09,
       "discount_pct": 15,
@@ -2526226,7 +2526227,7 @@
         "RPG"
       ],
       "last_update_ts": 1791934387,
-      "scraped_at": 1791950827
+      "scraped_at": 1791977544
     },
     {
       "appid": 4773260,
@@ -2565988,7 +2565989,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931572
+      "scraped_at": 1791978016
     },
     {
       "appid": 4923890,
@@ -2566330,7 +2566331,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954296
+      "scraped_at": 1791977962
     },
     {
       "appid": 4924840,
@@ -2576180,7 +2576181,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954280
+      "scraped_at": 1791977957
     },
     {
       "appid": 4963870,
@@ -2580120,6 +2580121,24 @@
       "scraped_at": 1790747504
     },
     {
+      "appid": 4981040,
+      "title": "恐怖夜話 第二夜",
+      "url": "https://store.steampowered.com/app/4981040",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 3.99,
+      "price_final": 3.19,
+      "discount_pct": 20,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Adventure"
+      ],
+      "last_update_ts": null,
+      "scraped_at": 1791977675
+    },
+    {
       "appid": 4981080,
       "title": "Give Me More Missile!",
       "url": "https://store.steampowered.com/app/4981080",
@@ -2580467,7 +2580486,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953389
+      "scraped_at": 1791977630
     },
     {
       "appid": 4982780,
@@ -2580603,7 +2580622,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954271
+      "scraped_at": 1791977953
     },
     {
       "appid": 4983570,
@@ -2581193,8 +2581212,8 @@
       "appid": 4985520,
       "title": "Idle Vapor Legends",
       "url": "https://store.steampowered.com/app/4985520",
-      "rating_pct": 100,
-      "review_count": 19,
+      "rating_pct": 96,
+      "review_count": 23,
       "price_initial": 3.99,
       "price_final": 2.79,
       "discount_pct": 30,
@@ -2581207,8 +2581226,8 @@
         "RPG",
         "Strategy"
       ],
-      "last_update_ts": 1791898592,
-      "scraped_at": 1791931660
+      "last_update_ts": 1791949028,
+      "scraped_at": 1791978065
     },
     {
       "appid": 4985540,
@@ -2582380,8 +2582399,8 @@
       "appid": 4991240,
       "title": "Witch Cabin Cleanup",
       "url": "https://store.steampowered.com/app/4991240",
-      "rating_pct": 95,
-      "review_count": 65,
+      "rating_pct": 96,
+      "review_count": 74,
       "price_initial": 5.99,
       "price_final": 5.39,
       "discount_pct": 10,
@@ -2582393,7 +2582412,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954263
+      "scraped_at": 1791977948
     },
     {
       "appid": 4991340,
@@ -2591255,7 +2591274,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953387
+      "scraped_at": 1791977626
     },
     {
       "appid": 5038730,
@@ -2592058,8 +2592077,8 @@
       "appid": 5042740,
       "title": "TIMBER! Idle Village Builder",
       "url": "https://store.steampowered.com/app/5042740",
-      "rating_pct": 39,
-      "review_count": 23,
+      "rating_pct": 43,
+      "review_count": 28,
       "price_initial": 3.99,
       "price_final": 2.99,
       "discount_pct": 25,
@@ -2592075,7 +2592094,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931961
+      "scraped_at": 1791977540
     },
     {
       "appid": 5042870,
@@ -2592728,7 +2592747,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954236
+      "scraped_at": 1791977944
     },
     {
       "appid": 5045830,
@@ -2592804,7 +2592823,7 @@
         "Casual"
       ],
       "last_update_ts": 1791911055,
-      "scraped_at": 1791931629
+      "scraped_at": 1791978047
     },
     {
       "appid": 5046030,
@@ -2594584,7 +2594603,7 @@
         "Early Access"
       ],
       "last_update_ts": 1790593053,
-      "scraped_at": 1791954219
+      "scraped_at": 1791977939
     },
     {
       "appid": 5055440,
@@ -2595817,7 +2595836,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953380
+      "scraped_at": 1791977621
     },
     {
       "appid": 5063400,
@@ -2595837,7 +2595856,7 @@
         "Indie"
       ],
       "last_update_ts": 1791892645,
-      "scraped_at": 1791955718
+      "scraped_at": 1791978007
     },
     {
       "appid": 5063480,
@@ -2596014,8 +2596033,8 @@
       "appid": 5064290,
       "title": "No More Pain",
       "url": "https://store.steampowered.com/app/5064290",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 100,
+      "review_count": 1,
       "price_initial": 1.99,
       "price_final": 1.79,
       "discount_pct": 10,
@@ -2596028,7 +2596047,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954206
+      "scraped_at": 1791977935
     },
     {
       "appid": 5064480,
@@ -2596345,7 +2596364,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954204
+      "scraped_at": 1791977930
     },
     {
       "appid": 5066270,
@@ -2597115,7 +2597134,7 @@
         "Adventure"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954198
+      "scraped_at": 1791977926
     },
     {
       "appid": 5070220,
@@ -2598343,7 +2598362,7 @@
       "title": "FOTBackrooms",
       "url": "https://store.steampowered.com/app/5077160",
       "rating_pct": 100,
-      "review_count": 1,
+      "review_count": 2,
       "price_initial": 3.99,
       "price_final": 2.99,
       "discount_pct": 25,
@@ -2598355,7 +2598374,7 @@
         "Indie"
       ],
       "last_update_ts": 1791895293,
-      "scraped_at": 1791955114
+      "scraped_at": 1791977998
     },
     {
       "appid": 5077290,
@@ -2599378,7 +2599397,7 @@
         "Casual"
       ],
       "last_update_ts": 1790780832,
-      "scraped_at": 1791954181
+      "scraped_at": 1791977921
     },
     {
       "appid": 5083470,
@@ -2601029,7 +2601048,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954170
+      "scraped_at": 1791977917
     },
     {
       "appid": 5093700,
@@ -2601996,7 +2602015,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954162
+      "scraped_at": 1791977912
     },
     {
       "appid": 5099380,
@@ -2603293,8 +2603312,8 @@
       "appid": 5108650,
       "title": "Airport Madness Evolution",
       "url": "https://store.steampowered.com/app/5108650",
-      "rating_pct": 60,
-      "review_count": 5,
+      "rating_pct": 43,
+      "review_count": 7,
       "price_initial": 19.99,
       "price_final": 19.99,
       "discount_pct": 0,
@@ -2603305,7 +2603324,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953365
+      "scraped_at": 1791977617
     },
     {
       "appid": 5108840,
@@ -2605597,7 +2605616,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954147
+      "scraped_at": 1791977908
     },
     {
       "appid": 5124300,
@@ -2606036,6 +2606055,28 @@
       ],
       "last_update_ts": null,
       "scraped_at": 1791938348
+    },
+    {
+      "appid": 5128280,
+      "title": "Halley's Big Catch",
+      "url": "https://store.steampowered.com/app/5128280",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 14.99,
+      "price_final": 13.49,
+      "discount_pct": 10,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Adventure",
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Sports"
+      ],
+      "last_update_ts": 1789833870,
+      "scraped_at": 1791977648
     },
     {
       "appid": 5128370,
@@ -2609297,7 +2609338,7 @@
         "RPG"
       ],
       "last_update_ts": 1791903412,
-      "scraped_at": 1791954120
+      "scraped_at": 1791977899
     },
     {
       "appid": 5157080,
@@ -2610135,7 +2610176,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953357
+      "scraped_at": 1791977612
     },
     {
       "appid": 5164270,
@@ -2610431,7 +2610472,7 @@
         "Indie"
       ],
       "last_update_ts": 1791855975,
-      "scraped_at": 1791931624
+      "scraped_at": 1791978043
     },
     {
       "appid": 5166800,
@@ -2610549,7 +2610590,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954108
+      "scraped_at": 1791977894
     },
     {
       "appid": 5167180,
@@ -2610890,7 +2610931,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954103
+      "scraped_at": 1791977890
     },
     {
       "appid": 5170960,
@@ -2611372,7 +2611413,7 @@
         "Early Access"
       ],
       "last_update_ts": 1791909138,
-      "scraped_at": 1791954097
+      "scraped_at": 1791977885
     },
     {
       "appid": 5176690,
@@ -2611555,7 +2611596,7 @@
       "title": "Full Diplomatic Relations",
       "url": "https://store.steampowered.com/app/5178250",
       "rating_pct": 100,
-      "review_count": 2,
+      "review_count": 3,
       "price_initial": 6.99,
       "price_final": 4.19,
       "discount_pct": 40,
@@ -2611567,7 +2611608,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954095
+      "scraped_at": 1791977881
     },
     {
       "appid": 5178350,
@@ -2611813,8 +2611854,8 @@
       "appid": 5179800,
       "title": "Cone & Crest",
       "url": "https://store.steampowered.com/app/5179800",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 100,
+      "review_count": 1,
       "price_initial": 9.99,
       "price_final": 6.99,
       "discount_pct": 30,
@@ -2611829,7 +2611870,7 @@
         "Sports"
       ],
       "last_update_ts": 1791927068,
-      "scraped_at": 1791954091
+      "scraped_at": 1791977876
     },
     {
       "appid": 5180470,
@@ -2612404,7 +2612445,7 @@
         "Strategy"
       ],
       "last_update_ts": 1790147103,
-      "scraped_at": 1791954084
+      "scraped_at": 1791977872
     },
     {
       "appid": 5186280,
@@ -2612738,7 +2612779,7 @@
         "Strategy"
       ],
       "last_update_ts": 1791908023,
-      "scraped_at": 1791931579
+      "scraped_at": 1791978025
     },
     {
       "appid": 5188860,
@@ -2612955,7 +2612996,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931575
+      "scraped_at": 1791978020
     },
     {
       "appid": 5189970,
@@ -2613033,7 +2613074,7 @@
         "Indie"
       ],
       "last_update_ts": 1788624927,
-      "scraped_at": 1791953340
+      "scraped_at": 1791977607
     },
     {
       "appid": 5190270,
@@ -2613208,14 +2613249,14 @@
         "Racing"
       ],
       "last_update_ts": 1791776423,
-      "scraped_at": 1791931682
+      "scraped_at": 1791978079
     },
     {
       "appid": 5191880,
       "title": "Magic Cursor",
       "url": "https://store.steampowered.com/app/5191880",
       "rating_pct": 100,
-      "review_count": 3,
+      "review_count": 4,
       "price_initial": 4.99,
       "price_final": 4.49,
       "discount_pct": 10,
@@ -2613226,7 +2613267,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954059
+      "scraped_at": 1791977867
     },
     {
       "appid": 5191900,
@@ -2613591,6 +2613632,26 @@
       ],
       "last_update_ts": 1791163000,
       "scraped_at": 1791954051
+    },
+    {
+      "appid": 5195360,
+      "title": "BitWise",
+      "url": "https://store.steampowered.com/app/5195360",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 14.99,
+      "price_final": 11.99,
+      "discount_pct": 20,
+      "is_free": false,
+      "release_date": "Oct 13, 2026",
+      "release_ts": 1791849600,
+      "tags": [
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "last_update_ts": null,
+      "scraped_at": 1791977633
     },
     {
       "appid": 5195850,
@@ -2614204,7 +2614265,7 @@
         "Strategy"
       ],
       "last_update_ts": 1791903643,
-      "scraped_at": 1791954042
+      "scraped_at": 1791977863
     },
     {
       "appid": 5204230,
@@ -2615013,7 +2615074,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954023
+      "scraped_at": 1791977858
     },
     {
       "appid": 5212940,
@@ -2615052,14 +2615113,14 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954021
+      "scraped_at": 1791977854
     },
     {
       "appid": 5213290,
       "title": "SHADOW OF THE KINGDOM",
       "url": "https://store.steampowered.com/app/5213290",
       "rating_pct": 100,
-      "review_count": 4,
+      "review_count": 6,
       "price_initial": 8.99,
       "price_final": 7.64,
       "discount_pct": 15,
@@ -2615071,7 +2615132,7 @@
         "RPG"
       ],
       "last_update_ts": 1791872490,
-      "scraped_at": 1791954020
+      "scraped_at": 1791977849
     },
     {
       "appid": 5213320,
@@ -2616051,7 +2616112,7 @@
         "Early Access"
       ],
       "last_update_ts": 1791941626,
-      "scraped_at": 1791953992
+      "scraped_at": 1791977845
     },
     {
       "appid": 5222590,
@@ -2616552,6 +2616613,25 @@
       "scraped_at": 1791953977
     },
     {
+      "appid": 5227250,
+      "title": "The Assistant - Season 3",
+      "url": "https://store.steampowered.com/app/5227250",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 9.99,
+      "price_final": 8.99,
+      "discount_pct": 10,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Adventure",
+        "Indie"
+      ],
+      "last_update_ts": null,
+      "scraped_at": 1791977614
+    },
+    {
       "appid": 5227310,
       "title": "GLADIATOR: Survival Simulator",
       "url": "https://store.steampowered.com/app/5227310",
@@ -2616651,7 +2616731,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953973
+      "scraped_at": 1791977791
     },
     {
       "appid": 5228240,
@@ -2617061,7 +2617141,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953963
+      "scraped_at": 1791977786
     },
     {
       "appid": 5230410,
@@ -2617187,7 +2617267,7 @@
       "title": "TGD-Turn the general into a dog",
       "url": "https://store.steampowered.com/app/5231710",
       "rating_pct": 100,
-      "review_count": 1,
+      "review_count": 2,
       "price_initial": 2.99,
       "price_final": 2.99,
       "discount_pct": 0,
@@ -2617198,7 +2617278,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953960
+      "scraped_at": 1791977782
     },
     {
       "appid": 5232290,
@@ -2617339,7 +2617419,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931929
+      "scraped_at": 1791977535
     },
     {
       "appid": 5233870,
@@ -2617440,7 +2617520,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931614
+      "scraped_at": 1791978038
     },
     {
       "appid": 5234250,
@@ -2617462,7 +2617542,7 @@
         "Early Access"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953954
+      "scraped_at": 1791977777
     },
     {
       "appid": 5234320,
@@ -2617888,7 +2617968,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953941
+      "scraped_at": 1791977773
     },
     {
       "appid": 5238890,
@@ -2617947,7 +2618027,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931609
+      "scraped_at": 1791978034
     },
     {
       "appid": 5239110,
@@ -2618047,7 +2618127,7 @@
         "Adventure"
       ],
       "last_update_ts": 1791890237,
-      "scraped_at": 1791953938
+      "scraped_at": 1791977768
     },
     {
       "appid": 5240230,
@@ -2618185,7 +2618265,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953935
+      "scraped_at": 1791977764
     },
     {
       "appid": 5241830,
@@ -2618542,7 +2618622,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953933
+      "scraped_at": 1791977759
     },
     {
       "appid": 5246520,
@@ -2618579,7 +2618659,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953931
+      "scraped_at": 1791977755
     },
     {
       "appid": 5246610,
@@ -2618977,8 +2619057,8 @@
       "appid": 5250790,
       "title": "Mortal Xiuxian",
       "url": "https://store.steampowered.com/app/5250790",
-      "rating_pct": 38,
-      "review_count": 8,
+      "rating_pct": 50,
+      "review_count": 10,
       "price_initial": 6.99,
       "price_final": 6.29,
       "discount_pct": 10,
@@ -2618992,7 +2619072,7 @@
         "Simulation"
       ],
       "last_update_ts": 1791932498,
-      "scraped_at": 1791953929
+      "scraped_at": 1791977750
     },
     {
       "appid": 5250830,
@@ -2619274,7 +2619354,7 @@
         "Sports"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953927
+      "scraped_at": 1791977746
     },
     {
       "appid": 5254710,
@@ -2619394,7 +2619474,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953925
+      "scraped_at": 1791977741
     },
     {
       "appid": 5256480,
@@ -2619520,8 +2619600,8 @@
       "appid": 5258340,
       "title": "One Million Coins",
       "url": "https://store.steampowered.com/app/5258340",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 100,
+      "review_count": 2,
       "price_initial": 2.49,
       "price_final": 1.99,
       "discount_pct": 20,
@@ -2619533,7 +2619613,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953294
+      "scraped_at": 1791977603
     },
     {
       "appid": 5258440,
@@ -2619609,7 +2619689,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953922
+      "scraped_at": 1791977737
     },
     {
       "appid": 5259200,
@@ -2619865,7 +2619945,7 @@
         "Early Access"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954437
+      "scraped_at": 1791977975
     },
     {
       "appid": 5262000,
@@ -2619946,7 +2620026,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954386
+      "scraped_at": 1791977971
     },
     {
       "appid": 5262960,
@@ -2620397,7 +2620477,7 @@
         "Action"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953921
+      "scraped_at": 1791977732
     },
     {
       "appid": 5269000,
@@ -2620420,7 +2620500,7 @@
         "Free To Play"
       ],
       "last_update_ts": 1791919739,
-      "scraped_at": 1791931651
+      "scraped_at": 1791978061
     },
     {
       "appid": 5269520,
@@ -2620457,7 +2620537,7 @@
         "Early Access"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953919
+      "scraped_at": 1791977728
     },
     {
       "appid": 5269790,
@@ -2620500,7 +2620580,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953916
+      "scraped_at": 1791977723
     },
     {
       "appid": 5270030,
@@ -2620520,7 +2620600,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954138
+      "scraped_at": 1791977903
     },
     {
       "appid": 5270210,
@@ -2620682,8 +2620762,8 @@
       "appid": 5272920,
       "title": "Four Ways — Chapter 1",
       "url": "https://store.steampowered.com/app/5272920",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 0,
+      "review_count": 1,
       "price_initial": null,
       "price_final": null,
       "discount_pct": 0,
@@ -2620695,7 +2620775,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953914
+      "scraped_at": 1791977719
     },
     {
       "appid": 5273280,
@@ -2620718,7 +2620798,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953912
+      "scraped_at": 1791977714
     },
     {
       "appid": 5273650,
@@ -2620897,8 +2620977,8 @@
       "appid": 5277080,
       "title": "Bloom Blow",
       "url": "https://store.steampowered.com/app/5277080",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 100,
+      "review_count": 1,
       "price_initial": 16.99,
       "price_final": 15.29,
       "discount_pct": 10,
@@ -2620911,7 +2620991,7 @@
         "Sports"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953904
+      "scraped_at": 1791977701
     },
     {
       "appid": 5277750,
@@ -2620931,7 +2621011,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953286
+      "scraped_at": 1791977598
     },
     {
       "appid": 5278370,
@@ -2620991,7 +2621071,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953283
+      "scraped_at": 1791977594
     },
     {
       "appid": 5279370,
@@ -2621052,7 +2621132,7 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953282
+      "scraped_at": 1791977590
     },
     {
       "appid": 5279900,
@@ -2621129,7 +2621209,7 @@
         "Indie"
       ],
       "last_update_ts": 1791272897,
-      "scraped_at": 1791953280
+      "scraped_at": 1791977583
     },
     {
       "appid": 5281760,
@@ -2621206,7 +2621286,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931593
+      "scraped_at": 1791978029
     },
     {
       "appid": 5283260,
@@ -2621224,7 +2621304,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953910
+      "scraped_at": 1791977710
     },
     {
       "appid": 5283410,
@@ -2621411,7 +2621491,7 @@
       "title": "Stick Life: The Daily Grind",
       "url": "https://store.steampowered.com/app/5285080",
       "rating_pct": 100,
-      "review_count": 2,
+      "review_count": 3,
       "price_initial": 9.99,
       "price_final": 9.99,
       "discount_pct": 0,
@@ -2621423,8 +2621503,8 @@
         "Indie",
         "Simulation"
       ],
-      "last_update_ts": null,
-      "scraped_at": 1791910206
+      "last_update_ts": 1791927617,
+      "scraped_at": 1791978011
     },
     {
       "appid": 5285350,
@@ -2621522,7 +2621602,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953906
+      "scraped_at": 1791977705
     },
     {
       "appid": 5287790,
@@ -2621599,7 +2621679,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953902
+      "scraped_at": 1791977696
     },
     {
       "appid": 5289540,
@@ -2621620,7 +2621700,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953901
+      "scraped_at": 1791977692
     },
     {
       "appid": 5289790,
@@ -2621800,7 +2621880,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791955704
+      "scraped_at": 1791978002
     },
     {
       "appid": 5293950,
@@ -2621898,7 +2621978,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953277
+      "scraped_at": 1791977578
     },
     {
       "appid": 5296110,
@@ -2622033,14 +2622113,14 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953899
+      "scraped_at": 1791977687
     },
     {
       "appid": 5300160,
       "title": "Stellarite Miner",
       "url": "https://store.steampowered.com/app/5300160",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 25,
+      "review_count": 4,
       "price_initial": 2.99,
       "price_final": 1.79,
       "discount_pct": 40,
@@ -2622053,7 +2622133,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953275
+      "scraped_at": 1791977572
     },
     {
       "appid": 5301260,
@@ -2622133,7 +2622213,7 @@
         "Free To Play"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953273
+      "scraped_at": 1791977567
     },
     {
       "appid": 5304270,
@@ -2622154,16 +2622234,16 @@
         "Sports"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953896
+      "scraped_at": 1791977683
     },
     {
       "appid": 5304770,
       "title": "Pickleball Tycoon",
       "url": "https://store.steampowered.com/app/5304770",
-      "rating_pct": 82,
-      "review_count": 11,
-      "price_initial": 7.99,
-      "price_final": 6.39,
+      "rating_pct": 83,
+      "review_count": 12,
+      "price_initial": 5.99,
+      "price_final": 4.79,
       "discount_pct": 20,
       "is_free": false,
       "release_date": "Oct 13, 2026",
@@ -2622175,7 +2622255,25 @@
         "Sports"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953894
+      "scraped_at": 1791977678
+    },
+    {
+      "appid": 5304950,
+      "title": "Glam Sort",
+      "url": "https://store.steampowered.com/app/5304950",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 4.99,
+      "price_final": 4.24,
+      "discount_pct": 15,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Casual"
+      ],
+      "last_update_ts": null,
+      "scraped_at": 1791977586
     },
     {
       "appid": 5305250,
@@ -2622196,11 +2622294,29 @@
       "scraped_at": 1791947472
     },
     {
+      "appid": 5305580,
+      "title": "Sinners Please",
+      "url": "https://store.steampowered.com/app/5305580",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 2.99,
+      "price_final": 2.69,
+      "discount_pct": 10,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Simulation"
+      ],
+      "last_update_ts": null,
+      "scraped_at": 1791977580
+    },
+    {
       "appid": 5306000,
       "title": "BABEL: Invent a Way",
       "url": "https://store.steampowered.com/app/5306000",
       "rating_pct": 100,
-      "review_count": 1,
+      "review_count": 3,
       "price_initial": 6.99,
       "price_final": 5.94,
       "discount_pct": 15,
@@ -2622212,7 +2622328,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953271
+      "scraped_at": 1791977562
     },
     {
       "appid": 5306270,
@@ -2622252,7 +2622368,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791955095
+      "scraped_at": 1791977993
     },
     {
       "appid": 5306560,
@@ -2622272,7 +2622388,27 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953893
+      "scraped_at": 1791977673
+    },
+    {
+      "appid": 5307770,
+      "title": "Le Tapis Vert",
+      "url": "https://store.steampowered.com/app/5307770",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 3.99,
+      "price_final": 3.19,
+      "discount_pct": 20,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Casual",
+        "Indie",
+        "Strategy"
+      ],
+      "last_update_ts": null,
+      "scraped_at": 1791977575
     },
     {
       "appid": 5308770,
@@ -2622332,7 +2622468,26 @@
         "Early Access"
       ],
       "last_update_ts": 1791929129,
-      "scraped_at": 1791931620
+      "scraped_at": 1791977533
+    },
+    {
+      "appid": 5313620,
+      "title": "How to Wait for the Bus",
+      "url": "https://store.steampowered.com/app/5313620",
+      "rating_pct": null,
+      "review_count": 0,
+      "price_initial": 4.0,
+      "price_final": 4.0,
+      "discount_pct": 0,
+      "is_free": false,
+      "release_date": "Oct 14, 2026",
+      "release_ts": 1791936000,
+      "tags": [
+        "Casual",
+        "Indie"
+      ],
+      "last_update_ts": 1791555007,
+      "scraped_at": 1791977570
     },
     {
       "appid": 5314300,
@@ -2622355,7 +2622510,7 @@
         "Early Access"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931646
+      "scraped_at": 1791978056
     },
     {
       "appid": 5314690,
@@ -2622374,7 +2622529,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791952280
+      "scraped_at": 1791977549
     },
     {
       "appid": 5314960,
@@ -2622413,7 +2622568,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931635
+      "scraped_at": 1791978052
     },
     {
       "appid": 5317460,
@@ -2622453,7 +2622608,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791931678
+      "scraped_at": 1791978074
     },
     {
       "appid": 5318720,
@@ -2622473,14 +2622628,14 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953890
+      "scraped_at": 1791977668
     },
     {
       "appid": 5319610,
       "title": "TRY IT",
       "url": "https://store.steampowered.com/app/5319610",
-      "rating_pct": null,
-      "review_count": 0,
+      "rating_pct": 100,
+      "review_count": 1,
       "price_initial": null,
       "price_final": null,
       "discount_pct": 0,
@@ -2622493,7 +2622648,7 @@
         "Free To Play"
       ],
       "last_update_ts": 1791800683,
-      "scraped_at": 1791953888
+      "scraped_at": 1791977664
     },
     {
       "appid": 5321030,
@@ -2622511,7 +2622666,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953269
+      "scraped_at": 1791977558
     },
     {
       "appid": 5323600,
@@ -2622530,7 +2622685,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954488
+      "scraped_at": 1791977989
     },
     {
       "appid": 5324500,
@@ -2622550,7 +2622705,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953886
+      "scraped_at": 1791977659
     },
     {
       "appid": 5324860,
@@ -2622569,7 +2622724,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954486
+      "scraped_at": 1791977984
     },
     {
       "appid": 5325970,
@@ -2622587,8 +2622742,8 @@
         "Indie",
         "Strategy"
       ],
-      "last_update_ts": null,
-      "scraped_at": 1791953884
+      "last_update_ts": 1791960418,
+      "scraped_at": 1791977655
     },
     {
       "appid": 5326380,
@@ -2622608,14 +2622763,14 @@
         "RPG"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791954484
+      "scraped_at": 1791977980
     },
     {
       "appid": 5327530,
       "title": "Siege Kitchen",
       "url": "https://store.steampowered.com/app/5327530",
       "rating_pct": 100,
-      "review_count": 2,
+      "review_count": 6,
       "price_initial": 9.99,
       "price_final": 9.99,
       "discount_pct": 0,
@@ -2622628,7 +2622783,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953882
+      "scraped_at": 1791977650
     },
     {
       "appid": 5328210,
@@ -2622636,8 +2622791,8 @@
       "url": "https://store.steampowered.com/app/5328210",
       "rating_pct": null,
       "review_count": 0,
-      "price_initial": 4.99,
-      "price_final": 4.99,
+      "price_initial": 3.99,
+      "price_final": 3.99,
       "discount_pct": 0,
       "is_free": false,
       "release_date": "Oct 13, 2026",
@@ -2622649,7 +2622804,7 @@
         "Strategy"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953267
+      "scraped_at": 1791977553
     },
     {
       "appid": 5328770,
@@ -2622668,7 +2622823,7 @@
         "Indie"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953880
+      "scraped_at": 1791977645
     },
     {
       "appid": 5329040,
@@ -2622686,7 +2622841,7 @@
         "Casual"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953877
+      "scraped_at": 1791977641
     },
     {
       "appid": 5331850,
@@ -2622705,7 +2622860,7 @@
         "Simulation"
       ],
       "last_update_ts": null,
-      "scraped_at": 1791953876
+      "scraped_at": 1791977636
     },
     {
       "appid": 5343270,
