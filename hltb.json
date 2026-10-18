@@ -1,6 +1,6 @@
 {
-  "generated_at": 1792327933,
-  "count": 132052,
+  "generated_at": 1792341235,
+  "count": 132053,
   "hltb": {
     "10": {
       "main": 25.4,
@@ -154490,17 +154490,18 @@
     },
     "3657210": {
       "main": 2.8,
-      "extra": 3.3,
-      "complete": 4.5,
-      "avg": 3.5,
+      "extra": 3.7,
+      "complete": 4.3,
+      "avg": 3.6,
       "match": "Amanda the Adventurer 3",
-      "fetched_at": 1791473594,
+      "fetched_at": 1792341207,
       "raw": {
         "main": 2.8,
-        "extra": 3.3,
-        "complete": 4.5
+        "extra": 3.7,
+        "complete": 4.3
       },
-      "n_comp": 37
+      "n_comp": 40,
+      "comp_grew": true
     },
     "3657230": {
       "main": null,
@@ -185468,13 +185469,13 @@
       "complete": 5.8,
       "avg": 4.4,
       "match": "Feed the Reactor",
-      "fetched_at": 1791473595,
+      "fetched_at": 1792341209,
       "raw": {
         "main": 3.1,
         "extra": 4.2,
         "complete": 5.8
       },
-      "n_comp": 31
+      "n_comp": 32
     },
     "4009900": {
       "main": 0.3,
@@ -406885,7 +406886,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "100 Thailand Cats",
-      "fetched_at": 1791119251,
+      "fetched_at": 1792341199,
       "raw": {
         "main": null,
         "extra": null,
@@ -1772515,13 +1772516,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1791470364,
+      "fetched_at": 1792341205,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 9
+      "attempts": 10
     },
     "2774400": {
       "main": null,
@@ -1885566,22 +1885567,22 @@
       "n_comp": 1
     },
     "3396010": {
-      "main": 8.7,
-      "extra": 12.6,
-      "complete": 18.4,
-      "avg": 13.2,
+      "main": 7.5,
+      "extra": 10.8,
+      "complete": 15.8,
+      "avg": 11.4,
       "match": "Black Friday Janitor: Clean the Whole Mall",
-      "fetched_at": 1791470361,
+      "fetched_at": 1792341197,
       "raw": {
         "main": null,
         "extra": null,
-        "complete": 18.4
+        "complete": 15.8
       },
       "est": [
         "main",
         "extra"
       ],
-      "n_comp": 11
+      "n_comp": 12
     },
     "3886200": {
       "main": null,
@@ -1899130,7 +1899131,7 @@
       "complete": 1.2,
       "avg": 0.9,
       "match": "BABULYA",
-      "fetched_at": 1791119255,
+      "fetched_at": 1792341203,
       "raw": {
         "main": 0.6,
         "extra": null,
@@ -1928700,13 +1928701,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327914,
+      "fetched_at": 1792341231,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5251110": {
       "main": null,
@@ -1928714,13 +1928715,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327915,
+      "fetched_at": 1792341232,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5285370": {
       "main": null,
@@ -1928728,13 +1928729,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327917,
+      "fetched_at": 1792341234,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5322010": {
       "main": null,
@@ -1928742,13 +1928743,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327924,
+      "fetched_at": 1792341235,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5198130": {
       "main": null,
@@ -1928756,13 +1928757,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327902,
+      "fetched_at": 1792341219,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5286310": {
       "main": null,
@@ -1928770,13 +1928771,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327903,
+      "fetched_at": 1792341220,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5318310": {
       "main": null,
@@ -1928784,13 +1928785,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327905,
+      "fetched_at": 1792341222,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5318510": {
       "main": null,
@@ -1928798,13 +1928799,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327907,
+      "fetched_at": 1792341224,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5324490": {
       "main": null,
@@ -1928812,13 +1928813,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327908,
+      "fetched_at": 1792341226,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5327820": {
       "main": null,
@@ -1928826,13 +1928827,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327910,
+      "fetched_at": 1792341228,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5349560": {
       "main": null,
@@ -1928840,13 +1928841,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327912,
+      "fetched_at": 1792341229,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4966220": {
       "main": null,
@@ -1928854,13 +1928855,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327898,
+      "fetched_at": 1792341214,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5115590": {
       "main": null,
@@ -1928868,7 +1928869,21 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792327900,
+      "fetched_at": 1792341216,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": null
+      },
+      "attempts": 3
+    },
+    "5067390": {
+      "main": null,
+      "extra": null,
+      "complete": null,
+      "avg": null,
+      "match": null,
+      "fetched_at": 1792341212,
       "raw": {
         "main": null,
         "extra": null,
