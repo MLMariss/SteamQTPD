@@ -1,5 +1,5 @@
 {
-  "generated_at": 1792546898,
+  "generated_at": 1792547210,
   "count": 132115,
   "hltb": {
     "10": {
@@ -11497,7 +11497,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "Griefer",
-      "fetched_at": 1791328786,
+      "fetched_at": 1792546939,
       "raw": {
         "main": null,
         "extra": null,
@@ -14816,7 +14816,7 @@
       "complete": 0.2,
       "avg": 0.1,
       "match": "Gridlock",
-      "fetched_at": 1791328981,
+      "fetched_at": 1792547184,
       "raw": {
         "main": 0.1,
         "extra": null,
@@ -15771,7 +15771,7 @@
       "complete": 19.9,
       "avg": 14.3,
       "match": "QBillion",
-      "fetched_at": 1791328811,
+      "fetched_at": 1792546970,
       "raw": {
         "main": null,
         "extra": null,
@@ -29279,10 +29279,10 @@
     "4688610": {
       "main": 1.8,
       "extra": 2.4,
-      "complete": 3.5,
+      "complete": 3.6,
       "avg": 2.6,
       "match": "Solaris",
-      "fetched_at": 1791328886,
+      "fetched_at": 1792547076,
       "raw": {
         "main": 1.8,
         "extra": null,
@@ -30194,7 +30194,7 @@
       "complete": 1.5,
       "avg": 1.2,
       "match": "Astra's Garden",
-      "fetched_at": 1791328852,
+      "fetched_at": 1792547031,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -32172,7 +32172,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "Furry Adventure!",
-      "fetched_at": 1791328912,
+      "fetched_at": 1792547106,
       "raw": {
         "main": null,
         "extra": null,
@@ -32347,7 +32347,7 @@
       "complete": 1.7,
       "avg": 1.3,
       "match": "Glow of Honeydew",
-      "fetched_at": 1791328826,
+      "fetched_at": 1792546993,
       "raw": {
         "main": 0.8,
         "extra": 1.3,
@@ -35940,7 +35940,7 @@
       "complete": 23.3,
       "avg": 17.1,
       "match": "Maid Cafe",
-      "fetched_at": 1791328872,
+      "fetched_at": 1792547058,
       "raw": {
         "main": 12.0,
         "extra": null,
@@ -36371,7 +36371,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Hentai Sexy Nurses",
-      "fetched_at": 1791328962,
+      "fetched_at": 1792547182,
       "raw": {
         "main": null,
         "extra": null,
@@ -36381,7 +36381,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 1
+      "n_comp": 2
     },
     "4741850": {
       "main": null,
@@ -38049,7 +38049,7 @@
       "complete": 1.2,
       "avg": 0.9,
       "match": "Venture",
-      "fetched_at": 1791328850,
+      "fetched_at": 1792547029,
       "raw": {
         "main": 0.6,
         "extra": null,
@@ -40505,7 +40505,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Friction",
-      "fetched_at": 1791328901,
+      "fetched_at": 1792547096,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -43910,7 +43910,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "Finding Cats",
-      "fetched_at": 1791328940,
+      "fetched_at": 1792547143,
       "raw": {
         "main": null,
         "extra": null,
@@ -44751,7 +44751,7 @@
       "complete": 4.3,
       "avg": 3.5,
       "match": "Kingdom Chronicles",
-      "fetched_at": 1791328844,
+      "fetched_at": 1792547017,
       "raw": {
         "main": null,
         "extra": null,
@@ -45543,7 +45543,7 @@
       "complete": 1.2,
       "avg": 0.9,
       "match": "Checkers",
-      "fetched_at": 1791328967,
+      "fetched_at": 1792547145,
       "raw": {
         "main": 0.6,
         "extra": null,
@@ -46718,7 +46718,7 @@
       "complete": 1.4,
       "avg": 1.0,
       "match": "HARUKOHARU",
-      "fetched_at": 1791328937,
+      "fetched_at": 1792547131,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -47157,7 +47157,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Tiki Cats",
-      "fetched_at": 1791328923,
+      "fetched_at": 1792547123,
       "raw": {
         "main": null,
         "extra": null,
@@ -48257,21 +48257,22 @@
       "attempts": 6
     },
     "4315240": {
-      "main": 1.4,
-      "extra": 1.9,
-      "complete": 3.1,
-      "avg": 2.1,
+      "main": 1.1,
+      "extra": 1.5,
+      "complete": 2.2,
+      "avg": 1.6,
       "match": "Cloud",
-      "fetched_at": 1791328911,
+      "fetched_at": 1792547114,
       "raw": {
-        "main": 1.4,
+        "main": 1.1,
         "extra": null,
-        "complete": 3.1
+        "complete": null
       },
       "est": [
-        "extra"
+        "extra",
+        "complete"
       ],
-      "n_comp": 5
+      "n_comp": 6
     },
     "4315270": {
       "main": null,
@@ -51451,7 +51452,7 @@
       "complete": 4.0,
       "avg": 3.8,
       "match": "Who Knocks",
-      "fetched_at": 1791328917,
+      "fetched_at": 1792547121,
       "raw": {
         "main": 3.2,
         "extra": null,
@@ -52012,7 +52013,7 @@
       "complete": 0.3,
       "avg": 0.2,
       "match": "Help Is On The Way",
-      "fetched_at": 1791328834,
+      "fetched_at": 1792547002,
       "raw": {
         "main": null,
         "extra": null,
@@ -52923,7 +52924,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Inline: Out of Time",
-      "fetched_at": 1791328968,
+      "fetched_at": 1792547194,
       "raw": {
         "main": null,
         "extra": 0.3,
@@ -54975,7 +54976,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "A Game About Breaking Pots",
-      "fetched_at": 1791328816,
+      "fetched_at": 1792546974,
       "raw": {
         "main": null,
         "extra": null,
@@ -58731,7 +58732,7 @@
       "complete": 0.3,
       "avg": 0.2,
       "match": "Assassin of Dragon",
-      "fetched_at": 1791328948,
+      "fetched_at": 1792547163,
       "raw": {
         "main": null,
         "extra": null,
@@ -60346,7 +60347,7 @@
       "complete": 0.3,
       "avg": 0.2,
       "match": "Assassin Of Spider",
-      "fetched_at": 1791328892,
+      "fetched_at": 1792547082,
       "raw": {
         "main": null,
         "extra": null,
@@ -60882,7 +60883,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Archeology Cats",
-      "fetched_at": 1791328900,
+      "fetched_at": 1792547094,
       "raw": {
         "main": null,
         "extra": null,
@@ -62367,7 +62368,7 @@
       "complete": 5.5,
       "avg": 4.0,
       "match": "NeNeKoNeKo",
-      "fetched_at": 1791328934,
+      "fetched_at": 1792547139,
       "raw": {
         "main": 2.8,
         "extra": null,
@@ -64098,7 +64099,7 @@
       "complete": 28.7,
       "avg": 13.8,
       "match": "Pratfall",
-      "fetched_at": 1791328809,
+      "fetched_at": 1792546968,
       "raw": {
         "main": 5.5,
         "extra": null,
@@ -64107,7 +64108,7 @@
       "est": [
         "extra"
       ],
-      "n_comp": 15
+      "n_comp": 16
     },
     "4400910": {
       "main": null,
@@ -66780,7 +66781,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Night Clerk",
-      "fetched_at": 1791328792,
+      "fetched_at": 1792546947,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -68872,7 +68873,7 @@
       "complete": 1.3,
       "avg": 1.0,
       "match": "She Danced in the Wind Like a Holographic Dream Before the World Died",
-      "fetched_at": 1791328825,
+      "fetched_at": 1792546990,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -71850,7 +71851,7 @@
       "complete": 5.4,
       "avg": 4.4,
       "match": "Never Forget Me",
-      "fetched_at": 1791328950,
+      "fetched_at": 1792547165,
       "raw": {
         "main": null,
         "extra": null,
@@ -74329,7 +74330,7 @@
       "complete": 1.2,
       "avg": 1.0,
       "match": "Castle in the Sands",
-      "fetched_at": 1791328846,
+      "fetched_at": 1792547021,
       "raw": {
         "main": null,
         "extra": null,
@@ -77826,7 +77827,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "PAIC: Moon Rider Story",
-      "fetched_at": 1791328789,
+      "fetched_at": 1792546943,
       "raw": {
         "main": null,
         "extra": null,
@@ -81965,7 +81966,7 @@
       "complete": 10.5,
       "avg": 7.3,
       "match": "Little One",
-      "fetched_at": 1791328899,
+      "fetched_at": 1792547092,
       "raw": {
         "main": 3.5,
         "extra": 7.9,
@@ -82226,7 +82227,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Anime Dream Match: Primates",
-      "fetched_at": 1791328941,
+      "fetched_at": 1792547151,
       "raw": {
         "main": null,
         "extra": null,
@@ -82424,7 +82425,7 @@
       "complete": 11.1,
       "avg": 8.1,
       "match": "Vengeance",
-      "fetched_at": 1791328874,
+      "fetched_at": 1792547061,
       "raw": {
         "main": 5.7,
         "extra": null,
@@ -84117,7 +84118,7 @@
       "complete": 2.6,
       "avg": 1.9,
       "match": "The Dreamcatcher",
-      "fetched_at": 1791328951,
+      "fetched_at": 1792547167,
       "raw": {
         "main": 1.3,
         "extra": null,
@@ -85765,7 +85766,7 @@
       "complete": 1.4,
       "avg": 1.0,
       "match": "Abyss The Forgotten Past: Prologue",
-      "fetched_at": 1791328820,
+      "fetched_at": 1792546980,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -88546,7 +88547,7 @@
       "complete": 5.5,
       "avg": 4.4,
       "match": "Bitter Harvest",
-      "fetched_at": 1791328813,
+      "fetched_at": 1792546960,
       "raw": {
         "main": null,
         "extra": null,
@@ -88564,7 +88565,7 @@
       "complete": 1.8,
       "avg": 1.7,
       "match": "Casey Noir and Carved Pumpkin's Latte",
-      "fetched_at": 1791328829,
+      "fetched_at": 1792546996,
       "raw": {
         "main": null,
         "extra": 1.8,
@@ -88993,7 +88994,7 @@
       "complete": 1.8,
       "avg": 1.3,
       "match": "Compadrone: Land Wars",
-      "fetched_at": 1791328905,
+      "fetched_at": 1792547102,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -89165,7 +89166,7 @@
       "complete": 1.1,
       "avg": 0.8,
       "match": "P1: Anchor Light",
-      "fetched_at": 1791328928,
+      "fetched_at": 1792547133,
       "raw": {
         "main": null,
         "extra": 0.8,
@@ -89310,7 +89311,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Fasthand",
-      "fetched_at": 1791328804,
+      "fetched_at": 1792546962,
       "raw": {
         "main": null,
         "extra": null,
@@ -89540,7 +89541,7 @@
       "complete": 50.8,
       "avg": 35.3,
       "match": "Combat Mission: Beyond Overlord",
-      "fetched_at": 1791328838,
+      "fetched_at": 1792547008,
       "raw": {
         "main": null,
         "extra": 33.3,
@@ -90278,7 +90279,7 @@
       "complete": 2.7,
       "avg": 2.2,
       "match": "My Escort Company",
-      "fetched_at": 1791328964,
+      "fetched_at": 1792547188,
       "raw": {
         "main": null,
         "extra": null,
@@ -90994,7 +90995,7 @@
       "complete": 8.2,
       "avg": 6.7,
       "match": "Gamer Shop Simulator",
-      "fetched_at": 1791328965,
+      "fetched_at": 1792547190,
       "raw": {
         "main": null,
         "extra": 6.6,
@@ -91990,7 +91991,7 @@
       "complete": 1.0,
       "avg": 0.7,
       "match": "Green Soldiers Heroes",
-      "fetched_at": 1791328978,
+      "fetched_at": 1792547196,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -92653,7 +92654,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "BRUTALISMUS: Dystopia",
-      "fetched_at": 1791328857,
+      "fetched_at": 1792547038,
       "raw": {
         "main": null,
         "extra": 0.3,
@@ -93459,7 +93460,7 @@
       "complete": 2.1,
       "avg": 1.7,
       "match": "Red Bow: Strange Dream",
-      "fetched_at": 1791328828,
+      "fetched_at": 1792546994,
       "raw": {
         "main": 1.5,
         "extra": 1.6,
@@ -93976,7 +93977,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Slide Hexagon",
-      "fetched_at": 1791328953,
+      "fetched_at": 1792547170,
       "raw": {
         "main": null,
         "extra": null,
@@ -95480,7 +95481,7 @@
       "complete": 6.7,
       "avg": 4.9,
       "match": "The Dream Collector",
-      "fetched_at": 1791328881,
+      "fetched_at": 1792547070,
       "raw": {
         "main": 3.4,
         "extra": null,
@@ -95965,7 +95966,7 @@
       "complete": 10.0,
       "avg": 9.0,
       "match": "Beltion: Beyond Ritual",
-      "fetched_at": 1791328776,
+      "fetched_at": 1792546921,
       "raw": {
         "main": null,
         "extra": 9.8,
@@ -95982,7 +95983,7 @@
       "complete": 23.0,
       "avg": 19.9,
       "match": "Heart of Eternity",
-      "fetched_at": 1791328890,
+      "fetched_at": 1792547057,
       "raw": {
         "main": 15.0,
         "extra": null,
@@ -95999,7 +96000,7 @@
       "complete": 4.5,
       "avg": 3.3,
       "match": "Metal Combat",
-      "fetched_at": 1791328989,
+      "fetched_at": 1792547206,
       "raw": {
         "main": 2.3,
         "extra": null,
@@ -96047,7 +96048,7 @@
       "complete": 0.6,
       "avg": 0.5,
       "match": "The Trench",
-      "fetched_at": 1791328961,
+      "fetched_at": 1792547181,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -96106,7 +96107,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "Finding Cats",
-      "fetched_at": 1791328819,
+      "fetched_at": 1792546978,
       "raw": {
         "main": null,
         "extra": null,
@@ -97375,7 +97376,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Glitch",
-      "fetched_at": 1791328782,
+      "fetched_at": 1792546933,
       "raw": {
         "main": null,
         "extra": 0.4,
@@ -98233,7 +98234,7 @@
       "complete": 2.2,
       "avg": 2.3,
       "match": "Lost in Loss",
-      "fetched_at": 1791328909,
+      "fetched_at": 1792547104,
       "raw": {
         "main": 2.0,
         "extra": null,
@@ -98861,7 +98862,7 @@
       "complete": 3.0,
       "avg": 2.4,
       "match": "Pencil Stories",
-      "fetched_at": 1791328795,
+      "fetched_at": 1792546949,
       "raw": {
         "main": null,
         "extra": null,
@@ -99881,7 +99882,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "101 Dogs Hidden",
-      "fetched_at": 1791328800,
+      "fetched_at": 1792546955,
       "raw": {
         "main": null,
         "extra": null,
@@ -101151,7 +101152,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "Dimmed Light",
-      "fetched_at": 1791328835,
+      "fetched_at": 1792547004,
       "raw": {
         "main": null,
         "extra": null,
@@ -101378,7 +101379,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Sokker",
-      "fetched_at": 1791328806,
+      "fetched_at": 1792546964,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -101975,7 +101976,7 @@
       "complete": 1.5,
       "avg": 1.2,
       "match": "Just Waiting Cats",
-      "fetched_at": 1791328930,
+      "fetched_at": 1792547135,
       "raw": {
         "main": null,
         "extra": null,
@@ -102644,7 +102645,7 @@
       "complete": 3.9,
       "avg": 3.1,
       "match": "Alien Morgue",
-      "fetched_at": 1791328785,
+      "fetched_at": 1792546935,
       "raw": {
         "main": null,
         "extra": null,
@@ -103361,7 +103362,7 @@
       "complete": 15.8,
       "avg": 11.6,
       "match": "Castles II: Siege and Conquest",
-      "fetched_at": 1791328939,
+      "fetched_at": 1792547142,
       "raw": {
         "main": 8.1,
         "extra": null,
@@ -105377,7 +105378,7 @@
       "complete": 1.8,
       "avg": 1.3,
       "match": "Ameshidama",
-      "fetched_at": 1791328839,
+      "fetched_at": 1792547010,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -106642,7 +106643,7 @@
       "complete": 2.4,
       "avg": 1.9,
       "match": "Rip Current",
-      "fetched_at": 1791328884,
+      "fetched_at": 1792547074,
       "raw": {
         "main": 1.5,
         "extra": 1.8,
@@ -106786,7 +106787,7 @@
       "complete": 10.1,
       "avg": 7.3,
       "match": "Add Cross",
-      "fetched_at": 1791328966,
+      "fetched_at": 1792547192,
       "raw": {
         "main": null,
         "extra": null,
@@ -107121,7 +107122,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "Anime Dream Match: Birds",
-      "fetched_at": 1791328959,
+      "fetched_at": 1792547178,
       "raw": {
         "main": null,
         "extra": null,
@@ -107545,7 +107546,7 @@
       "complete": 2.4,
       "avg": 2.6,
       "match": "Overwords",
-      "fetched_at": 1791328774,
+      "fetched_at": 1792546919,
       "raw": {
         "main": 2.3,
         "extra": null,
@@ -108485,7 +108486,7 @@
       "complete": 2.6,
       "avg": 1.9,
       "match": "Reliquare",
-      "fetched_at": 1791328943,
+      "fetched_at": 1792547153,
       "raw": {
         "main": 1.3,
         "extra": null,
@@ -108978,7 +108979,7 @@
       "complete": 1.0,
       "avg": 0.7,
       "match": "Solnest",
-      "fetched_at": 1791328841,
+      "fetched_at": 1792547013,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -110803,7 +110804,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Furry College",
-      "fetched_at": 1791328810,
+      "fetched_at": 1792546969,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -111702,7 +111703,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "Pigeon Hunter",
-      "fetched_at": 1791328877,
+      "fetched_at": 1792547065,
       "raw": {
         "main": null,
         "extra": 0.6,
@@ -113534,7 +113535,7 @@
       "complete": 1.0,
       "avg": 0.8,
       "match": "Sweetie Candy Maze: Red Cherry",
-      "fetched_at": 1791328945,
+      "fetched_at": 1792547157,
       "raw": {
         "main": null,
         "extra": null,
@@ -113566,7 +113567,7 @@
       "complete": 1.4,
       "avg": 1.0,
       "match": "Tiny Whiny Island",
-      "fetched_at": 1791328787,
+      "fetched_at": 1792546941,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -114757,7 +114758,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Swimmer",
-      "fetched_at": 1791328984,
+      "fetched_at": 1792547200,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -115419,7 +115420,7 @@
       "complete": 1.9,
       "avg": 1.3,
       "match": "Find Me",
-      "fetched_at": 1791328990,
+      "fetched_at": 1792547208,
       "raw": {
         "main": 0.6,
         "extra": 1.4,
@@ -116883,7 +116884,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "Find Meow in Dwarf Mines",
-      "fetched_at": 1791328992,
+      "fetched_at": 1792547210,
       "raw": {
         "main": null,
         "extra": null,
@@ -118819,7 +118820,7 @@
       "complete": 1.1,
       "avg": 0.9,
       "match": "Nugatory",
-      "fetched_at": 1791328868,
+      "fetched_at": 1792547051,
       "raw": {
         "main": null,
         "extra": null,
@@ -119022,7 +119023,7 @@
       "complete": 2.3,
       "avg": 1.8,
       "match": "Upstairs",
-      "fetched_at": 1791328867,
+      "fetched_at": 1792547049,
       "raw": {
         "main": 1.3,
         "extra": null,
@@ -121336,12 +121337,12 @@
       "attempts": 6
     },
     "3723730": {
-      "main": 34.7,
-      "extra": 70.3,
+      "main": 35.1,
+      "extra": 70.4,
       "complete": 141.0,
-      "avg": 82.0,
+      "avg": 82.2,
       "match": "The Inquisitor",
-      "fetched_at": 1791328861,
+      "fetched_at": 1792547042,
       "raw": {
         "main": null,
         "extra": null,
@@ -122292,7 +122293,7 @@
       "complete": 0.8,
       "avg": 0.8,
       "match": "Leaving Home",
-      "fetched_at": 1791328865,
+      "fetched_at": 1792547048,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -123546,7 +123547,7 @@
       "complete": 3.2,
       "avg": 2.3,
       "match": "Koro-san's Home \"WAN!\" Derby",
-      "fetched_at": 1791328797,
+      "fetched_at": 1792546951,
       "raw": {
         "main": 1.6,
         "extra": null,
@@ -124539,7 +124540,7 @@
       "complete": 2.8,
       "avg": 2.0,
       "match": "Realm",
-      "fetched_at": 1791328963,
+      "fetched_at": 1792547186,
       "raw": {
         "main": 1.4,
         "extra": null,
@@ -126214,7 +126215,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Blackjack Simple",
-      "fetched_at": 1791328853,
+      "fetched_at": 1792547035,
       "raw": {
         "main": null,
         "extra": null,
@@ -127122,10 +127123,10 @@
     "3745110": {
       "main": 1.8,
       "extra": 2.4,
-      "complete": 3.5,
+      "complete": 3.6,
       "avg": 2.6,
       "match": "Jason Maxx",
-      "fetched_at": 1791328831,
+      "fetched_at": 1792546998,
       "raw": {
         "main": 1.8,
         "extra": null,
@@ -127665,7 +127666,7 @@
       "complete": 10.3,
       "avg": 7.5,
       "match": "Gravitee Wars",
-      "fetched_at": 1791328855,
+      "fetched_at": 1792547036,
       "raw": {
         "main": 5.3,
         "extra": null,
@@ -128414,7 +128415,7 @@
       "complete": 3.9,
       "avg": 2.9,
       "match": "Go Kart Island",
-      "fetched_at": 1791328769,
+      "fetched_at": 1792546911,
       "raw": {
         "main": 2.0,
         "extra": null,
@@ -128684,7 +128685,7 @@
       "complete": 1.1,
       "avg": 0.8,
       "match": "Railgunners",
-      "fetched_at": 1791328771,
+      "fetched_at": 1792546915,
       "raw": {
         "main": null,
         "extra": 0.8,
@@ -129391,7 +129392,7 @@
       "complete": 19.8,
       "avg": 14.5,
       "match": "Medieval Shopkeeper Simulator",
-      "fetched_at": 1791328863,
+      "fetched_at": 1792547044,
       "raw": {
         "main": 10.2,
         "extra": null,
@@ -130644,7 +130645,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "HELLLLLCAFEEEEE",
-      "fetched_at": 1791328784,
+      "fetched_at": 1792546937,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -131316,7 +131317,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "The Cats of Monte Cristo",
-      "fetched_at": 1791328848,
+      "fetched_at": 1792547025,
       "raw": {
         "main": null,
         "extra": null,
@@ -132173,7 +132174,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "Find Meow in Wild West",
-      "fetched_at": 1791328931,
+      "fetched_at": 1792547137,
       "raw": {
         "main": null,
         "extra": null,
@@ -133539,7 +133540,7 @@
       "complete": 8.9,
       "avg": 7.0,
       "match": "The Shame of a Daydreamer",
-      "fetched_at": 1791328954,
+      "fetched_at": 1792547172,
       "raw": {
         "main": null,
         "extra": 6.7,
@@ -135985,7 +135986,7 @@
       "complete": 3.6,
       "avg": 2.8,
       "match": "Letters of War",
-      "fetched_at": 1791328836,
+      "fetched_at": 1792547006,
       "raw": {
         "main": null,
         "extra": 2.6,
@@ -136191,7 +136192,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Find The Cat: Nightmare",
-      "fetched_at": 1791328933,
+      "fetched_at": 1792547129,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -139109,7 +139110,7 @@
       "complete": 3.4,
       "avg": 2.7,
       "match": "God Fishing",
-      "fetched_at": 1791328807,
+      "fetched_at": 1792546966,
       "raw": {
         "main": null,
         "extra": null,
@@ -139284,7 +139285,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Ruin Cats",
-      "fetched_at": 1791328845,
+      "fetched_at": 1792547019,
       "raw": {
         "main": null,
         "extra": null,
@@ -139294,7 +139295,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 2
+      "n_comp": 3
     },
     "3789630": {
       "main": null,
@@ -139316,7 +139317,25 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Demon Cats",
-      "fetched_at": 1791328879,
+      "fetched_at": 1792547066,
+      "raw": {
+        "main": null,
+        "extra": null,
+        "complete": 0.1
+      },
+      "est": [
+        "main",
+        "extra"
+      ],
+      "n_comp": 4
+    },
+    "3789650": {
+      "main": 0.1,
+      "extra": 0.1,
+      "complete": 0.1,
+      "avg": 0.1,
+      "match": "100 Vampire Cats",
+      "fetched_at": 1792546976,
       "raw": {
         "main": null,
         "extra": null,
@@ -139328,31 +139347,13 @@
       ],
       "n_comp": 3
     },
-    "3789650": {
-      "main": 0.1,
-      "extra": 0.1,
-      "complete": 0.1,
-      "avg": 0.1,
-      "match": "100 Vampire Cats",
-      "fetched_at": 1791328817,
-      "raw": {
-        "main": null,
-        "extra": null,
-        "complete": 0.1
-      },
-      "est": [
-        "main",
-        "extra"
-      ],
-      "n_comp": 2
-    },
     "3789660": {
       "main": 0.1,
       "extra": 0.1,
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Candy Cats",
-      "fetched_at": 1791328840,
+      "fetched_at": 1792547012,
       "raw": {
         "main": null,
         "extra": null,
@@ -139370,7 +139371,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Witch Cats",
-      "fetched_at": 1791328798,
+      "fetched_at": 1792546953,
       "raw": {
         "main": null,
         "extra": null,
@@ -139380,7 +139381,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 2
+      "n_comp": 3
     },
     "3789680": {
       "main": 0.1,
@@ -139388,7 +139389,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Camp Cats",
-      "fetched_at": 1791328871,
+      "fetched_at": 1792547055,
       "raw": {
         "main": null,
         "extra": null,
@@ -139398,7 +139399,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 4
+      "n_comp": 5
     },
     "3789750": {
       "main": null,
@@ -141323,7 +141324,7 @@
       "complete": 1.9,
       "avg": 1.5,
       "match": "MEAT ROOM",
-      "fetched_at": 1791328986,
+      "fetched_at": 1792547202,
       "raw": {
         "main": null,
         "extra": 1.4,
@@ -142247,7 +142248,7 @@
       "complete": 1.8,
       "avg": 1.3,
       "match": "Blood Bear",
-      "fetched_at": 1791328779,
+      "fetched_at": 1792546929,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -143452,7 +143453,7 @@
       "complete": 2.0,
       "avg": 1.6,
       "match": "R-TYPE DX: Music Encore",
-      "fetched_at": 1791328893,
+      "fetched_at": 1792547084,
       "raw": {
         "main": null,
         "extra": null,
@@ -145231,7 +145232,7 @@
       "complete": 1.9,
       "avg": 1.5,
       "match": "Overdrawn",
-      "fetched_at": 1791328777,
+      "fetched_at": 1792546923,
       "raw": {
         "main": null,
         "extra": null,
@@ -146122,7 +146123,7 @@
       "complete": 2.4,
       "avg": 1.7,
       "match": "Brain School",
-      "fetched_at": 1791328814,
+      "fetched_at": 1792546972,
       "raw": {
         "main": 1.2,
         "extra": null,
@@ -148607,7 +148608,7 @@
       "complete": 0.6,
       "avg": 0.5,
       "match": "JANKLADY",
-      "fetched_at": 1791328843,
+      "fetched_at": 1792547016,
       "raw": {
         "main": null,
         "extra": null,
@@ -149769,22 +149770,22 @@
       "attempts": 6
     },
     "3949680": {
-      "main": 0.6,
-      "extra": 0.7,
-      "complete": 0.9,
-      "avg": 0.7,
+      "main": 0.7,
+      "extra": 0.9,
+      "complete": 1.1,
+      "avg": 0.9,
       "match": "Raw Signal - Uncover Gay Hidden Secrets",
-      "fetched_at": 1791328781,
+      "fetched_at": 1792546931,
       "raw": {
         "main": null,
         "extra": null,
-        "complete": 0.9
+        "complete": 1.1
       },
       "est": [
         "main",
         "extra"
       ],
-      "n_comp": 4
+      "n_comp": 5
     },
     "3949720": {
       "main": null,
@@ -150013,7 +150014,7 @@
       "complete": 1.7,
       "avg": 1.4,
       "match": "Samuel Prince Attorney at Law - Chapter 1",
-      "fetched_at": 1791328849,
+      "fetched_at": 1792547027,
       "raw": {
         "main": null,
         "extra": null,
@@ -150379,7 +150380,7 @@
       "complete": 1.0,
       "avg": 0.8,
       "match": "Ashes",
-      "fetched_at": 1791328980,
+      "fetched_at": 1792547198,
       "raw": {
         "main": null,
         "extra": null,
@@ -151141,7 +151142,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "COINFLATE!!",
-      "fetched_at": 1791328864,
+      "fetched_at": 1792547046,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -152019,7 +152020,7 @@
       "complete": 0.2,
       "avg": 0.1,
       "match": "Fortune Paradox",
-      "fetched_at": 1791328936,
+      "fetched_at": 1792547140,
       "raw": {
         "main": 0.1,
         "extra": null,
@@ -152374,7 +152375,7 @@
       "complete": 2.0,
       "avg": 1.0,
       "match": "Mist",
-      "fetched_at": 1791328956,
+      "fetched_at": 1792547174,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -152992,7 +152993,7 @@
       "complete": 3.9,
       "avg": 3.1,
       "match": "Papercut Art Gallery-Nature II",
-      "fetched_at": 1791328770,
+      "fetched_at": 1792546913,
       "raw": {
         "main": null,
         "extra": null,
@@ -154242,7 +154243,7 @@
       "complete": 1.4,
       "avg": 1.4,
       "match": "Detective - Scene Crime",
-      "fetched_at": 1791328869,
+      "fetched_at": 1792547053,
       "raw": {
         "main": 1.2,
         "extra": null,
@@ -154554,7 +154555,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "100 Hidden Pandas: Village",
-      "fetched_at": 1791328895,
+      "fetched_at": 1792547085,
       "raw": {
         "main": null,
         "extra": null,
@@ -155514,7 +155515,7 @@
       "complete": 0.3,
       "avg": 0.2,
       "match": "Krysolov",
-      "fetched_at": 1791328944,
+      "fetched_at": 1792547155,
       "raw": {
         "main": null,
         "extra": null,
@@ -155955,7 +155956,7 @@
       "complete": 14.0,
       "avg": 10.3,
       "match": "Pyramis",
-      "fetched_at": 1791328883,
+      "fetched_at": 1792547072,
       "raw": {
         "main": 7.2,
         "extra": null,
@@ -156042,7 +156043,7 @@
       "complete": 2.1,
       "avg": 1.6,
       "match": "FREST",
-      "fetched_at": 1791328794,
+      "fetched_at": 1792546925,
       "raw": {
         "main": 1.2,
         "extra": null,
@@ -157093,7 +157094,7 @@
       "complete": 12.5,
       "avg": 9.0,
       "match": "Tunnel B1",
-      "fetched_at": 1791328896,
+      "fetched_at": 1792547087,
       "raw": {
         "main": null,
         "extra": null,
@@ -157103,7 +157104,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 7
+      "n_comp": 0
     },
     "3667660": {
       "main": null,
@@ -158008,10 +158009,10 @@
     "3670010": {
       "main": 32.6,
       "extra": 38.2,
-      "complete": 58.3,
+      "complete": 58.2,
       "avg": 43.0,
       "match": "Hell is Others",
-      "fetched_at": 1791328914,
+      "fetched_at": 1792547117,
       "raw": {
         "main": 32.6,
         "extra": 38.2,
@@ -158521,7 +158522,7 @@
       "complete": 1.6,
       "avg": 1.1,
       "match": "BAROQUE SHOOTING: REVERSED",
-      "fetched_at": 1791328927,
+      "fetched_at": 1792547127,
       "raw": {
         "main": 0.6,
         "extra": 1.2,
@@ -158641,7 +158642,7 @@
       "complete": 4.9,
       "avg": 3.6,
       "match": "Babbling Brook",
-      "fetched_at": 1791328847,
+      "fetched_at": 1792547023,
       "raw": {
         "main": 2.5,
         "extra": null,
@@ -160986,7 +160987,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Living Nightmares - False Familiar",
-      "fetched_at": 1791328773,
+      "fetched_at": 1792546917,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -161472,7 +161473,7 @@
       "complete": 9.1,
       "avg": 6.6,
       "match": "Exile",
-      "fetched_at": 1791328925,
+      "fetched_at": 1792547125,
       "raw": {
         "main": 4.6,
         "extra": null,
@@ -164795,7 +164796,7 @@
       "complete": 2.0,
       "avg": 1.6,
       "match": "Brain Booster",
-      "fetched_at": 1791328887,
+      "fetched_at": 1792547078,
       "raw": {
         "main": null,
         "extra": null,
@@ -166730,7 +166731,7 @@
       "complete": 1.0,
       "avg": 0.8,
       "match": "Hentai Store",
-      "fetched_at": 1791328858,
+      "fetched_at": 1792547033,
       "raw": {
         "main": null,
         "extra": null,
@@ -166990,7 +166991,7 @@
       "complete": 17.1,
       "avg": 6.1,
       "match": "Twin Hawk",
-      "fetched_at": 1791328791,
+      "fetched_at": 1792546945,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -167261,7 +167262,7 @@
       "complete": 4.0,
       "avg": 3.1,
       "match": "Kindred [High Tide]",
-      "fetched_at": 1791328860,
+      "fetched_at": 1792547040,
       "raw": {
         "main": null,
         "extra": 3.0,
@@ -168664,7 +168665,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Click to Punch",
-      "fetched_at": 1791328889,
+      "fetched_at": 1792547080,
       "raw": {
         "main": null,
         "extra": null,
@@ -168766,7 +168767,7 @@
       "complete": 6.5,
       "avg": 4.7,
       "match": "Wrack: Reclamation",
-      "fetched_at": 1791328801,
+      "fetched_at": 1792546956,
       "raw": {
         "main": 3.3,
         "extra": null,
@@ -169024,7 +169025,7 @@
       "complete": 1.1,
       "avg": 0.9,
       "match": "Mind the Clown",
-      "fetched_at": 1791328823,
+      "fetched_at": 1792546988,
       "raw": {
         "main": null,
         "extra": null,
@@ -170535,7 +170536,7 @@
       "complete": 3.6,
       "avg": 2.9,
       "match": "Parallels",
-      "fetched_at": 1791328907,
+      "fetched_at": 1792547110,
       "raw": {
         "main": null,
         "extra": null,
@@ -171015,7 +171016,7 @@
       "complete": 1.0,
       "avg": 0.7,
       "match": "Shadow President",
-      "fetched_at": 1791328958,
+      "fetched_at": 1792547176,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -171576,7 +171577,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Pomelo & Friends: Sevilla",
-      "fetched_at": 1791328876,
+      "fetched_at": 1792547062,
       "raw": {
         "main": null,
         "extra": null,
@@ -175259,7 +175260,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Cats Visiting Wild West",
-      "fetched_at": 1791328908,
+      "fetched_at": 1792547112,
       "raw": {
         "main": null,
         "extra": null,
@@ -175505,7 +175506,7 @@
       "complete": 1.5,
       "avg": 1.2,
       "match": "SJ-19 Learns To Love!",
-      "fetched_at": 1791328947,
+      "fetched_at": 1792547162,
       "raw": {
         "main": null,
         "extra": null,
@@ -179226,7 +179227,7 @@
       "complete": 13.4,
       "avg": 9.6,
       "match": "Mewseum: Film Festival",
-      "fetched_at": 1791328803,
+      "fetched_at": 1792546958,
       "raw": {
         "main": null,
         "extra": null,
@@ -181210,7 +181211,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "SCULPTURE",
-      "fetched_at": 1791328898,
+      "fetched_at": 1792547091,
       "raw": {
         "main": null,
         "extra": null,
@@ -183268,7 +183269,7 @@
       "complete": 6.0,
       "avg": 4.8,
       "match": "Word Quest",
-      "fetched_at": 1791328822,
+      "fetched_at": 1792546986,
       "raw": {
         "main": null,
         "extra": null,
@@ -185729,7 +185730,7 @@
       "complete": 0.2,
       "avg": 0.2,
       "match": "Assassin Of Goblin",
-      "fetched_at": 1791328832,
+      "fetched_at": 1792547001,
       "raw": {
         "main": null,
         "extra": null,
@@ -188234,7 +188235,7 @@
       "complete": 1.6,
       "avg": 1.2,
       "match": "City of Nightmares",
-      "fetched_at": 1791328987,
+      "fetched_at": 1792547204,
       "raw": {
         "main": 0.8,
         "extra": null,
@@ -189078,7 +189079,7 @@
       "complete": 0.8,
       "avg": 0.7,
       "match": "P.I.S.",
-      "fetched_at": 1791328880,
+      "fetched_at": 1792547068,
       "raw": {
         "main": null,
         "extra": 0.7,
@@ -190024,7 +190025,7 @@
       "complete": 1.3,
       "avg": 1.0,
       "match": "Penance",
-      "fetched_at": 1791328915,
+      "fetched_at": 1792547118,
       "raw": {
         "main": 0.8,
         "extra": 1.0,
@@ -1089679,7 +1089680,7 @@
       "complete": 10.0,
       "avg": 6.1,
       "match": "Quarantine",
-      "fetched_at": 1792103409,
+      "fetched_at": 1792547149,
       "raw": {
         "main": 0.9,
         "extra": 7.5,
@@ -1089688,8 +1089689,7 @@
       "est": [
         "complete"
       ],
-      "n_comp": 12,
-      "comp_grew": true
+      "n_comp": 12
     },
     "1502970": {
       "main": 32.4,
@@ -1354189,7 +1354189,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Tori",
-      "fetched_at": 1791328778,
+      "fetched_at": 1792546927,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -1430657,7 +1430657,7 @@
       "complete": 5.8,
       "avg": 4.7,
       "match": "Guardian",
-      "fetched_at": 1791328906,
+      "fetched_at": 1792547108,
       "raw": {
         "main": null,
         "extra": null,
@@ -1430667,7 +1430667,7 @@
         "main",
         "extra"
       ],
-      "n_comp": 1
+      "n_comp": 0
     },
     "676880": {
       "main": null,
@@ -1862205,7 +1862205,7 @@
       "complete": 5.6,
       "avg": 4.4,
       "match": "Ellingby House",
-      "fetched_at": 1791328903,
+      "fetched_at": 1792547100,
       "raw": {
         "main": null,
         "extra": 4.2,
