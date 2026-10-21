@@ -28,6 +28,7 @@ Requires open network egress to Steam CM + api.steampowered.com.
 Usage:
   python pics_refresh.py --appids appids.txt
   python pics_refresh.py --top 500                # pull live top-N as the list
+  python pics_refresh.py --catalog games.json --catalog upcoming.json   # released + upcoming
   python pics_refresh.py --appids ids.txt --out ./data/pics_raw --chunk 150
   python pics_refresh.py --appids ids.txt --stale-days 30   # incremental: skip
                                                             # games fetched < N days ago
@@ -118,8 +119,8 @@ def load_appids(args) -> list:
                         ids.append(int(line.split(",")[0]))
                     except ValueError:
                         pass
-    if args.catalog:
-        ids.extend(load_catalog_appids(args.catalog))
+    for path in args.catalog or []:              # repeatable: games.json + upcoming.json
+        ids.extend(load_catalog_appids(path))
     if args.top:
         ids.extend(get_live_top_appids(args.top))
     # dedupe, preserve order
@@ -235,7 +236,9 @@ def fetch_chunk(client, chunk, timeout):
 def main():
     ap = argparse.ArgumentParser(description="SteamQTPD PICS raw metadata scraper")
     ap.add_argument("--appids", help="file of appids (one per line, # comments ok)")
-    ap.add_argument("--catalog", help="canonical catalog/games JSON to read appids from")
+    ap.add_argument("--catalog", action="append",
+                    help="catalog/games JSON to read appids from; repeat to merge several "
+                         "(pics.yml passes games.json and upcoming.json)")
     ap.add_argument("--top", type=int, help="also pull live top-N most-played")
     ap.add_argument("--out", default="pics_raw", help="output dir for raw shards")
     ap.add_argument("--chunk", type=int, default=150, help="appids per PICS call")

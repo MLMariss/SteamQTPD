@@ -817,6 +817,12 @@
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gtitle:hover{text-decoration:underline}
   .gsub{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  /* Upcoming marker (upBadge). Inline under the title; .gup pins it to the grid art's top-left,
+     the corner the discount badge leaves free, above the clip layers like .gdisc. */
+  .upbadge{font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase;
+           color:var(--blue); border:1px solid var(--blue); border-radius:4px; padding:0 5px}
+  .upbadge.gup{position:absolute; top:7px; left:7px; z-index:5; background:#0e1320d9; font-size:12px;
+               padding:1px 6px; box-shadow:0 1px 6px #0008}
   .wish-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--gold); margin-left:7px; vertical-align:middle}
 
   .num{font-family:var(--mono); text-align:right; white-space:nowrap}
@@ -1825,6 +1831,18 @@ try{
 
     <div class="bar-filters" id="barFilters">
       <div class="ctl-row">
+        <!-- Release toggle. In this always-visible row rather than a folding section: it decides
+             which catalogue every other filter works on, like the wishlist and publisher rows
+             beside it. Upcoming data (upcoming.json + pics_upcoming.json) is fetched on first use,
+             so the default Released view downloads nothing extra. -->
+        <div class="wishrow">
+          <span class="wishlabel" title="Release — released games (the default), games announced on Steam but not out yet, or both. A typed search always looks through both.">Release</span>
+          <div class="seg" role="group" aria-label="Release status">
+            <button data-release="released" aria-pressed="true"  title="Released — games out now. The default.">Released</button>
+            <button data-release="upcoming" aria-pressed="false" title="Upcoming — games on Steam that are not out yet, soonest release first; undated ones (TBA) last. No reviews, playtime or length until launch, so no QTPD either.">Upcoming</button>
+            <button data-release="all"      aria-pressed="false" title="All — released and upcoming games together.">All</button>
+          </div>
+        </div>
         <div class="wishrow">
           <span class="wishlabel" title="Wishlist — load your Steam wishlist, then filter the whole table down to just those games. Your profile's game details must be public for it to load.">Wishlist</span>
           <div class="wishbox" id="wishBox">
@@ -2383,9 +2401,26 @@ function adultMode(){
   const af = state.flags.adultF;
   return (af === "hide" && state.q && state.q.trim()) ? "any" : af;
 }
+// Release toggle: "released" | "upcoming" | "all". Games not out yet live in upcoming.json, a
+// second catalogue the scraper keeps beside games.json; the landing view stays released-only,
+// exactly as the page was before upcoming games existed. A typed search shows both, whatever the
+// toggle says — if the user looks for the thing, we show the thing — and it keeps a picked
+// suggestion landing on a row. Wishlist only lifts the released-only DEFAULT (every game on a
+// wishlist was named by the user, and most unreleased ones live there) but leaves an explicit
+// Upcoming in place. Find similar and the Publisher filter lift nothing: broad lists, the same
+// line the adult default draws.
+const RELEASE_DEFAULT = "released";
+function releaseMode(){
+  if(state.q && state.q.trim()) return "all";
+  if(state.release === "released" && state.wishOnly) return "all";
+  return state.release;
+}
 const state = { data:null, q:"", co:"", coSugIdx:-1, tagQuery:"", similarTo:null, similarTags:null, simSugIdx:-1, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
                 qBasis:"after", minScore:0, revBands:new Set(REV_DEFAULT), minPrice:null, maxPrice:null,
                 minHours:null, maxHours:null, releasedWithin:"any",
+                // Release toggle — see releaseMode(). preUpSort holds the [key, dir] that picking
+                // Upcoming replaced with soonest-first, so leaving Upcoming can put it back.
+                release:RELEASE_DEFAULT, preUpSort:null,
                 // Min sale %: null = no floor (the resting position). Any number is a multiple of 5
                 // and means "only discounts at least this deep". saleFloor/saleCeil are the
                 // shallowest/deepest discount in the results the OTHER filters produce, floored to
@@ -2449,6 +2484,9 @@ const artUrl = (a, art) => !art ? null
 // FALLBACK: the tag heuristic, used only for games PICS hasn't covered.
 const ADULT_TAGS = new Set(["Nudity","Sexual Content","Mature","NSFW","Hentai"]);
 const isAdult = g => {
+  // Upcoming rows carry store_adult: the same descriptor codes (3/4) read from the store page by
+  // scraper.py, because most games not out yet have no PICS record to say so.
+  if(g.store_adult) return true;
   if(g.pics_adult != null && (g.pics_adult || window.HAS_PICS)){
     // When PICS is loaded, its flag is authoritative (true OR a definitive false).
     if(g.cat_ids || g.tag_ids || g.pics_state != null) return !!g.pics_adult;
@@ -2755,10 +2793,32 @@ function releaseTip(g){
     const d = new Date(g.release_ts*1000);
     const day = String(d.getUTCDate()).padStart(2,"0");
     const exact = `${d.getUTCFullYear()}-${MONTHS[d.getUTCMonth()].toUpperCase()}-${day}`;
-    const age = ageStr(g.release_ts);
+    const age = g.upcoming ? untilStr(g.release_ts) : ageStr(g.release_ts);
     return age ? `${exact} (${age})` : exact;
   }
   return g.release_date || "Release date not confirmed";
+}
+// The forward twin of ageStr, for upcoming games: "in 12 days", "in 3 mo". Coarse on purpose —
+// launch dates move. A dated game past its day that Steam still calls coming soon reads "due".
+function untilStr(ts){
+  if(!ts) return "";
+  const d = Math.ceil((ts - NOW()) / 86400);
+  if(d <= 0) return "due";
+  if(d === 1) return "tomorrow";
+  if(d < 14) return `in ${d} days`;
+  if(d < 60) return `in ${Math.round(d/7)} wk`;
+  return `in ${Math.round(d/30.44)} mo`;
+}
+// "Upcoming" marker: under the title in Table / Card, on the art in Grid (cls "gup").
+function upBadge(g, cls){
+  const when = g.release_ts ? `due ${releaseTip(g)}` : (g.release_date ? `Steam says “${g.release_date}”` : "no date yet");
+  return `<span class="upbadge${cls ? " " + cls : ""}" title="${esc(`Upcoming — not released yet; ${when}. No reviews, playtime or length until it launches, so no QTPD either.`)}">Upcoming</span>`;
+}
+// Short date for an upcoming game in the search suggestions: "Dec 2026", Steam's own vague
+// string when it names a period ("Q4 2026", "2027"), else TBA ("Coming soon", "To be announced").
+function upLabel(g){
+  if(g.release_ts) return fmtRelease(g);
+  return /\d/.test(g.release_date || "") ? g.release_date : "TBA";
 }
 // Trim a trailing ".0" so exact values read as whole units ("2 weeks old", not "2.0 weeks old")
 // while partial ones keep their decimal. Guards against "2.0" surviving toFixed(1).
@@ -2856,6 +2916,10 @@ function updCad(g){
 let IGNORE_MIN_SALE = false;
 function passNonRange(x){
   if(state.hidden.has(x.appid)) return false;     // session-hidden by the user
+  // Release toggle, first: it is the cheapest test, and once upcoming.json is loaded it drops
+  // ~57k rows before any other filter looks at them.
+  { const rm = releaseMode();
+    if(rm === "released" ? x.upcoming : (rm === "upcoming" && !x.upcoming)) return false; }
   if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
   if(coActive() && !coPass(x)) return false;
   // Price-class facets (multi-toggle, OR'd). Non-overlapping primitives:
@@ -2870,7 +2934,10 @@ function passNonRange(x){
   // Review-count band toggles. A game passes if its band is enabled. Empty set = no filter.
   // Default {2,3,4} excludes only the 0-99 band (i.e. "100+"). Games with null review_count
   // fall in band 0, so they only show when the 0-99 band is enabled.
-  if(revFloorOn() && !state.revBands.has(bandOf(x.review_count))) return false;
+  // An upcoming game cannot have reviews, so the DEFAULT floor would empty the Upcoming view
+  // outright; it skips them. Bands the user picked still apply to them like to anything else.
+  if(revFloorOn() && !(x.upcoming && sameSet(state.revBands, REV_DEFAULT))
+     && !state.revBands.has(bandOf(x.review_count))) return false;
   // Min sale % floor. Free games are exempt — they're kept or dropped by the Free price type
   // alone, exactly as the user asked; everything else must clear the floor, which is what
   // pushes full-price games (discount 0) out. IGNORE_MIN_SALE lets computeSaleBounds() ask
@@ -2906,6 +2973,7 @@ function passNonRange(x){
   // release date cannot satisfy a recency window, so it drops out (Infinity age), but it DOES
   // satisfy "1yr+", which asks for old rather than for recent.
   if(state.releasedWithin !== "any"){
+    if(x.upcoming) return false;     // not released at all: a future date would read as "recent"
     const rage = x.release_ts ? (NOW() - x.release_ts) : Infinity;
     if(state.releasedWithin === "1yr+"){ if(!(rage > 365*86400)) return false; }
     else {
@@ -3169,7 +3237,11 @@ function render(){
     tbody.innerHTML = "";
     $("#gridview").innerHTML = "";
     empty.style.display = "block";
-    empty.innerHTML = "<b>No games match these filters.</b><br>Loosen the QTPD range, clear tags, or reset.";
+    empty.innerHTML = (releaseMode() !== "released" && UP_STATUS === "loading")
+      ? "<b>Loading upcoming games…</b>"
+      : (releaseMode() === "upcoming" && UP_STATUS === "error")
+      ? "<b>Upcoming games couldn't be loaded.</b><br>Try again later, or switch Release back to Released."
+      : "<b>No games match these filters.</b><br>Loosen the QTPD range, clear tags, or reset.";
     renderMeta();
     return;
   }
@@ -3260,7 +3332,7 @@ function render(){
     }
 
     const wished = state.wishlist && state.wishlist.has(g.appid) ? '<span class="wish-dot" title="On your wishlist"></span>' : '';
-    const age = ageStr(g.release_ts);
+    const age = g.upcoming ? untilStr(g.release_ts) : ageStr(g.release_ts);
 
     // stacked reviews: all-time over recent (recent greyed when stale / absent)
     const allRow = `<div class="rrow" title="All-time: ${g.rating_pct==null?'no':g.rating_pct+'% of '+(g.review_count||0).toLocaleString()} reviews positive${tierTip(g.rating_pct)}">`
@@ -3381,7 +3453,7 @@ function render(){
           </span>
           <span class="gmeta">
             <a class="gtitle" href="${esc(g.url)}" target="_blank" rel="noopener" title="${esc(g.title)}">${esc(g.title)}</a>${wished}
-            <div class="gsub">${g.review_count ? `<button type="button" class="gsub-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">${g.review_count.toLocaleString()} reviews</button>` : "app "+g.appid}</div>
+            <div class="gsub">${g.review_count ? `<button type="button" class="gsub-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">${g.review_count.toLocaleString()} reviews</button>` : g.upcoming ? upBadge(g) : "app "+g.appid}</div>
           </span></div></td>
       <td data-label="Reviews">${reviews}</td>
       <td data-label="Trend" class="center">${trend}</td>
@@ -4301,8 +4373,17 @@ document.body.addEventListener("contextmenu", e => {
 
 // ----- tag rail: stable membership (full counts), contextual badges -----
 function computeFullCounts(){
-  const counts = {};
-  state.data.games.forEach(g => canonSet(g).forEach(t => counts[t] = (counts[t]||0)+1));
+  // Over the catalogue the Release toggle picks, not every row held: upcoming.json joins the
+  // same array once fetched, and counting it while the toggle says Released would move every
+  // tag's total the moment someone typed a search. Re-run when the toggle or that array changes.
+  const counts = {}, r = state.release;
+  let n = 0;
+  state.data.games.forEach(g => {
+    if(r === "released" ? g.upcoming : (r === "upcoming" && !g.upcoming)) return;
+    n++;
+    canonSet(g).forEach(t => counts[t] = (counts[t]||0)+1);
+  });
+  state.scopeCount = n;                // the meta line's "/ N games": the same catalogue
   state.fullCounts = counts;
 }
 function buildTagRail(){
@@ -4533,7 +4614,7 @@ function findSimilar(appid){
 // to find nothing at all; here it offers the real title, and picking it puts the real title —
 // ™ and all — into the box, where the ordinary filter does match it. Normalising 130k titles
 // per keystroke is not free, so each one is cached on its game as _nt.
-const SIMSUG_JUMP = 5, SIMSUG_SIM = 3;
+const SIMSUG_JUMP = 5, SIMSUG_SIM = 3, SIMSUG_UP = 3;   // SIMSUG_UP: the trailing release group
 const simSugNorm = s => String(s).toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, "")
                                  .replace(/[^a-z0-9]+/g, " ").trim();
 function simSugRank(g, q){
@@ -4560,8 +4641,15 @@ function simSugHits(q){
     const r = simSugRank(g, q);
     if(r >= 0) out.push([g, r]);
   }
-  out.sort((a, b) => a[1] - b[1] || (b[0].review_count || 0) - (a[0].review_count || 0));
+  out.sort((a, b) => a[1] - b[1] || simSugTie(a[0], b[0]));
   return out.map(x => x[0]);
+}
+// Within a match tier: released games by review count, upcoming ones (no reviews to go by) by
+// launch date, soonest first and undated last. Mixed pairs never matter — renderSimSug() splits
+// the two before showing either.
+function simSugTie(a, b){
+  if(a.upcoming || b.upcoming) return ((a.release_ts || Infinity) - (b.release_ts || Infinity)) || 0;
+  return (b.review_count || 0) - (a.review_count || 0);
 }
 function hideSimSug(){
   const el = $("#simSug"); if(el){ el.hidden = true; el.innerHTML = ""; }
@@ -4573,18 +4661,32 @@ function renderSimSug(){
   if(q.length < 2){ hideSimSug(); return; }
   const hits = simSugHits(q);
   if(!hits.length){ hideSimSug(); return; }
+  // Released and upcoming matches are listed apart, so a title that isn't out yet can't pass
+  // for one you can buy. The group the Release toggle points at comes first and gets the longer
+  // list; the other trails with a short one. Upcoming rows only exist once upcoming.json has
+  // loaded — typing starts that fetch, and ensureUpcoming() re-renders this list when it lands.
+  const rel = [], up = [];
+  for(const g of hits) (g.upcoming ? up : rel).push(g);
+  const upFirst = state.release === "upcoming";
   // Only games Find-similar can actually act on get a ≈ row — no tags, no main tags, no result.
-  // Bounded loop rather than .filter().slice(): similarKeyTags() scores and sorts a game's whole
-  // tag list, and a two-letter query matches thousands of titles, so filtering the lot first
-  // would do that work thousands of times per keystroke to keep three rows.
+  // Released games only: Find similar lists released games, so an upcoming seed would point at
+  // a list it isn't in. Bounded loop rather than .filter().slice(): similarKeyTags() scores and
+  // sorts a game's whole tag list, and a two-letter query matches thousands of titles, so
+  // filtering the lot first would do that work thousands of times per keystroke to keep three rows.
   const sim = [];
-  for(const g of hits){
+  for(const g of rel){
     if(sim.length >= SIMSUG_SIM) break;
     if((g.tags || []).length && similarKeyTags(g).length) sim.push(g);
   }
-  let html = `<div class="ss-h">Show just this game</div>`
-    + hits.slice(0, SIMSUG_JUMP).map(g =>
-        `<button type="button" data-pick="${esc(g.title)}" title="${esc("Search for exactly “" + g.title + "”")}"><i>→</i><span>${esc(g.title)}</span></button>`).join("");
+  const pickBtn = g =>
+    `<button type="button" data-pick="${esc(g.title)}" title="${esc("Search for exactly “" + g.title + "”")}"><i>→</i><span>${esc(g.title)}</span>`
+    + (g.upcoming ? `<em>${esc(upLabel(g))}</em>` : "") + `</button>`;
+  const groups = [
+    {head: upFirst ? "Released" : "Show just this game", rows: rel.slice(0, upFirst ? SIMSUG_UP : SIMSUG_JUMP)},
+    {head: "Coming soon", rows: up.slice(0, upFirst ? SIMSUG_JUMP : SIMSUG_UP)},
+  ].filter(x => x.rows.length);
+  if(upFirst) groups.reverse();
+  let html = groups.map((x, n) => `<div class="ss-h${n ? " ss-alt" : ""}">${x.head}</div>` + x.rows.map(pickBtn).join("")).join("");
   if(sim.length) html += `<div class="ss-h ss-alt">…or find games similar to</div>`
     + sim.map(g =>
         `<button type="button" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game’s main tags: " + similarKeyTags(g).join(", "))}"><i>≈</i><span>${esc(g.title)}</span></button>`).join("");
@@ -4732,7 +4834,31 @@ function syncPriceClassUI(){
     b.setAttribute("aria-pressed", pc === "all" ? allOn : state.priceClass.has(pc));
   });
 }
-function update(){ resetPaging(); computeSaleBounds(); syncMinSaleUI(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
+function update(){ ensureUpcoming(); resetPaging(); computeSaleBounds(); syncMinSaleUI(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
+// Release toggle. Picking Upcoming sorts soonest release first (TBA sinks: nulls always sort last)
+// and remembers the sort it replaced; leaving Upcoming puts that back, unless the user re-sorted
+// in the meantime, in which case their sort stands.
+function setRelease(v){
+  if(!["released","upcoming","all"].includes(v) || v === state.release) return;
+  const was = state.release;
+  state.release = v;
+  if(v === "upcoming"){
+    if(!(state.sortKey === "release_ts" && state.sortDir === 1)){
+      state.preUpSort = [state.sortKey, state.sortDir];
+      state.sortKey = "release_ts"; state.sortDir = 1;
+    }
+  } else {
+    if(was === "upcoming" && state.preUpSort && state.sortKey === "release_ts" && state.sortDir === 1)
+      [state.sortKey, state.sortDir] = state.preUpSort;
+    state.preUpSort = null;
+  }
+  syncReleaseUI(); syncSortArrows();
+  computeFullCounts();
+  update();
+}
+function syncReleaseUI(){
+  document.querySelectorAll("[data-release]").forEach(o => o.setAttribute("aria-pressed", o.dataset.release === state.release));
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════
    Lorenzo-list features (ARCHITECTURE §3.4)
@@ -4929,7 +5055,7 @@ function gridCardHTML(g){
       <img class="gcap" loading="lazy" src="${imgChain(g.appid, g.art)[0]}" alt="" referrerpolicy="no-referrer"
            data-appid="${g.appid}" data-art="${esc(g.art || "")}" data-step="0"
            onerror="stepThumb(this,true)" onload="stepThumb(this,false)" />
-      ${disc}<span class="gplay" aria-hidden="true"><i class="gp-play">▶</i><i class="gp-stop">■</i></span>
+      ${disc}${g.upcoming ? upBadge(g, "gup") : ""}<span class="gplay" aria-hidden="true"><i class="gp-play">▶</i><i class="gp-stop">■</i></span>
       <button type="button" class="gexp" tabindex="-1" aria-label="Watch bigger"
               title="Watch this one bigger — pull the preview into the player at the top of the screen, then keep scrolling and tap any other card to watch that instead. Swiping up on a playing card does the same.">⤢</button>
     </div>
@@ -5087,6 +5213,7 @@ function markChangedControls(){
   setGroup("[data-rev]",          !sameSet(state.revBands, REV_DEFAULT));
   setGroup("[data-upd]",          state.updatedWithin !== "any");
   setGroup("[data-rel]",          state.releasedWithin !== "any");
+  setGroup("[data-release]",      state.release !== RELEASE_DEFAULT);
   setGroup("[data-ptmetric]",     state.ptMetric !== "up");
   setGroup('[data-pc="full"],[data-pc="sale"],[data-pc="free"]', state.priceClass.size < 3);
   // FLAGS — all segmented, all tri-state
@@ -5161,6 +5288,9 @@ function renderSummary(){
   if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
   if(state.releasedWithin !== "any"){ const t = state.releasedWithin === "1yr+" ? "released 1yr+ ago" : `released ≤ ${state.releasedWithin}`; parts.push(chip("rel", t)); }
   if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
+  if(state.release !== RELEASE_DEFAULT) parts.push(chip("release",
+    (state.release === "upcoming" ? "upcoming only" : "released + upcoming")
+    + (UP_STATUS === "loading" ? " (loading…)" : UP_STATUS === "error" ? " (unavailable)" : "")));
   if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
 
   // Tags close the line as their OWN inline cycle-chips (not a "+2 −1" count) — the same
@@ -5215,6 +5345,7 @@ const SUMMARY_EDITORS = {
   minscore: {title:"Min rating", cur:() => String(state.minScore), opts:[["Any",'[data-minscore="0"]',"0"],["60+",'[data-minscore="60"]',"60"],["70+",'[data-minscore="70"]',"70"],["80+",'[data-minscore="80"]',"80"],["90+",'[data-minscore="90"]',"90"]]},
   ratesrc:  {title:"Review period", cur:() => state.ratingSource, opts:[["All-time",'[data-ratesrc="all"]',"all"],["30-day",'[data-ratesrc="recent"]',"recent"]]},
   upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
+  release:  {title:"Release", cur:() => state.release, opts:[["Released",'[data-release="released"]',"released"],["Upcoming",'[data-release="upcoming"]',"upcoming"],["All",'[data-release="all"]',"all"]]},
   rel:      {title:"Released within", cur:() => state.releasedWithin, opts:[["Any",'[data-rel="any"]',"any"],["1mo",'[data-rel="1mo"]',"1mo"],["3mo",'[data-rel="3mo"]',"3mo"],["6mo",'[data-rel="6mo"]',"6mo"],["1yr",'[data-rel="1yr"]',"1yr"],["1yr+",'[data-rel="1yr+"]',"1yr+"]]},
   pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
@@ -5388,10 +5519,10 @@ function renderMeta(){
   // anywhere: what the two numbers count, what the timestamp is the age OF (the scrape, not the
   // page load), and why USD is asserted. Each group carries its own tip rather than one blob over
   // the whole line — the tooltip engine picks up any [title] and adds the help cursor for free.
-  const countTip = "Results — games matching your current filters, out of every game in the dataset.";
+  const countTip = "Results — games matching your current filters, out of every game in the catalogue the Release toggle picks (released, upcoming or both).";
   const ageTip   = "Data age — how long since the scraper last refreshed prices and reviews. Updates run continuously, so this is usually minutes, not days.";
   const curTip   = "Currency — every price here is US dollars from the Steam US store. There is no currency conversion.";
-  const counts = `<span title="${esc(countTip)}"><span class="n">${total}</span> / ${d.games.length} games</span>`;
+  const counts = `<span title="${esc(countTip)}"><span class="n">${total}</span> / ${state.scopeCount ?? d.games.length} games</span>`;
   const when   = d.sample ? '' : `<span title="${esc(ageTip)}">${relTime(d.generated_at)}</span> · `;
   $("#meta").innerHTML = `${counts} · ${when}<span title="${esc(curTip)}">USD</span>${badge}${hid}`;
   const ub = $("#unhide"); if(ub) ub.addEventListener("click", unhideAll);
@@ -5809,6 +5940,7 @@ function syncURL(){
   if(state.trendSet.size > 0 && state.trendSet.size < 3) p.set("trend", [...state.trendSet].join(","));
   if(state.updatedWithin !== "any") p.set("upd", state.updatedWithin);
   if(state.releasedWithin !== "any") p.set("rel", state.releasedWithin);
+  if(state.release !== RELEASE_DEFAULT) p.set("release", state.release);
   if(state.wishOnly) p.set("wishonly", "1");
   // PICS flags cluster — only non-default values emitted (keeps shared links clean).
   // The tri-state presence flags split across two lists: `flags` = require present (the
@@ -5894,6 +6026,7 @@ function loadFromURL(){
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd===v)); });
   setIf("rel", v => { state.releasedWithin=v;
     document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o.dataset.rel===v)); });
+  setIf("release", v => { if(["upcoming","all"].includes(v)) state.release = v; });
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
   // Each list only sets the keys it names, so `flags` and `noflags` don't clobber each other.
@@ -5909,6 +6042,8 @@ function loadFromURL(){
   setIf("scheme", v => { if(RATING_SCHEMES[v]) setRatingScheme(v, true); });
   setIf("sort", v => { state.sortKey = v === "hltb" ? "length" : v; });   // `hltb` = pre-Sep-2026 name
   setIf("dir", v => { state.sortDir = v==="a" ? 1 : -1; });
+  // A hand-written ?release=upcoming with no sort opens soonest-first, as the toggle does.
+  if(state.release === "upcoming" && !p.has("sort")){ state.sortKey = "release_ts"; state.sortDir = 1; }
   setIf("pt", v => { if(v==="up"||v==="down"){ state.ptMetric = v;
     document.querySelectorAll("[data-ptmetric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ptmetric===v)); } });
   setIf("ratesrc", v => { if(v==="all"||v==="recent"){ state.ratingSource = v;
@@ -5962,6 +6097,8 @@ function init(data){
   syncSortArrows();                    // reflect restored sort key/dir in headers
   syncPtHeader();                      // reflect restored playtime-median selection
   syncFlagsUI();                       // reflect restored PICS flag cluster state
+  syncReleaseUI();                     // ...and the Release toggle
+  ensureUpcoming();                    // a link opening on Upcoming / All / a search needs those rows
   // L3/L5 + L1: restore the saved view mode and accordion open/closed states before first paint.
   // #4 — default to Grid on mobile (box art suits small screens); desktop still defaults to Table.
   // A previously-saved choice always wins.
@@ -5995,6 +6132,7 @@ function init(data){
     state.qBasis="after"; state.minScore=0; state.revBands=new Set(REV_DEFAULT);
     state.minPrice=null; state.maxPrice=null; state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any";
     state.minHours=null; state.maxHours=null; state.releasedWithin="any";
+    state.release=RELEASE_DEFAULT; state.preUpSort=null;
     state.minSale=null; state.minSaleForcedFull=false;
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.ptMetric="up"; state.qRangeTouched=false;
     state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
@@ -6004,6 +6142,7 @@ function init(data){
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===state.tagMode));
     syncPriceClassUI();
     computeSaleBounds(); syncMinSaleUI();
+    syncReleaseUI(); computeFullCounts(); ensureUpcoming();
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); syncFlagsUI(); render();
   });
 
@@ -6142,6 +6281,8 @@ function init(data){
       document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o === b));
       update();
     }));
+  document.querySelectorAll("[data-release]").forEach(b =>
+    b.addEventListener("click", () => setRelease(b.dataset.release)));
   document.querySelectorAll("[data-rel]").forEach(b =>
     b.addEventListener("click", () => {
       state.releasedWithin = b.dataset.rel;
@@ -6273,6 +6414,7 @@ function init(data){
     state.minSale=null; state.minSaleForcedFull=false;
     state.trendSet=new Set(["up","flat","down"]); state.updatedWithin="any"; state.ratingSource="recent"; state.ptMetric="up";
     state.minHours=null; state.maxHours=null; state.releasedWithin="any";
+    state.release=RELEASE_DEFAULT; state.preUpSort=null; syncReleaseUI(); computeFullCounts();
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#minhours").value=""; $("#maxhours").value="";
     document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o.dataset.rel==="any"));
@@ -6682,6 +6824,46 @@ function loadLayer(url){
 }
 function bootDone(){ const el = document.getElementById("bootLoader"); if(el) el.remove(); }
 
+// ----- Upcoming catalogue (fetched on first use) -----
+// upcoming.json (scraper.py: one row per game not out yet) and pics_upcoming.json (their PICS
+// records, split out by pics_merge.py) are NOT part of the boot load: ~57k rows nobody on the
+// default Released view looks at. The first time releaseMode() asks for upcoming games — the
+// toggle, a link carrying release=, a typed search, Wishlist only — both are fetched, each row
+// goes through the same merge as the boot load, and the rows join state.data.games marked
+// `upcoming`. Until they land the Upcoming view says it is loading rather than "no games".
+let MERGE_GAME = null;                 // the boot merge for one game (set once the boot load ends)
+let UP_STATUS = "idle";                // idle | loading | ready | error
+function ensureUpcoming(){
+  if(UP_STATUS !== "idle" || !MERGE_GAME || releaseMode() === "released") return;
+  UP_STATUS = "loading";
+  Promise.all([
+    fetch("upcoming.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch("pics_upcoming.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]).then(([uj, pj]) => {
+    const rows = (uj && Array.isArray(uj.games)) ? uj.games : null;
+    if(!rows){ UP_STATUS = "error"; render(); return; }
+    const picsUp = (pj && pj.apps) || {};
+    const held = new Map(state.data.games.map(g => [g.appid, g]));
+    for(const r of rows){
+      const old = held.get(r.appid);
+      // Released since that file was written: games.json wins. A games.json shell (flagged
+      // upcoming at boot) takes the fresher row instead, and its PICS, which pics_merge.py moved
+      // to the side file along with every other pending game's.
+      if(old && !old.upcoming) continue;
+      const g = Object.assign(old || {}, r, {upcoming:true, store_adult:!!r.adult});
+      delete g.adult;
+      if(!g.url) g.url = `https://store.steampowered.com/app/${g.appid}`;
+      MERGE_GAME(g, picsUp);
+      if(!old) state.data.games.push(g);
+    }
+    _gameIdx = null;                      // the appid index is derived from the array
+    UP_STATUS = "ready";
+    computeFullCounts();
+    update();
+    if(document.activeElement === $("#q")) renderSimSug();
+  });
+}
+
 Promise.all([
   loadLayer("games.json"),
   loadLayer("prices.json"),
@@ -6759,7 +6941,10 @@ Promise.all([
   window.PT_SLIVER_N = (ratj && ratj.sliver_n) ? ratj.sliver_n : 250;
   window.PT_SLIVER_FRAC = (ratj && ratj.sliver_frac) ? ratj.sliver_frac : 0.02;
   const now = NOW();
-  data.games.forEach(game => {
+  // One game's merge across every layer. Kept (MERGE_GAME) so the upcoming rows fetched later by
+  // ensureUpcoming() go through exactly this path; `pmap` is the PICS map to read — pics.json at
+  // boot, pics_upcoming.json for those.
+  const mergeGame = (game, pmap) => {
     const key = String(game.appid);
     // prices.json is the source of truth for the pricing layer (falls back to games.json).
     if(priceMap && priceMap[key]){
@@ -6802,8 +6987,8 @@ Promise.all([
       game.tags = tagsMap[key];           // provisional; PICS overrides just below
     }
     // --- PICS metadata merge (Valve-authoritative) ---
-    if(picsMap && picsMap[key]){
-      const p = picsMap[key];
+    if(pmap && pmap[key]){
+      const p = pmap[key];
       // Tags: PICS ranked IDs -> names (primary). Fall back to SteamSpy if PICS empty.
       if(Array.isArray(p.tags) && p.tags.length){
         const names = p.tags.map(id => window.PICS_TAG_LK[String(id)] || window.PICS_TAG_LK[id]).filter(Boolean);
@@ -6872,7 +7057,17 @@ Promise.all([
     }
     reconcilePriceFlags(game);        // undo a fossilised free-weekend snapshot
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
+  };
+  data.games.forEach(game => {
+    mergeGame(game, picsMap);
+    // games.json still holds ~330 "shells": games stored while unreleased, before the release
+    // gate (cleanup_shells.py), which the scraper re-files as pending without removing. No past
+    // release date and no reviews means not out yet, so they belong to the Upcoming view, not
+    // the released list they used to sit in. A row with reviews stays released whatever its date
+    // says (Mark of the Ninja has no release_ts but 15k reviews).
+    if(!(game.release_ts && game.release_ts <= now) && !game.review_count) game.upcoming = true;
   });
+  MERGE_GAME = mergeGame;
   init(data);
   bootDone();
 });

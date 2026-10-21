@@ -18,12 +18,18 @@ What changed in v3 (the upgrades):
   * Time-budgeted runs that commit as they go. Rather than fixed per-run counts,
     each run scrapes until RUN_MINUTES elapses, git-committing every few minutes
     so a 6-hour-wall kill never loses progress.
-  * Released-only, with a waiting room. Only games actually out (a concrete past
-    release date) are stored — no empty coming-soon shells. Unreleased games go to
-    catalog["pending"] = {appid: release_ts|null}, costing just one appdetails
-    probe, and are promoted to the scrape queue the moment their release date
-    passes. Nothing is ever permanently skipped for being unreleased. New work is
-    ordered newest-appid-first, so just-released titles surface near the front.
+  * Released-only games.json, with a waiting room. Only games actually out (a
+    concrete past release date) go into games.json — no empty coming-soon shells
+    there. Unreleased games go to catalog["pending"] = {appid: release_ts|null},
+    costing just one appdetails probe, and are promoted to the scrape queue the
+    moment their release date passes. Nothing is ever permanently skipped for being
+    unreleased. New work is ordered newest-appid-first, so just-released titles
+    surface near the front.
+  * upcoming.json. What that one probe returns (title, date, preorder price, genres,
+    adult descriptors) is kept in upcoming.json, one row per pending game, so the
+    site can list upcoming games too. It mirrors `pending` exactly: a game leaves it
+    the moment it is promoted, skipped or dropped. No reviews or news are fetched for
+    it — there are none before launch.
 
 Per game: title, store URL, rating (% positive) + reviews, price before/after
 discount (USD), discount % + end time, release date, tags, HLTB
@@ -60,6 +66,7 @@ CATALOG_FILE = HERE / "catalog.json"      # tiny state: last_sync, skip list, pr
 SEEDS_FILE = HERE / "seeds.txt"           # OPTIONAL games to scrape FIRST (human-edited only)
 SEEDS_LOG_FILE = HERE / "seeds_log.txt"   # append-only audit of seed reconciliations (scraper-owned)
 PICS_FILE = HERE / "pics.json"            # READ-ONLY here (owned by pics_merge.py) — review-drift signal
+UPCOMING_FILE = HERE / "upcoming.json"    # store details of the pending (unreleased) games (committed)
 
 # Free Steam Web API key from https://steamcommunity.com/dev/apikey (GitHub secret
 # STEAM_API_KEY). Without it, falls back to the keyless full list (all app types,
@@ -76,6 +83,13 @@ SEED_RESOLVE_TTL = 24 * 3600    # live term/URL seeds: re-resolve at most once p
 # other way out is a last_modified bump after last_sync, which a launch doesn't reliably
 # produce. ~0.9s each -> 1500 is ~23 min of storefront time per run.
 TBA_SWEEP_PER_RUN = int(os.environ.get("TBA_SWEEP_PER_RUN", "1500"))
+# DATED pending games are otherwise probed only once ripe (on launch day), so their
+# upcoming.json row would be missing until then, or frozen at the first probe. This sweep
+# re-probes the ones whose row is missing or older than UPCOMING_REFRESH_DAYS, never-probed
+# first. ~1,150 dated games / 7d is ~40 per run steady state; the cap only bounds the
+# first fill (~8 min per run at 0.9s each).
+UPCOMING_SWEEP_PER_RUN = int(os.environ.get("UPCOMING_SWEEP_PER_RUN", "500"))
+UPCOMING_REFRESH_DAYS = float(os.environ.get("UPCOMING_REFRESH_DAYS", "7"))
 COMING_SOON_GRACE_DAYS = 14     # dated coming_soon games stay "ripe" this long past the date
 MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:false retries
                                 # before a game is treated as a permanent skip. success:false
@@ -633,9 +647,60 @@ def promo_residue(rec):
         free, rec.get("price_initial"), rec.get("price_final"), disc)
 
 
+def parse_price(appid, d):
+    """(is_free, price_initial, price_final, discount_pct) from an appdetails data block."""
+    is_free = bool(d.get("is_free"))
+    price_initial = price_final = None
+    discount_pct = 0
+    po = d.get("price_overview")
+    if po:
+        if po.get("currency") != "USD":
+            log(f"  appid {appid}: currency {po.get('currency')} != USD")
+        price_initial = round(po.get("initial", 0) / 100, 2) or None
+        price_final = round(po.get("final", 0) / 100, 2) or None
+        discount_pct = int(po.get("discount_percent", 0))
+    # A live free-to-keep promo reports is_free + 100% off on top of the full price.
+    # Believe the prices, not the flags, so the promo can't fossilise (see above).
+    is_free, discount_pct = reconcile_price_flags(
+        is_free, price_initial, price_final, discount_pct)
+    return is_free, price_initial, price_final, discount_pct
+
+
+# Steam content-descriptor codes that make a game adult: 3 (Adult Only Sexual Content) and
+# 4 (Frequent Nudity or Sexual Content). The SAME definition pics_summarize.py uses for the
+# PICS `adult` flag, so a game reads the same whichever layer flagged it; code 1 (Some
+# Nudity) is left out for the same reason — it over-flags mainstream games.
+ADULT_DESCRIPTORS = {3, 4}
+
+
+def upcoming_record(appid, d, release_date, release_ts):
+    """The upcoming.json row for a game that isn't out yet, built from the appdetails probe
+    already made — no extra calls. Field names match a games.json record so the frontend
+    reads both the same way; an absent key means empty. `adult` comes from the store's content descriptors: most
+    upcoming games have no PICS record yet, and the site's adult gate (CLAUDE.md) must still
+    hold for them."""
+    is_free, price_initial, price_final, discount_pct = parse_price(appid, d)
+    codes = set()
+    for x in ((d.get("content_descriptors") or {}).get("ids") or []):
+        try:
+            codes.add(int(x))
+        except (TypeError, ValueError):
+            pass
+    # Lean on purpose — ~57k rows, fetched whole by the page: no `url` (the page builds it from
+    # the appid) and no key whose value is empty (no price, not free, no discount, no ts).
+    rec = {"appid": appid, "title": d.get("name", f"App {appid}"), "release_date": release_date,
+           "tags": [g["description"] for g in d.get("genres", []) if g.get("description")]}
+    for k, v in (("release_ts", release_ts), ("price_initial", price_initial),
+                 ("price_final", price_final), ("discount_pct", discount_pct),
+                 ("is_free", is_free), ("adult", bool(codes & ADULT_DESCRIPTORS))):
+        if v:
+            rec[k] = v
+    return rec
+
+
 # --------------------------------------------------------------------------- #
-# Build one game record. Returns dict (released, scraped) | ("pending", date, ts)
-# (not yet released -> waiting room) | "skip" (confirmed non-game -> permanent)
+# Build one game record. Returns dict (released, scraped) | ("pending", date, ts, row)
+# (not yet released -> waiting room + upcoming.json) | "skip" (confirmed non-game -> permanent)
 # | "recheck" (appdetails success:false -> soft, bounded retry, §3.1)
 # | None (transient error)
 # --------------------------------------------------------------------------- #
@@ -671,25 +736,14 @@ def build_record(appid, prev=None):
         # filed undated and falls to the TBA sweep rotation.
         if release_ts is not None and time.time() - release_ts > COMING_SOON_GRACE_DAYS * 86400:
             release_ts = None
-        return ("pending", release_date, release_ts)
+        return ("pending", release_date, release_ts,
+                upcoming_record(appid, d, release_date, release_ts))
     if release_ts is None or release_ts > time.time():
-        return ("pending", release_date, release_ts)
+        return ("pending", release_date, release_ts,
+                upcoming_record(appid, d, release_date, release_ts))
 
     title = d.get("name", f"App {appid}")
-    is_free = bool(d.get("is_free"))
-    price_initial = price_final = None
-    discount_pct = 0
-    po = d.get("price_overview")
-    if po:
-        if po.get("currency") != "USD":
-            log(f"  appid {appid}: currency {po.get('currency')} != USD")
-        price_initial = round(po.get("initial", 0) / 100, 2) or None
-        price_final = round(po.get("final", 0) / 100, 2) or None
-        discount_pct = int(po.get("discount_percent", 0))
-    # A live free-to-keep promo reports is_free + 100% off on top of the full price.
-    # Believe the prices, not the flags, so the promo can't fossilise (see above).
-    is_free, discount_pct = reconcile_price_flags(
-        is_free, price_initial, price_final, discount_pct)
+    is_free, price_initial, price_final, discount_pct = parse_price(appid, d)
 
     # discount_end is no longer scraped here. It's owned by price_and_sale.py (prices.json),
     # which polls IStoreBrowseService/GetItems frequently to track live end dates and
@@ -750,6 +804,30 @@ def save_games(processed):
         ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def load_upcoming():
+    """{appid: row} from upcoming.json; {} when it is missing or unreadable."""
+    if not UPCOMING_FILE.exists():
+        return {}
+    try:
+        d = json.loads(UPCOMING_FILE.read_text(encoding="utf-8"))
+    except ValueError:
+        return {}
+    return {int(g["appid"]): g for g in d.get("games", []) if "appid" in g}
+
+
+def save_upcoming(upcoming, pending):
+    """Write upcoming.json, keeping only games still in the pending room. Anything that was
+    promoted, skipped or dropped falls out here, so the file can never disagree with
+    catalog.json about what is unreleased. One row per line: ~57k rows indented like
+    games.json would be several times the size, and a single line would make every
+    checkpoint's diff the whole file."""
+    rows = sorted((r for a, r in upcoming.items() if a in pending), key=lambda r: r["appid"])
+    body = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows)
+    UPCOMING_FILE.write_text(
+        f'{{"generated_at":{int(time.time())},"count":{len(rows)},"games":[\n{body}\n]}}\n',
+        encoding="utf-8")
+
+
 def load_catalog():
     if CATALOG_FILE.exists():
         try:
@@ -798,7 +876,7 @@ def save_catalog(c):
 
 
 def git_checkpoint(msg):
-    """Commit games.json + catalog.json and push, rebasing onto whatever the other jobs
+    """Commit games.json + catalog.json + upcoming.json and push, rebasing onto whatever the other jobs
     (prices/hltb/tags/recent) have pushed in the meantime. With several Actions all
     committing to main, a naked push gets rejected ('fetch first') whenever another job
     pushed between our pull and our push — so we pull --rebase first and retry the
@@ -807,7 +885,8 @@ def git_checkpoint(msg):
     if not IN_ACTIONS:
         return
     try:
-        subprocess.run(["git", "add", "games.json", "catalog.json", "seeds_log.txt"], check=False)
+        subprocess.run(["git", "add", "games.json", "catalog.json", "upcoming.json",
+                        "seeds_log.txt"], check=False)
         if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
             return                                    # nothing to commit
         subprocess.run(["git", "commit", "-m", msg], check=False)
@@ -870,15 +949,16 @@ def load_pics_rev():
 # --------------------------------------------------------------------------- #
 # Work selection
 # --------------------------------------------------------------------------- #
-def select_work(master, has_lm, processed, catalog):
+def select_work(master, has_lm, processed, catalog, upcoming=None):
     """Return (new_ids, refresh_ids). NEW work, in priority order:
       1. RIPE pending games -- previously seen as unreleased, whose release date has
          now arrived (release_ts <= now). These jump the queue so a game that came
          out since the last run gets scraped first.
       2. Fresh catalog games never seen before, newest appid first.
     Games still sitting unreleased in `pending` are NOT re-queued as fresh work here;
-    they're only re-probed once ripe (above) or, for undated/TBA ones, occasionally
-    via the catalog's last_modified signal -- so we don't burn probes on them.
+    they're only re-probed once ripe (above), for undated/TBA ones by the capped TBA
+    sweep or the catalog's last_modified signal, and for dated ones by the capped
+    upcoming sweep that keeps their upcoming.json row filled and current.
     REFRESH = stored (released) games due for a re-scrape, ranked by why they're due
     (see the rank table below) and oldest-touched first within each rank. Three
     triggers, in the order they were added:
@@ -920,12 +1000,26 @@ def select_work(master, has_lm, processed, catalog):
     # least-recently-probed first, then most recently touched store page first (a launch
     # usually touches it, so big releases surface in the first run). Without this an
     # undated game whose last_modified doesn't move after last_sync never leaves pending.
+    # Games with no upcoming.json row yet go first, so the first fill of the file isn't
+    # stuck behind the rotation of games probed before the file existed.
     probed = catalog.get("tba_probed") or {}
+    upcoming = upcoming or {}
     sweep = sorted((aid for aid, ts in pending.items()
                     if ts is None and aid not in done
                     and aid not in ripe_set and aid not in touched_set),
-                   key=lambda a: (probed.get(a, 0), -master.get(a, 0), -a))[:TBA_SWEEP_PER_RUN]
+                   key=lambda a: (a in upcoming, probed.get(a, 0),
+                                  -master.get(a, 0), -a))[:TBA_SWEEP_PER_RUN]
     sweep_set = set(sweep)
+
+    # Upcoming sweep: dated, not-yet-ripe pending games whose upcoming.json row is missing
+    # or older than UPCOMING_REFRESH_DAYS. Never-probed first, then oldest row, then the
+    # soonest launch. Without it they'd only be probed on launch day (see CONFIG).
+    stale = now - UPCOMING_REFRESH_DAYS * 86400
+    row_ts = lambda a: (upcoming.get(a) or {}).get("scraped_at", 0)
+    up_sweep = sorted((aid for aid, ts in pending.items()
+                       if ts is not None and ts > now and aid not in done
+                       and row_ts(aid) < stale),
+                      key=lambda a: (row_ts(a), pending[a]))[:UPCOMING_SWEEP_PER_RUN]
 
     # 2. Genuinely fresh catalog apps: never scraped, never skipped, not already in
     #    the pending waiting room (those are covered by ripe/touched logic above).
@@ -938,15 +1032,17 @@ def select_work(master, has_lm, processed, catalog):
     pri_set = set(pri)
 
     # Ripe + touched-TBA first (a release that just happened beats brand-new coverage),
-    # then priority seeds, then the fresh frontier.
+    # then priority seeds, the TBA sweep, the fresh frontier, and the upcoming sweep.
     new_ids = (ripe
                + touched_tba
                + pri
                + [a for a in sweep if a not in pri_set]
                + [a for a in fresh if a not in pri_set
-                  and a not in ripe_set and a not in touched_set])
+                  and a not in ripe_set and a not in touched_set]
+               + up_sweep)            # last: refreshing upcoming rows never delays new coverage
     log(f"Pending: {len(ripe)} ripe, {len(touched_tba)} touched-TBA, "
-        f"{len(sweep)} TBA sweep (cap {TBA_SWEEP_PER_RUN})")
+        f"{len(sweep)} TBA sweep (cap {TBA_SWEEP_PER_RUN}), "
+        f"{len(up_sweep)} upcoming sweep (cap {UPCOMING_SWEEP_PER_RUN})")
 
     # Forced re-scrapes (from '!'-prefixed seeds) jump the refresh queue even though
     # last_modified hasn't moved. Only stored appids make sense to force-refresh.
@@ -1037,6 +1133,7 @@ def main():
     start = time.time()
     processed = load_games()
     catalog = load_catalog()
+    upcoming = load_upcoming()                     # {appid: row}; pruned to pending on save
     reconcile_seeds(catalog, processed)
 
     master, has_lm = fetch_app_universe()
@@ -1044,9 +1141,10 @@ def main():
         log("Could not fetch the app universe; aborting this run.")
         return 1
 
-    new_ids, refresh_ids = select_work(master, has_lm, processed, catalog)
+    new_ids, refresh_ids = select_work(master, has_lm, processed, catalog, upcoming)
     log(f"Universe {len(master)} | stored {len(processed)} | skipped "
-        f"{len(catalog['skipped'])} | pending {len(catalog.get('pending') or {})} | "
+        f"{len(catalog['skipped'])} | pending {len(catalog.get('pending') or {})} "
+        f"({len(upcoming)} with upcoming.json rows) | "
         f"recheck {len(catalog.get('recheck') or {})} | "
         f"to-do: {len(new_ids)} new, {len(refresh_ids)} refresh")
     log(f"Budget: {RUN_MINUTES} min | storefront pace {STOREFRONT_MIN_INTERVAL}s/call | "
@@ -1194,14 +1292,17 @@ def main():
             res["scraped_at"] = int(time.time())
             processed[str(aid)] = res
             pending.pop(aid, None)          # graduated from waiting room (if it was there)
+            upcoming.pop(aid, None)         # ...and so out of upcoming.json
             recheck.pop(aid, None)          # resolved -> clear any soft-skip strikes
             force_set.discard(aid)          # forced re-scrape satisfied (if it was queued)
             n_ref += kind == "refresh"; n_new += kind == "new"
         elif isinstance(res, tuple) and res and res[0] == "pending":
             # Not out yet -> waiting room. Store its release_ts (or None for TBA) so
             # select_work can promote it the moment its date passes. Never skipped.
-            _, _pdate, pts = res
+            _, _pdate, pts, row = res
             pending[aid] = pts
+            row["scraped_at"] = int(time.time())
+            upcoming[aid] = row
             if pts is None:
                 tba_probed[aid] = int(time.time())   # back of the TBA sweep rotation
             recheck.pop(aid, None)          # it responded -> not a dead app after all
@@ -1226,7 +1327,7 @@ def main():
             catalog["pending"] = pending
             catalog["force_refresh"] = sorted(force_set)
             catalog["recheck"] = recheck
-            save_games(processed); save_catalog(catalog)
+            save_games(processed); save_catalog(catalog); save_upcoming(upcoming, pending)
             git_checkpoint(f"checkpoint: {len(processed)} games stored")
             inject_new_seeds()              # after the push, pull any seeds.txt edit into this run
             requeue_due_young()             # ...and any young game that came due mid-run
@@ -1237,7 +1338,7 @@ def main():
     catalog["force_refresh"] = sorted(force_set)
     catalog["recheck"] = recheck
     catalog["last_sync"] = int(start)
-    save_games(processed); save_catalog(catalog)
+    save_games(processed); save_catalog(catalog); save_upcoming(upcoming, pending)
     git_checkpoint(f"scrape: {len(processed)} games (+{n_new} new, {n_ref} refreshed, "
                    f"{n_pend} pending)")
     log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending. "
