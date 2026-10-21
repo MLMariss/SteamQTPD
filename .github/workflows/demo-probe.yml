@@ -1,0 +1,60 @@
+name: 0.2 Demo probe [manual] -> run log + artifact
+
+on:
+  workflow_dispatch:          # MANUAL — a one-off diagnostic for the "has a demo" filter, not a data job.
+    inputs:
+      appids:
+        description: "Extra comma-separated appids to check (known-demo games are found in pics_raw/)"
+        required: false
+        default: ""
+      sample:
+        description: "Games per cohort (released / upcoming dated / upcoming TBA) for the coverage estimate"
+        required: false
+        default: "100"
+  # Also runs when the probe itself changes on a claude/ working branch, so its answer is in
+  # that branch's checks before anything merges (workflow_dispatch only sees main's workflows).
+  # Read-only and ~25 Steam calls, so an extra run costs nothing that matters.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - demo_probe.py
+      - .github/workflows/demo-probe.yml
+
+# READ-ONLY, like review-probe.yml: commits nothing. Findings go to the run log and the job
+# summary; the raw payloads go out as a build artifact.
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-probe
+  cancel-in-progress: false
+
+jobs:
+  demo-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20        # ~25 calls at 1.5s; the budget is nowhere near
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install "requests>=2.31"
+
+      - name: Probe Steam for demo fields
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional; GetItems also answers keyless
+          QTPD_PROBE_APPIDS: ${{ inputs.appids }}
+          QTPD_PROBE_SAMPLE: ${{ inputs.sample || '100' }}
+        run: python demo_probe.py
+
+      - name: Upload findings
+        if: always()           # a partial dump is still worth having when a probe fails
+        uses: actions/upload-artifact@v7
+        with:
+          name: demo-probe-findings
+          path: demo_probe_out/
+          retention-days: 14
+          if-no-files-found: warn
