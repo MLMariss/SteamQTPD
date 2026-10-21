@@ -1,0 +1,42 @@
+name: 2.10 Store demos -> demos.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab (from a branch: a dry run, see demos.py)
+  schedule:
+    - cron: "11 1 * * *"    # daily; a full sweep is ~95 min, and a run that hits its budget resumes next day
+
+permissions:
+  contents: write           # commits demos.json as it runs
+
+concurrency:
+  group: steam-demos        # never overlap demo runs
+  cancel-in-progress: false
+
+jobs:
+  demos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 165     # RUN_MINUTES=150 + headroom
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits progress itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Index store demos
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          QHPP_CC: "US"
+          RUN_MINUTES: "150"
+        run: python demos.py

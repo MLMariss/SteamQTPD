@@ -155,11 +155,13 @@
   .ctl-row:last-child{margin-bottom:0}
   .field{display:flex; flex-direction:column; gap:6px}
   .field > label{font-family:var(--mono); font-size:12px; color:var(--muted-2); letter-spacing:.05em; text-transform:uppercase}
-  /* Flags is the widest cluster in the bar (8 groups, ~23 buttons). Once every presence flag
+  /* Flags is the widest cluster in the bar (9 groups, ~26 buttons). Once every presence flag
      shares the same Any/Exclude/Only schema the buttons stop needing generous hit padding to be
-     readable, so this section alone trades 3px of horizontal padding per button to keep the whole
-     cluster on ONE row. Vertical padding is untouched, so the row height and hit area hold. */
-  .filter-section[data-section="flags"] .seg button{padding-left:9px; padding-right:9px}
+     readable, so this section alone trades 5px of horizontal padding per button to keep the whole
+     cluster on ONE row at 1920px (it was 3px until Demo made it nine groups; measured: one row at
+     1920, two at 1680 — the same as eight groups at the old 9px). Vertical padding is untouched,
+     so the row height and hit area hold. */
+  .filter-section[data-section="flags"] .seg button{padding-left:7px; padding-right:7px}
   /* A field carrying an explainer tooltip advertises it with the help (?) cursor — the single,
      uncluttered "there's an explanation here" signal (see the global [title] rule below). The
      old dotted underline was dropped: once every explained field wore one, the page read as a
@@ -2007,7 +2009,7 @@ try{
       </div>
 
       <div class="filter-section" data-section="flags">
-        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, AI content, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
+        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, a playable demo, AI content, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
         <div class="section-body"><div class="ctl-row">
         <!-- Presence flags all share ONE toggle schema — Any / Exclude / Only — so the row stays
              narrow and the pattern is learned once. That only works if the LABEL names the thing
@@ -2021,6 +2023,15 @@ try{
             <button data-flag="ea" data-val="any"  aria-pressed="true">Any</button>
             <button data-flag="ea" data-val="hide" aria-pressed="false">Exclude</button>
             <button data-flag="ea" data-val="only" aria-pressed="false">Only</button>
+          </div>
+        </div>
+        <!-- Demo: its own layer (demos.json, demos.py), not PICS, so it has its own HAS_DEMOS guard. -->
+        <div class="field" title="Demo — Steam lists a free demo you can play before buying. Read from the store's own demo link and refreshed daily, so a demo pulled after a festival drops off within a day. Most common on upcoming games: two thirds of those with a release date have one.">
+          <label>Demo</label>
+          <div class="seg" role="group" aria-label="Demo">
+            <button data-flag="demo" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="demo" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="demo" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
         <div class="field" title="AI disclosure — the developer declared generative-AI content (pre-made assets or live generation). Valve has only required this since 2024, so an older listing can lack it even where AI was used — absence isn't proof of none.">
@@ -2444,12 +2455,12 @@ const state = { data:null, q:"", co:"", coSugIdx:-1, tagQuery:"", similarTo:null
                 wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", ptMetric:"up", fullCounts:{},
                 view:"table", tagLinger:new Map(),   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
                 // PICS "Flags" cluster. Each key is independent; "any" = no filter.
-                //   ea/eula/fse/vrOnly : "any" | "hide" (flag absent) | "only" (flag present)
+                //   ea/eula/fse/vrOnly/demo : "any" | "hide" (flag absent) | "only" (flag present)
                 //   ai       : "any" | "hide" (exclude disclosed) | "only" (require disclosed)
                 //   ctrl     : "any" | "full" | "partial"
                 //   deck     : "any" | "verified" | "playable" (verified+playable) | "unsupported"
                 //   adultF   : "any" | "hide" (exclude adult) | "only". Defaults to ADULT_DEFAULT.
-                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT } };
+                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT } };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -2980,6 +2991,12 @@ function passNonRange(x){
       const d = {"1mo":30,"3mo":90,"6mo":180,"1yr":365}[state.releasedWithin];
       if(!(rage <= d*86400)) return false;
     }
+  }
+  // Demo (demos.json — its own layer, so its own guard, for the same reason as HAS_PICS below:
+  // without the file every game reads "no demo", and Only would empty the list).
+  if(window.HAS_DEMOS){
+    const m = state.flags.demo;
+    if((m === "only" && !x.demo) || (m === "hide" && x.demo)) return false;
   }
   // --- PICS "Flags" cluster (all independent; ONLY applied when PICS data is loaded).
   // Without pics.json the pics_* fields are undefined, so an active flag would wrongly
@@ -5182,6 +5199,7 @@ function sectionActiveCounts(){
     tags: state.tagsInc.size + state.tagsExc.size,
     flags: (() => { const F = state.flags; let n = 0;
       if(F.ea !== "any") n++; if(F.eula !== "any") n++; if(F.fse !== "any") n++; if(F.vrOnly !== "any") n++;
+      if(F.demo !== "any") n++;
       if(F.ai !== "any") n++; if(F.ctrl !== "any") n++; if(F.deck !== "any") n++; if(F.adultF !== ADULT_DEFAULT) n++;
       return n; })(),
   };
@@ -5224,6 +5242,7 @@ function markChangedControls(){
     setGroup("[data-adult]", F.adultF !== ADULT_DEFAULT);
     setGroup('[data-flag="ea"]',     F.ea     !== "any");
     setGroup('[data-flag="vrOnly"]', F.vrOnly !== "any");
+    setGroup('[data-flag="demo"]',   F.demo   !== "any");
     setGroup('[data-flag="fse"]',    F.fse    !== "any");
     setGroup('[data-flag="eula"]',   F.eula   !== "any");
   }
@@ -5885,7 +5904,7 @@ function syncFlagsUI(){
   seg("ai", F.ai); seg("ctrl", F.ctrl); seg("deck", F.deck); seg("adult", F.adultF);
   const tri = (key, val) => document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
     o.setAttribute("aria-pressed", o.dataset.val === val));
-  tri("ea", F.ea); tri("vrOnly", F.vrOnly); tri("fse", F.fse); tri("eula", F.eula);
+  tri("ea", F.ea); tri("vrOnly", F.vrOnly); tri("fse", F.fse); tri("eula", F.eula); tri("demo", F.demo);
 }
 function setBasis(b){
   state.qBasis = b;
@@ -5946,7 +5965,7 @@ function syncURL(){
   // The tri-state presence flags split across two lists: `flags` = require present (the
   // pre-tri-state meaning, so old shared links keep working), `noflags` = require absent.
   { const F = state.flags;
-    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"]];
+    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"], ["demo","demo"]];
     const on  = TRI.filter(([k]) => F[k] === "only").map(([,tok]) => tok);
     const off = TRI.filter(([k]) => F[k] === "hide").map(([,tok]) => tok);
     if(on.length)  p.set("flags", on.join(","));
@@ -6030,7 +6049,7 @@ function loadFromURL(){
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
   // Each list only sets the keys it names, so `flags` and `noflags` don't clobber each other.
-  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly" };
+  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly", demo:"demo" };
     const readTri = (param, mode) => setIf(param, v => v.split(",").filter(Boolean)
       .forEach(tok => { if(TOK[tok]) state.flags[TOK[tok]] = mode; }));
     readTri("flags", "only");
@@ -6135,7 +6154,7 @@ function init(data){
     state.release=RELEASE_DEFAULT; state.preUpSort=null;
     state.minSale=null; state.minSaleForcedFull=false;
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.ptMetric="up"; state.qRangeTouched=false;
-    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     ratingScheme = RATING_SCHEME_DEFAULT;
     loadFromURL();
     syncSchemeUI();
@@ -6303,7 +6322,7 @@ function init(data){
   segGroup("ctrl", "ctrl");
   segGroup("deck", "deck");
   segGroup("adult", "adultF");
-  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula.
+  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula / demo.
   document.querySelectorAll("[data-flag]").forEach(b =>
     b.addEventListener("click", () => {
       const key = b.dataset.flag, val = b.dataset.val;
@@ -6425,7 +6444,7 @@ function init(data){
     document.querySelectorAll("[data-ptmetric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ptmetric==="up")); syncPtHeader();
     syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
-    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     syncFlagsUI();
     state.sortKey="qtpd"; state.sortDir=-1; syncSortArrows();   // the default sort, the one the page loads with
     state.openCards.clear();                                    // nothing was flipped open at the start either
@@ -6806,7 +6825,7 @@ function reconcilePriceFlags(game){
 // shows while that file is still outstanding. Same fetch/parse/null-on-failure contract as before.
 const BOOT_NAMES = {"games.json":"game catalog","prices.json":"prices","length.json":"lengths",
   "tags.json":"tags","recent.json":"recent reviews","playtime.json":"playtime","ratings.json":"ratings",
-  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves"};
+  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves","demos.json":"demos"};
 const bootPending = new Set(); let bootDoneN = 0;
 function bootTick(){
   const total = bootDoneN + bootPending.size, fill = document.getElementById("bootFill"), msg = document.getElementById("bootMsg");
@@ -6884,7 +6903,10 @@ Promise.all([
   loadLayer("trailers.json"),
   // Preset shelves (presets.py). Additive: absent, the chip row simply never paints.
   loadLayer("presets.json"),
-]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj]) => {
+  // Demo layer (demos.py): {appid: first demo appid}, games WITH a demo only. Small (~36k rows),
+  // so it rides the boot load and covers the upcoming rows fetched later too.
+  loadLayer("demos.json"),
+]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj, dj]) => {
   PRESETS = (presetj && Array.isArray(presetj.presets)) ? presetj.presets : null;
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
@@ -6919,6 +6941,8 @@ Promise.all([
   // ({apps:{}}) is truthy-but-empty, so guard on the count — otherwise the flag
   // filters activate with no data behind them and zero out the whole list.
   window.HAS_PICS = !!(picsMap && Object.keys(picsMap).length);
+  const demosMap = (dj && dj.demos) ? dj.demos : null;
+  window.HAS_DEMOS = !!(demosMap && Object.keys(demosMap).length);   // guards Flags → Demo
   // v2 payload: {appid: [filename, ...]} — a flat, best-codec-first list per game.
   // Trailers stay in their own lookup rather than being merged onto each game object:
   // only the row you actually hover ever needs one, so copying ~100k arrays into the
@@ -7055,6 +7079,7 @@ Promise.all([
       game.upd_c90  = sum("90d");
       game.upd_c365 = sum("365d");
     }
+    if(demosMap && demosMap[key]) game.demo = demosMap[key];   // the demo's appid (Flags → Demo)
     reconcilePriceFlags(game);        // undo a fossilised free-weekend snapshot
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
   };

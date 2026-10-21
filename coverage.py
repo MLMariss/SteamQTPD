@@ -948,6 +948,18 @@ def main():
              f"have PICS records in `pics_upcoming.json`. Undated rows fill through the TBA sweep "
              f"(~10 days for the whole room); dated ones through the upcoming sweep.")
     L.append("")
+    # Demo layer: games WITH a demo only, so its count is a share of the catalogue, not a
+    # coverage figure; swept_at says how fresh the whole list is.
+    demos_doc = load("demos.json") or {}
+    demo_ids = set((demos_doc.get("demos") or {}).keys())
+    up_ids = {str(r.get("appid")) for r in up_rows}
+    demo_up = len(demo_ids & up_ids)
+    swept = demos_doc.get("swept_at") or 0
+    L.append(f"**Demos** (`demos.json`, `demos.py`): **{len(demo_ids):,} games list a demo** — "
+             f"{len(demo_ids) - demo_up:,} released, {demo_up:,} upcoming. Last full sweep: "
+             f"{ts_utc(swept) if swept else 'none yet'}"
+             f"{' (a sweep is mid-way: ' + str(demos_doc.get('cursor')) + ')' if demos_doc.get('cursor') else ''}.")
+    L.append("")
     L.append("---")
     L.append("")
     L.append("## Future work")

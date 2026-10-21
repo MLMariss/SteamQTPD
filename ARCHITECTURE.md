@@ -416,13 +416,13 @@ pipeline hierarchy:
 | `0.1` | Manual diagnostic against the live site's backend, not a pipeline stage | `review-probe.yml` (§17) |
 | `0.2` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
-| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9) |
+| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**23 workflow files, 22 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **15 of the 22 are cron-scheduled**; the
+**24 workflow files, 23 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **16 of the 24 are cron-scheduled**; the
 rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.2,
 playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
@@ -596,6 +596,13 @@ date (`release_date` keeps Steam's own string — "Q4 2026", "Coming soon"); `ta
 genres; `adult: true` when the store's content descriptors include 3 or 4 — the definition
 `pics_summarize.py` uses — because most upcoming games have no PICS record to say so. Not part
 of the boot load: the page fetches it on first use (§11 "Release toggle").
+
+**`demos.json`** — `{ _format: "demos_v1", generated_at, count, swept_at, cursor, "demos":
+{ "<appid>": <first demo appid> } }`, compact. Written by `demos.py` (§7); **only games with a
+demo are listed** — absence means none, as of the last sweep. Covers released and upcoming
+games alike. `swept_at` is the last complete pass; `cursor` (`[phase, appid]`) is non-null only
+while a pass that hit its time budget is waiting to resume. Part of the boot load (small: one
+int per game with a demo).
 
 **`pics_upcoming.json`** — same shape as `pics.json` (§9.6): the PICS records of the games
 listed in `upcoming.json`, which `pics_merge.py` moves out of `pics.json` so the default page
@@ -895,7 +902,7 @@ scraper.py) is a **live, declarative diff**, not a one-shot consume:
 
 ---
 
-## 7. Refreshers (price/sale, tags, recent)
+## 7. Refreshers (price/sale, tags, recent, demos)
 
 Independent enrichment jobs, each owning one file and enriching games the scraper already
 found:
@@ -912,6 +919,15 @@ found:
   cron so it stays fresh; `RECENT_COOLDOWN_DAYS` controls how stale a score must be to
   re-check. The frontend computes the recent-vs-all-time **trend** (improving / stable /
   declining) and gates it on staleness.
+- **`demos.py` → `demos.json`** (workflow 2.10, daily 01:11 UTC). Which games list a demo,
+  from the `related_items.demo_appid` block that batched `IStoreBrowseService/GetItems` returns
+  with `include_basic_info` alone — verified by `demo_probe.py` (workflow 0.2) on 2026-10-21,
+  which found demos on 13% of a released sample, 66% of dated upcoming games and 32% of undated
+  ones, all live. Sweeps `upcoming.json` first (most demos, fastest churn — Next Fest), then
+  `games.json`: ~190k appids, ~3,800 calls, ~95 min on the api.steampowered.com budget, not the
+  storefront's. Only an answered game changes: a failed call or an appid the response leaves out
+  keeps its value. A run that hits `RUN_MINUTES` (150) leaves a `cursor` and the next one resumes
+  there. Dispatched from a branch it is a dry run (`_on_main()`, the trailers pattern).
 
 ---
 
@@ -1596,10 +1612,12 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
   Cyberpunk) exactly like the old `ADULT_TAGS` heuristic did; code 5 is a
   container marker. Replaces `ADULT_TAGS`, which is now a pre-PICS fallback only.
   New blur UX: blur → "18+?" confirm tap → reveal + open store link (table + card).
-- **"Flags" cluster** (own collapsible filter-section). Six *presence* flags all
+- **"Flags" cluster** (own collapsible filter-section). Seven *presence* flags all
   share ONE toggle schema — **Any / Exclude / Only** (`state.flags[k]` =
-  `"any"|"hide"|"only"`): Early Access · AI disclosure · Adult content · VR-only
-  · Family-share block · Custom EULA. Two *graded* controls keep bespoke buttons
+  `"any"|"hide"|"only"`): Early Access · Demo · AI disclosure · Adult content · VR-only
+  · Family-share block · Custom EULA. **Demo** (2026-10-21) is the one that isn't PICS: it reads
+  `demos.json` (§7) and has its own `HAS_DEMOS` guard, so a missing file leaves it inert rather
+  than reading every game as "no demo". Two *graded* controls keep bespoke buttons
   because they pick among values rather than the presence of one flag:
   Controller (any/full/partial) · Steam Deck (any/verified/playable+/unsupported).
   All URL-serialized/shareable; the filters no-op unless `pics.json` actually
@@ -1614,18 +1632,18 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
     positive exclusion signal *only*: absence does not prove shareability (PUBG,
     Destiny 2 restrict at the account layer with no flag). So Exclude means "no
     known block", and the tooltip says exactly that.
-  - **URL (as built — the two lists don't cover all six).** `flags=` lists the
-    `only` keys and `noflags=` the `hide` keys, but only for the **four** tokens in
-    the `TRI` table: `ea`, `eula`, `fse`, `vr`. Each list sets only the keys it
+  - **URL (as built — the two lists don't cover all seven).** `flags=` lists the
+    `only` keys and `noflags=` the `hide` keys, but only for the **five** tokens in
+    the `TRI` table: `ea`, `eula`, `fse`, `vr`, `demo`. Each list sets only the keys it
     names, so the two never clobber each other, and `flags=` keeps its
     pre-tri-state meaning — old shared links still resolve. The remaining two
     presence flags get **their own params** — **`ai=hide|only`** and
     **`adult=hide|only`** — as do the two graded controls, **`ctrl=full|partial`**
-    and **`deck=verified|playable|unsupported`**. All six are still one *UI*
+    and **`deck=verified|playable|unsupported`**. All seven are still one *UI*
     schema; only the serialization splits.
-  - Flags is the widest cluster in the bar (8 groups / ~23 buttons), so it alone
-    trims 3px of horizontal button padding to hold ONE row; it wraps to two below
-    ~1870px, which is fine.
+  - Flags is the widest cluster in the bar (9 groups / ~26 buttons), so it alone
+    trims 5px of horizontal button padding (3px until Demo joined) to hold ONE row at
+    1920px; it wraps to two at 1680px, which is fine.
 - **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
   staleness / review bombing).
 - **Publisher / dev filter (2026-10-02):** dev/publisher now reach the browser through
@@ -2485,6 +2503,7 @@ something."
 | weighted rating (steam/raw/capped + n) | `ratings.json` ← `playtime_raw/` | `ratings_summarize.py` | inherits `playtime_raw/` | derived on every raw pass |
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
 | header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | single flat window: `--stale-days` (14), daily cron; **no review floor** |
+| demo appid (Flags → Demo) | `demos.json` | `demos.py` | `swept_at` (file-level; `cursor` while a pass is mid-way) | daily full sweep, upcoming first; only answered games change |
 | upcoming games: title, date, preorder price, genres, store adult flag | `upcoming.json` | `scraper.py` (pending-room probe) | `scraped_at` | undated: TBA sweep rotation (~10 d at 1,500/run); dated: upcoming sweep, 7 d; pruned to `pending` on every save |
 | upcoming games' PICS (tags, art, Deck, adult …) | `pics_upcoming.json` ← `pics/` | `pics_merge.py` (split by `upcoming.json`) | `_ts` (in `pics_raw/`) | same as `pics.json` |
 | tag-name / genre / category decode maps | `lookups/*.json` | `pics_lookups.py`, `build_category_map.py` | **none** | committed static, refreshed manually |
@@ -2881,6 +2900,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Demo filter (Oct 2026).** Flags gains **Demo** (Any / Exclude / Only, `flags=demo` /
+  `noflags=demo`), fed by a new daily job, `demos.py` → `demos.json` (§5, §7). The source was
+  settled by a probe before anything was built (`demo_probe.py`, workflow 0.2): the batched
+  `GetItems` call already in use returns `related_items.demo_appid`. Demos turn out to be
+  common exactly where the new Upcoming view is (66% of dated upcoming games), so Upcoming +
+  Demo: Only is a "try it before it launches" list.
 
 - **Upcoming games and the Release toggle (Oct 2026).** The site listed released games only;
   the ~57k games Steam calls coming soon sat in the scraper's pending room unseen. Now
