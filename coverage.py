@@ -934,6 +934,20 @@ def main():
              f"The remainder are untagged on SteamSpy (typically very-low-review or "
              f"unreleased titles).")
     L.append("")
+    # Upcoming catalogue: a different base (the scraper's pending room), so it is a note
+    # rather than a row in the table above, which is measured against games.json.
+    pending = (load("catalog.json") or {}).get("pending") or {}
+    up_rows = (load("upcoming.json") or {}).get("games") or []
+    up_pics = len(((load("pics_upcoming.json") or {}).get("apps")) or {})
+    up_dated = sum(1 for r in up_rows if r.get("release_ts"))
+    up_adult = sum(1 for r in up_rows if r.get("adult"))
+    up_share = f"{len(up_rows) / len(pending) * 100:.1f}%" if pending else "—"
+    L.append(f"**Upcoming catalogue** (`upcoming.json`, ARCHITECTURE §6 step 3): **{len(up_rows):,} "
+             f"of {len(pending):,} pending games have a row ({up_share})** — {up_dated:,} with a "
+             f"day-precision date, {up_adult:,} adult by store descriptors — and **{up_pics:,}** "
+             f"have PICS records in `pics_upcoming.json`. Undated rows fill through the TBA sweep "
+             f"(~10 days for the whole room); dated ones through the upcoming sweep.")
+    L.append("")
     L.append("---")
     L.append("")
     L.append("## Future work")

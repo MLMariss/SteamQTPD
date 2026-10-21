@@ -31,8 +31,18 @@ it. Shape: {"names": [...], "pub": {appid: [name_idx, ...]}, "dev": {...}} — o
 name table shared by both roles, so a studio that self-publishes is stored once.
 ~2.7 MB gz for ~130k games, against ~5 MB gz if the names were repeated inline.
 
+Upcoming side file
+------------------
+The PICS records of games that are not out yet — every appid in `upcoming.json`, the
+scraper's list of the pending room — go to `pics_upcoming.json` instead of pics.json.
+index.html fetches it only alongside upcoming.json: when someone picks Upcoming or All,
+opens a link that does, or types a search. Visitors who stay on the default Released
+view never download either file, so covering ~57k upcoming games costs them nothing.
+A game moves back into pics.json on the first merge after the scraper promotes it.
+
 Pattern match: analog of the other *_summarize -> single-file steps. One writer
-(this script) -> one output file (`pics.json`). Reads pics/ read-only.
+(this script) -> pics.json, pics_upcoming.json and companies.json. Reads pics/ and
+upcoming.json read-only.
 
 Usage:
     py pics_merge.py --in pics --out pics.json
@@ -66,6 +76,16 @@ FRONTEND_KEYS = frozenset({
 
 def shard_path(in_dir, shard):
     return os.path.join(in_dir, f"shard_{shard:02d}.json")
+
+
+def load_upcoming_ids(path):
+    """Appids (as strings, the shard key type) listed in upcoming.json; empty when absent."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = json.load(fh).get("games") or []
+    except (OSError, ValueError, AttributeError):
+        return set()
+    return {str(r["appid"]) for r in rows if isinstance(r, dict) and "appid" in r}
 
 
 def merge(in_dir):
@@ -116,9 +136,13 @@ def main():
     ap.add_argument("--in", dest="in_dir", default="pics")
     ap.add_argument("--out", dest="out_path", default="pics.json")
     ap.add_argument("--companies-out", dest="companies_path", default="companies.json")
+    ap.add_argument("--upcoming", dest="upcoming_path", default="upcoming.json")
+    ap.add_argument("--upcoming-out", dest="upcoming_out", default="pics_upcoming.json")
     args = ap.parse_args()
 
     apps, companies, missing = merge(args.in_dir)
+    upcoming_ids = load_upcoming_ids(args.upcoming_path)
+    up_apps = {a: apps.pop(a) for a in sorted(upcoming_ids, key=int) if a in apps}
 
     out = {
         "_format": OUT_FORMAT,
@@ -128,6 +152,12 @@ def main():
     write_json(args.out_path, out)
     size_mb = os.path.getsize(args.out_path) / 1024 / 1024
     print(f"merged {len(apps):,} games -> {args.out_path} ({size_mb:.1f} MB raw)")
+
+    # Written even when empty, so the page's fetch of it never 404s.
+    write_json(args.upcoming_out, {"_format": OUT_FORMAT, "count": len(up_apps), "apps": up_apps})
+    size_mb = os.path.getsize(args.upcoming_out) / 1024 / 1024
+    print(f"  {len(up_apps):,} upcoming games (of {len(upcoming_ids):,} in {args.upcoming_path}) "
+          f"-> {args.upcoming_out} ({size_mb:.1f} MB raw)")
 
     co = intern_companies(companies)
     write_json(args.companies_path, co)

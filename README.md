@@ -53,7 +53,7 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 
 | Job (Action)            | Writes               | Contents                                            |
 |-------------------------|----------------------|-----------------------------------------------------|
-| `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state). |
+| `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state) + `upcoming.json` (store details of every game not out yet — title, date, preorder price, genres, adult descriptors — from the probe the waiting room already makes). |
 | `price_and_sale.py`     | `prices.json`        | Live price, discount %, sale end-date (the fast-changing layer). |
 | `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times. **Calibration input only** since Sep 2026 — the page no longer loads it; `length_model.py --fit` reads its real `extra` values weekly. |
 | `tags_refresh.py`       | `tags.json`          | SteamSpy user tags.                                 |
@@ -66,7 +66,7 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 | `updates_summarize.py`  | `updates.json`       | Lean summary: last major/regular/minor timestamps + windowed big/small counts (month/3mo/6mo/year/over-year). Chained step of the updates job; pure local recompute. |
 | `pics_refresh.py`       | `pics_raw/shard_NN.json` | Steam PICS `common` app-info block, pulled over the **CM protocol** (not the storefront), so it's on its own rate budget. **Sharded** into 64 files. Source of truth for header art, Valve's own tag/genre/feature IDs, Steam Deck rating, AI disclosure, and the review score the main scraper uses as a staleness signal. |
 | `pics_summarize.py`     | `pics/shard_NN.json` | Lean per-game projection storing **IDs, not names** + the derived Early-Access / adult / VR-only flags. Chained step; pure local recompute. |
-| `pics_merge.py`         | `pics.json`          | Flattens the 64 `pics/` shards into the single file the browser downloads, keeping only the keys the frontend reads. Chained step; pure local recompute. |
+| `pics_merge.py`         | `pics.json`, `pics_upcoming.json` | Flattens the 64 `pics/` shards into the single file the browser downloads, keeping only the keys the frontend reads. The records of games listed in `upcoming.json` go to `pics_upcoming.json` instead, which the page fetches only when upcoming games are asked for. Chained step; pure local recompute. |
 | `trailers.py`           | `trailers.json`      | CDN filenames for each game's Steam preview clip, so hovering a thumbnail plays moving footage instead of just enlarging the still — and, on a phone, so a tap plays it in the card and a swipe up moves it into the docked player (ARCHITECTURE.md §11). The path is a hash the appid doesn't predict, so unlike every other bit of store art it has to be looked up and stored. Valve no longer serves a progressive full trailer — only this short loop and DASH/HLS manifests — see ARCHITECTURE.md §2.1. Batched `GetItems`; backlog-drain, not a refresh loop. + `trailers_state.json` (queue state, not served). |
 | `shots.py`              | `shots/shard_NN.json` | Store screenshot filenames per game, so the hover panel — and the phone's preview player — rotates real gameplay stills after the preview clip ends — and shows them instead of a static piece of key art on the ~4,600 games with no clip at all. Hashed like trailers, so equally underivable from the appid; the PICS `store_screenshot` field that looks like a free substitute is dead (11.8% of apps, ~0% post-2019) — see ARCHITECTURE.md §2.2. Batched `GetItems`; backlog-drain, not a refresh loop. **Sharded** into 64 files and fetched lazily, one shard per hovered (or tapped) game, never at page load. + `shots_state.json` (queue state, not served). |
 | `presets.py`            | `presets.json`       | The landing page's preset shelves — measures each hand-authored shelf against the live catalogue after every scrape and flags any that has gone thin or broad. It **reports, it never re-tunes**: the shelf definitions stay in the script under version control. Stdlib-only, no Steam calls. |
@@ -89,8 +89,10 @@ The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Ea
    *during* a run, not just when one starts), or when PICS reports a percentage that disagrees
    with our stored one. Then **scrapes new games**, newest appid first — new coverage keeps
    a reserved share of each run so a long refresh queue can't delay a fresh release.
-3. Only stores games that are **actually released**; unreleased ones wait in a
-   `catalog["pending"]` room and get promoted the moment their release date passes.
+3. Only stores games that are **actually released** in `games.json`; unreleased ones wait in a
+   `catalog["pending"]` room and get promoted the moment their release date passes. What the
+   store says about each of them meanwhile goes to `upcoming.json`, which the page's **Release**
+   toggle (Released / Upcoming / All) shows.
 4. Runs for a **time budget** (`RUN_MINUTES`) and **git-commits every ~10 minutes**, so
    hitting the 6-hour Actions wall never loses work.
 

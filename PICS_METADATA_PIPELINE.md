@@ -479,8 +479,8 @@ two components the original list omitted.*
 |---|---|---|
 | `pics_refresh.py` | Anonymous PICS session; sequential batched fetch; writes trimmed `common` + `_ts` to `pics_raw/shard_NN.json` (Layer 1, permanent — **not** scratch) | ✅ live |
 | `pics_summarize.py` | Reads `pics_raw/`; emits **IDs not names** (§4.5) + the derived `ea`/`adult`/`vr_only` flags → `pics/shard_NN.json` (Layer 2) | ✅ live |
-| **`pics_merge.py`** | **Flattens the 64 Layer-2 shards to one `pics.json`, filtered to `FRONTEND_KEYS` (Layer 3 — the file the site loads). Not in the original spec; added when one file beat 64 fetches.** | ✅ live |
-| `pics.yml` | Workflow: `20 3 * * *` daily, runs all three scripts as chained steps, concurrency group `steam-pics` | ✅ live |
+| **`pics_merge.py`** | **Flattens the 64 Layer-2 shards to one `pics.json`, filtered to `FRONTEND_KEYS` (Layer 3 — the file the site loads). Not in the original spec; added when one file beat 64 fetches.** Since 2026-10-21 the records of games listed in `upcoming.json` go to **`pics_upcoming.json`** instead, fetched only when the page shows upcoming games (ARCHITECTURE §9.6). | ✅ live |
+| `pics.yml` | Workflow: `20 3 * * *` daily, runs all three scripts as chained steps, concurrency group `steam-pics`. Worklist `--catalog games.json --catalog upcoming.json` (released + upcoming, since 2026-10-21) | ✅ live |
 | **`pics_lookups.py` / `build_category_map.py`** | **Build the three static decode maps into `lookups/`. Manual/rare, not on a schedule.** | ✅ live |
 | tag/genre/category lookup JSON | Static decode maps — `lookups/{tags,genres,categories}.json` | ✅ committed |
 | COVERAGE.md rows | Coverage for the new layer, incl. the PICS sub-metric table | ✅ in `coverage.py` |

@@ -2,9 +2,26 @@
 
 **Date:** 2026-07-16
 **Author:** MLMariss + Claude working session
-**Status:** PARKED — recorded for reference, decision deferred to far future.
-No code changed. Revisit only if pre-release/coming-soon discovery becomes a
-product goal.
+**Status:** SUPERSEDED 2026-10-21 — the owner made upcoming games a product goal
+("full catalog, plus a toggle for released / upcoming / all"). The analysis below is
+kept as the record of why it was parked; what shipped is summarised next.
+
+> **What shipped (2026-10-21), and where it departs from this memo.**
+> - **The `games.json` gate stays** (§5.3's advice holds): reviews, playtime, length and
+>   updates still only run on released games. Upcoming games live in a separate
+>   **`upcoming.json`**, written by `scraper.py` from the `appdetails` probe the waiting room
+>   already makes — so the store side costs only a small dated-game sweep, not a new job.
+> - **Full pending inclusion, not option B.** All ~57k pending games get a row, the undated
+>   ones included; the TBA sweep fills them over ~10 days. The cost argument in §2 is answered
+>   by *where* the data goes, not by leaving it out: the browser fetches `upcoming.json` and
+>   `pics_upcoming.json` only when someone picks Upcoming / All, searches, or uses Wishlist only.
+> - **PICS covers them** (option C, which §4 rejected on load): `pics.yml` and `pics-new.yml`
+>   pass `--catalog upcoming.json` too; the CM budget is not the storefront's, and
+>   `pics_merge.py` splits their records into `pics_upcoming.json` so `pics.json` doesn't grow.
+> - **The §2 numbers have moved.** Day-precision coming-soon dates have been kept since
+>   2026-10-08 (ARCHITECTURE §6), so on 2026-10-21 the room held **57,253** games of which
+>   **1,152** carry a real future date (1,057 within 90 days) — not 1 of 51,533.
+> - Frontend: ARCHITECTURE §11 "Release toggle".
 **Prompted by:** now that the PICS full sweep landed a ~123.5k-game metadata
 dump, is it worth revisiting the long-standing "skip unreleased games" rule?
 

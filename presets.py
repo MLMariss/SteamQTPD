@@ -2,8 +2,11 @@
 """presets.py -> presets.json — the landing-page preset shelves, validated against live data.
 
 A preset is nothing but a querystring: the same params `syncURL()` writes and `loadFromURL()`
-reads. `syncURL()` writes 33; KNOWN_PARAMS below allows 32 of them — `scheme` is deliberately
-out, because it is a colour-scheme display preference and no shelf sets one. Clicking one sets real filter state, so the summary chips afterwards
+reads. `syncURL()` writes 34; KNOWN_PARAMS below allows 32 of them. Two are deliberately out:
+`scheme`, a colour-scheme display preference no shelf sets, and `release` (the Released /
+Upcoming / All toggle) — shelves list released games only, this script measures them against
+games.json alone, and a shelf is an unrequested surface (CLAUDE.md), so one naming `release=`
+fails the build rather than shipping a count this script never checked. Clicking one sets real filter state, so the summary chips afterwards
 show exactly which controls moved. That is the whole design — a preset must never be able to
 express something the user cannot then see and edit.
 

@@ -76,8 +76,14 @@ Open items living in **other** docs (not duplicated here — go to the source):
 - **PICS pipeline** — `PICS_METADATA_PIPELINE.md` §10 *Still open / deferred*: `aicontenttype="3"`
   handling, `exfgls` reason codes, Deck `tests[]` detail, the deferred `supported_languages`
   lean-list collapse.
-- **PICS for unreleased games** — `UPCOMING_GAMES_PICS_MEMO.md`: parked in full, with the
-  analysis preserved so the decision can be picked up without re-deriving it.
+- ~~**PICS for unreleased games**~~ — **SHIPPED 2026-10-21** as the full upcoming catalogue
+  (`upcoming.json`, `pics_upcoming.json`, the Release toggle); `UPCOMING_GAMES_PICS_MEMO.md` is
+  superseded and records where the build departs from it. ARCHITECTURE §6 / §9.6 / §11.
+- **"Has a demo" filter** — the data source is unconfirmed. `demo_probe.py` (workflow `0.2`)
+  checks whether the batched `GetItems` call returns `related_items.demo_appid`, whether full
+  `appdetails` carries `demos`, and how common demos are among released vs upcoming games. Once
+  it answers: a small batched job writes a per-game demo flag, and the frontend gets a tri-state
+  **Demo** control in Flags (`flags=demo` / `noflags=demo`), built like Early Access.
 - **Coverage/refresh gaps** — `COVERAGE.md` *Future work* (generated, so always current).
 
 ---

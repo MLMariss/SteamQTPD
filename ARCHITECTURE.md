@@ -11,7 +11,7 @@ decided-againsts — see **[ROADMAP.md](ROADMAP.md)** (§3, split out of this fi
 **Companion docs:** [ROADMAP.md](ROADMAP.md) (plans) · [COVERAGE.md](COVERAGE.md) and
 [SHARDS.md](SHARDS.md) (generated — always current, never hand-edit) ·
 [PICS_METADATA_PIPELINE.md](PICS_METADATA_PIPELINE.md) (the PICS layer's design record) ·
-[UPCOMING_GAMES_PICS_MEMO.md](UPCOMING_GAMES_PICS_MEMO.md) (a parked decision).
+[UPCOMING_GAMES_PICS_MEMO.md](UPCOMING_GAMES_PICS_MEMO.md) (superseded 2026-10-21 — why upcoming games were once left out).
 
 ---
 
@@ -414,15 +414,16 @@ pipeline hierarchy:
 |---|---|---|
 | `0.` | **Publish** — puts the site live; the one job a user actually sees the output of | `pages.yml` |
 | `0.1` | Manual diagnostic against the live site's backend, not a pipeline stage | `review-probe.yml` (§17) |
+| `0.2` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**22 workflow files, 21 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+**23 workflow files, 22 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
 deliberate: it isn't part of the standing pipeline. **15 of the 22 are cron-scheduled**; the
-rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1,
+rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.2,
 playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
 `presets.yml` match the scrape workflow's **exact `name:` string**, so renaming `scrape.yml`
@@ -583,6 +584,22 @@ resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1), and **`tba_probed
 (`{appid: ts}` — when each undated pending game was last probed; drives the TBA sweep,
 §6 step 3). Ints in memory, string keys on
 disk.
+
+**`upcoming.json`** — `{ generated_at, count, "games": [ { appid, title, release_date, tags,
+scraped_at, release_ts?, price_initial?, price_final?, discount_pct?, is_free?, adult? } ] }`,
+**one row per line**, an absent key meaning empty and no `url` (the page builds it) — the file is
+~57k rows and fetched whole. The store details of every game in `catalog["pending"]`, written by
+`scraper.py` from the `appdetails` probe the waiting room already makes (§6 step 3) and pruned
+to `pending` on every save, so the two can never disagree about what is unreleased. Same field
+names as a `games.json` row so the page reads both alike; `release_ts` only for a day-precision
+date (`release_date` keeps Steam's own string — "Q4 2026", "Coming soon"); `tags` are the store
+genres; `adult: true` when the store's content descriptors include 3 or 4 — the definition
+`pics_summarize.py` uses — because most upcoming games have no PICS record to say so. Not part
+of the boot load: the page fetches it on first use (§11 "Release toggle").
+
+**`pics_upcoming.json`** — same shape as `pics.json` (§9.6): the PICS records of the games
+listed in `upcoming.json`, which `pics_merge.py` moves out of `pics.json` so the default page
+load doesn't carry them. Fetched together with `upcoming.json`.
 
 **`prices.json`** — `{ generated_at, country, count, "prices": { "<appid>": { price_initial,
 price_final, discount_pct, discount_end, scraped_at } } }`. The fast-changing layer;
@@ -783,6 +800,13 @@ The only job that discovers new games. Each run:
    undated. Undated games leave pending two ways: a `last_modified` bump after `last_sync`,
    or the **TBA sweep** — `TBA_SWEEP_PER_RUN` (1500, ~23 min) per run, least-recently-probed
    first, then most recent `last_modified` first, tracked in `catalog["tba_probed"]`.
+   **Every probe of a pending game is also kept** (2026-10-21): its title, date, preorder price,
+   genres and adult descriptors go to `upcoming.json` (§5), which the page's Release toggle
+   shows. The TBA sweep takes games with no row yet first. Dated games are otherwise probed only
+   once ripe, so an **upcoming sweep** re-probes the dated, not-yet-ripe ones whose row is missing
+   or older than `UPCOMING_REFRESH_DAYS` (7), capped at `UPCOMING_SWEEP_PER_RUN` (500) — ~40 a run
+   once the first fill is done. No reviews or news are fetched for a pending game; it costs the
+   one `appdetails` call, as before.
 4. **Run for `RUN_MINUTES`, commit every ~`CHECKPOINT_SECONDS`.** The 6-hour Actions wall
    is therefore never a data-loss risk.
 
@@ -1509,7 +1533,11 @@ shards into one file (format `pics_v2_frontend`) keeping **only the keys in its
 `FRONTEND_KEYS` set**. Everything else stays backend-only in `pics/`. The 19 keys that
 reach the browser are: `name`, `type`, `tags`, `genres`, `pgenre`, `cats`, `rev`,
 `deck`, `ai`, `fse`, `eula`, `controller`, `state`, `released`, `mc`, `ea`, `adult`,
-`vr_only`, `art`.
+`vr_only`, `art`. **The records of games listed in `upcoming.json` go to `pics_upcoming.json`
+instead** (2026-10-21), which the page fetches only when upcoming games are asked for; a game
+moves back into `pics.json` on the first merge after the scraper promotes it. The worklist is
+`--catalog games.json --catalog upcoming.json` in both `pics.yml` and `pics-new.yml`, so upcoming
+games get tags, art, Deck and the adult flag before launch, on the CM budget, not the storefront's.
 
 **Field → source → refresh.** The **Layer** column says how far each field travels:
 `pics.json` = shipped to the browser; `pics/` = summarized but dropped at the merge
@@ -1810,6 +1838,50 @@ Exclude. **A typed search is exempt** (`adultMode()`): someone searching for a t
 something specific, so while the search box is non-blank *Exclude* is lifted for the table and the
 title suggestions alike — if the user looks for the thing, we show the thing. *Only* still applies.
 Added the same day, after a title search for a flagged game came back empty and read as data loss.
+
+**Release toggle (Oct 2026): Released / Upcoming / All, default Released.** A `.seg` in the
+always-visible control row beside Wishlist and Publisher — it decides which catalogue every other
+filter works on. State `state.release`, URL `release=upcoming|all` (absent = Released, so every
+existing link and shelf is unchanged). What a row is, and the rules around it:
+
+- **Which rows are upcoming.** Every `upcoming.json` row (§5), plus the ~330 legacy shells still in
+  `games.json` — no past `release_ts` and no reviews — flagged `upcoming` at boot. A row with
+  reviews stays released whatever its date says (Mark of the Ninja has none, and 15k reviews).
+- **Fetched on first use, never at boot.** `ensureUpcoming()` runs from `update()` and `init()`
+  and fetches `upcoming.json` + `pics_upcoming.json` the first time `releaseMode()` is anything
+  but `released`. Each row goes through the boot merge (`MERGE_GAME`, the per-game body of the
+  boot loop, with `pics_upcoming.json` as its PICS map) and joins `state.data.games`. A games.json
+  shell takes the fresher row and its PICS (which the split moved to the side file). While the
+  fetch is in flight the Upcoming view says *Loading upcoming games…* and the summary chip says
+  *(loading…)*; a failed fetch says so instead of showing an empty list.
+- **`releaseMode()` is what filters read** (the `adultMode()` pattern). A **typed search shows
+  both**, whatever the toggle says: the user named the thing, and it keeps a picked suggestion
+  landing on a row. **Wishlist only lifts the Released default** (every wishlisted game was
+  named by the user, and that is where unreleased games live) but leaves an explicit Upcoming in
+  place. Find similar and the Publisher filter lift nothing — broad lists, the same line the
+  adult default draws.
+- **Upcoming sorts soonest first.** Picking it sets `release_ts` ascending (nulls — TBA — always
+  sort last) and remembers the sort it replaced; leaving Upcoming restores that, unless the user
+  re-sorted meanwhile. A hand-written `?release=upcoming` with no `sort=` opens the same way.
+- **Filters that cannot apply to an unreleased game skip it rather than drop it.** The default
+  Min reviews floor (100+) would empty the view, so it never applies to upcoming rows; bands the
+  user picked still do. *Released within* drops upcoming rows, since a future date would
+  otherwise read as "recent". Rows have no reviews, playtime or length, so no QTPD: they sink
+  under any QTPD sort in All.
+- **Adult.** The landing default (*Exclude*) applies unchanged — Upcoming is a broad list the user
+  did not name. `isAdult()` gained one input: `store_adult`, the store's own descriptors (3/4)
+  that `scraper.py` saves per upcoming row, because most have no PICS record yet. **Residual:**
+  an upcoming game with neither PICS nor store descriptors is judged on its genres alone — i.e.
+  not flagged — the same gap a just-released game has until PICS reaches it.
+- **Tag counts and the "/ N games" total follow the toggle** (`computeFullCounts()` counts the
+  toggle's catalogue and sets `state.scopeCount`), so the Released view's numbers don't jump when
+  a search pulls upcoming rows in.
+- **Search suggestions are grouped.** Released matches (*Show just this game*, up to 5), then
+  *Coming soon* (up to 3, each with its date — "Dec 2026", Steam's own "Q4 2026", or TBA), then
+  *…or find games similar to* (released seeds only). With Upcoming selected the two title groups
+  swap. Within a match tier, upcoming titles order by launch date rather than review count.
+- **Badges.** "Upcoming" under the title in Table/Card and on the art's top-left in Grid (the
+  discount badge holds the top-right); the Released cell's second line reads "in 12 days".
 
 **Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
 But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
@@ -2180,7 +2252,7 @@ Two selector toggles live in the filter bar and do **not** sort on their own:
 **State in the URL.** Every filter/sort choice is serialized to the querystring by `syncURL()`
 and restored by `loadFromURL()`, so any view is a shareable link. Defaults are omitted (e.g.
 `adult` only appears when not `hide`, `pt` only when not `up`), which keeps shared links short and
-means a bare URL is the default view. **The full set is 31 params** (`hltb` and `hq` were retired
+means a bare URL is the default view. **The full set is 32 params** (`hltb` and `hq` were retired
 with HLTB in Sep 2026 — read and ignored, never written):
 
 | Group | Params |
@@ -2192,12 +2264,14 @@ with HLTB in Sep 2026 — read and ignored, never written):
 | Display | `scheme` |
 | Sort & paging | `sort`, `dir`, `per` |
 | Wishlist | `wishonly` |
+| Release | `release` (`upcoming` / `all`; absent = Released) |
 
 `hmin` / `hmax` (Length range) and `rel` (Released within) arrived with the preset shelves —
 three shelves could not be expressed without them. `scheme` carries the review-score colour
 scheme; it is a *display* preference rather than a filter, and a link's scheme beats the one
 saved in `localStorage`. `presets.py`'s `KNOWN_PARAMS` allowlist mirrors this table minus
-`scheme` (no shelf sets a colour scheme) and fails the build if a shelf names anything outside
+`scheme` (no shelf sets a colour scheme) and `release` (shelves list released games only —
+presets.py measures them against `games.json` alone) and fails the build if a shelf names anything outside
 it.
 
 Two things are deliberately **not** serialized: the **hidden-games list** (session-only, see
@@ -2411,6 +2485,8 @@ something."
 | weighted rating (steam/raw/capped + n) | `ratings.json` ← `playtime_raw/` | `ratings_summarize.py` | inherits `playtime_raw/` | derived on every raw pass |
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
 | header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | single flat window: `--stale-days` (14), daily cron; **no review floor** |
+| upcoming games: title, date, preorder price, genres, store adult flag | `upcoming.json` | `scraper.py` (pending-room probe) | `scraped_at` | undated: TBA sweep rotation (~10 d at 1,500/run); dated: upcoming sweep, 7 d; pruned to `pending` on every save |
+| upcoming games' PICS (tags, art, Deck, adult …) | `pics_upcoming.json` ← `pics/` | `pics_merge.py` (split by `upcoming.json`) | `_ts` (in `pics_raw/`) | same as `pics.json` |
 | tag-name / genre / category decode maps | `lookups/*.json` | `pics_lookups.py`, `build_category_map.py` | **none** | committed static, refreshed manually |
 
 ### Axis 1 — total coverage
@@ -2579,6 +2655,9 @@ Each job's knobs live at the top of its own script:
   `appdetails` / `appreviews` / search call passes through (`storefront_pace()`). This, not the
   now-deprecated `STEAM_DELAY`, is the scraper's real pacing knob; raise it if 403 rates spike
   (§16 revert plan).
+- **`UPCOMING_SWEEP_PER_RUN` (500, env) / `UPCOMING_REFRESH_DAYS` (7, env)** (scraper) — the
+  upcoming sweep: how many dated, not-yet-ripe pending games a run re-probes to keep their
+  `upcoming.json` row filled and current, and how old a row may get (§6 step 3).
 - **`MAX_RECHECK` (4, env)** (scraper) — how many runs an app whose `appdetails` returns
   `success:false` is retried before moving to `skipped`. `success:false` lumps region-locked and
   transient blips in with dead apps, hence the retries (§5, `catalog["recheck"]`).
@@ -2802,6 +2881,15 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Upcoming games and the Release toggle (Oct 2026).** The site listed released games only;
+  the ~57k games Steam calls coming soon sat in the scraper's pending room unseen. Now
+  `scraper.py` keeps what each pending probe returns in `upcoming.json` (§5, §6 step 3), the PICS
+  jobs fetch those games too and `pics_merge.py` splits them into `pics_upcoming.json` (§9.6), and
+  the page has a **Release** toggle — Released (default) / Upcoming / All — in the always-visible
+  control row (§11 "Release toggle"). `games.json` stays released-only. The ~330 legacy
+  coming-soon shells still in `games.json` now count as upcoming instead of sitting in the
+  released list. `UPCOMING_GAMES_PICS_MEMO.md` is superseded.
 
 - **The prices job publishes the site itself (Oct 2026).** Steam's 17:00 UTC sale flip took
   `prices.json` from 3.5k to 63k discounted games by 18:59, but the live site kept showing
