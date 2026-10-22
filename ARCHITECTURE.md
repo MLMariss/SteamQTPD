@@ -412,19 +412,20 @@ pipeline hierarchy:
 
 | Prefix | Meaning | Workflows |
 |---|---|---|
-| `0.` | **Publish** — puts the site live; the one job a user actually sees the output of | `pages.yml` |
+| `0.` | **Publish** — puts the site live; the one job a user actually sees the output of | `pages.yml`, plus `pages-watchdog.yml` (named `0.2`), which re-publishes a missed deploy |
 | `0.1` | Manual diagnostic against the live site's backend, not a pipeline stage | `review-probe.yml` (§17) |
 | `0.2` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
+| `0.3` | Manual diagnostic: an Early Access game's EA start and planned 1.0 date (same `claude/**` trigger) | `ea-dates-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**24 workflow files, 23 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **16 of the 24 are cron-scheduled**; the
+**26 workflow files, 25 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **17 of the 26 are cron-scheduled**; the
 rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.2,
-playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
+ea-dates-probe 0.3, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
 `presets.yml` match the scrape workflow's **exact `name:` string**, so renaming `scrape.yml`
 silently breaks both (see the callout below).

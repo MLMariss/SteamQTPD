@@ -52,6 +52,7 @@ they aren't re-proposed. Sorted roughly by value-to-effort within each group.
 
 | Item | Where | Blocked on |
 |---|---|---|
+| Early Access dates (EA start + planned 1.0) | §3.1 | **A decision from you** — where they show (Upcoming view, a badge, a column) and how fuzzy or slipped 1.0 dates read; the source is confirmed |
 | Completion rate (achievement-weighted QTPD) | §3.1 | An achievement-selection heuristic ("which one means finished?") |
 | Review-TEXT keyword / sentiment aggregates | §3.1 | A decision on the lexicon, and on whether a stored aggregate still earns its keep beside the on-demand Review Digest |
 | Region-specific pricing | §3.1 | An explicit store-N-regions vs fetch-live design decision |
@@ -95,6 +96,38 @@ constraints every item must respect, and the status index for what is actually o
 
 Each of these implies a new scrape and a new JSON file merged by `appid` in the frontend
 (§11). Listed roughly by value-to-effort.
+
+- **Early Access dates: EA start and planned 1.0. [Probed 2026-10-22 — not built.]** Steam's
+  personal calendar lists Every Day We Fight (1546080) on its 1.0 day; QTPD knows it only as
+  released on 10 Jul 2025, its EA start, so the Upcoming view never shows it. What we read today
+  can't hold both dates: appdetails `release_date` and PICS `steam_release_date` carry the EA
+  start only while a game is in EA and are overwritten with the 1.0 date on release, and PICS
+  `original_release_date` is something else (Subnautica's is its 1.0 date). `ea_dates_probe.py`
+  (workflow `0.3`) asked the batched `GetItems` call with `include_release` instead, and its
+  `release` block has both:
+  - **Planned 1.0** — `release_from_early_access_date` + `release_from_early_access_style`, the
+    optional date Valve lets EA developers set (it feeds the calendar). Every Day We Fight:
+    22 Oct 2026, style 1. On **412 of 12,405** games in EA (3.3%): 311 future, 101 already past
+    while still in EA (slipped and not updated — needs a rule), 81 inside the next 31 days.
+    Style is the precision: 1 = exact day (144), 2 = month (47, stamped on the 1st), 4 = year
+    (139, stamped 1 Jan); 3 (82) is most likely quarter — its dates sit on the 1st of a month
+    (Q4 2026 → 1 Nov) — unconfirmed. The field stays after 1.0 as a record (Valheim, Palworld,
+    Timberborn: equal to the 1.0 date). Never set before the EA launch itself (0 of 293).
+  - **EA start** — while in EA it is `steam_release_date` (= PICS `released` for 12,069 of
+    12,405) and `is_early_access` (agrees with genre 70 on 12,360 of 12,405). After 1.0 it moves
+    to `original_steam_release_date`: exact on all eight checked (Vampire Survivors 2021-12-17,
+    Deep Rock 2018-02-28, Slay the Spire 2017-11-15, Hades 2019-12-10, Dead Cells 2017-05-10,
+    Valheim, Palworld, Timberborn). Coverage on games that left EA, by 1.0 year: **0% before
+    2017, 24% in 2017, ~70% from 2018 on** (1,562 of 2,403 carry an earlier date) — Baldur's
+    Gate 3, Rust and Subnautica have none. That cohort is "EA store tag but no genre 70", so
+    some never were EA and the true rate is higher. Not proof of EA on its own: 5% of never-EA
+    games carry an earlier `original_steam_release_date` too (relaunches).
+  - **Launching into EA** — `is_early_access` is set before launch (292 of 293 upcoming EA
+    games, The Dead We Knew included), so "launches in Early Access" can be labelled ahead of
+    time; `coming_soon_display` gives the same precision vocabulary as other upcoming dates.
+  Cost: one `GetItems` batch per 50 games on `api.steampowered.com`, off the storefront budget
+  — ~250 calls for every EA game. The gap a capture-it-ourselves rule would close: keep the EA
+  start we already hold when a game's date jumps on 1.0, for the ~30% Steam drops.
 
 - **Completion rate (achievement-based).** Weight QTPD by how many players actually *finish*
   a game, not just its length — a 60-hour game most people drop halfway is a worse "hours you
