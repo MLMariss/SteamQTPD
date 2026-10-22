@@ -65,6 +65,10 @@ three weeks (§4 "Checkouts", §6 step 4).
    │ pics_refresh.py ─────────► pics_raw/shard_NN.json   │wishlist│  (steamid/vanity  │
    │        ├─ pics_summarize.py ─────► pics/shard_NN    │◄──────►│   → wishlist)     │
    │        └─ pics_merge.py ─────────► pics.json        │        └──────────────────┘
+   │ demos.py ────────────────► demos.json               │
+   │ upcoming_refresh.py ─────► upcoming.json            │
+   │ ea_dates.py ─────────────► ea_dates.json            │
+   │                            + ea_dates_state.json    │
    │ trailers.py ─────────────► trailers.json            │        ┌──────────────────┐
    │                            + trailers_state.json    │        │ Cloudflare Worker │
    │ shots.py ────────────────► shots/shard_NN.json      │reviews │   qtpd-reviews    │
@@ -81,13 +85,15 @@ There are **two** Workers, and only the second one's source is in this repo: the
 proxy (§12) and `qtpd-reviews`, the Review Digest's `appreviews` passthrough (§17, source in
 `worker/`).
 
-The frontend fetches **14 files at load**: the eight data layers above (`games`, `prices`,
+The frontend fetches **16 files at load**: the eight data layers above (`games`, `prices`,
 `length`, `tags`, `recent`, `playtime`, `ratings`, `updates`), the merged `pics.json`,
-`trailers.json` (§2.1), `presets.json` (§11, the preset shelves), and the three static decode
-maps in `lookups/` (`tags.json`, `genres.json`, `categories.json`, §9.6). `shots/` (§2.2) is
+`trailers.json` (§2.1), `presets.json` (§11, the preset shelves), `demos.json` and
+`ea_dates.json` (§7, both small), and the three static decode maps in `lookups/` (`tags.json`,
+`genres.json`, `categories.json`, §9.6). `upcoming.json` and `pics_upcoming.json` are fetched on
+first use of the Release toggle (§11). `shots/` (§2.2) is
 the one layer fetched **lazily** — one shard per hovered game, never at load; `review_prompt*.md`
 (§17) is fetched lazily too, only when the digest modal first opens. `catalog.json`,
-`trailers_state.json`, `shots_state.json`, the `*_raw/` shard sets, `pics/`, and the three
+`trailers_state.json`, `shots_state.json`, `ea_dates_state.json`, the `*_raw/` shard sets, `pics/`, and the three
 generated `.md` files are never served to the browser. Nor, since Sep 2026, is `hltb.json`
 (37 MB): HowLongToBeat is calibration input for `length_model.py` (§9.7) and nothing else —
 the page shows one review-based **Length** instead of HLTB's Main / +Extras / 100%.
@@ -420,8 +426,9 @@ freshness and shard-health had always run from depth-1 clones, and the scraper's
 `git show origin/main:seeds.txt` works after its own fetch. So:
 - **Every workflow is `fetch-depth: 1`.** A comment in trailers/shots claimed "real runs still
   need depth 0 for the rebase"; that was never true and is now corrected in place.
-- **Eleven bounded jobs also list their files** (`sparse-checkout`, non-cone): scrape, prices,
-  tags, hltb, recent, updates, demos, trailers, shots, pics, pics-new — and the three probes. With a
+- **Thirteen bounded jobs also list their files** (`sparse-checkout`, non-cone): scrape, prices,
+  tags, hltb, recent, updates, demos, upcoming, ea-dates, trailers, shots, pics, pics-new — and the
+  three probes. With a
   sparse list, `actions/checkout` makes a **partial clone** (`blob:none`), so nothing outside it
   is even downloaded — above all not `playtime_raw/` (1.4 GB of the ~2 GB tree) — and later
   `git fetch`es carry commits and trees only, blobs on demand. Verified end to end on a local
@@ -448,13 +455,13 @@ pipeline hierarchy:
 | `0.4` | Manual diagnostic: can the batched `GetItems` lookup replace per-game storefront calls (same branch trigger) | `batch-probe.yml` |
 | `0.5` | Manual diagnostic: an Early Access game's EA start and planned 1.0 date (same branch trigger) | `ea-dates-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
-| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11) |
+| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**28 workflow files, 27 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **18 of the 28 are cron-scheduled**; the
+**29 workflow files, 28 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **19 of the 29 are cron-scheduled**; the
 rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 ea-dates-probe 0.5, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
@@ -652,6 +659,20 @@ demo are listed** — absence means none, as of the last sweep. Covers released 
 games alike. `swept_at` is the last complete pass; `cursor` (`[phase, appid]`) is non-null only
 while a pass that hit its time budget is waiting to resume. Part of the boot load (small: one
 int per game with a demo).
+
+**`ea_dates.json`** — `{ _format: "ea_dates_v1", generated_at, count, swept_at, "games":
+{ "<appid>": {ea: 1, v, p} | {s, v} } }`, compact. Written by `ea_dates.py` (§7). Two kinds of
+row: `{ea: 1, v, p}` — a game **in** Early Access whose developer has announced a 1.0 date `v`,
+at precision `p` (1 day, 2 month, 3 quarter, 4 year; a vague date is stamped on a day inside the
+period); `{s, v}` — a game that **left** Early Access: `s` its EA start, `v` its 1.0 (which
+`games.json`'s `release_date` already holds, because Steam overwrites the date on release). A
+game with neither is absent. A planned date already past stays as Steam has it; the page decides
+how long it still counts (§11 "Release toggle"). Part of the boot load (~2k rows).
+
+**`ea_dates_state.json`** — `{ _format: "ea_dates_state_v1", "ea_start": { "<appid>": ts } }`,
+not served. `ea_dates.py`'s memory: every EA start it has seen while the game was in Early Access,
+so a game that leaves EA without Steam keeping the date (`original_steam_release_date` — ~30% of
+them) still gets one. Pruned to the catalogue on save.
 
 **`pics_upcoming.json`** — same shape as `pics.json` (§9.6): the PICS records of the games
 listed in `upcoming.json`, which `pics_merge.py` moves out of `pics.json` so the default page
@@ -994,6 +1015,22 @@ found:
   storefront's. Only an answered game changes: a failed call or an appid the response leaves out
   keeps its value. A run that hits `RUN_MINUTES` (150) leaves a `cursor` and the next one resumes
   there. Dispatched from a branch it is a dry run (`_on_main()`, the trailers pattern).
+- **`ea_dates.py` → `ea_dates.json` + `ea_dates_state.json`** (workflow 2.12, daily 02:37 UTC).
+  The two dates of an Early Access game, from the `release` block batched `GetItems` returns with
+  `include_release` — verified by `ea_dates_probe.py` (workflow 0.5) on 2026-10-22:
+  `release_from_early_access_date` + `_style`, the 1.0 date a developer may announce (412 of
+  12,405 EA games; it feeds Steam's own calendar), and, once a game is out of EA,
+  `original_steam_release_date`, its EA start (exact on every game checked; ~70% of games that
+  left EA from 2018 on, none before 2017). appdetails and PICS carry neither: both overwrite the
+  release date with the 1.0 date. Sweeps ~15k games (~300 calls, ~8 min, api.steampowered.com
+  budget): every genre-70 game in `pics.json` / `pics_upcoming.json` and every game it has seen
+  in EA, then games carrying the "Early Access" store tag (493) without genre 70 — the ones that
+  left. That evidence gates the EA start: 5% of never-EA games also carry an earlier
+  `original_steam_release_date` (relaunches). While a game is in EA its `steam_release_date` *is*
+  its EA start, so the job remembers it (`ea_dates_state.json`) for the day Steam drops it. Only
+  an answered game changes. Its log checks that precision 3 is quarter (the dates' months), which
+  the probe could not confirm. From a branch — dispatched, or pushed to `claude/**` when the job
+  changes — it is a dry run.
 
 ---
 
@@ -1966,6 +2003,23 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
   swap. Within a match tier, upcoming titles order by launch date rather than review count.
 - **Badges.** "Upcoming" under the title in Table/Card and on the art's top-left in Grid (the
   discount badge holds the top-right); the Released cell's second line reads "in 12 days".
+- **1.0 launches (Oct 2026).** An Early Access game whose developer has announced its 1.0 date
+  (`ea_dates.json`, `g.v1_ts` / `g.v1_p`) is in the Upcoming view too — Steam's calendar lists
+  those, and Every Day We Fight's 1.0 day was the case that showed QTPD did not. It is out, so
+  Released keeps it as well; `v1Soon()` is the test both the filter and `computeFullCounts()`
+  use. In the Upcoming view it sorts by the 1.0 date, its Released cell shows that date at its
+  precision ("Oct 2026", "Nov 2026", "Q4 2026", "2027"; the day is in the tip) with "1.0 in 3
+  days" under it, and the default review floor skips it like an unreleased game — a small game's
+  1.0 is as much a launch as a big one's. Everywhere it carries a teal **1.0** badge, first on
+  the line under the title (the review count after it may be cut off) and on the Grid art. A
+  date stops counting `EA_V1_GRACE_DAYS` (14) after the end of the period it names: one that
+  slipped without an update no longer claims a launch. Adult and every other filter apply as
+  to any released game. No file, no change: the layer is additive.
+- **EA start in the date tip.** `releaseTip()` adds "in Early Access · 1.0 planned for …" to a
+  game in EA with an announced date, and "full (1.0) release; in Early Access from …" to one that
+  left EA with a known start (`g.ea_start`) — Valheim's date reads Sep 2026, and the tip says it
+  has been playable since Feb 2021. The date itself, its sort and *Released within* are
+  unchanged: they still mean what Steam's release date means.
 
 **Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
 But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
@@ -2570,6 +2624,7 @@ something."
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
 | header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | single flat window: `--stale-days` (14), daily cron; **no review floor** |
 | demo appid (Flags → Demo) | `demos.json` | `demos.py` | `swept_at` (file-level; `cursor` while a pass is mid-way) | daily full sweep, upcoming first; only answered games change |
+| planned 1.0 date + precision (Upcoming view, 1.0 badge); EA start (date tip) | `ea_dates.json` (+ `ea_dates_state.json`, not served) | `ea_dates.py` | `swept_at` (file-level) | daily sweep of EA, seen-in-EA and EA-tagged games; only answered games change |
 | upcoming games: title, date, preorder price, tags, store adult flag; `released` list | `upcoming.json` | `upcoming_refresh.py` (batched `GetItems`) | `scraped_at`, `swept_at` | daily full sweep (~1,150 batched calls); pruned to `pending` each run |
 | upcoming games' PICS (tags, art, Deck, adult …) | `pics_upcoming.json` ← `pics/` | `pics_merge.py` (split by `upcoming.json`) | `_ts` (in `pics_raw/`) | same as `pics.json` |
 | tag-name / genre / category decode maps | `lookups/*.json` | `pics_lookups.py`, `build_category_map.py` | **none** | committed static, refreshed manually |
@@ -2968,6 +3023,15 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Early Access 1.0 launches in Upcoming; EA start kept (Oct 2026).** Steam's calendar listed
+  Every Day We Fight (1546080) on its 1.0 day; QTPD knew it only as released on 10 Jul 2025, its
+  EA start. A new daily job, `ea_dates.py` (workflow 2.12) → `ea_dates.json`, reads the 1.0 date
+  a developer announces and the EA start Steam keeps after 1.0, both from batched `GetItems`
+  (`include_release`), as `ea_dates_probe.py` (0.5) established. Announced 1.0 launches join the
+  Upcoming view with a **1.0** badge, sorted by that date; a game that left EA shows its EA start
+  in the date tip (§5, §7, §11 "Release toggle"). The job also remembers each EA start it sees, for
+  the ~30% Steam drops on release.
 
 - **One writer per file, enforced by concurrency groups (Oct 2026).** An audit of every committed
   file found four written from two concurrency groups. `catalog.json`: the `[ONE-OFF]`

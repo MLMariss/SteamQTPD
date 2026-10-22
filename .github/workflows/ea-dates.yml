@@ -1,0 +1,58 @@
+name: 2.12 Early Access dates -> ea_dates.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab (from a branch: a dry run, see ea_dates.py)
+  schedule:
+    - cron: "37 2 * * *"    # daily; a full sweep is ~15k games, ~300 calls, ~8 min
+  # Also a DRY run when the job itself changes on a claude/ working branch, so its first real
+  # answer is in that branch's checks before anything merges (workflow_dispatch only sees main's
+  # workflows). Off main it never commits — git_checkpoint() checks the branch.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - ea_dates.py
+      - .github/workflows/ea-dates.yml
+
+permissions:
+  contents: write           # commits ea_dates.json + ea_dates_state.json (on main only)
+
+concurrency:
+  group: steam-ea-dates     # never overlap runs
+  cancel-in-progress: false
+
+jobs:
+  ea-dates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45      # RUN_MINUTES=30 + headroom
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts").
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /ea_dates.py
+            /pics.json
+            /pics_upcoming.json
+            /ea_dates.json
+            /ea_dates_state.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits its files itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sweep Early Access dates
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          QHPP_CC: "US"
+          RUN_MINUTES: "30"
+        run: python ea_dates.py

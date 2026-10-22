@@ -825,6 +825,10 @@
            color:var(--blue); border:1px solid var(--blue); border-radius:4px; padding:0 5px}
   .upbadge.gup{position:absolute; top:7px; left:7px; z-index:5; background:#0e1320d9; font-size:12px;
                padding:1px 6px; box-shadow:0 1px 6px #0008}
+  /* 1.0 marker (v1Badge): an Early Access game whose developer has announced its 1.0 date.
+     Same shape as Upcoming, its own colour — the game is out, only the full version is coming. */
+  .upbadge.v1{color:var(--teal); border-color:var(--teal)}
+  .gsub .upbadge.v1{margin-right:6px}   /* first on the line: the review count after it may be cut off */
   .wish-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--gold); margin-left:7px; vertical-align:middle}
 
   .num{font-family:var(--mono); text-align:right; white-space:nowrap}
@@ -1841,7 +1845,7 @@ try{
           <span class="wishlabel" title="Release — released games (the default), games announced on Steam but not out yet, or both. A typed search always looks through both.">Release</span>
           <div class="seg" role="group" aria-label="Release status">
             <button data-release="released" aria-pressed="true"  title="Released — games out now. The default.">Released</button>
-            <button data-release="upcoming" aria-pressed="false" title="Upcoming — games on Steam that are not out yet, soonest release first; undated ones (TBA) last. No reviews, playtime or length until launch, so no QTPD either.">Upcoming</button>
+            <button data-release="upcoming" aria-pressed="false" title="Upcoming — games on Steam that are not out yet, soonest release first; undated ones (TBA) last. No reviews, playtime or length until launch, so no QTPD either. Also Early Access games whose developer has announced a 1.0 date (marked 1.0), sorted by that date.">Upcoming</button>
             <button data-release="all"      aria-pressed="false" title="All — released and upcoming games together.">All</button>
           </div>
         </div>
@@ -2799,16 +2803,20 @@ function fmtRelease(g){
 // and locale-proof, unlike the American M/D/Y in Steam's own release_date string.
 // Unreleased games have no release_ts (~450 of them); fall back to whatever vague string
 // Steam gave us ("Q3 2026", "July 2026"), then to a plain statement if even that is missing.
+// An Early Access game says so here too: the 1.0 its developer has announced, or — once it is
+// out of EA, when release_ts is the 1.0 date — the day it first became playable (ea_start).
 function releaseTip(g){
+  let tip = g.release_date || "Release date not confirmed";
   if(g.release_ts){
-    const d = new Date(g.release_ts*1000);
-    const day = String(d.getUTCDate()).padStart(2,"0");
-    const exact = `${d.getUTCFullYear()}-${MONTHS[d.getUTCMonth()].toUpperCase()}-${day}`;
     const age = g.upcoming ? untilStr(g.release_ts) : ageStr(g.release_ts);
-    return age ? `${exact} (${age})` : exact;
+    tip = age ? `${dayStr(g.release_ts)} (${age})` : dayStr(g.release_ts);
   }
-  return g.release_date || "Release date not confirmed";
+  if(g.v1_ts) return `${tip} · in Early Access · ${v1Tip(g)}`;
+  if(g.ea_start) return `${tip} · full (1.0) release; in Early Access from ${dayStr(g.ea_start)}`;
+  return tip;
 }
+const dayStr = ts => { const d = new Date(ts*1000);
+  return `${d.getUTCFullYear()}-${MONTHS[d.getUTCMonth()].toUpperCase()}-${String(d.getUTCDate()).padStart(2,"0")}`; };
 // The forward twin of ageStr, for upcoming games: "in 12 days", "in 3 mo". Coarse on purpose —
 // launch dates move. A dated game past its day that Steam still calls coming soon reads "due".
 function untilStr(ts){
@@ -2830,6 +2838,47 @@ function upBadge(g, cls){
 function upLabel(g){
   if(g.release_ts) return fmtRelease(g);
   return /\d/.test(g.release_date || "") ? g.release_date : "TBA";
+}
+
+// ----- Early Access 1.0 launches (ea_dates.json, ea_dates.py) -----
+// g.v1_ts / g.v1_p: the 1.0 date the developer of a game IN Early Access has announced, and its
+// precision — 1 day, 2 month, 3 quarter, 4 year; a vague date arrives stamped on a day inside the
+// period it names. Such a game also belongs to the Upcoming view (v1Soon), sorted by that date,
+// until EA_V1_GRACE_DAYS past the end of the period: a date that slipped without an update stops
+// claiming a launch — the grace the scraper gives a coming-soon game past its day.
+const EA_V1_GRACE_DAYS = 14;
+function v1End(g){
+  const d = new Date(g.v1_ts * 1000), y = d.getUTCFullYear(), m = d.getUTCMonth();
+  if(g.v1_p === 2) return Date.UTC(y, m + 1, 1) / 1000;
+  if(g.v1_p === 3) return Date.UTC(y, Math.floor(m / 3) * 3 + 3, 1) / 1000;
+  if(g.v1_p === 4) return Date.UTC(y + 1, 0, 1) / 1000;
+  return g.v1_ts + 86400;
+}
+function v1Soon(g){ return !!g.v1_ts && NOW() < v1End(g) + EA_V1_GRACE_DAYS * 86400; }
+// The planned date at its own precision: "Oct 2026" for a day (the column's format — the tip has
+// the day), "Nov 2026", "Q4 2026", "2027".
+function fmtV1(g){
+  const d = new Date(g.v1_ts * 1000), y = d.getUTCFullYear(), m = d.getUTCMonth();
+  return g.v1_p === 4 ? String(y) : g.v1_p === 3 ? `Q${Math.floor(m / 3) + 1} ${y}` : `${MONTHS[m]} ${y}`;
+}
+function v1Tip(g){
+  const until = g.v1_p === 1 ? untilStr(g.v1_ts) : "";
+  return `1.0 planned for ${g.v1_p === 1 ? dayStr(g.v1_ts) : fmtV1(g)}${until ? ` (${until})` : ""}`
+       + (v1End(g) <= NOW() ? " — that has passed and the game is still in Early Access, so the date may have slipped" : "");
+}
+// "1.0" marker: under the title in Table / Card, on the art in Grid (cls "gup"), as upBadge.
+function v1Badge(g, cls){
+  return `<span class="upbadge v1${cls ? " " + cls : ""}" title="${esc(`1.0 coming — playable now in Early Access; ${v1Tip(g)}. The developer's own date, at the precision they gave.`)}">1.0</span>`;
+}
+// The Released cell. In the Upcoming view a 1.0 launch shows its 1.0 date — what that view sorts
+// it by — rather than its Early Access start; everywhere else the release date as before.
+function releaseCell(g){
+  if(v1Soon(g) && releaseMode() === "upcoming"){
+    const until = g.v1_p === 1 ? untilStr(g.v1_ts) : "";
+    return {text: fmtV1(g), age: "1.0" + (until ? " " + until : ""),
+            tip: `${v1Tip(g)}. In Early Access${g.release_ts ? ` since ${dayStr(g.release_ts)}` : ""} — playable now.`};
+  }
+  return {text: fmtRelease(g), age: g.upcoming ? untilStr(g.release_ts) : ageStr(g.release_ts), tip: releaseTip(g)};
 }
 // Trim a trailing ".0" so exact values read as whole units ("2 weeks old", not "2.0 weeks old")
 // while partial ones keep their decimal. Guards against "2.0" surviving toFixed(1).
@@ -2928,9 +2977,11 @@ let IGNORE_MIN_SALE = false;
 function passNonRange(x){
   if(state.hidden.has(x.appid)) return false;     // session-hidden by the user
   // Release toggle, first: it is the cheapest test, and once upcoming.json is loaded it drops
-  // ~57k rows before any other filter looks at them.
-  { const rm = releaseMode();
-    if(rm === "released" ? x.upcoming : (rm === "upcoming" && !x.upcoming)) return false; }
+  // ~57k rows before any other filter looks at them. Upcoming also keeps an Early Access game
+  // whose 1.0 is announced (v1Soon); it is out, so Released keeps it too.
+  const rm = releaseMode();
+  const v1Up = rm === "upcoming" && !x.upcoming && v1Soon(x);
+  if(rm === "released" ? x.upcoming : (rm === "upcoming" && !x.upcoming && !v1Up)) return false;
   if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
   if(coActive() && !coPass(x)) return false;
   // Price-class facets (multi-toggle, OR'd). Non-overlapping primitives:
@@ -2947,7 +2998,9 @@ function passNonRange(x){
   // fall in band 0, so they only show when the 0-99 band is enabled.
   // An upcoming game cannot have reviews, so the DEFAULT floor would empty the Upcoming view
   // outright; it skips them. Bands the user picked still apply to them like to anything else.
-  if(revFloorOn() && !(x.upcoming && sameSet(state.revBands, REV_DEFAULT))
+  // A 1.0 launch in the Upcoming view is skipped the same way: it lists launches, and a small
+  // Early Access game's 1.0 is as much a launch as a big one's.
+  if(revFloorOn() && !((x.upcoming || v1Up) && sameSet(state.revBands, REV_DEFAULT))
      && !state.revBands.has(bandOf(x.review_count))) return false;
   // Min sale % floor. Free games are exempt — they're kept or dropped by the Free price type
   // alone, exactly as the user asked; everything else must clear the floor, which is what
@@ -3091,7 +3144,10 @@ function visibleGames(){
   const countVal = x => (state.ratingSource === "recent")
     ? (x.recent_count != null ? x.recent_count : 0)
     : x.review_count;
+  // Released, in the Upcoming view: a 1.0 launch sorts by its 1.0 date, not its EA start.
+  const upView = releaseMode() === "upcoming";
   const val = x => k === "qtpd" ? colValue(x) : k === "trend" ? gTrend(x) : k === "length" ? hoursFor(x)
+                 : k === "release_ts" ? (upView && v1Soon(x) ? x.v1_ts : x.release_ts)
                  : k === "rating_pct" ? ratingVal(x)
                  : k === "review_count" ? countVal(x)
                  : k === "wr" ? x.wr
@@ -3349,7 +3405,7 @@ function render(){
     }
 
     const wished = state.wishlist && state.wishlist.has(g.appid) ? '<span class="wish-dot" title="On your wishlist"></span>' : '';
-    const age = g.upcoming ? untilStr(g.release_ts) : ageStr(g.release_ts);
+    const rc = releaseCell(g);
 
     // stacked reviews: all-time over recent (recent greyed when stale / absent)
     const allRow = `<div class="rrow" title="All-time: ${g.rating_pct==null?'no':g.rating_pct+'% of '+(g.review_count||0).toLocaleString()} reviews positive${tierTip(g.rating_pct)}">`
@@ -3470,14 +3526,14 @@ function render(){
           </span>
           <span class="gmeta">
             <a class="gtitle" href="${esc(g.url)}" target="_blank" rel="noopener" title="${esc(g.title)}">${esc(g.title)}</a>${wished}
-            <div class="gsub">${g.review_count ? `<button type="button" class="gsub-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">${g.review_count.toLocaleString()} reviews</button>` : g.upcoming ? upBadge(g) : "app "+g.appid}</div>
+            <div class="gsub">${v1Soon(g) ? v1Badge(g) : ""}${g.review_count ? `<button type="button" class="gsub-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">${g.review_count.toLocaleString()} reviews</button>` : g.upcoming ? upBadge(g) : "app "+g.appid}</div>
           </span></div></td>
       <td data-label="Reviews">${reviews}</td>
       <td data-label="Trend" class="center">${trend}</td>
       <td data-label="Weighted" class="num">${wrCell}</td>
       <td data-label="Price / Sale">${price}</td>
       <td data-label="Sale ends" class="center">${sale}</td>
-      <td data-label="Released" class="center" title="${esc(releaseTip(g))}"><span class="rel">${fmtRelease(g)}</span>${age?`<div class="age">${age}</div>`:""}</td>
+      <td data-label="Released" class="center" title="${esc(rc.tip)}"><span class="rel">${rc.text}</span>${rc.age?`<div class="age">${rc.age}</div>`:""}</td>
       <td data-label="Updated" class="center"><div class="updated${!g.last_update_ts?' none':''}" title="${g.last_update_ts?'Last content update: '+new Date(g.last_update_ts*1000).toISOString().slice(0,10):'No update posts found on Steam'}">${updatedStr(g.last_update_ts)}</div>${updCad(g)}</td>
       <td data-label="Tags"><div class="tags">${tagHtml}</div></td>
       <td data-label="Playtime" class="num pad">${ptCell}</td>
@@ -4396,7 +4452,7 @@ function computeFullCounts(){
   const counts = {}, r = state.release;
   let n = 0;
   state.data.games.forEach(g => {
-    if(r === "released" ? g.upcoming : (r === "upcoming" && !g.upcoming)) return;
+    if(r === "released" ? g.upcoming : (r === "upcoming" && !g.upcoming && !v1Soon(g))) return;
     n++;
     canonSet(g).forEach(t => counts[t] = (counts[t]||0)+1);
   });
@@ -5072,7 +5128,7 @@ function gridCardHTML(g){
       <img class="gcap" loading="lazy" src="${imgChain(g.appid, g.art)[0]}" alt="" referrerpolicy="no-referrer"
            data-appid="${g.appid}" data-art="${esc(g.art || "")}" data-step="0"
            onerror="stepThumb(this,true)" onload="stepThumb(this,false)" />
-      ${disc}${g.upcoming ? upBadge(g, "gup") : ""}<span class="gplay" aria-hidden="true"><i class="gp-play">▶</i><i class="gp-stop">■</i></span>
+      ${disc}${g.upcoming ? upBadge(g, "gup") : v1Soon(g) ? v1Badge(g, "gup") : ""}<span class="gplay" aria-hidden="true"><i class="gp-play">▶</i><i class="gp-stop">■</i></span>
       <button type="button" class="gexp" tabindex="-1" aria-label="Watch bigger"
               title="Watch this one bigger — pull the preview into the player at the top of the screen, then keep scrolling and tap any other card to watch that instead. Swiping up on a playing card does the same.">⤢</button>
     </div>
@@ -5122,7 +5178,8 @@ function gridSortValueHTML(g){
   } else if(k === "discount_end"){
     const c = fmtCountdown(g.discount_end); if(c){ txt = c.text; unit = "left"; }
   } else if(k === "release_ts"){
-    if(g.release_ts) txt = new Date(g.release_ts * 1000).getFullYear();
+    if(v1Soon(g) && releaseMode() === "upcoming"){ txt = new Date(g.v1_ts * 1000).getFullYear(); unit = "1.0"; }
+    else if(g.release_ts) txt = new Date(g.release_ts * 1000).getFullYear();
   } else if(k === "updated"){
     if(g.last_update_ts) txt = relTime(g.last_update_ts);
   } else if(k === "playtime"){
@@ -6825,7 +6882,7 @@ function reconcilePriceFlags(game){
 // shows while that file is still outstanding. Same fetch/parse/null-on-failure contract as before.
 const BOOT_NAMES = {"games.json":"game catalog","prices.json":"prices","length.json":"lengths",
   "tags.json":"tags","recent.json":"recent reviews","playtime.json":"playtime","ratings.json":"ratings",
-  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves","demos.json":"demos"};
+  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves","demos.json":"demos","ea_dates.json":"Early Access dates"};
 const bootPending = new Set(); let bootDoneN = 0;
 function bootTick(){
   const total = bootDoneN + bootPending.size, fill = document.getElementById("bootFill"), msg = document.getElementById("bootMsg");
@@ -6906,7 +6963,10 @@ Promise.all([
   // Demo layer (demos.py): {appid: first demo appid}, games WITH a demo only. Small (~36k rows),
   // so it rides the boot load and covers the upcoming rows fetched later too.
   loadLayer("demos.json"),
-]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj, dj]) => {
+  // Early Access dates (ea_dates.py): announced 1.0 dates of games in EA, and the EA start of
+  // games that left it. Small (~2k rows). Additive: absent, no game gains a 1.0 date.
+  loadLayer("ea_dates.json"),
+]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj, dj, eaj]) => {
   PRESETS = (presetj && Array.isArray(presetj.presets)) ? presetj.presets : null;
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
@@ -6943,6 +7003,7 @@ Promise.all([
   window.HAS_PICS = !!(picsMap && Object.keys(picsMap).length);
   const demosMap = (dj && dj.demos) ? dj.demos : null;
   window.HAS_DEMOS = !!(demosMap && Object.keys(demosMap).length);   // guards Flags → Demo
+  const eaDatesMap = (eaj && eaj.games) ? eaj.games : null;
   // v2 payload: {appid: [filename, ...]} — a flat, best-codec-first list per game.
   // Trailers stay in their own lookup rather than being merged onto each game object:
   // only the row you actually hover ever needs one, so copying ~100k arrays into the
@@ -7080,6 +7141,13 @@ Promise.all([
       game.upd_c365 = sum("365d");
     }
     if(demosMap && demosMap[key]) game.demo = demosMap[key];   // the demo's appid (Flags → Demo)
+    // ea_dates.json: {ea:1, v, p} for a game in EA with an announced 1.0 (date, precision 1-4);
+    // {s, v} for one that left EA (its EA start; v is the 1.0, which release_ts already holds).
+    if(eaDatesMap && eaDatesMap[key]){
+      const e = eaDatesMap[key];
+      if(e.ea && e.v){ game.v1_ts = e.v; game.v1_p = e.p || 1; }
+      else if(e.s) game.ea_start = e.s;
+    }
     reconcilePriceFlags(game);        // undo a fossilised free-weekend snapshot
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
   };
