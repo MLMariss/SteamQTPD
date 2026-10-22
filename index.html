@@ -2413,7 +2413,7 @@ function adultMode(){
   return (af === "hide" && state.q && state.q.trim()) ? "any" : af;
 }
 // Release toggle: "released" | "upcoming" | "all". Games not out yet live in upcoming.json, a
-// second catalogue the scraper keeps beside games.json; the landing view stays released-only,
+// second catalogue (upcoming_refresh.py) beside games.json; the landing view stays released-only,
 // exactly as the page was before upcoming games existed. A typed search shows both, whatever the
 // toggle says — if the user looks for the thing, we show the thing — and it keeps a picked
 // suggestion landing on a row. Wishlist only lifts the released-only DEFAULT (every game on a
@@ -2495,8 +2495,8 @@ const artUrl = (a, art) => !art ? null
 // FALLBACK: the tag heuristic, used only for games PICS hasn't covered.
 const ADULT_TAGS = new Set(["Nudity","Sexual Content","Mature","NSFW","Hentai"]);
 const isAdult = g => {
-  // Upcoming rows carry store_adult: the same descriptor codes (3/4) read from the store page by
-  // scraper.py, because most games not out yet have no PICS record to say so.
+  // Upcoming rows carry store_adult: the same descriptor codes (3/4), read from the store by
+  // upcoming_refresh.py, because most games not out yet have no PICS record to say so.
   if(g.store_adult) return true;
   if(g.pics_adult != null && (g.pics_adult || window.HAS_PICS)){
     // When PICS is loaded, its flag is authoritative (true OR a definitive false).
@@ -6844,7 +6844,7 @@ function loadLayer(url){
 function bootDone(){ const el = document.getElementById("bootLoader"); if(el) el.remove(); }
 
 // ----- Upcoming catalogue (fetched on first use) -----
-// upcoming.json (scraper.py: one row per game not out yet) and pics_upcoming.json (their PICS
+// upcoming.json (upcoming_refresh.py: one row per game not out yet) and pics_upcoming.json (their PICS
 // records, split out by pics_merge.py) are NOT part of the boot load: ~57k rows nobody on the
 // default Released view looks at. The first time releaseMode() asks for upcoming games — the
 // toggle, a link carrying release=, a typed search, Wishlist only — both are fetched, each row

@@ -53,7 +53,8 @@ frontend merges every file by appid in the browser and computes QTPD client-side
 
 | Job (Action)            | Writes               | Contents                                            |
 |-------------------------|----------------------|-----------------------------------------------------|
-| `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state) + `upcoming.json` (store details of every game not out yet — title, date, preorder price, genres, adult descriptors — from the probe the waiting room already makes). |
+| `scraper.py`            | `games.json`         | Catalog: title, rating, reviews, release, genres, `last_update_ts` (News-API heuristic; the accurate event-typed history lives in `updates.json`). + `catalog.json` (scraper state, including the `pending` list of games not out yet). |
+| `upcoming_refresh.py`   | `upcoming.json`      | Store details of every game not out yet (title, date, preorder price, tags, adult descriptors), refreshed daily in one batched `GetItems` pass (~26 min), plus the list of pending games Steam says have released — which the scraper then scrapes first. |
 | `price_and_sale.py`     | `prices.json`        | Live price, discount %, sale end-date (the fast-changing layer). |
 | `hltb_refresh.py`       | `hltb.json`          | HowLongToBeat completion times. **Calibration input only** since Sep 2026 — the page no longer loads it; `length_model.py --fit` reads its real `extra` values weekly. |
 | `tags_refresh.py`       | `tags.json`          | SteamSpy user tags.                                 |
@@ -92,7 +93,7 @@ The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Ea
    a reserved share of each run so a long refresh queue can't delay a fresh release.
 3. Only stores games that are **actually released** in `games.json`; unreleased ones wait in a
    `catalog["pending"]` room and get promoted the moment their release date passes. What the
-   store says about each of them meanwhile goes to `upcoming.json`, which the page's **Release**
+   store says about each of them meanwhile is `upcoming_refresh.py`'s `upcoming.json`, which the page's **Release**
    toggle (Released / Upcoming / All) shows.
 4. Runs for a **time budget** (`RUN_MINUTES`, capped so the final save always lands inside the
    job's timeout) and **git-commits every ~30 minutes**, so a lost runner never loses more.

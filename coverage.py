@@ -945,8 +945,8 @@ def main():
     L.append(f"**Upcoming catalogue** (`upcoming.json`, ARCHITECTURE §6 step 3): **{len(up_rows):,} "
              f"of {len(pending):,} pending games have a row ({up_share})** — {up_dated:,} with a "
              f"day-precision date, {up_adult:,} adult by store descriptors — and **{up_pics:,}** "
-             f"have PICS records in `pics_upcoming.json`. Undated rows fill through the TBA sweep "
-             f"(~10 days for the whole room); dated ones through the upcoming sweep.")
+             f"have PICS records in `pics_upcoming.json`. `upcoming_refresh.py` (2.11) refreshes "
+             f"every pending game daily in one batched pass.")
     L.append("")
     # Demo layer: games WITH a demo only, so its count is a share of the catalogue, not a
     # coverage figure; swept_at says how fresh the whole list is.

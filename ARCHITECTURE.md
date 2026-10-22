@@ -447,13 +447,13 @@ pipeline hierarchy:
 | `0.3` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
 | `0.4` | Manual diagnostic: can the batched `GetItems` lookup replace per-game storefront calls (same branch trigger) | `batch-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
-| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10) |
+| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**26 workflow files, 25 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **17 of the 26 are cron-scheduled**; the
+**27 workflow files, 26 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **18 of the 27 are cron-scheduled**; the
 rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
@@ -611,22 +611,24 @@ verbatim that snapshot outlives the promo (§15).
 the active seeds, §6), `force_refresh` (the drained-first forced queue), `seeds_ledger`
 (`{seed_key: {kind, resolved_ts, ids, forced_applied}}`), and **`recheck`** (`{appid:
 strikes}` — apps whose `appdetails` returned `success:false`, retried across runs until they
-resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1), and **`tba_probed`**
-(`{appid: ts}` — when each undated pending game was last probed; drives the TBA sweep,
-§6 step 3). Ints in memory, string keys on
-disk.
+resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1). (`tba_probed`, the retired TBA
+sweep's rotation state, is dropped on the first save after Oct 2026.) Ints in memory, string
+keys on disk.
 
-**`upcoming.json`** — `{ generated_at, count, "games": [ { appid, title, release_date, tags,
-scraped_at, release_ts?, price_initial?, price_final?, discount_pct?, is_free?, adult? } ] }`,
-**one row per line**, an absent key meaning empty and no `url` (the page builds it) — the file is
-~57k rows and fetched whole. The store details of every game in `catalog["pending"]`, written by
-`scraper.py` from the `appdetails` probe the waiting room already makes (§6 step 3) and pruned
-to `pending` on every save, so the two can never disagree about what is unreleased. Same field
-names as a `games.json` row so the page reads both alike; `release_ts` only for a day-precision
-date (`release_date` keeps Steam's own string — "Q4 2026", "Coming soon"); `tags` are the store
-genres; `adult: true` when the store's content descriptors include 3 or 4 — the definition
-`pics_summarize.py` uses — because most upcoming games have no PICS record to say so. Not part
-of the boot load: the page fetches it on first use (§11 "Release toggle").
+**`upcoming.json`** — `{ generated_at, count, swept_at, "released": [appid, ...], "games":
+[ { appid, title, release_date, tags, scraped_at, release_ts?, price_initial?, price_final?,
+discount_pct?, is_free?, adult? } ] }`, **one row per line**, an absent key meaning empty and no
+`url` (the page builds it) — the file is ~57k rows and fetched whole. Written by
+`upcoming_refresh.py` (§7): the store details of every game in `catalog["pending"]`, refreshed
+daily by batched `GetItems` and pruned to `pending` each run. `released` lists the pending games
+Steam now says are out; `scraper.py` reads it and scrapes them first (§6 step 3). Same field
+names as a `games.json` row so the page reads both alike; `release_date` is the display text,
+built from Steam's release timestamp and its precision code ("Dec 4, 2026", "December 2026",
+"Q4 2026", "2026", "Coming soon", "To be announced", or the publisher's own message);
+`release_ts` only for a day-precision date; `tags` are user-tag names (decoded via
+`lookups/tags.json`); `adult: true` when the content descriptors include 3 or 4 — the
+definition `pics_summarize.py` uses — because most upcoming games have no PICS record to say so.
+Not part of the boot load: the page fetches it on first use (§11 "Release toggle").
 
 **`demos.json`** — `{ _format: "demos_v1", generated_at, count, swept_at, cursor, "demos":
 { "<appid>": <first demo appid> } }`, compact. Written by `demos.py` (§7); **only games with a
@@ -835,16 +837,14 @@ The only job that discovers new games. Each run:
    promotion never fired, and dated launches (Gears of War: E-Day, 3010850) sat in pending
    after release. A game Steam still flags coming-soon is never stored, even past its date;
    it stays ripe (re-probed each run) for `COMING_SOON_GRACE_DAYS` (14), then drops to
-   undated. Undated games leave pending two ways: a `last_modified` bump after `last_sync`,
-   or the **TBA sweep** — `TBA_SWEEP_PER_RUN` (1500, ~23 min) per run, least-recently-probed
-   first, then most recent `last_modified` first, tracked in `catalog["tba_probed"]`.
-   **Every probe of a pending game is also kept** (2026-10-21): its title, date, preorder price,
-   genres and adult descriptors go to `upcoming.json` (§5), which the page's Release toggle
-   shows. The TBA sweep takes games with no row yet first. Dated games are otherwise probed only
-   once ripe, so an **upcoming sweep** re-probes the dated, not-yet-ripe ones whose row is missing
-   or older than `UPCOMING_REFRESH_DAYS` (7), capped at `UPCOMING_SWEEP_PER_RUN` (500) — ~40 a run
-   once the first fill is done. No reviews or news are fetched for a pending game; it costs the
-   one `appdetails` call, as before.
+   undated. Undated games leave pending two ways: a `last_modified` bump after `last_sync`, or
+   **`upcoming_refresh.py` reporting them released** (`upcoming.json` `released`, read by
+   `load_released()`), which makes them ripe like a passed date. That job (§7) checks every
+   pending game daily in ~1,150 batched calls, off the storefront budget, and owns
+   `upcoming.json`. It replaced two per-game sweeps this scraper ran (Oct 2026): the TBA sweep
+   (`TBA_SWEEP_PER_RUN`, 1,500 storefront calls a run, ~10 days per pass of the room) and a
+   short-lived upcoming sweep (`UPCOMING_SWEEP_PER_RUN`) that kept the rows the scraper itself
+   wrote then. Those ~2,000 calls a run now go to released games.
 4. **Run for `RUN_MINUTES`, capped by the job's own clock; commit every `COMMIT_SECONDS`.**
    `scrape.yml` records `JOB_STARTED_AT` before its checkout and passes `JOB_TIMEOUT_MINUTES`
    (= `timeout-minutes`); the budget is the smaller of `RUN_MINUTES` and what is left of the
@@ -959,6 +959,16 @@ found:
   cron so it stays fresh; `RECENT_COOLDOWN_DAYS` controls how stale a score must be to
   re-check. The frontend computes the recent-vs-all-time **trend** (improving / stable /
   declining) and gates it on staleness.
+- **`upcoming_refresh.py` → `upcoming.json`** (workflow 2.11, daily 00:23 UTC, ahead of demos).
+  Every pending game in `catalog.json` (read-only), batched `GetItems` 50 per call
+  (`include_basic_info` / `release` / `all_purchase_options` / `ratings` / 20 tags), ~1,150 calls,
+  ~26 min on the api.steampowered.com budget. `batch_probe.py` (workflow 0.4) validated it
+  against `appdetails` on 30 games first: name, price and content descriptors 30/30, coming-soon
+  29/30, and the date as a timestamp with a precision code. A game Steam no longer calls coming
+  soon, with a past date, goes to `released` for the scraper instead of a row; only an answered
+  game changes, so a failed call or a game left out keeps its row. Its review numbers did NOT
+  match `appreviews` (counts consistently lower — Steam's filtered summary), so released games
+  keep their storefront review call. Dispatched from a branch it is a dry run.
 - **`demos.py` → `demos.json`** (workflow 2.10, daily 01:11 UTC). Which games list a demo,
   from the `related_items.demo_appid` block that batched `IStoreBrowseService/GetItems` returns
   with `include_basic_info` alone — verified by `demo_probe.py` (workflow 0.3) on 2026-10-21,
@@ -1928,7 +1938,7 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
   under any QTPD sort in All.
 - **Adult.** The landing default (*Exclude*) applies unchanged — Upcoming is a broad list the user
   did not name. `isAdult()` gained one input: `store_adult`, the store's own descriptors (3/4)
-  that `scraper.py` saves per upcoming row, because most have no PICS record yet. **Residual:**
+  that `upcoming_refresh.py` saves per upcoming row, because most have no PICS record yet. **Residual:**
   an upcoming game with neither PICS nor store descriptors is judged on its genres alone — i.e.
   not flagged — the same gap a just-released game has until PICS reaches it.
 - **Tag counts and the "/ N games" total follow the toggle** (`computeFullCounts()` counts the
@@ -2544,7 +2554,7 @@ something."
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
 | header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | single flat window: `--stale-days` (14), daily cron; **no review floor** |
 | demo appid (Flags → Demo) | `demos.json` | `demos.py` | `swept_at` (file-level; `cursor` while a pass is mid-way) | daily full sweep, upcoming first; only answered games change |
-| upcoming games: title, date, preorder price, genres, store adult flag | `upcoming.json` | `scraper.py` (pending-room probe) | `scraped_at` | undated: TBA sweep rotation (~10 d at 1,500/run); dated: upcoming sweep, 7 d; pruned to `pending` on every save |
+| upcoming games: title, date, preorder price, tags, store adult flag; `released` list | `upcoming.json` | `upcoming_refresh.py` (batched `GetItems`) | `scraped_at`, `swept_at` | daily full sweep (~1,150 batched calls); pruned to `pending` each run |
 | upcoming games' PICS (tags, art, Deck, adult …) | `pics_upcoming.json` ← `pics/` | `pics_merge.py` (split by `upcoming.json`) | `_ts` (in `pics_raw/`) | same as `pics.json` |
 | tag-name / genre / category decode maps | `lookups/*.json` | `pics_lookups.py`, `build_category_map.py` | **none** | committed static, refreshed manually |
 
@@ -2719,9 +2729,6 @@ Each job's knobs live at the top of its own script:
   `appdetails` / `appreviews` / search call passes through (`storefront_pace()`). This, not the
   now-deprecated `STEAM_DELAY`, is the scraper's real pacing knob; raise it if 403 rates spike
   (§16 revert plan).
-- **`UPCOMING_SWEEP_PER_RUN` (500, env) / `UPCOMING_REFRESH_DAYS` (7, env)** (scraper) — the
-  upcoming sweep: how many dated, not-yet-ripe pending games a run re-probes to keep their
-  `upcoming.json` row filled and current, and how old a row may get (§6 step 3).
 - **`MAX_RECHECK` (4, env)** (scraper) — how many runs an app whose `appdetails` returns
   `success:false` is retried before moving to `skipped`. `success:false` lumps region-locked and
   transient blips in with dead apps, hence the retries (§5, `catalog["recheck"]`).
@@ -2945,6 +2952,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Upcoming games get their own job (Oct 2026).** `upcoming_refresh.py` (workflow 2.11) now owns
+  `upcoming.json`, refreshing every pending game daily with batched `GetItems` (~26 min), and
+  lists the ones Steam says have released; `scraper.py` scrapes those first and no longer writes
+  `upcoming.json` or runs its TBA and upcoming sweeps (~2,000 storefront calls a run returned to
+  released games). Kept as a separate job on purpose — one writer per file and a smaller scraper.
 
 - **Checkouts and commit cadence (Oct 2026).** Every workflow now checks out shallow, and the
   eleven bounded jobs sparse + partial, after measurement showed 28–33 min of every full-depth run
