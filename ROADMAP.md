@@ -79,7 +79,7 @@ Open items living in **other** docs (not duplicated here — go to the source):
 - ~~**PICS for unreleased games**~~ — **SHIPPED 2026-10-21** as the full upcoming catalogue
   (`upcoming.json`, `pics_upcoming.json`, the Release toggle); `UPCOMING_GAMES_PICS_MEMO.md` is
   superseded and records where the build departs from it. ARCHITECTURE §6 / §9.6 / §11.
-- ~~**"Has a demo" filter**~~ — **SHIPPED 2026-10-21**: `demo_probe.py` (workflow `0.2`) confirmed
+- ~~**"Has a demo" filter**~~ — **SHIPPED 2026-10-21**: `demo_probe.py` (workflow `0.3`) confirmed
   the batched `GetItems` call returns `related_items.demo_appid`; `demos.py` (workflow `2.10`)
   sweeps it daily into `demos.json`, and Flags has a tri-state **Demo** control. ARCHITECTURE §7 / §9.6.
 - **Coverage/refresh gaps** — `COVERAGE.md` *Future work* (generated, so always current).

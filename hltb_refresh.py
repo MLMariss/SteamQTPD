@@ -50,7 +50,7 @@ GAMES_FILE = HERE / "games.json"          # read-only (owned by scraper.py)
 HLTB_FILE = HERE / "hltb.json"            # this job's output (committed)
 
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "120"))
-CHECKPOINT_SECONDS = 300
+CHECKPOINT_SECONDS = 1800       # was 300: every commit is a new version in git history (§4); hltb.json is 37 MB
 TIME_BUFFER = 45
 HLTB_MIN_SIMILARITY = 0.65
 HLTB_DELAY = 0.6                          # pacing between HLTB searches (howlongtobeat tolerates this)

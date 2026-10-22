@@ -36,9 +36,11 @@ from the merged fields (§11) — never stored server-side — so the score resp
 to the price-basis toggle without re-scraping.
 
 **Time-budgeted, checkpoint-committing jobs.** Actions cap at 6 hours per job. Scrapers run
-for a `RUN_MINUTES` budget and commit progress on an interval (`CHECKPOINT_SECONDS`), plus
-on graceful shutdown, so hitting the wall (or a runner interruption) never loses more than
-one checkpoint's worth of work.
+for a `RUN_MINUTES` budget and commit progress on an interval (`CHECKPOINT_SECONDS`, 30 min
+since Oct 2026; the scraper's is `COMMIT_SECONDS`), plus on graceful shutdown, so a runner
+interruption never loses more than one checkpoint's worth of work. The budget has to end
+inside the job's `timeout-minutes` with room for the final save: the scraper's didn't for
+three weeks (§4 "Checkouts", §6 step 4).
 
 ---
 
@@ -407,6 +409,33 @@ preserves the credential-persistence behavior the `fetch → rebase → push` co
 depends on; v6/v7 changed it. Every writer job has `permissions: contents: write` and a
 `concurrency` group so a job never overlaps itself.
 
+**Checkouts (Oct 2026): shallow everywhere, sparse where a job's files are bounded.** Every
+data job commits whole files many times a day (`games.json` alone, 63 MB, ~144 times a day
+before the cadence change below), so history had reached **9.6 GB** in four months, and the 14
+workflows that cloned it all (`fetch-depth: 0`) spent **28–33 minutes of every run** on checkout
+— the tags job, 28 min for 36 s of work; the scraper, 32 min, which pushed it past its 330-min
+timeout every run. Shallow jobs took 2–5 min. Nothing reads history: every commit is
+`fetch → rebase --autostash → push` (or `fetch → reset --hard → push`), which pics, pics-new,
+freshness and shard-health had always run from depth-1 clones, and the scraper's
+`git show origin/main:seeds.txt` works after its own fetch. So:
+- **Every workflow is `fetch-depth: 1`.** A comment in trailers/shots claimed "real runs still
+  need depth 0 for the rebase"; that was never true and is now corrected in place.
+- **Eleven bounded jobs also list their files** (`sparse-checkout`, non-cone): scrape, prices,
+  tags, hltb, recent, updates, demos, trailers, shots, pics, pics-new — and the two probes. With a
+  sparse list, `actions/checkout` makes a **partial clone** (`blob:none`), so nothing outside it
+  is even downloaded — above all not `playtime_raw/` (1.4 GB of the ~2 GB tree) — and later
+  `git fetch`es carry commits and trees only, blobs on demand. Verified end to end on a local
+  partial clone: rebase over another writer's push, autostash, push, `git show`, and the
+  reset pattern all work; `git add` of a path outside the list is refused, not silently
+  dropped.
+- **Adding a file a job reads or writes means adding it to that workflow's list**, or the job
+  fails at the read (FileNotFoundError) or the `git add`. Jobs that read most of the repo
+  (coverage, freshness, presets, length, playtime summaries, pages) stay full-tree, shallow.
+- **Commits are 30 min apart** for the heavy writers (scraper, prices, hltb, tags, recent,
+  trailers, shots, demos; most were 5–10 min). Every commit is a permanent new version of the
+  file; this slows history growth, it doesn't shrink what is there. Pass-end commits (prices'
+  publish, a run's final save) are unchanged.
+
 **Naming scheme.** Workflow `name:` fields carry a tier prefix so the Actions sidebar sorts by
 pipeline hierarchy:
 
@@ -414,16 +443,18 @@ pipeline hierarchy:
 |---|---|---|
 | `0.` | **Publish** — puts the site live; the one job a user actually sees the output of | `pages.yml` |
 | `0.1` | Manual diagnostic against the live site's backend, not a pipeline stage | `review-probe.yml` (§17) |
-| `0.2` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
+| `0.2` | Pages watchdog — cancels a deploy stuck in "waiting" 20+ min, so the deploys behind it can run | `pages-watchdog.yml` |
+| `0.3` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
+| `0.4` | Manual diagnostic: can the batched `GetItems` lookup replace per-game storefront calls (same branch trigger) | `batch-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**24 workflow files, 23 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **16 of the 24 are cron-scheduled**; the
-rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.2,
+**26 workflow files, 25 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **17 of the 26 are cron-scheduled**; the
+rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
 `presets.yml` match the scrape workflow's **exact `name:` string**, so renaming `scrape.yml`
@@ -814,8 +845,17 @@ The only job that discovers new games. Each run:
    or older than `UPCOMING_REFRESH_DAYS` (7), capped at `UPCOMING_SWEEP_PER_RUN` (500) — ~40 a run
    once the first fill is done. No reviews or news are fetched for a pending game; it costs the
    one `appdetails` call, as before.
-4. **Run for `RUN_MINUTES`, commit every ~`CHECKPOINT_SECONDS`.** The 6-hour Actions wall
-   is therefore never a data-loss risk.
+4. **Run for `RUN_MINUTES`, capped by the job's own clock; commit every `COMMIT_SECONDS`.**
+   `scrape.yml` records `JOB_STARTED_AT` before its checkout and passes `JOB_TIMEOUT_MINUTES`
+   (= `timeout-minutes`); the budget is the smaller of `RUN_MINUTES` and what is left of the
+   job minus `FINAL_SAVE_RESERVE` (10 min). Until Oct 2026 `RUN_MINUTES` equalled the 330-min
+   timeout and was counted from the script's start, after a ~32-min full-history checkout, so
+   GitHub cancelled every run before its final save from 2 Oct: `last_sync` froze (so each run
+   re-probed every TBA game touched since — the touched-TBA list grew run on run), and
+   coverage (4.2) and presets (4.4), which only follow a *successful* scrape, stopped running —
+   `COVERAGE.md` last updated 30 Sep, the shelves 2 Oct. Progress is committed every
+   `COMMIT_SECONDS` (30 min; was every 10-min checkpoint); seed pickup and the young-game
+   requeue still run every `CHECKPOINT_SECONDS` (10 min), with their own fetch.
 
 ### Refresh triggers (what makes a stored game due)
 
@@ -921,7 +961,7 @@ found:
   declining) and gates it on staleness.
 - **`demos.py` → `demos.json`** (workflow 2.10, daily 01:11 UTC). Which games list a demo,
   from the `related_items.demo_appid` block that batched `IStoreBrowseService/GetItems` returns
-  with `include_basic_info` alone — verified by `demo_probe.py` (workflow 0.2) on 2026-10-21,
+  with `include_basic_info` alone — verified by `demo_probe.py` (workflow 0.3) on 2026-10-21,
   which found demos on 13% of a released sample, 66% of dated upcoming games and 32% of undated
   ones, all live. Sweeps `upcoming.json` first (most demos, fastest churn — Next Fest), then
   `games.json`: ~190k appids, ~3,800 calls, ~95 min on the api.steampowered.com budget, not the
@@ -2658,7 +2698,12 @@ Each job's knobs live at the top of its own script:
 - **`STEAM_DELAY` / `STORE_DELAY` / `STEAMSPY_DELAY` / `HLTB_DELAY`** — politeness pacing.
   Steam storefront ≈ 200 req / 5 min per IP (shared by appdetails + appreviews); SteamSpy
   ≈ 1 req/sec. Lower these and you get 429s or a 5-minute 403 cooldown.
-- **`CHECKPOINT_SECONDS`** — mid-run commit interval.
+- **`CHECKPOINT_SECONDS`** — mid-run commit interval (1800 for the heavy writers since Oct 2026;
+  §4 "Checkouts"). In `scraper.py` it is the mid-run pickup tick (seeds, young-game requeue) and
+  **`COMMIT_SECONDS` (1800, env)** is the commit interval.
+- **`JOB_STARTED_AT` / `JOB_TIMEOUT_MINUTES` / `FINAL_SAVE_RESERVE` (600 s)** (scraper) — the
+  job-clock cap: the budget ends early enough for the final save to land inside the job's
+  `timeout-minutes`, however long setup took (§6 step 4).
 - **`NEW_ORDER`** (scraper) — `"newest"` / `"oldest"` appid order for new coverage.
 - **`REVIEW_TIERS`** (scraper, code constant) — age-since-release → refresh-cooldown ladder
   for review score/count (§6). `REVIEW_TIER_REFRESH=0` disables it.
@@ -2901,9 +2946,17 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Checkouts and commit cadence (Oct 2026).** Every workflow now checks out shallow, and the
+  eleven bounded jobs sparse + partial, after measurement showed 28–33 min of every full-depth run
+  going on cloning 9.6 GB of history (§4 "Checkouts"). The scraper, killed by its 330-min
+  timeout before every final save since 2 Oct, now stops on the job's own clock (§6 step 4),
+  which also unblocks coverage and presets. Heavy writers commit every 30 min instead of 5–10.
+  The upcoming sweep moved ahead of the TBA sweep. `batch_probe.py` (workflow 0.4) checks
+  whether batched `GetItems` could replace the scraper's per-game storefront calls.
+
 - **Demo filter (Oct 2026).** Flags gains **Demo** (Any / Exclude / Only, `flags=demo` /
   `noflags=demo`), fed by a new daily job, `demos.py` → `demos.json` (§5, §7). The source was
-  settled by a probe before anything was built (`demo_probe.py`, workflow 0.2): the batched
+  settled by a probe before anything was built (`demo_probe.py`, workflow 0.3): the batched
   `GetItems` call already in use returns `related_items.demo_appid`. Demos turn out to be
   common exactly where the new Upcoming view is (66% of dated upcoming games), so Upcoming +
   Demo: Only is a "try it before it launches" list.

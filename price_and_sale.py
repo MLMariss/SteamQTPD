@@ -75,8 +75,9 @@ MIN_CHUNK_MINUTES = int(os.environ.get("MIN_CHUNK_MINUTES", "15"))  # but a left
                                                                     # resumes where it stops
 PASS_ALIGN_MINUTE = int(os.environ.get("PASS_ALIGN_MINUTE", "0")) % 60   # UTC minute each
                                                                          # pass starts on
-CHECKPOINT_SECONDS = 600                  # was 300; the run now does ~5 passes instead of 1,
-                                          # and a checkpoint rewrites all 18MB of prices.json
+CHECKPOINT_SECONDS = 1800                 # was 600, before that 300: a checkpoint rewrites all 18MB
+                                          # of prices.json, and every version stays in git history
+                                          # (ARCHITECTURE §4). Pass ends still commit and publish.
 TIME_BUFFER = 45
 
 PRICE_BATCH = 100                         # appids per batched price-only appdetails call

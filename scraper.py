@@ -16,8 +16,9 @@ What changed in v3 (the upgrades):
     we last scraped it (or it's currently on sale). HLTB is NEVER re-fetched on a
     refresh — beat times don't change — only price/discount/rating/tags are.
   * Time-budgeted runs that commit as they go. Rather than fixed per-run counts,
-    each run scrapes until RUN_MINUTES elapses, git-committing every few minutes
-    so a 6-hour-wall kill never loses progress.
+    each run scrapes until RUN_MINUTES elapses (capped by the job's own clock, so the
+    final save always lands), git-committing every COMMIT_SECONDS so a lost runner
+    never loses more than that.
   * Released-only games.json, with a waiting room. Only games actually out (a
     concrete past release date) go into games.json — no empty coming-soon shells
     there. Unreleased games go to catalog["pending"] = {appid: release_ts|null},
@@ -74,8 +75,20 @@ UPCOMING_FILE = HERE / "upcoming.json"    # store details of the pending (unrele
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()
 
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))   # scrape budget per run
-CHECKPOINT_SECONDS = 600        # git-commit progress at least this often during a run
+CHECKPOINT_SECONDS = 600        # mid-run pickups (seeds.txt edits, newly-due young games) this often
+# Save + git-commit progress this often. Was every CHECKPOINT_SECONDS (10 min): each commit is a
+# new 63 MB version of games.json in history, ~144 a day, and that history (9.6 GB by Oct 2026)
+# is what made every full-depth checkout take ~30 min. A run now ends cleanly (job-clock cap
+# below), so the commits only guard against a lost runner; 30 min of work is the most that costs.
+COMMIT_SECONDS = int(os.environ.get("COMMIT_SECONDS", "1800"))
 TIME_BUFFER = 120               # stop scraping this long before the budget, to commit
+# Job-clock cap (JOB_STARTED_AT / JOB_TIMEOUT_MINUTES, set by scrape.yml). RUN_MINUTES used to
+# equal the job's 330-min timeout and was counted from the script's own start, AFTER a ~30-min
+# checkout, so GitHub cancelled every run before its final save: last_sync froze on 2026-10-02
+# and the coverage/presets jobs, which only follow a successful scrape, stopped running. The
+# budget is now also capped at what is left of the job, minus this reserve for the final save,
+# commit and push (rebase retries included).
+FINAL_SAVE_RESERVE = 600
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
 SEED_RESOLVE_TTL = 24 * 3600    # live term/URL seeds: re-resolve at most once per this interval
@@ -1031,15 +1044,18 @@ def select_work(master, has_lm, processed, catalog, upcoming=None):
            if a not in done and a not in pending_ids]
     pri_set = set(pri)
 
-    # Ripe + touched-TBA first (a release that just happened beats brand-new coverage),
-    # then priority seeds, the TBA sweep, the fresh frontier, and the upcoming sweep.
+    # Ripe first (a release that just happened beats brand-new coverage), then the upcoming
+    # sweep — dated launches, two thirds of them with a demo, and capped at
+    # UPCOMING_SWEEP_PER_RUN (~40 a run once filled) — then touched-TBA, priority seeds, the
+    # TBA sweep and the fresh frontier. The upcoming sweep sat last until 2026-10-22, behind a
+    # touched-TBA list that the frozen last_sync had grown, and filled 49 of ~1,150 rows in a day.
     new_ids = (ripe
+               + up_sweep
                + touched_tba
                + pri
                + [a for a in sweep if a not in pri_set]
                + [a for a in fresh if a not in pri_set
-                  and a not in ripe_set and a not in touched_set]
-               + up_sweep)            # last: refreshing upcoming rows never delays new coverage
+                  and a not in ripe_set and a not in touched_set])
     log(f"Pending: {len(ripe)} ripe, {len(touched_tba)} touched-TBA, "
         f"{len(sweep)} TBA sweep (cap {TBA_SWEEP_PER_RUN}), "
         f"{len(up_sweep)} upcoming sweep (cap {UPCOMING_SWEEP_PER_RUN})")
@@ -1168,7 +1184,15 @@ def main():
     # forced_applied latch in the ledger stops them being re-added (no loop).
     force_set = set(int(a) for a in (catalog.get("force_refresh") or []))
     budget = RUN_MINUTES * 60
-    last_commit = time.time()
+    job_started = os.environ.get("JOB_STARTED_AT", "").strip()
+    job_timeout = os.environ.get("JOB_TIMEOUT_MINUTES", "").strip()
+    if job_started.isdigit() and job_timeout.isdigit():
+        left = int(job_started) + int(job_timeout) * 60 - int(start) - FINAL_SAVE_RESERVE
+        if left < budget:
+            log(f"Budget capped by the job clock: {max(0, left) // 60} min, so the final save "
+                f"lands inside the job's {job_timeout}-min timeout")
+            budget = max(0, left)
+    last_commit = last_tick = time.time()
     n_new = n_ref = n_pend = 0
 
     # Reserve a guaranteed share of each run for forced re-scrapes (the null-update
@@ -1322,16 +1346,18 @@ def main():
             recheck.pop(aid, None)
             pending.pop(aid, None)
 
-        if time.time() - last_commit > CHECKPOINT_SECONDS:
-            catalog["skipped"] = sorted(skipped)
-            catalog["pending"] = pending
-            catalog["force_refresh"] = sorted(force_set)
-            catalog["recheck"] = recheck
-            save_games(processed); save_catalog(catalog); save_upcoming(upcoming, pending)
-            git_checkpoint(f"checkpoint: {len(processed)} games stored")
-            inject_new_seeds()              # after the push, pull any seeds.txt edit into this run
+        if time.time() - last_tick > CHECKPOINT_SECONDS:
+            if time.time() - last_commit > COMMIT_SECONDS:
+                catalog["skipped"] = sorted(skipped)
+                catalog["pending"] = pending
+                catalog["force_refresh"] = sorted(force_set)
+                catalog["recheck"] = recheck
+                save_games(processed); save_catalog(catalog); save_upcoming(upcoming, pending)
+                git_checkpoint(f"checkpoint: {len(processed)} games stored")
+                last_commit = time.time()
+            inject_new_seeds()              # pull any seeds.txt edit into this run (own fetch)
             requeue_due_young()             # ...and any young game that came due mid-run
-            last_commit = time.time()
+            last_tick = time.time()
 
     catalog["skipped"] = sorted(skipped)
     catalog["pending"] = pending

@@ -6,7 +6,7 @@ One SEPARATE, independent job that owns the DEMO layer: for each game, the appid
 the demo Steam lists for it, so the page's Flags → Demo control can include, exclude
 or require games you can try for free first.
 
-THE SOURCE (verified 2026-10-21 by demo_probe.py, workflow 0.2)
+THE SOURCE (verified 2026-10-21 by demo_probe.py, workflow 0.3)
 ---------------------------------------------------------------
 IStoreBrowseService/GetItems/v1 — the batched endpoint price_and_sale.py and
 trailers.py already use, on api.steampowered.com (the big budget, not the
@@ -56,7 +56,7 @@ DEMOS_FILE = HERE / "demos.json"            # this job's output (served)
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "60"))
-CHECKPOINT_SECONDS = 600
+CHECKPOINT_SECONDS = 1800       # was 600: every commit is a new version in git history (§4)
 TIME_BUFFER = 45
 
 GETITEMS_BATCH = 50                         # appids per GetItems call

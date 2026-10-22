@@ -20,7 +20,16 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
-          fetch-depth: 0
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts"). Full history
+          # (fetch-depth: 0) was 9.6 GB and ~30 min of every run, and nothing here reads history;
+          # with a sparse list, checkout is also a partial clone, so nothing else is downloaded.
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /demos.py
+            /games.json
+            /upcoming.json
+            /demos.json
 
       - uses: actions/setup-python@v6
         with:
