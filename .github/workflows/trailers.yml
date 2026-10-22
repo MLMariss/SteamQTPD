@@ -37,11 +37,19 @@ jobs:
           # Writing to main stays safe: git_checkpoint refuses to push from a non-main
           # checkout, so a branch run can only ever be a dry run.
           ref: ${{ github.ref_name }}
-          # A dump run reads nothing from git history and commits nothing, so it takes a
-          # shallow clone: full history on this repo costs ~16 MINUTES of checkout (the
-          # tags job measures 15m59s), which is the entire cost of a schema-check
-          # iteration. Real runs still need depth 0 for the rebase-onto-main checkpoint.
-          fetch-depth: ${{ inputs.dump && 1 || 0 }}
+          # This used to say real runs need depth 0 for the rebase-onto-main checkpoint. They
+          # don't: pics, pics-new, freshness and shard-health have rebased onto main from depth-1
+          # clones all along — `git fetch origin main` brings whatever the rebase needs.
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts"). Full history
+          # (fetch-depth: 0) was 9.6 GB and ~30 min of every run, and nothing here reads history;
+          # with a sparse list, checkout is also a partial clone, so nothing else is downloaded.
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /trailers.py
+            /games.json
+            /trailers.json
+            /trailers_state.json
 
       - uses: actions/setup-python@v6
         with:

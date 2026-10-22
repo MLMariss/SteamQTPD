@@ -115,7 +115,7 @@ STATE_FILE = HERE / "shots_state.json"              # this job's queue memory (n
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "60"))
-CHECKPOINT_SECONDS = 300
+CHECKPOINT_SECONDS = 1800       # was 300: every commit is a new version in git history (§4)
 TIME_BUFFER = 45
 
 GETITEMS_BATCH = 50                                 # appids per GetItems call
