@@ -52,7 +52,6 @@ they aren't re-proposed. Sorted roughly by value-to-effort within each group.
 
 | Item | Where | Blocked on |
 |---|---|---|
-| Early Access dates (EA start + planned 1.0) | §3.1 | **A decision from you** — where they show (Upcoming view, a badge, a column) and how fuzzy or slipped 1.0 dates read; the source is confirmed |
 | Completion rate (achievement-weighted QTPD) | §3.1 | An achievement-selection heuristic ("which one means finished?") |
 | Review-TEXT keyword / sentiment aggregates | §3.1 | A decision on the lexicon, and on whether a stored aggregate still earns its keep beside the on-demand Review Digest |
 | Region-specific pricing | §3.1 | An explicit store-N-regions vs fetch-live design decision |
@@ -83,6 +82,9 @@ Open items living in **other** docs (not duplicated here — go to the source):
 - ~~**"Has a demo" filter**~~ — **SHIPPED 2026-10-21**: `demo_probe.py` (workflow `0.3`) confirmed
   the batched `GetItems` call returns `related_items.demo_appid`; `demos.py` (workflow `2.10`)
   sweeps it daily into `demos.json`, and Flags has a tri-state **Demo** control. ARCHITECTURE §7 / §9.6.
+- ~~**Early Access 1.0 launches**~~ — **SHIPPED 2026-10-22** (§3.1 below): announced 1.0 dates join
+  the Upcoming view with a **1.0** badge; a game that left EA shows its EA start in the date tip.
+  `ea_dates.py` (workflow `2.12`) → `ea_dates.json`. ARCHITECTURE §5 / §7 / §11.
 - **Coverage/refresh gaps** — `COVERAGE.md` *Future work* (generated, so always current).
 
 ---
@@ -97,9 +99,17 @@ constraints every item must respect, and the status index for what is actually o
 Each of these implies a new scrape and a new JSON file merged by `appid` in the frontend
 (§11). Listed roughly by value-to-effort.
 
-- **Early Access dates: EA start and planned 1.0. [Probed 2026-10-22 — not built.]** Steam's
-  personal calendar lists Every Day We Fight (1546080) on its 1.0 day; QTPD knows it only as
-  released on 10 Jul 2025, its EA start, so the Upcoming view never shows it. What we read today
+- **Early Access dates: EA start and planned 1.0. [Done — 2026-10-22: Version 1.]** Two shapes
+  were weighed: (1) announced 1.0 launches in the Upcoming view; (2) both dates on every game in
+  the Released cell. (1) shipped — it is what Steam's calendar shows and what the Every Day We
+  Fight case asked for — with the EA start stored alongside and shown only in the date tip.
+  **Still open from (2):** whether the EA start should drive anything beyond the tip. Today
+  Valheim (EA since 2021) counts as released in Sep 2026 for *Released within* and the *New and
+  well-reviewed* shelf, because that is the date Steam gives; the tip says so, the filters don't.
+  Also not built: labelling upcoming games that launch *into* EA (the flag is there before launch,
+  292 of 293). The probe that settled the source, for the record: Steam's
+  personal calendar listed Every Day We Fight (1546080) on its 1.0 day; QTPD knew it only as
+  released on 10 Jul 2025, its EA start, so the Upcoming view never showed it. What we read before
   can't hold both dates: appdetails `release_date` and PICS `steam_release_date` carry the EA
   start only while a game is in EA and are overwritten with the 1.0 date on release, and PICS
   `original_release_date` is something else (Subnautica's is its 1.0 date). `ea_dates_probe.py`
