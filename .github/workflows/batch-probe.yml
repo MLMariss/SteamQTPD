@@ -1,0 +1,61 @@
+name: 0.4 Batched lookup probe [manual] -> run log + artifact
+
+on:
+  workflow_dispatch:          # MANUAL — a one-off diagnostic for a scraper redesign, not a data job.
+    inputs:
+      sample:
+        description: "Games per cohort (upcoming / released) for the field-by-field comparison"
+        required: false
+        default: "30"
+  # Also runs when the probe itself changes on a claude/ working branch, so its answer is in
+  # that branch's checks before anything merges (workflow_dispatch only sees main's workflows).
+  # Read-only: ~4 GetItems calls and ~60 paced storefront calls, so an extra run costs nothing.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - batch_probe.py
+      - .github/workflows/batch-probe.yml
+
+# READ-ONLY, like the other probes: commits nothing. Findings go to the run log and the job
+# summary; the raw payloads go out as a build artifact.
+permissions:
+  contents: read
+
+concurrency:
+  group: batch-probe
+  cancel-in-progress: false
+
+jobs:
+  batch-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20        # ~60 storefront calls at 1.5s; the budget is nowhere near
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout-cone-mode: false   # only what the probe reads (ARCHITECTURE §4 "Checkouts")
+          sparse-checkout: |
+            /batch_probe.py
+            /games.json
+            /catalog.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install "requests>=2.31"
+
+      - name: Compare GetItems with appdetails / appreviews
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional; GetItems also answers keyless
+          QTPD_PROBE_SAMPLE: ${{ inputs.sample || '30' }}
+        run: python batch_probe.py
+
+      - name: Upload findings
+        if: always()           # a partial dump is still worth having when a probe fails
+        uses: actions/upload-artifact@v7
+        with:
+          name: batch-probe-findings
+          path: batch_probe_out/
+          retention-days: 14
+          if-no-files-found: warn
