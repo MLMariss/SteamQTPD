@@ -503,10 +503,20 @@ own file, so one-writer-per-file holds:
 
 | Script                  | Writes         | Trigger                              | Concurrency group |
 |-------------------------|----------------|--------------------------------------|-------------------|
-| `playtime_summarize.py` | `playtime.json`| chained step in `playtime-raw.yml`   | (inherits `steam-playtime-raw`) |
-| `ratings_summarize.py`  | `ratings.json` | chained step in `playtime-raw.yml`   | (inherits `steam-playtime-raw`) |
-| `length_model.py`       | `length.json`  | chained step in `playtime-raw.yml` (after the two above); manual `length-apply.yml` (3.4) | (inherits `steam-playtime-raw`) / `steam-length` |
-| `length_model.py --fit` | `length_coefs.json` (+ re-applies `length.json`) | `length-fit.yml` (3.3), `17 3 * * 1` weekly | `steam-length` |
+| `playtime_summarize.py` | `playtime.json`| chained step in `playtime-raw.yml`; manual `playtime-summary.yml` (3.1) | `steam-playtime-raw` (both) |
+| `ratings_summarize.py`  | `ratings.json` | chained step in `playtime-raw.yml`; manual `playtime-ratings.yml` (3.2) | `steam-playtime-raw` (both) |
+| `length_model.py`       | `length.json`  | chained step in `playtime-raw.yml` (after the two above); manual `length-apply.yml` (3.4) | `steam-playtime-raw` (both) |
+| `length_model.py --fit` | `length_coefs.json` only | `length-fit.yml` (3.3), `17 3 * * 1` weekly | `steam-length` |
+
+**The manual escape hatches share 2.3's group** (since Oct 2026), so each of these files has one
+writer at a time: a manual 3.1 / 3.2 / 3.4 waits for a running raw pass instead of committing over
+its chained step. GitHub keeps one pending run per group, so a raw pass that fires while one waits
+cancels it (rerun it then), and starting one while a raw pass is already pending cancels that pass. **3.3 writes only `length_coefs.json`.** It used to re-apply
+`length.json` as well, and because 03:17 Monday falls inside 2.3's 01:23 pass, the two commits
+conflicted every week and 2.3's was dropped (its push of the unchanged head still logged
+"committed"). The chained summarizers rebase onto `main` before the Length step, so new
+coefficients reach `length.json` when the raw pass in progress ends, about 50 minutes after the
+refit.
 
 **They run as chained steps at the end of `playtime-raw.yml`**, right after `playtime_refresh.py`
 commits the freshly-updated shards — so the lean frontend files refresh on *every* raw pass
@@ -579,7 +589,12 @@ every param a shelf names must be one `loadFromURL()` actually reads.
 **One-off (deletable) workflows.** `cleanup_shells.py` is a run-once utility that shares its
 target file's concurrency group so it can't clobber an in-progress scrape. `queue_null_updates.py`
 is the current live one-off — it force-queues every null-`last_update_ts` game for re-scrape after
-the News-API fix (§16); deletable once the queue drains. The earlier HLTB-estimation backfill
+the News-API fix (§16); deletable once the queue drains. It writes `catalog.json`, the scraper's
+file, so `queue-null-updates.yml` runs in the `steam-scrape` group for the same reason (it had its
+own group until Oct 2026, which let a confirmed run commit mid-scrape). A confirmed run therefore
+waits for a running scrape; a scrape that fires while it waits takes the one pending slot and
+cancels it, so rerun it then, and confirming it while a scrape is already pending cancels that
+scrape run. The earlier HLTB-estimation backfill
 (`backfill-hltb.yml` / `hltb_backfill.py`) and `backfill_updates.py` were also run-once utilities
 of this kind; they have since been **run and removed**, which is the intended lifecycle for these
 once their one-time job is done. The three `[DELETE]`-tagged IGDB workflows followed the same
@@ -2953,6 +2968,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **One writer per file, enforced by concurrency groups (Oct 2026).** An audit of every committed
+  file found four written from two concurrency groups. `catalog.json`: the `[ONE-OFF]`
+  `queue-null-updates.yml` now runs in `steam-scrape`, as §4 already asks of one-offs.
+  `playtime.json` / `ratings.json` / `length.json`: the manual 3.1 / 3.2 / 3.4 now run in 2.3's
+  `steam-playtime-raw`. `length.json` again: 3.3 stops re-applying it, which ends a weekly
+  Monday clash with 2.3 (§4 "Summarizers"). Every committed path now has one group.
 
 - **Upcoming games get their own job (Oct 2026).** `upcoming_refresh.py` (workflow 2.11) now owns
   `upcoming.json`, refreshing every pending game daily with batched `GetItems` (~26 min), and

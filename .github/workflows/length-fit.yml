@@ -8,15 +8,18 @@ on:
     # times. HLTB is backend-only since Sep 2026: this job is the only consumer of
     # hltb.json. The coefficients move slowly (each genre fits on hundreds to thousands
     # of games), so weekly is plenty; the fit logs a WARNING when one moves >10%.
-    # Pure local recompute (~10s), no network. Refits then re-applies, so length.json
-    # picks up new coefficients immediately instead of waiting for the next 2.3 pass.
+    # Pure local recompute (~10s), no network. It writes length_coefs.json ONLY: length.json
+    # belongs to 2.3's chained Length step (one writer per file). It used to re-apply too,
+    # and 03:17 lands mid-way through 2.3's 01:23 pass, so every Monday the two commits
+    # conflicted and 2.3's was dropped. 2.3 rebases onto main before its Length step, so the
+    # new coefficients reach length.json when the pass in progress ends (~50 min later).
     - cron: "17 3 * * 1"    # Mondays 03:17 UTC
 
 permissions:
-  contents: write           # commits length_coefs.json + length.json
+  contents: write           # commits length_coefs.json
 
 concurrency:
-  group: steam-length       # shared with 3.4 so fit and apply never race on length.json
+  group: steam-length       # never overlap itself; the only writer of length_coefs.json
   cancel-in-progress: false
 
 jobs:
@@ -40,6 +43,3 @@ jobs:
 
       - name: Refit genre coefficients against HLTB extra
         run: python length_model.py --fit
-
-      - name: Re-apply -> length.json
-        run: python length_model.py
