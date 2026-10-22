@@ -1,0 +1,66 @@
+name: 0.5 Early Access dates probe [manual] -> run log + artifact
+
+on:
+  workflow_dispatch:          # MANUAL — a one-off diagnostic for EA start / planned 1.0 dates, not a data job.
+    inputs:
+      appids:
+        description: "Extra comma-separated appids to dump raw (Q1)"
+        required: false
+        default: ""
+      control:
+        description: "Never-EA control sample size (Q3)"
+        required: false
+        default: "1000"
+  # Also runs when the probe itself changes on a claude/ working branch, so its answer is in
+  # that branch's checks before anything merges (workflow_dispatch only sees main's workflows).
+  # Read-only and ~330 batched GetItems calls on api.steampowered.com, off the storefront budget.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - ea_dates_probe.py
+      - .github/workflows/ea-dates-probe.yml
+
+# READ-ONLY, like review-probe.yml: commits nothing. Findings go to the run log and the job
+# summary; the raw release blocks go out as a build artifact.
+permissions:
+  contents: read
+
+concurrency:
+  group: ea-dates-probe
+  cancel-in-progress: false
+
+jobs:
+  ea-dates-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30        # ~330 calls at 1.5s ≈ 10 min
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout-cone-mode: false   # only what the probe reads (ARCHITECTURE §4 "Checkouts")
+          sparse-checkout: |
+            /ea_dates_probe.py
+            /pics.json
+            /pics_upcoming.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install "requests>=2.31"
+
+      - name: Probe Steam for Early Access dates
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional; GetItems also answers keyless
+          QTPD_PROBE_APPIDS: ${{ inputs.appids }}
+          QTPD_PROBE_CONTROL: ${{ inputs.control || '1000' }}
+        run: python ea_dates_probe.py
+
+      - name: Upload findings
+        if: always()           # a partial dump is still worth having when a probe fails
+        uses: actions/upload-artifact@v7
+        with:
+          name: ea-dates-probe-findings
+          path: ea_dates_probe_out/
+          retention-days: 14
+          if-no-files-found: warn
