@@ -21,7 +21,13 @@ permissions:
   contents: write             # commits catalog.json (only when confirmed)
 
 concurrency:
-  group: queue-null-updates
+  # SAME group as scrape.yml, deliberately: the scraper writes catalog.json too, and in its
+  # own group this job could commit the queue mid-scrape for the scraper's next save to
+  # overwrite. Sharing the group makes it wait for a running scrape instead (one writer at a
+  # time, ARCHITECTURE §4 "One-off workflows"). GitHub keeps only ONE pending run per group:
+  # a scrape that fires while this waits cancels it (rerun it then), and starting this while
+  # a scrape is already pending cancels that scrape run.
+  group: steam-scrape
   cancel-in-progress: false
 
 jobs:

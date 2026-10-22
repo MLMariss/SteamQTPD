@@ -14,7 +14,11 @@ permissions:
   contents: write           # commits ratings.json
 
 concurrency:
-  group: steam-playtime-ratings
+  # SAME group as 2.3, deliberately: 2.3's chained step writes ratings.json too, so a manual
+  # run waits for a running 2.3 pass instead of committing over it (one writer at a time).
+  # GitHub keeps only ONE pending run per group: a 2.3 that fires while this waits cancels
+  # it (rerun it then), and starting this while a 2.3 is already pending cancels that pass.
+  group: steam-playtime-raw
   cancel-in-progress: false
 
 jobs:
