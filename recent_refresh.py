@@ -53,7 +53,7 @@ RECENT_FILE = HERE / "recent.json"        # THIS file's output (committed)
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()   # not required (appreviews is keyless)
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))
-CHECKPOINT_SECONDS = 600
+CHECKPOINT_SECONDS = 1800       # was 600: every commit is a new version in git history (§4); recent.json is 15 MB
 TIME_BUFFER = 90
 
 RECENT_WINDOW_DAYS = 30          # Steam's "Recent Reviews" window is the past 30 days

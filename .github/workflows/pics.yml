@@ -29,6 +29,23 @@ jobs:
       # v5/v6 deliberate: checkout v5 preserves the credential-persistence the
       # fetch -> rebase -> push commit pattern relies on (v6/v7 changed it).
       - uses: actions/checkout@v5
+        with:
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts"). Full history
+          # (fetch-depth: 0) was 9.6 GB and ~30 min of every run, and nothing here reads history;
+          # with a sparse list, checkout is also a partial clone, so nothing else is downloaded.
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /pics_refresh.py
+            /pics_summarize.py
+            /pics_merge.py
+            /games.json
+            /upcoming.json
+            /pics_raw/
+            /pics/
+            /pics.json
+            /pics_upcoming.json
+            /companies.json
 
       - uses: actions/setup-python@v6
         with:

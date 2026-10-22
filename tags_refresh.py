@@ -49,7 +49,7 @@ TAGS_FILE = HERE / "tags.json"            # this job's output (committed)
 
 TOP_TAGS = 8
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "120"))
-CHECKPOINT_SECONDS = 300
+CHECKPOINT_SECONDS = 1800       # was 300: every commit is a new version in git history (§4); tags.json is 22 MB
 TIME_BUFFER = 45
 STEAMSPY_DELAY = 1.1                       # SteamSpy asks for ~1 req/sec
 STORE_DELAY = 0.7                          # Steam storefront pacing for the fallback fetch

@@ -94,8 +94,8 @@ The **main scraper** (`scraper.py`) is the only thing that finds *new* games. Ea
    `catalog["pending"]` room and get promoted the moment their release date passes. What the
    store says about each of them meanwhile goes to `upcoming.json`, which the page's **Release**
    toggle (Released / Upcoming / All) shows.
-4. Runs for a **time budget** (`RUN_MINUTES`) and **git-commits every ~10 minutes**, so
-   hitting the 6-hour Actions wall never loses work.
+4. Runs for a **time budget** (`RUN_MINUTES`, capped so the final save always lands inside the
+   job's timeout) and **git-commits every ~30 minutes**, so a lost runner never loses more.
 
 The **refreshers** (`hltb`, `tags`, `prices`, `recent`, `playtime`, `updates`, `pics`) run on
 their own schedules and just enrich games the scraper already found. Three of them stay off
@@ -314,7 +314,8 @@ Each job's knobs are at the top of its own script. The main ones:
 - **Politeness pacing generally** — Steam storefront is ~200 req/5 min per IP (shared by
   appdetails + appreviews); SteamSpy ~1 req/sec. Don't lower much, or you'll get 429s / a
   5-minute 403 cooldown.
-- **`CHECKPOINT_SECONDS`** — how often each job commits progress mid-run.
+- **`CHECKPOINT_SECONDS`** — how often each job commits progress mid-run (30 min for the big
+  writers; every commit is a new version in git history). The scraper's is `COMMIT_SECONDS`.
 - **`NEW_ORDER`** (scraper) — `"newest"` or `"oldest"` appid order for new coverage.
 - **`REVIEW_TIERS` / `PICS_REV_DELTA`** (scraper) — the age-tiered review-refresh ladder and the
   PICS review-drift trigger. Set `REVIEW_TIER_REFRESH=0` and `PICS_REV_DELTA=0` to fall back to

@@ -80,7 +80,7 @@ Open items living in **other** docs (not duplicated here — go to the source):
 - ~~**PICS for unreleased games**~~ — **SHIPPED 2026-10-21** as the full upcoming catalogue
   (`upcoming.json`, `pics_upcoming.json`, the Release toggle); `UPCOMING_GAMES_PICS_MEMO.md` is
   superseded and records where the build departs from it. ARCHITECTURE §6 / §9.6 / §11.
-- ~~**"Has a demo" filter**~~ — **SHIPPED 2026-10-21**: `demo_probe.py` (workflow `0.2`) confirmed
+- ~~**"Has a demo" filter**~~ — **SHIPPED 2026-10-21**: `demo_probe.py` (workflow `0.3`) confirmed
   the batched `GetItems` call returns `related_items.demo_appid`; `demos.py` (workflow `2.10`)
   sweeps it daily into `demos.json`, and Flags has a tri-state **Demo** control. ARCHITECTURE §7 / §9.6.
 - **Coverage/refresh gaps** — `COVERAGE.md` *Future work* (generated, so always current).
@@ -103,7 +103,7 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   can't hold both dates: appdetails `release_date` and PICS `steam_release_date` carry the EA
   start only while a game is in EA and are overwritten with the 1.0 date on release, and PICS
   `original_release_date` is something else (Subnautica's is its 1.0 date). `ea_dates_probe.py`
-  (workflow `0.3`) asked the batched `GetItems` call with `include_release` instead, and its
+  (workflow `0.5`) asked the batched `GetItems` call with `include_release` instead, and its
   `release` block has both:
   - **Planned 1.0** — `release_from_early_access_date` + `release_from_early_access_style`, the
     optional date Valve lets EA developers set (it feeds the calendar). Every Day We Fight:

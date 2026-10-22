@@ -1,4 +1,4 @@
-name: 0.3 Early Access dates probe [manual] -> run log + artifact
+name: 0.5 Early Access dates probe [manual] -> run log + artifact
 
 on:
   workflow_dispatch:          # MANUAL — a one-off diagnostic for EA start / planned 1.0 dates, not a data job.
@@ -35,6 +35,12 @@ jobs:
     timeout-minutes: 30        # ~330 calls at 1.5s ≈ 10 min
     steps:
       - uses: actions/checkout@v5
+        with:
+          sparse-checkout-cone-mode: false   # only what the probe reads (ARCHITECTURE §4 "Checkouts")
+          sparse-checkout: |
+            /ea_dates_probe.py
+            /pics.json
+            /pics_upcoming.json
 
       - uses: actions/setup-python@v6
         with:
