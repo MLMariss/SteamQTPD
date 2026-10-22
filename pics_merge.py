@@ -34,7 +34,7 @@ name table shared by both roles, so a studio that self-publishes is stored once.
 Upcoming side file
 ------------------
 The PICS records of games that are not out yet — every appid in `upcoming.json`, the
-scraper's list of the pending room — go to `pics_upcoming.json` instead of pics.json.
+pending room as upcoming_refresh.py lists it — go to `pics_upcoming.json` instead of pics.json.
 index.html fetches it only alongside upcoming.json: when someone picks Upcoming or All,
 opens a link that does, or types a search. Visitors who stay on the default Released
 view never download either file, so covering ~57k upcoming games costs them nothing.

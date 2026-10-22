@@ -9,10 +9,10 @@ kept as the record of why it was parked; what shipped is summarised next.
 > **What shipped (2026-10-21), and where it departs from this memo.**
 > - **The `games.json` gate stays** (§5.3's advice holds): reviews, playtime, length and
 >   updates still only run on released games. Upcoming games live in a separate
->   **`upcoming.json`**, written by `scraper.py` from the `appdetails` probe the waiting room
->   already makes — so the store side costs only a small dated-game sweep, not a new job.
+>   **`upcoming.json`** — first written by `scraper.py` from its per-game `appdetails` probes;
+>   since 2026-10-22 by its own job, `upcoming_refresh.py`, in one batched daily pass.
 > - **Full pending inclusion, not option B.** All ~57k pending games get a row, the undated
->   ones included; the TBA sweep fills them over ~10 days. The cost argument in §2 is answered
+>   ones included, all refreshed daily. The cost argument in §2 is answered
 >   by *where* the data goes, not by leaving it out: the browser fetches `upcoming.json` and
 >   `pics_upcoming.json` only when someone picks Upcoming / All, searches, or uses Wishlist only.
 > - **PICS covers them** (option C, which §4 rejected on load): `pics.yml` and `pics-new.yml`

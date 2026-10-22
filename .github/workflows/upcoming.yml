@@ -1,0 +1,49 @@
+name: 2.11 Upcoming games -> upcoming.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab (from a branch: a dry run, see upcoming_refresh.py)
+  schedule:
+    - cron: "23 0 * * *"    # daily; ~26 min, done before 2.10 demos (01:11) reads upcoming.json
+
+permissions:
+  contents: write           # commits upcoming.json
+
+concurrency:
+  group: steam-upcoming     # never overlap upcoming runs
+  cancel-in-progress: false
+
+jobs:
+  upcoming:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60      # RUN_MINUTES=45 + headroom
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts").
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /upcoming_refresh.py
+            /catalog.json
+            /upcoming.json
+            /lookups/tags.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits itself, rebasing onto main)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh upcoming games
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          QHPP_CC: "US"
+          RUN_MINUTES: "45"
+        run: python upcoming_refresh.py
