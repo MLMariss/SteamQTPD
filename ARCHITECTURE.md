@@ -670,7 +670,8 @@ int per game with a demo).
 row: `{ea: 1, v, p}` — a game **in** Early Access whose developer has announced a 1.0 date `v`,
 at precision `p` (1 day, 2 month, 3 quarter, 4 year; a vague date is stamped on a day inside the
 period); `{s, v}` — a game that **left** Early Access: `s` its EA start, `v` its 1.0 (which
-`games.json`'s `release_date` already holds, because Steam overwrites the date on release). A
+`games.json`'s `release_date` also holds once the scraper next refreshes the game, because Steam
+overwrites the date on release — until then it still shows the EA start). A
 game with neither is absent. A planned date already past stays as Steam has it; the page decides
 how long it still counts (§11 "Release toggle"). Part of the boot load (~2k rows).
 
@@ -1033,8 +1034,9 @@ found:
   left. That evidence gates the EA start: 5% of never-EA games also carry an earlier
   `original_steam_release_date` (relaunches). While a game is in EA its `steam_release_date` *is*
   its EA start, so the job remembers it (`ea_dates_state.json`) for the day Steam drops it. Only
-  an answered game changes. Its log checks that precision 3 is quarter (the dates' months), which
-  the probe could not confirm. From a branch — dispatched, or pushed to `claude/**` when the job
+  an answered game changes. Its log lists each precision's months: precision 3's dates fall on
+  the 1st of any month (first real run), so it is read as the quarter containing that month —
+  consistent, but not proven. From a branch — dispatched, or pushed to `claude/**` when the job
   changes — it is a dry run.
 
 ---
@@ -2023,8 +2025,11 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
 - **EA start in the date tip.** `releaseTip()` adds "in Early Access · 1.0 planned for …" to a
   game in EA with an announced date, and "full (1.0) release; in Early Access from …" to one that
   left EA with a known start (`g.ea_start`) — Valheim's date reads Sep 2026, and the tip says it
-  has been playable since Feb 2021. The date itself, its sort and *Released within* are
-  unchanged: they still mean what Steam's release date means.
+  has been playable since Feb 2021. Until the scraper refreshes a game that just left EA, its date
+  is still the EA start, so the tip names the 1.0 from `ea_dates.json` instead ("in Early Access
+  from 2025-JUL-10; full (1.0) release 2026-OCT-22" — Every Day We Fight the day after). The date
+  itself, its sort and *Released within* are unchanged: they still mean what Steam's release date
+  means.
 
 **Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
 But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
