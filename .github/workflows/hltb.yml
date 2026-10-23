@@ -38,6 +38,7 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /hltb_refresh.py
+            /hltb_selfcheck.py
             /hltb_estimate.py
             /hltb_match.py
             /games.json

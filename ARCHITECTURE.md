@@ -436,8 +436,11 @@ freshness and shard-health had always run from depth-1 clones, and the scraper's
   reset pattern all work; `git add` of a path outside the list is refused, not silently
   dropped.
 - **Adding a file a job reads or writes means adding it to that workflow's list**, or the job
-  fails at the read (FileNotFoundError) or the `git add`. Jobs that read most of the repo
-  (coverage, freshness, presets, length, playtime summaries, pages) stay full-tree, shallow.
+  fails at the read (FileNotFoundError) or the `git add`. **Local modules count too, including
+  ones imported inside a function:** `hltb_refresh.py` imports `hltb_selfcheck` inside `main()`,
+  the list missed it, and 2.5 failed on `ModuleNotFoundError` on every run for a day. Jobs that
+  read most of the repo (coverage, freshness, presets, length, playtime summaries, pages) stay
+  full-tree, shallow.
 - **Commits are 30 min apart** for the heavy writers (scraper, prices, hltb, tags, recent,
   trailers, shots, demos; most were 5–10 min). Every commit is a permanent new version of the
   file; this slows history growth, it doesn't shrink what is there. Pass-end commits (prices'
@@ -3025,6 +3028,11 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **HLTB's sparse list gains `hltb_selfcheck.py` (Oct 2026).** The checkout change left it out;
+  `hltb_refresh.py` imports it inside `main()`, so 2.5 failed at start-up on every run from
+  22 Oct 12:31 UTC until this fix. Re-audited every sparse list for imports at any depth and for
+  file names: no other job was missing a file (§4 "Checkouts").
 
 - **Upcoming dates on the store's day (Oct 2026).** 2.11's first live run read Steam's launch
   instant in UTC and stored it raw, so 547 of 3,650 exact dates (15%) showed a day late:
