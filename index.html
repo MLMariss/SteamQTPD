@@ -1845,7 +1845,7 @@ try{
           <span class="wishlabel" title="Release — released games (the default), games announced on Steam but not out yet, or both. A typed search always looks through both.">Release</span>
           <div class="seg" role="group" aria-label="Release status">
             <button data-release="released" aria-pressed="true"  title="Released — games out now. The default.">Released</button>
-            <button data-release="upcoming" aria-pressed="false" title="Upcoming — games on Steam that are not out yet, soonest release first; undated ones (TBA) last. No reviews, playtime or length until launch, so no QTPD either. Also Early Access games whose developer has announced a 1.0 date (marked 1.0), sorted by that date.">Upcoming</button>
+            <button data-release="upcoming" aria-pressed="false" title="Upcoming — games on Steam that are not out yet, soonest release first; a month, quarter or year counts as its last day (Q1 2027 sorts as 31 Mar), and undated ones (TBA) go last. No reviews, playtime or length until launch, so no QTPD either. Also Early Access games whose developer has announced a 1.0 date (marked 1.0), sorted by that date.">Upcoming</button>
             <button data-release="all"      aria-pressed="false" title="All — released and upcoming games together.">All</button>
           </div>
         </div>
@@ -2836,7 +2836,8 @@ function untilStr(ts){
 }
 // "Upcoming" marker: under the title in Table / Card, on the art in Grid (cls "gup").
 function upBadge(g, cls){
-  const when = g.release_ts ? `due ${releaseTip(g)}` : (g.release_date ? `Steam says “${g.release_date}”` : "no date yet");
+  const when = g.release_ts ? `due ${releaseTip(g)}`
+             : g.release_date ? `Steam says “${g.release_date}”${g.due_ts ? `, sorted as ${dayStr(g.due_ts)}` : ""}` : "no date yet";
   return `<span class="upbadge${cls ? " " + cls : ""}" title="${esc(`Upcoming — not released yet; ${when}. No reviews, playtime or length until it launches, so no QTPD either.`)}">Upcoming</span>`;
 }
 // Short date for an upcoming game in the search suggestions: "Dec 2026", Steam's own vague
@@ -2844,6 +2845,47 @@ function upBadge(g, cls){
 function upLabel(g){
   if(g.release_ts) return fmtRelease(g);
   return /\d/.test(g.release_date || "") ? g.release_date : "TBA";
+}
+
+// ----- Vague launch dates -----
+// Steam gives many upcoming games a period rather than a day: "October 2026", "Q1 2027", "2027"
+// (upcoming_refresh.py writes exactly those shapes; the games.json shells use the same). For the
+// Released sort such a game is due on the LAST day of its period — 31 Oct, 31 Mar, 31 Dec — so
+// soonest-first puts it after everything dated inside the period and before the next one. dueOf()
+// returns [day, precision] (1 day, 2 month, 3 quarter, 4 year — ea_dates.json's codes); on the
+// same day the more precise date sorts first. Free text ("Coming soon", "Early 2027") names no
+// period and still sorts last. The cell keeps showing the period, with the day under it.
+const MONTH_RE = /^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{4})$/i;
+function dueOf(g){
+  if(g.release_ts) return [Math.floor(g.release_ts / 86400) * 86400, 1];   // by day: a stored time of day must not outrank a period ending that day
+  const s = (g.release_date || "").trim();
+  let m;
+  if((m = MONTH_RE.exec(s))){
+    const mi = MONTHS.findIndex(x => m[1].toLowerCase().startsWith(x.toLowerCase()));
+    return [Date.UTC(+m[2], mi + 1, 0) / 1000, 2];
+  }
+  if((m = /^Q([1-4])\s+(\d{4})$/i.exec(s))) return [Date.UTC(+m[2], +m[1] * 3, 0) / 1000, 3];
+  if((m = /^(\d{4})$/.exec(s))) return [Date.UTC(+m[1], 12, 0) / 1000, 4];
+  return null;
+}
+// A date at its own precision: "Oct 2026" (a day shows its month, as the column does for any dated
+// game), "Q4 2026", "2027".
+function fmtPeriod(ts, p){
+  const d = new Date(ts * 1000), y = d.getUTCFullYear(), m = d.getUTCMonth();
+  return p === 4 ? String(y) : p === 3 ? `Q${Math.floor(m / 3) + 1} ${y}` : `${MONTHS[m]} ${y}`;
+}
+// Under a period: the day it sorts as — "by 31 Mar" — and "due" once that day is over.
+function byStr(ts){
+  if(ts + 86400 <= NOW()) return "due";
+  const d = new Date(ts * 1000);
+  return `by ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+}
+// What the Released column sorts a row by: [day, precision]. An upcoming game by the day it is
+// due, a 1.0 launch in the Upcoming view by its 1.0 day, everything else by release_ts as before.
+function relSortKey(g, upView){
+  if(upView && v1Soon(g)) return [v1Due(g), g.v1_p];
+  if(g.upcoming) return [g.due_ts, g.due_p];
+  return [g.release_ts, 1];
 }
 
 // ----- Early Access 1.0 launches (ea_dates.json, ea_dates.py) -----
@@ -2861,15 +2903,14 @@ function v1End(g){
   return g.v1_ts + 86400;
 }
 function v1Soon(g){ return !!g.v1_ts && NOW() < v1End(g) + EA_V1_GRACE_DAYS * 86400; }
+// The day a 1.0 is due: its day, or the last day of the period it names (see dueOf).
+function v1Due(g){ return g.v1_p === 1 ? Math.floor(g.v1_ts / 86400) * 86400 : v1End(g) - 86400; }
 // The planned date at its own precision: "Oct 2026" for a day (the column's format — the tip has
 // the day), "Nov 2026", "Q4 2026", "2027".
-function fmtV1(g){
-  const d = new Date(g.v1_ts * 1000), y = d.getUTCFullYear(), m = d.getUTCMonth();
-  return g.v1_p === 4 ? String(y) : g.v1_p === 3 ? `Q${Math.floor(m / 3) + 1} ${y}` : `${MONTHS[m]} ${y}`;
-}
+function fmtV1(g){ return fmtPeriod(g.v1_ts, g.v1_p); }
 function v1Tip(g){
   const until = g.v1_p === 1 ? untilStr(g.v1_ts) : "";
-  return `1.0 planned for ${g.v1_p === 1 ? dayStr(g.v1_ts) : fmtV1(g)}${until ? ` (${until})` : ""}`
+  return `1.0 planned for ${g.v1_p === 1 ? dayStr(g.v1_ts) : `${fmtV1(g)}, sorted as ${dayStr(v1Due(g))}`}${until ? ` (${until})` : ""}`
        + (v1End(g) <= NOW() ? " — that has passed and the game is still in Early Access, so the date may have slipped" : "");
 }
 // "1.0" marker: under the title in Table / Card, on the art in Grid (cls "gup"), as upBadge.
@@ -2877,12 +2918,19 @@ function v1Badge(g, cls){
   return `<span class="upbadge v1${cls ? " " + cls : ""}" title="${esc(`1.0 coming — playable now in Early Access; ${v1Tip(g)}. The developer's own date, at the precision they gave.`)}">1.0</span>`;
 }
 // The Released cell. In the Upcoming view a 1.0 launch shows its 1.0 date — what that view sorts
-// it by — rather than its Early Access start; everywhere else the release date as before.
+// it by — rather than its Early Access start; an upcoming game with a vague date shows the period
+// and the day it sorts as; everywhere else the release date as before.
 function releaseCell(g){
   if(v1Soon(g) && releaseMode() === "upcoming"){
-    const until = g.v1_p === 1 ? untilStr(g.v1_ts) : "";
-    return {text: fmtV1(g), age: "1.0" + (until ? " " + until : ""),
+    const when = g.v1_p === 1 ? untilStr(g.v1_ts) : byStr(v1Due(g));
+    return {text: fmtV1(g), age: "1.0" + (when ? " " + when : ""),
             tip: `${v1Tip(g)}. In Early Access${g.release_ts ? ` since ${dayStr(g.release_ts)}` : ""} — playable now.`};
+  }
+  if(g.upcoming && !g.release_ts && g.due_ts){
+    const until = untilStr(g.due_ts);
+    return {text: fmtPeriod(g.due_ts, g.due_p), age: byStr(g.due_ts),
+            tip: `Steam says “${g.release_date}” — sorted as ${dayStr(g.due_ts)}, the last day of that period`
+               + (until && until !== "due" ? ` (${until})` : "")};
   }
   return {text: fmtRelease(g), age: g.upcoming ? untilStr(g.release_ts) : ageStr(g.release_ts), tip: releaseTip(g)};
 }
@@ -3150,10 +3198,11 @@ function visibleGames(){
   const countVal = x => (state.ratingSource === "recent")
     ? (x.recent_count != null ? x.recent_count : 0)
     : x.review_count;
-  // Released, in the Upcoming view: a 1.0 launch sorts by its 1.0 date, not its EA start.
+  // Released: an upcoming game sorts by the day it is due (a vague period's last day), a 1.0 launch
+  // in the Upcoming view by its 1.0 day (relSortKey); a tie puts the more precise date first.
   const upView = releaseMode() === "upcoming";
   const val = x => k === "qtpd" ? colValue(x) : k === "trend" ? gTrend(x) : k === "length" ? hoursFor(x)
-                 : k === "release_ts" ? (upView && v1Soon(x) ? x.v1_ts : x.release_ts)
+                 : k === "release_ts" ? relSortKey(x, upView)[0]
                  : k === "rating_pct" ? ratingVal(x)
                  : k === "review_count" ? countVal(x)
                  : k === "wr" ? x.wr
@@ -3167,7 +3216,7 @@ function visibleGames(){
     if(an && bn) return 0;
     if(an) return 1;
     if(bn) return -1;
-    return dir * (av - bv);
+    return dir * (av - bv) || (k === "release_ts" ? relSortKey(a, upView)[1] - relSortKey(b, upView)[1] : 0);
   });
   return g;
 }
@@ -4727,7 +4776,7 @@ function simSugHits(q){
 // launch date, soonest first and undated last. Mixed pairs never matter — renderSimSug() splits
 // the two before showing either.
 function simSugTie(a, b){
-  if(a.upcoming || b.upcoming) return ((a.release_ts || Infinity) - (b.release_ts || Infinity)) || 0;
+  if(a.upcoming || b.upcoming) return ((a.due_ts || Infinity) - (b.due_ts || Infinity)) || ((a.due_p || 9) - (b.due_p || 9));
   return (b.review_count || 0) - (a.review_count || 0);
 }
 function hideSimSug(){
@@ -5184,8 +5233,9 @@ function gridSortValueHTML(g){
   } else if(k === "discount_end"){
     const c = fmtCountdown(g.discount_end); if(c){ txt = c.text; unit = "left"; }
   } else if(k === "release_ts"){
-    if(v1Soon(g) && releaseMode() === "upcoming"){ txt = new Date(g.v1_ts * 1000).getFullYear(); unit = "1.0"; }
+    if(v1Soon(g) && releaseMode() === "upcoming"){ txt = new Date(v1Due(g) * 1000).getUTCFullYear(); unit = "1.0"; }
     else if(g.release_ts) txt = new Date(g.release_ts * 1000).getFullYear();
+    else if(g.upcoming && g.due_ts) txt = new Date(g.due_ts * 1000).getUTCFullYear();
   } else if(k === "updated"){
     if(g.last_update_ts) txt = relTime(g.last_update_ts);
   } else if(k === "playtime"){
@@ -7154,6 +7204,10 @@ Promise.all([
       if(e.ea && e.v){ game.v1_ts = e.v; game.v1_p = e.p || 1; }
       else if(e.s){ game.ea_start = e.s; game.ea_v1_ts = e.v; }
     }
+    // The day the game is due, for the Released sort of upcoming rows (dueOf): its date, or a
+    // vague period's last day. Every row gets it; only upcoming ones read it.
+    const due = dueOf(game);
+    game.due_ts = due ? due[0] : null; game.due_p = due ? due[1] : 0;
     reconcilePriceFlags(game);        // undo a fossilised free-weekend snapshot
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
   };
