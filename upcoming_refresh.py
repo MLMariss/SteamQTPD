@@ -28,7 +28,8 @@ WHAT A ROW HOLDS
 ----------------
 Same lean shape the page already reads (ARCHITECTURE §5): appid, title, release_date (the
 display text), tags (user-tag names via lookups/tags.json), scraped_at, and only when
-non-empty: release_ts (day-precision dates only, like the scraper's own rule), price_initial,
+non-empty: release_ts (day-precision dates only, like the scraper's own rule, and stored the
+scraper's way: UTC midnight of the store's day), price_initial,
 price_final, discount_pct, is_free, adult (content descriptor 3 or 4 — the definition
 pics_summarize.py uses). Only what Steam ANSWERS changes a row: a failed call, or a game the
 response leaves out, keeps the row it had.
@@ -44,6 +45,7 @@ import random
 import subprocess
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import requests
@@ -58,6 +60,10 @@ RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "45"))
 TIME_BUFFER = 45
 
 GETITEMS_BATCH = 50                           # appids per GetItems call
+# The store page shows release dates in Pacific time. GetItems gives the launch instant, so the
+# day is read in this zone: read in UTC, 547 of 3,650 exact dates (15%) came out a day late
+# (first live run, 2026-10-22; Pacific matched the store page on 48 of 49 games, UTC on 41).
+STORE_TZ = ZoneInfo("America/Los_Angeles")
 GETITEMS_DELAY = 1.2                          # matches price_and_sale.py / trailers.py / demos.py
 MAX_RETRIES = 4
 MAX_TAGS = 20
@@ -132,17 +138,22 @@ def release_info(rel):
     The date is a timestamp plus `coming_soon_display`, a precision code: "date_full" is a
     real day, the others say how much of the timestamp to believe. Only a full date gets a
     release_ts (the scraper's rule: "2026" must not ripen on Jan 1). A publisher's own
-    message ("Early 2027") wins over everything, as it does on the store page."""
+    message ("Early 2027") wins over everything, as it does on the store page.
+
+    The day is the store's: the instant read in Pacific time (STORE_TZ). release_ts is that day
+    at 00:00 UTC, the convention of every release_ts the scraper stores (parsed from the store
+    page's text), so the page, which formats release_ts in UTC, shows the store's day."""
     msg = (rel.get("custom_release_date_message") or "").strip()
     ts = rel.get("steam_release_date")
     ts = int(ts) if str(ts or "").isdigit() and int(ts) > 0 else None
     disp = rel.get("coming_soon_display") or ("date_full" if ts else "text_comingsoon")
+    d = datetime.fromtimestamp(ts, STORE_TZ) if ts else None
+    day_ts = int(datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp()) if d else None
     if msg:
-        return msg, (ts if disp == "date_full" else None)
-    if ts:
-        d = datetime.fromtimestamp(ts, timezone.utc)
+        return msg, (day_ts if disp == "date_full" else None)
+    if d:
         if disp == "date_full":
-            return f"{d:%b} {d.day}, {d.year}", ts
+            return f"{d:%b} {d.day}, {d.year}", day_ts
         if disp == "date_month":
             return f"{d:%B} {d.year}", None
         if disp == "date_quarter":

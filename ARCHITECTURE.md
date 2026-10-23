@@ -436,8 +436,11 @@ freshness and shard-health had always run from depth-1 clones, and the scraper's
   reset pattern all work; `git add` of a path outside the list is refused, not silently
   dropped.
 - **Adding a file a job reads or writes means adding it to that workflow's list**, or the job
-  fails at the read (FileNotFoundError) or the `git add`. Jobs that read most of the repo
-  (coverage, freshness, presets, length, playtime summaries, pages) stay full-tree, shallow.
+  fails at the read (FileNotFoundError) or the `git add`. **Local modules count too, including
+  ones imported inside a function:** `hltb_refresh.py` imports `hltb_selfcheck` inside `main()`,
+  the list missed it, and 2.5 failed on `ModuleNotFoundError` on every run for a day. Jobs that
+  read most of the repo (coverage, freshness, presets, length, playtime summaries, pages) stay
+  full-tree, shallow.
 - **Commits are 30 min apart** for the heavy writers (scraper, prices, hltb, tags, recent,
   trailers, shots, demos; most were 5–10 min). Every commit is a permanent new version of the
   file; this slows history growth, it doesn't shrink what is there. Pass-end commits (prices'
@@ -647,8 +650,10 @@ daily by batched `GetItems` and pruned to `pending` each run. `released` lists t
 Steam now says are out; `scraper.py` reads it and scrapes them first (§6 step 3). Same field
 names as a `games.json` row so the page reads both alike; `release_date` is the display text,
 built from Steam's release timestamp and its precision code ("Dec 4, 2026", "December 2026",
-"Q4 2026", "2026", "Coming soon", "To be announced", or the publisher's own message);
-`release_ts` only for a day-precision date; `tags` are user-tag names (decoded via
+"Q4 2026", "2026", "Coming soon", "To be announced", or the publisher's own message), with the
+day read in **Pacific time** as the store page shows it; `release_ts` only for a day-precision
+date, stored as **00:00 UTC of that day** like every scraper `release_ts`, so the page (which
+formats it in UTC) shows the store's day; `tags` are user-tag names (decoded via
 `lookups/tags.json`); `adult: true` when the content descriptors include 3 or 4 — the
 definition `pics_summarize.py` uses — because most upcoming games have no PICS record to say so.
 Not part of the boot load: the page fetches it on first use (§11 "Release toggle").
@@ -3023,6 +3028,18 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **HLTB's sparse list gains `hltb_selfcheck.py` (Oct 2026).** The checkout change left it out;
+  `hltb_refresh.py` imports it inside `main()`, so 2.5 failed at start-up on every run from
+  22 Oct 12:31 UTC until this fix. Re-audited every sparse list for imports at any depth and for
+  file names: no other job was missing a file (§4 "Checkouts").
+
+- **Upcoming dates on the store's day (Oct 2026).** 2.11's first live run read Steam's launch
+  instant in UTC and stored it raw, so 547 of 3,650 exact dates (15%) showed a day late:
+  an evening launch in Pacific time is already the next day in UTC. `release_info()` now reads
+  the day in Pacific time and stores `release_ts` as 00:00 UTC of it, the convention every
+  scraper date already follows (131,819 of 131,819 in `games.json`). Replayed on that run, it
+  matched the store page on 48 of 49 games; the 49th moved its date between the two reads.
 
 - **Early Access 1.0 launches in Upcoming; EA start kept (Oct 2026).** Steam's calendar listed
   Every Day We Fight (1546080) on its 1.0 day; QTPD knew it only as released on 10 Jul 2025, its
