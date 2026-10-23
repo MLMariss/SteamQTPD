@@ -20,9 +20,11 @@ budget, not the 200-per-5-min storefront one), 50 appids per call. Its `release`
                                      on release — appdetails and PICS do the same
   release_from_early_access_date     the developer's planned 1.0 date (optional: 412 of
   release_from_early_access_style    12,405 EA games set one) and its precision —
-                                     1 day, 2 month, 4 year; 3 is taken to be quarter (its
-                                     dates sit on the 1st of a month), which this job's log
-                                     checks every run (see summarize)
+                                     1 day, 2 month, 4 year; 3 is taken to be quarter. Its
+                                     dates sit on the 1st of ANY month (first real run,
+                                     2026-10-22), so Steam keeps the month the developer picked
+                                     inside the quarter; the page reads the quarter off that
+                                     month. Not proven: the log lists each precision's months
   original_steam_release_date        after 1.0, the EA start: exact on every game checked,
                                      on ~70% of games that left EA from 2018 on, on none that
                                      left before 2017. Also on 5% of never-EA games (relaunches),
@@ -243,8 +245,8 @@ def day(ts):
 
 
 def summarize(entries, now):
-    """Log what the file says, including the check on precision 3's meaning: if it is
-    quarter, its dates fall in a fixed set of months (the probe saw only 1 Nov for Q4)."""
+    """Log what the file says, with each precision's months and days: the evidence for what
+    precision 3 means (quarter, read off whichever month inside it Steam kept)."""
     planned = {a: e for a, e in entries.items() if e.get("ea")}
     future = [a for a, e in planned.items() if e["v"] > now]
     log(f"  in EA with a planned 1.0: {len(planned)} ({len(future)} future, "

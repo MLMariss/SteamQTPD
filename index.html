@@ -2804,7 +2804,9 @@ function fmtRelease(g){
 // Unreleased games have no release_ts (~450 of them); fall back to whatever vague string
 // Steam gave us ("Q3 2026", "July 2026"), then to a plain statement if even that is missing.
 // An Early Access game says so here too: the 1.0 its developer has announced, or — once it is
-// out of EA, when release_ts is the 1.0 date — the day it first became playable (ea_start).
+// out of EA — the day it first became playable (ea_start) and its 1.0 (ea_v1_ts), both from
+// ea_dates.json. release_ts turns into the 1.0 date only when the scraper next refreshes the game,
+// which can be days after the launch, so until then the tip names the 1.0 itself.
 function releaseTip(g){
   let tip = g.release_date || "Release date not confirmed";
   if(g.release_ts){
@@ -2812,7 +2814,11 @@ function releaseTip(g){
     tip = age ? `${dayStr(g.release_ts)} (${age})` : dayStr(g.release_ts);
   }
   if(g.v1_ts) return `${tip} · in Early Access · ${v1Tip(g)}`;
-  if(g.ea_start) return `${tip} · full (1.0) release; in Early Access from ${dayStr(g.ea_start)}`;
+  if(g.ea_start){
+    const v1Known = !g.ea_v1_ts || (g.release_ts && Math.abs(g.release_ts - g.ea_v1_ts) < 2*86400);
+    return v1Known ? `${tip} · full (1.0) release; in Early Access from ${dayStr(g.ea_start)}`
+                   : `${tip} · in Early Access from ${dayStr(g.ea_start)}; full (1.0) release ${dayStr(g.ea_v1_ts)}`;
+  }
   return tip;
 }
 const dayStr = ts => { const d = new Date(ts*1000);
@@ -7142,11 +7148,11 @@ Promise.all([
     }
     if(demosMap && demosMap[key]) game.demo = demosMap[key];   // the demo's appid (Flags → Demo)
     // ea_dates.json: {ea:1, v, p} for a game in EA with an announced 1.0 (date, precision 1-4);
-    // {s, v} for one that left EA (its EA start; v is the 1.0, which release_ts already holds).
+    // {s, v} for one that left EA (its EA start and its 1.0 — release_ts catches up on rescrape).
     if(eaDatesMap && eaDatesMap[key]){
       const e = eaDatesMap[key];
       if(e.ea && e.v){ game.v1_ts = e.v; game.v1_p = e.p || 1; }
-      else if(e.s) game.ea_start = e.s;
+      else if(e.s){ game.ea_start = e.s; game.ea_v1_ts = e.v; }
     }
     reconcilePriceFlags(game);        // undo a fossilised free-weekend snapshot
     expireSaleIfEnded(game, now);     // offline collapse of any already-ended sale
