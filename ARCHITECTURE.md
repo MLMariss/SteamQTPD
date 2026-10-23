@@ -1991,6 +1991,17 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
 - **Upcoming sorts soonest first.** Picking it sets `release_ts` ascending (nulls — TBA — always
   sort last) and remembers the sort it replaced; leaving Upcoming restores that, unless the user
   re-sorted meanwhile. A hand-written `?release=upcoming` with no `sort=` opens the same way.
+- **A vague date sorts as the last day of its period (Oct 2026).** Steam gives ~12.5k upcoming
+  games a month, quarter or year instead of a day ("October 2026", "Q1 2027", "2027" — the shapes
+  `upcoming_refresh.py` writes). `dueOf()` turns that into the period's last day — 31 Oct, 31 Mar,
+  31 Dec — stored per row as `due_ts` / `due_p` (precision 1 day, 2 month, 3 quarter, 4 year, the
+  `ea_dates.json` codes), and the Released sort reads it through `relSortKey()`: soonest first, a
+  period after everything dated inside it, and on the same day the more precise date first. Days
+  compare as days (a stored time of day doesn't outrank a period ending that day). The cell keeps
+  the period — "Q1 2027" — with "by 31 Mar" under it ("due" once that day is over), and the tip
+  names the day it sorts as. Free text ("Coming soon", "Early 2027") has no day and sorts last.
+  The data files are unchanged: the page derives the day from Steam's own text. A 1.0 launch with
+  a vague date sorts the same way (`v1Due()`).
 - **Filters that cannot apply to an unreleased game skip it rather than drop it.** The default
   Min reviews floor (100+) would empty the view, so it never applies to upcoming rows; bands the
   user picked still do. *Released within* drops upcoming rows, since a future date would
@@ -2014,9 +2025,9 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
   (`ea_dates.json`, `g.v1_ts` / `g.v1_p`) is in the Upcoming view too — Steam's calendar lists
   those, and Every Day We Fight's 1.0 day was the case that showed QTPD did not. It is out, so
   Released keeps it as well; `v1Soon()` is the test both the filter and `computeFullCounts()`
-  use. In the Upcoming view it sorts by the 1.0 date, its Released cell shows that date at its
-  precision ("Oct 2026", "Nov 2026", "Q4 2026", "2027"; the day is in the tip) with "1.0 in 3
-  days" under it, and the default review floor skips it like an unreleased game — a small game's
+  use. In the Upcoming view it sorts by the 1.0 date (a vague one by its period's last day, as
+  below), its Released cell shows that date at its precision ("Oct 2026", "Nov 2026", "Q4 2026",
+  "2027"; the day is in the tip) with "1.0 in 3 days" or "1.0 by 31 Dec" under it, and the default review floor skips it like an unreleased game — a small game's
   1.0 is as much a launch as a big one's. Everywhere it carries a teal **1.0** badge, first on
   the line under the title (the review count after it may be cut off) and on the Grid art. A
   date stops counting `EA_V1_GRACE_DAYS` (14) after the end of the period it names: one that
@@ -3033,6 +3044,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Vague upcoming dates sort as their period's last day (Oct 2026).** "October 2026" sorts as
+  31 Oct, "Q1 2027" as 31 Mar, "2027" as 31 Dec, for regular upcoming games and Early Access 1.0
+  dates alike; on the same day an exact date sorts first. ~12.5k upcoming games used to sort last
+  with the undated ones. The cell keeps the period and shows "by 31 Mar" under it (§11 "Release
+  toggle"). Page only — derived from Steam's text, no data file changed.
 
 - **HLTB's sparse list gains `hltb_selfcheck.py` (Oct 2026).** The checkout change left it out;
   `hltb_refresh.py` imports it inside `main()`, so 2.5 failed at start-up on every run from
