@@ -46,7 +46,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections import deque
+from collections import Counter, deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -66,6 +66,7 @@ SEEDS_FILE = HERE / "seeds.txt"           # OPTIONAL games to scrape FIRST (huma
 SEEDS_LOG_FILE = HERE / "seeds_log.txt"   # append-only audit of seed reconciliations (scraper-owned)
 PICS_FILE = HERE / "pics.json"            # READ-ONLY here (owned by pics_merge.py) — review-drift signal
 UPCOMING_FILE = HERE / "upcoming.json"    # READ-ONLY (owned by upcoming_refresh.py) — its `released` list
+REVIEW_RESTORE_FILE = HERE / "reviews_restore.json"  # READ-ONLY one-off: pre-wipe review counts (§16)
 
 # Free Steam Web API key from https://steamcommunity.com/dev/apikey (GitHub secret
 # STEAM_API_KEY). Without it, falls back to the keyless full list (all app types,
@@ -236,6 +237,21 @@ def log(msg: str) -> None:
 # --------------------------------------------------------------------------- #
 # HTTP with retry/backoff
 # --------------------------------------------------------------------------- #
+# How many unusable replies get() / the fetchers print in full per run. A blocked endpoint
+# fails on every call, so the first few say what Steam sent and the rest would be noise.
+BAD_REPLY_LOG_LIMIT = 5
+_bad_replies_logged = 0
+
+
+def log_bad_reply(what):
+    """Print one unusable Steam reply, up to BAD_REPLY_LOG_LIMIT per run. Silent failures
+    are how the 22-24 Oct 2026 review wipe ran for over a day and a half unexplained (§16)."""
+    global _bad_replies_logged
+    if _bad_replies_logged < BAD_REPLY_LOG_LIMIT:
+        _bad_replies_logged += 1
+        log(f"  unusable reply: {what}")
+
+
 def get(url, *, params=None, timeout=30, expect_json=False):
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -250,6 +266,8 @@ def get(url, *, params=None, timeout=30, expect_json=False):
                 try:
                     return r.json()
                 except ValueError:
+                    log_bad_reply(f"{urlparse(url).path} {r.status_code} "
+                                  f"{r.headers.get('Content-Type')!r} {r.text[:200]!r}")
                     return None
             return r.text
         except requests.RequestException as e:
@@ -520,18 +538,49 @@ def reconcile_seeds(catalog, processed, seeds_text=None):
 # that used to live here, and decoupled from this slow, rate-limited main scrape.
 
 
+# A fetch that got no usable answer from Steam. Distinct from every real answer — a
+# (None, 0) "no reviews yet", a None "no update posts" — so build_record keeps what it
+# already holds instead of storing the failure as fact. Returning (None, 0) for a failed
+# review call is what wiped 15k+ games' reviews from 22 Oct 2026 23:05 UTC (§16).
+FAILED = object()
+REVIEW_STATS = Counter()            # this run's review fetches: answered / failed / zero_kept
+
+
 def rating_from_reviews(appid):
+    """(rating_pct, review_count) from Steam's own summary — (None, 0) for a game Steam
+    says has no reviews — or FAILED when the reply can't be read as an answer."""
     storefront_pace()               # was UNPACED — the burst source that tripped 403s
     data = get(f"https://store.steampowered.com/appreviews/{appid}",
                params={"json": 1, "language": "all", "purchase_type": "all",
                        "num_per_page": 0}, expect_json=True)
-    if not isinstance(data, dict) or data.get("success") != 1:
-        return None, 0
-    s = data.get("query_summary", {})
-    pos, neg = int(s.get("total_positive", 0)), int(s.get("total_negative", 0))
+    if not isinstance(data, dict):
+        return FAILED               # no reply, or not JSON (get() logged the body)
+    s = data.get("query_summary")
+    if (data.get("success") != 1 or not isinstance(s, dict)
+            or "total_positive" not in s or "total_negative" not in s):
+        log_bad_reply(f"appreviews {appid}: {json.dumps(data)[:200]}")
+        return FAILED
+    pos, neg = int(s["total_positive"]), int(s["total_negative"])
     if pos + neg == 0:
         return None, 0
     return round(pos / (pos + neg) * 100), pos + neg
+
+
+def keep_reviews(fetched, prev):
+    """(rating_pct, review_count) to store, given this run's fetch and the stored record.
+
+    The fetch wins unless it can't be trusted: FAILED keeps the stored pair, and so does
+    a zero after a positive count — reviews don't vanish, so "0" for a game we hold
+    reviews for is a bad answer, whatever shape Steam gave it. A game with nothing
+    stored takes the fetch, or (None, 0) if it failed, and is re-fetched on its next
+    refresh."""
+    prev = prev or {}
+    held = (prev.get("rating_pct"), int(prev.get("review_count") or 0))
+    if fetched is FAILED:
+        return held
+    if fetched[1] == 0 and held[1] > 0:
+        return held
+    return fetched
 
 
 def _is_update_item(item):
@@ -560,7 +609,8 @@ def _is_update_item(item):
 def last_update_from_news(appid):
     """Most recent *update* post timestamp via the News API. Lives on
     api.steampowered.com (huge budget, separate from the storefront limit), so this is
-    cheap to refresh broadly. Returns a unix ts or None (no update posts found).
+    cheap to refresh broadly. Returns a unix ts, None (no update posts found), or
+    FAILED (no usable reply — the caller keeps the stored value).
 
     maxlength=300 (was 1): the body blurb is now needed so _is_update_item() can match
     on content, not just the title — the maxlength=1 truncation was the main reason real
@@ -572,9 +622,9 @@ def last_update_from_news(appid):
     data = get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/",
                params=params, expect_json=True)
     time.sleep(NEWS_DELAY)
-    if not isinstance(data, dict):
-        return None
-    items = (data.get("appnews") or {}).get("newsitems") or []
+    if not isinstance(data, dict) or not isinstance(data.get("appnews"), dict):
+        return FAILED
+    items = data["appnews"].get("newsitems") or []
     stamps = [it.get("date") for it in items if _is_update_item(it) and it.get("date")]
     return max(stamps) if stamps else None
 
@@ -725,8 +775,19 @@ def build_record(appid, prev=None):
     with ThreadPoolExecutor(max_workers=2) as ex:
         f_reviews = ex.submit(rating_from_reviews, appid)
         f_news = ex.submit(last_update_from_news, appid)
-        rating_pct, review_count = f_reviews.result()
+        fetched_reviews = f_reviews.result()
         last_update_ts = f_news.result()
+
+    # A failed or implausible fetch keeps what the stored record already says (§16).
+    rating_pct, review_count = keep_reviews(fetched_reviews, prev)
+    if fetched_reviews is FAILED:
+        REVIEW_STATS["failed"] += 1
+    elif (rating_pct, review_count) != fetched_reviews:
+        REVIEW_STATS["zero_kept"] += 1
+    else:
+        REVIEW_STATS["answered"] += 1
+    if last_update_ts is FAILED:
+        last_update_ts = (prev or {}).get("last_update_ts")
 
     # HLTB is no longer fetched in the main loop — it was the dominant per-game cost
     # (slow, flaky scrape of howlongtobeat.com). hltb_refresh.py fills hltb.json out of
@@ -743,7 +804,8 @@ def build_record(appid, prev=None):
         "last_update_ts": last_update_ts,
     }
     tag = "refresh" if prev is not None else "new"
-    log(f"  {tag:7} {title[:38]:38} rating={rating_pct} price={price_final}/{price_initial}")
+    kept = " (reviews kept)" if prev and (rating_pct, review_count) != fetched_reviews else ""
+    log(f"  {tag:7} {title[:38]:38} rating={rating_pct} price={price_final}/{price_initial}{kept}")
     return rec
 
 
@@ -768,6 +830,31 @@ def save_games(processed):
     GAMES_FILE.write_text(json.dumps(
         {"generated_at": int(time.time()), "count": len(games), "games": games},
         ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def apply_review_restore(processed):
+    """Put back the reviews the 22-24 Oct 2026 wipe zeroed (§16). reviews_restore.json
+    holds every game's last pre-wipe (rating_pct, review_count), built once from git
+    history. A record gets them back only if it still says 0 reviews AND was scraped
+    after `wiped_from` — a zero written during the wipe, never a zero Steam really
+    reported before it, and never a count a later, working fetch has written. Once
+    saved, those records hold a count again, so later runs change nothing; the file
+    is inert after the first run and can be deleted. Returns how many were restored."""
+    try:
+        d = json.loads(REVIEW_RESTORE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0                    # no file (the normal case once it's deleted)
+    since = int(d.get("wiped_from") or 0)
+    old = d.get("games") or {}
+    n = 0
+    for key, rec in processed.items():
+        if rec.get("review_count") or (rec.get("scraped_at") or 0) < since:
+            continue
+        pair = old.get(key)
+        if pair and pair[1]:
+            rec["rating_pct"], rec["review_count"] = pair[0], int(pair[1])
+            n += 1
+    return n
 
 
 def load_released():
@@ -1054,6 +1141,9 @@ def select_work(master, has_lm, processed, catalog, released=None):
 def main():
     start = time.time()
     processed = load_games()
+    restored = apply_review_restore(processed)     # one-off repair of the Oct 2026 wipe (§16)
+    if restored:
+        log(f"Restored pre-wipe reviews for {restored} games from {REVIEW_RESTORE_FILE.name}.")
     catalog = load_catalog()
     released = load_released()                     # pending games Steam now says are out
     reconcile_seeds(catalog, processed)
@@ -1269,6 +1359,14 @@ def main():
     log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending. "
         f"Stored {len(processed)}, skipped {len(skipped)}, waiting {len(pending)}, "
         f"rechecking {len(recheck)}.")
+    rs = REVIEW_STATS
+    log(f"Reviews: {rs['answered']} answered, {rs['failed']} failed and "
+        f"{rs['zero_kept']} zero-after-count, both kept the stored value.")
+    if rs["failed"] + rs["zero_kept"] > rs["answered"]:
+        # An Actions annotation, so the run page says it without opening the log.
+        log(f"::warning::appreviews gave no usable answer for most games this run "
+            f"({rs['failed']} failed, {rs['zero_kept']} zero-after-count, "
+            f"{rs['answered']} answered). Stored reviews were kept; see 'unusable reply'.")
     return 0
 
 
