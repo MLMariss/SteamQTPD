@@ -631,6 +631,11 @@ refresh trigger in §6 compares against, and `is_free` lives **here**, not in `p
 promo answers `is_free: true` + `discount_percent: 100` on top of the full price, and stored
 verbatim that snapshot outlives the promo (§15).
 
+**`reviews_restore.json`** (temporary) — `{ _note, _format: [rating_pct, review_count],
+wiped_from, sources, count, "games": {appid: [rating_pct, review_count]} }`. Each game's last
+review pair from before the Oct 2026 review wipe, read once by `scraper.py` at start-up and
+never written; not read by the frontend. Delete it once a scrape run has saved after it (§16).
+
 **`catalog.json`** — the scraper's own state; not read by the frontend. Eight keys:
 `last_sync` (enumeration watermark), `skipped` (permanent — confirmed non-games), `pending`
 (`{appid: release_ts|null}` — the unreleased waiting room), `priority` (rebuilt each run from
@@ -3044,6 +3049,39 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Review wipe, 22-24 Oct 2026: a failed review fetch no longer stores "0 reviews".** From
+  22 Oct 23:05 UTC Steam's `appreviews` stopped giving the Actions runners a usable answer
+  (last good reply 23:04:59, first zero 23:05:12; the run log showed only `rating=None`, no 403
+  or 429). `rating_from_reviews()` returned `(None, 0)` for a failed call exactly as for a game
+  with no reviews, and `build_record()` builds a refresh from scratch, so every refreshed game
+  stored 0 over its real count: 15,121 games by 23 Oct 08:31 UTC (War Thunder 792,828 → 0, Call
+  of Duty, Hearts of Iron IV, Slay the Spire 2…) and roughly 1,500 more an hour after that. About
+  3,300 of them dropped out of the default 100+ reviews view, and the Game cell's subtitle fell
+  back to `app <appid>` (REVIEW_DIGEST_PLAN §9). Fixes:
+  - `rating_from_reviews()` returns `FAILED` for no reply, a non-JSON body, `success != 1` or a
+    summary without totals, and `keep_reviews()` then keeps the stored pair. It also keeps it
+    when Steam answers 0 for a game we hold reviews for: reviews don't vanish, and this catches
+    a failure shaped like a real answer. `last_update_from_news()` got the same split, so an
+    unusable News API reply keeps `last_update_ts` instead of clearing it.
+  - Unusable replies are logged (`unusable reply: …`, the first 5 per run: path, status,
+    content type, start of the body), each kept record says `(reviews kept)`, and the run ends
+    with `Reviews: N answered, N failed …`, plus an Actions `::warning::` when most fetches
+    failed. The outage ran for over a day and a half on logs that could not say what Steam
+    sent.
+  - **`reviews_restore.json`** holds every game's last pre-wipe pair (124,304 games), built from
+    `games.json` at `1af5d05` (23 Oct 02:57, records scraped before 23:05) and `13e1aef` (22 Oct
+    09:00, for the records `1af5d05` had already re-scraped). `apply_review_restore()` puts a
+    pair back only on a record that says 0 and was scraped after the wipe began, so a real
+    count written later is never overwritten. It is inert after the first run that saves; then
+    delete the file and its line in `scrape.yml`'s sparse list. `test_review_guard.py` covers
+    all of it.
+  - **Not repaired:** games first scraped during the outage never had a good fetch, so they hold
+    `(None, 0)` until `appreviews` answers again. One is ONE PIECE: Grand Gourmet (3905010),
+    out 22 Oct 22:00 UTC. The young-game tiers retry them every 6 h. The outage's cause is not
+    known yet; the new log lines will say what Steam sends. `playtime_refresh.py` reads the
+    same endpoint and logged `+0 reviews` over the same window. It keeps a game's stored reviews
+    on a failed visit, so nothing was lost there, but those visits still stamped `scraped_at`.
 
 - **Vague upcoming dates sort as their period's last day (Oct 2026).** "October 2026" sorts as
   31 Oct, "Q1 2027" as 31 Mar, "2027" as 31 Dec, for regular upcoming games and Early Access 1.0
