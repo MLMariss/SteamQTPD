@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression tests for the playtime age-ladder + multi-shard scheduler and the
 HLTB popularity fast lane. Pure-logic only: no network, no git, no disk."""
-import sys, time, types
+import json, sys, time, types
 
 # Stub `requests` so playtime_refresh imports without the dependency present.
 if "requests" not in sys.modules:
@@ -260,6 +260,52 @@ q2 = H.build_rescrape_queue([(40, "Old Game", 50)],
                             {40: {"raw": {"main": 1.0, "extra": 2.0, "complete": 3.0},
                                   "fetched_at": NOW - 30*DAY}}, NOW)
 check("unpopular full entry stays frozen at 30d", q2 == [])
+
+print("\n== playtime: the GetAppReviews walk (appreviews was switched off 22 Oct 2026) ==")
+# A fake GetAppReviews: 250 reviews served newest-first, `num_per_page` at a time, behind an
+# opaque cursor — the shape measured on a runner on 25 Oct 2026.
+FAKE = [{"recommendationid": str(9000 - i), "voted_up": i % 3 != 0,
+         "timestamp_created": NOW - i * 60, "timestamp_updated": NOW - i * 60,
+         "author": {"playtime_forever": 100 + i}} for i in range(250)]
+SENT = []
+def fake_steam(reply=None):
+    def get(url, *, params=None, timeout=30):
+        body = json.loads(params["input_json"])
+        SENT.append((url, body))
+        if reply is not None:
+            return reply
+        start = 0 if body["cursor"] == "*" else int(body["cursor"][1:])
+        page = FAKE[start:start + body["num_per_page"]]
+        nxt = f"c{start + len(page)}" if page else body["cursor"]
+        return {"response": {"query_summary": {"num_reviews": len(page)},
+                             "reviews": page, "cursor": nxt}}
+    return get
+P.STEAM_DELAY = 0
+P.get = fake_steam()
+held = {}
+added, refreshed, exhausted = P.scrape_game(236390, held, 200)
+url, body = SENT[0]
+check("calls GetAppReviews on the Web API host",
+      url == "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/")
+check("asks for every language (languages: ['all'], not `language`)", body.get("languages") == ["all"])
+check("asks for every purchase (purchase_type 1, not \"all\")", body.get("purchase_type") == 1)
+check("asks newest-first (filter 1 — the string \"recent\" is ignored)", body.get("filter") == 1)
+check("100 a page, first cursor '*'", body.get("num_per_page") == 100 and body.get("cursor") == "*")
+check("walks to the rung: 200 added", added == 200 and len(held) == 200)
+check("second page followed the cursor", SENT[1][1]["cursor"] == "c100")
+check("kept the newest 200", min(int(k) for k in held) == 9000 - 199)
+check("playtime read from author.playtime_forever", held["9000"]["pt"] == 100)
+held = {}
+added, refreshed, exhausted = P.scrape_game(236390, held, 1000)
+check("end of list (empty page) -> all 250 held, exhausted", len(held) == 250 and exhausted is True)
+# get() returns None for no reply AND for a non-JSON body — the old endpoint's HTML.
+for name, get in [("no reply / the old endpoint's HTML", lambda *a, **k: None),
+                  ("empty response", fake_steam({"response": {}}))]:
+    P.get = get
+    held = {"1": {"pt": 5, "up": True, "ts": NOW}}
+    added, refreshed, exhausted = P.scrape_game(236390, held, 200)
+    check(f"{name}: nothing added, nothing lost, NOT exhausted",
+          added == 0 and held == {"1": {"pt": 5, "up": True, "ts": NOW}} and exhausted is False)
 
 print("\n" + ("ALL TESTS PASSED" if not fails
               else f"{len(fails)} FAILURE(S): " + "; ".join(fails)))

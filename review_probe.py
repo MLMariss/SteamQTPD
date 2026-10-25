@@ -140,8 +140,11 @@ GAR = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
 # (War Thunder 834 = the default, English + Steam purchases only); `languages: ["all"]`
 # works (1,855) and so does purchase_type 1 (329,175). It also showed filter "recent" is
 # ignored (day_range_used 30, helpful order), and num_per_page 0 is not honoured. Run 2
-# tests the combination against appreviews' 792,828, and the sort/paging the playtime
-# job and the Review Digest need.
+# answered the rest: the combination gives War Thunder 793,469 at 71% (appreviews: 792,828
+# at 71% three days earlier); filter 1 is newest-first over the whole list, 100 to a page,
+# with a clean cursor (no overlap); every string spelling of "recent" is ignored; review
+# and author fields are unchanged; including off-topic activity adds review bombs
+# (918,903 at 64%), so the scraper keeps Steam's default and excludes them.
 ALL = {"languages": ["all"], "purchase_type": 1}
 
 GAR_VARIANTS = [

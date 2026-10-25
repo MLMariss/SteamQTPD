@@ -546,19 +546,32 @@ FAILED = object()
 REVIEW_STATS = Counter()            # this run's review fetches: answered / failed / zero_kept
 
 
+# Valve switched store.steampowered.com/appreviews off on 22 Oct 2026 (it has redirected
+# to the store front page since, for every caller). GetAppReviews on the Web API host
+# replaces it: no key, parameters in input_json, the reply wrapped in "response" and no
+# `success` field. The OLD SPELLINGS ARE SILENTLY IGNORED — `language` and purchase_type
+# "all" leave Steam's defaults, English and Steam purchases only, and a free-to-play game
+# collapses (War Thunder 834 instead of 792,828). `languages: ["all"]` and purchase_type 1
+# are what count every review, as appreviews' language=all&purchase_type=all did
+# (review_probe.py Q0, 25 Oct 2026). num_per_page 0 is not honoured, so ask for 1.
+REVIEWS_API = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
+REVIEWS_ALL = {"languages": ["all"], "purchase_type": 1}
+
+
 def rating_from_reviews(appid):
     """(rating_pct, review_count) from Steam's own summary — (None, 0) for a game Steam
     says has no reviews — or FAILED when the reply can't be read as an answer."""
-    storefront_pace()               # was UNPACED — the burst source that tripped 403s
-    data = get(f"https://store.steampowered.com/appreviews/{appid}",
-               params={"json": 1, "language": "all", "purchase_type": "all",
-                       "num_per_page": 0}, expect_json=True)
+    # Still paced on the storefront budget: GetAppReviews is on the Web API host, whose
+    # keyless limit Valve doesn't document, and this is the pace already proven safe.
+    storefront_pace()
+    data = get(REVIEWS_API, params={"input_json": json.dumps(
+                   dict(REVIEWS_ALL, appid=appid, num_per_page=1))}, expect_json=True)
     if not isinstance(data, dict):
         return FAILED               # no reply, or not JSON (get() logged the body)
-    s = data.get("query_summary")
-    if (data.get("success") != 1 or not isinstance(s, dict)
-            or "total_positive" not in s or "total_negative" not in s):
-        log_bad_reply(f"appreviews {appid}: {json.dumps(data)[:200]}")
+    resp = data.get("response")
+    s = resp.get("query_summary") if isinstance(resp, dict) else None
+    if not isinstance(s, dict) or "total_positive" not in s or "total_negative" not in s:
+        log_bad_reply(f"GetAppReviews {appid}: {json.dumps(data)[:200]}")
         return FAILED
     pos, neg = int(s["total_positive"]), int(s["total_negative"])
     if pos + neg == 0:
