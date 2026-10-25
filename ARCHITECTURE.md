@@ -460,16 +460,16 @@ pipeline hierarchy:
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
-| `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4) |
+| `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4), monitor (4.5) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**29 workflow files, 28 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **19 of the 29 are cron-scheduled**; the
-rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
+**30 workflow files, 29 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **20 of the 30 are cron-scheduled** (monitor
+4.5 also fires on `workflow_run`); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 ea-dates-probe 0.5, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
-nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml` and
-`presets.yml` match the scrape workflow's **exact `name:` string**, so renaming `scrape.yml`
-silently breaks both (see the callout below).
+nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml`,
+`presets.yml` and `monitor.yml` match the scrape workflow's **exact `name:` string**, so renaming
+`scrape.yml` silently breaks all three (see the callout below).
 
 **4.4 is the odd one in the `4.x` tier.** The other three monitors write Markdown for a human;
 `presets.yml` writes `presets.json`, which the frontend actually downloads. It sits here anyway
@@ -554,6 +554,7 @@ each single-writes its `.md`):
 | `coverage.yml`      | `coverage.py`     | `COVERAGE.md` | `workflow_run` after **scrape** succeeds (~4×/day) | `coverage-md`     |
 | `freshness.yml`     | `freshness.py`    | `FRESHNESS.md`| `0 7 * * *` (daily, the morning oversight pass)  | `freshness-md`    |
 | `presets.yml`       | `presets.py`      | `presets.json`| `workflow_run` after **scrape** succeeds (~4×/day) | `presets-json`    |
+| `monitor.yml`       | `monitor.py`      | `monitor.json`| `workflow_run` after **every** scrape + `17 */2 * * *`; manual `backfill` | `monitor-json` |
 
 `coverage.py` recomputes every coverage figure from the live files + shards and self-commits
 `COVERAGE.md`. It reports **two axes** (full design in §11.5): **Axis 1 — total coverage**
@@ -636,15 +637,27 @@ wiped_from, sources, count, "games": {appid: [rating_pct, review_count]} }`. Eac
 review pair from before the Oct 2026 review wipe, read once by `scraper.py` at start-up and
 never written; not read by the frontend. Delete it once a scrape run has saved after it (§16).
 
-**`catalog.json`** — the scraper's own state; not read by the frontend. Eight keys:
+**`catalog.json`** — the scraper's own state; not read by the frontend. Nine keys:
 `last_sync` (enumeration watermark), `skipped` (permanent — confirmed non-games), `pending`
 (`{appid: release_ts|null}` — the unreleased waiting room), `priority` (rebuilt each run from
 the active seeds, §6), `force_refresh` (the drained-first forced queue), `seeds_ledger`
 (`{seed_key: {kind, resolved_ts, ids, forced_applied}}`), and **`recheck`** (`{appid:
 strikes}` — apps whose `appdetails` returned `success:false`, retried across runs until they
-resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1). (`tba_probed`, the retired TBA
+resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1), and **`runs`** (the last
+`RUNS_KEPT` = 400 runs, one line each — `start`, `saved`, `stored`, `new`, `refreshed`, `pending`,
+`reviews_answered` / `_failed` / `_zero_kept`, `final` — upserted at every save by
+`record_run()`, read by `monitor.py`; §11.7). (`tba_probed`, the retired TBA
 sweep's rotation state, is dropped on the first save after Oct 2026.) Ints in memory, string
 keys on disk.
+
+**`monitor.json`** — `{ generated_at, files, row_ages, coverage, _snap, _run, "snaps": [...],
+"runs": [...] }`, positional rows: a snapshot is `[t, src, games, pending, file_age[], row_p50[],
+row_p95[], coverage[]]`, each array in the order its name list gives (`files`, `row_ages`,
+`coverage`); ages are seconds before `t`, coverage counts catalog games, `null` = not measured.
+`src` is `scrape` / `cron` / `manual` / `backfill`. Runs follow `catalog.json` `runs`; lines
+rebuilt from commit messages have `start: null` and no review counts. Written only by
+`monitor.py`, read only by `monitor.html` (§11.7). `pics.json` gained a `generated_at` (Oct
+2026) so its age can be read like every other file's.
 
 **`upcoming.json`** — `{ generated_at, count, swept_at, "released": [appid, ...], "games":
 [ { appid, title, release_date, tags, scraped_at, release_ts?, price_initial?, price_final?,
@@ -2765,6 +2778,53 @@ a missed fire really does mean "no successful write". The one exception is handl
 
 ---
 
+## 11.7 Pipeline monitor (`monitor.py` → `monitor.json` → `monitor.html`)
+
+COVERAGE.md and FRESHNESS.md describe *now* and are overwritten. The monitor keeps *how it
+moved*: `monitor.py` appends one compact snapshot per capture to `monitor.json`, and
+`monitor.html` charts it. The page is opened from the **data-age counter** in the main page's
+top bar (`renderMeta()`, `.meta-age`) — a plain link styled exactly like the text around it, so
+the strip every page view shows gains no colour, underline or hover state.
+
+**When.** Workflow 4.5: after **every** catalog scrape (`workflow_run`, any conclusion — a run cut
+off by its timeout still saved checkpoints), and every 2 h (`17 */2 * * *`) so the hourly and
+3-hourly jobs show between scrapes. ~16 points a day, ~350 bytes each.
+
+**What a snapshot holds.** Catalog size and the pending room; each served file's age (its own
+`generated_at`); the median and 95th percentile of each game's own timestamp in `games.json`
+(`scraped_at` — when its reviews and record were fetched), `prices.json`, `recent.json` and
+`hltb.json`; and how many catalog games carry each layer. The scraper's per-run lines
+(`catalog.json` `runs`, §5) are copied as they are: new / refreshed / pending, and the review
+fetches answered vs failed — the number that would have flagged the Oct 2026 wipe (§16) on its
+first run.
+
+**The charts.** Catalog size (a fitted range — a count that only grows is a flat line from 0);
+one column per scrape run, and the review fetches per run, failures in status-critical red
+beside answered in blue (red beside green fails the colour-blind check); a small multiple per
+file for its age, which climbs while the file waits and drops when its job writes it, so a line
+that keeps climbing is a job that stopped; median and 95th-percentile per-game age; coverage as
+a share of the catalog. A 7 / 30 / 90-day / all range row scopes everything; every chart has a
+crosshair or per-column readout (also by keyboard) and a table twin. Colours were run through the
+dataviz six-check validator against `--panel` (#192133). The page is `noindex` — an operations
+view nobody searches for — but linked and crawlable.
+
+**History.** `python monitor.py --backfill` (workflow 4.5, manual `backfill: true`) replays git:
+every `scrape:` commit message becomes a run line (`start: null`, no review counts — older runs
+didn't record them), and one point a day (the last commit before 12:00 UTC) is rebuilt from that
+commit's files, **streamed** from `raw.githubusercontent.com` and parsed in memory, never
+stored — ~145 MB a day, ~20 GB in all, which a runner's disk could not hold as a checkout. Only
+the files that carry per-game data are streamed; tags, trailers, PICS, updates and upcoming
+(~130 MB more) get their age from `git log` instead and no coverage counts. The job needs a
+full-history checkout, sparse so it is a partial clone (commits and trees, no blobs). It saves
+every 10 days replayed and skips days already present, so a timeout loses nothing and a re-run
+resumes.
+
+**Rules.** One writer (`monitor.py`, concurrency group `monitor-json`); stdlib only;
+`test_monitor.py` covers the snapshot maths, the run merge, the daily sampling and the file
+round trip.
+
+---
+
 ## 12. Wishlist import & the Cloudflare Worker
 
 The browser can't read a Steam wishlist cross-origin, so a small Cloudflare Worker (free tier)
@@ -3053,6 +3113,15 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Pipeline monitor (Oct 2026).** A history of the pipeline, charted on a new page,
+  `monitor.html`, opened from the data-age counter in the top bar (unstyled, so nothing on the
+  main page changes). `monitor.py` (workflow 4.5) appends a snapshot after every scrape and
+  every 2 h: catalog size, each file's age, the median / 95th-percentile age of the per-game
+  data, coverage per layer, and the scraper's run lines, which `scraper.py` now saves in
+  `catalog.json` `runs` at every checkpoint (`record_run()`), review fetches answered vs failed
+  included. History before it is backfilled from git, one point a day, streamed rather than
+  checked out. `pics.json` gained a `generated_at`. Full design in §11.7.
 
 - **Reviews come from GetAppReviews (Oct 2026).** The cause of the wipe below: Valve switched
   `store.steampowered.com/appreviews` off on **22 Oct 2026** (Steamworks announcement), and

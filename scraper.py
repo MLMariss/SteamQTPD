@@ -914,6 +914,22 @@ def load_catalog():
             "seeds_ledger": {}, "force_refresh": [], "recheck": {}}
 
 
+# This run's line for the monitoring page (monitor.py copies the list into monitor.json).
+# Upserted at every save, so a run cut off by the job timeout still leaves the numbers of its
+# last checkpoint, with final=False.
+RUNS_KEPT = 400                  # ~100 days at 4 runs a day
+
+
+def record_run(catalog, start, stored, n_new, n_ref, n_pend, final):
+    row = {"start": int(start), "saved": int(time.time()), "stored": stored,
+           "new": n_new, "refreshed": n_ref, "pending": n_pend,
+           "reviews_answered": REVIEW_STATS["answered"],
+           "reviews_failed": REVIEW_STATS["failed"],
+           "reviews_zero_kept": REVIEW_STATS["zero_kept"], "final": final}
+    runs = [r for r in (catalog.get("runs") or []) if r.get("start") != row["start"]]
+    catalog["runs"] = (runs + [row])[-RUNS_KEPT:]
+
+
 def save_catalog(c):
     # Serialize pending with string keys (JSON object keys are strings anyway).
     out = dict(c)
@@ -1354,6 +1370,7 @@ def main():
                 catalog["pending"] = pending
                 catalog["force_refresh"] = sorted(force_set)
                 catalog["recheck"] = recheck
+                record_run(catalog, start, len(processed), n_new, n_ref, n_pend, final=False)
                 save_games(processed); save_catalog(catalog)
                 git_checkpoint(f"checkpoint: {len(processed)} games stored")
                 last_commit = time.time()
@@ -1366,6 +1383,7 @@ def main():
     catalog["force_refresh"] = sorted(force_set)
     catalog["recheck"] = recheck
     catalog["last_sync"] = int(start)
+    record_run(catalog, start, len(processed), n_new, n_ref, n_pend, final=True)
     save_games(processed); save_catalog(catalog)
     git_checkpoint(f"scrape: {len(processed)} games (+{n_new} new, {n_ref} refreshed, "
                    f"{n_pend} pending)")

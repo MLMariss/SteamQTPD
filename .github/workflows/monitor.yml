@@ -1,0 +1,98 @@
+name: 4.5 Monitor snapshot -> monitor.json
+
+# The history behind monitor.html (opened from the data-age counter on the main page): one
+# compact snapshot of catalog size, file ages, per-game data age and coverage per capture, plus
+# the scraper's per-run lines. FRESHNESS.md / COVERAGE.md say how things stand now; this keeps
+# how they moved. See monitor.py and ARCHITECTURE §11.7.
+on:
+  workflow_run:               # after every catalog scrape, whatever its conclusion — a run cut
+    workflows: ["1. Steam game catalog -> games.json"]   # off by its timeout still saved checkpoints
+    types: [completed]
+  schedule:
+    - cron: "17 */2 * * *"    # every 2h, so the hourly / 3-hourly jobs show between scrapes
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Replay git history into monitor.json (one point a day, ~30 min) instead of one snapshot"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write             # commits monitor.json
+
+concurrency:
+  group: monitor-json         # one writer per file (monitor.json); a backfill and a snapshot never overlap
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    if: github.event_name != 'workflow_dispatch' || !inputs.backfill
+    runs-on: ubuntu-latest
+    timeout-minutes: 15       # ~10 s of work; the checkout is the rest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          # Shallow + sparse (ARCHITECTURE §4 "Checkouts"): every file monitor.py reads, and the
+          # one it writes. Sparse also makes this a partial clone, so nothing else downloads.
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /monitor.py
+            /monitor.json
+            /catalog.json
+            /games.json
+            /prices.json
+            /recent.json
+            /playtime.json
+            /ratings.json
+            /hltb.json
+            /tags.json
+            /trailers.json
+            /length.json
+            /updates.json
+            /pics.json
+            /upcoming.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git (monitor.py commits monitor.json itself)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Record snapshot
+        env:
+          MONITOR_SRC: ${{ github.event_name == 'workflow_run' && 'scrape' || github.event_name == 'schedule' && 'cron' || 'manual' }}
+        run: python monitor.py
+
+  backfill:
+    if: github.event_name == 'workflow_dispatch' && inputs.backfill
+    runs-on: ubuntu-latest
+    timeout-minutes: 150      # ~120 days at ~10-15 s each; saved every 10 days, re-runnable
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          # FULL history, but sparse: commits and trees only (a partial clone), which is what
+          # `git log` needs for the scrape messages and file write times. The files themselves
+          # are streamed per day from raw.githubusercontent.com, never stored.
+          fetch-depth: 0
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /monitor.py
+            /monitor.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git (monitor.py commits monitor.json itself)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Replay git history
+        run: python monitor.py --backfill
