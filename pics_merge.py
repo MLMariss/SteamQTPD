@@ -52,6 +52,7 @@ import argparse
 import glob
 import json
 import os
+import time
 
 SHARD_COUNT = 64
 OUT_FORMAT = "pics_v2_frontend"
@@ -146,6 +147,8 @@ def main():
 
     out = {
         "_format": OUT_FORMAT,
+        # The only served file that had no write stamp; monitor.py reads it for the file's age.
+        "generated_at": int(time.time()),
         "count": len(apps),
         "apps": apps,
     }

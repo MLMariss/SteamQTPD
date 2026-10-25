@@ -511,6 +511,11 @@ def main():
              ts_map={}, cov=None, window="n/a (monitor)",
              note="Self-report: the stamp in table 1 is the PREVIOUS run's — this run has "
                   "not written the file yet at the moment the row is computed."),
+        dict(key="4.5", kind="monitor", wf="monitor.yml", label="Pipeline monitor history",
+             script="monitor.py", owns="monitor.json", stamp=json_stamp("monitor.json"),
+             ts_map={}, cov=None, window="n/a (monitor)",
+             note="Every 2h and after every scrape (`workflow_run`); charted by "
+                  "monitor.html (§11.7)."),
         dict(key="0", kind="publish", wf="pages.yml", label="Pages deploy", script="—",
              owns="(site)", stamp=None, ts_map={}, cov=None, window="n/a (publish)",
              note="Republishes current `main`. Leaves no artifact in the repo, so there is "
