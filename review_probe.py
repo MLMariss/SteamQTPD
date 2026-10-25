@@ -136,49 +136,85 @@ def get_json(url, *, params=None):
 # --------------------------------------------------------------------------- #
 GAR = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
 
+# Run 1 (25 Oct) settled the spellings: `language` and purchase_type "all" are ignored
+# (War Thunder 834 = the default, English + Steam purchases only); `languages: ["all"]`
+# works (1,855) and so does purchase_type 1 (329,175). It also showed filter "recent" is
+# ignored (day_range_used 30, helpful order), and num_per_page 0 is not honoured. Run 2
+# tests the combination against appreviews' 792,828, and the sort/paging the playtime
+# job and the Review Digest need.
+ALL = {"languages": ["all"], "purchase_type": 1}
+
 GAR_VARIANTS = [
-    ("defaults",               {"num_per_page": 0}),
-    ("language=all purchase=all",
-                               {"num_per_page": 0, "language": "all", "purchase_type": "all"}),
-    ("languages=[all] purchase=all",
-                               {"num_per_page": 0, "languages": ["all"], "purchase_type": "all"}),
-    ("language=all purchase=1",
-                               {"num_per_page": 0, "language": "all", "purchase_type": 1}),
-    ("...+offtopic included",  {"num_per_page": 0, "language": "all", "purchase_type": "all",
-                                "filter_offtopic_activity": False}),
-    ("2 recent reviews",       {"num_per_page": 2, "filter": "recent", "language": "all",
-                                "purchase_type": "all", "cursor": "*"}),
+    ("all langs + all purchases",  dict(ALL, num_per_page=1)),
+    ("...+offtopic included",      dict(ALL, num_per_page=1, filter_offtopic_activity=False)),
+    ("english + all purchases",    {"languages": ["english"], "purchase_type": 1, "num_per_page": 1}),
+    ("languages=[] (docs: English)", {"languages": [], "purchase_type": 1, "num_per_page": 1}),
+] + [
+    (f"filter={f!r}", dict(ALL, num_per_page=5, filter=f, cursor="*"))
+    for f in (0, 1, 2, 3, "Recent", "recent", "k_EUserReviewsFilterRecent", "updated", "all")
+] + [
+    ("100 per page, filter=1",     dict(ALL, num_per_page=100, filter=1, cursor="*")),
 ]
+
+
+def gar(appid, body):
+    """One GetAppReviews call -> (status, parsed `response` dict | None, raw text)."""
+    r = get_raw(GAR, params={"input_json": json.dumps(dict(body, appid=appid))})
+    time.sleep(DELAY)
+    if r is None:
+        return None, None, ""
+    try:
+        data = r.json()
+    except ValueError:
+        return r.status_code, None, r.text
+    return r.status_code, (data.get("response") if isinstance(data, dict) else None), r.text
+
+
+def describe(resp):
+    """The parts of a reply that decide the migration, on one line."""
+    qs = resp.get("query_summary") or {}
+    revs = resp.get("reviews") or []
+    ts = [rv.get("timestamp_created") for rv in revs]
+    order = ("newest-first" if ts == sorted(ts, reverse=True) else
+             "oldest-first" if ts == sorted(ts) else "unsorted") if len(ts) > 1 else "-"
+    pos, neg = qs.get("total_positive"), qs.get("total_negative")
+    pct = round(pos / (pos + neg) * 100) if pos is not None and neg is not None and pos + neg else None
+    return (f"total={qs.get('total_reviews')} (+{pos}/-{neg} = {pct}%) | {len(revs)} reviews "
+            f"{order} | day_range_used={resp.get('day_range_used')} "
+            f"total_matching={resp.get('total_matching')} | cursor={resp.get('cursor')!r}")
 
 
 def probe_getappreviews(appid):
     hr(f"Q0  GetAppReviews — what replaces appreviews  (appid {appid})")
     out = {}
-    for name, params in GAR_VARIANTS:
-        body = dict(params, appid=appid)
-        r = get_raw(GAR, params={"input_json": json.dumps(body)})
-        time.sleep(DELAY)
-        if r is None:
-            log(f"  [{name}] no response"); out[name] = None; continue
-        log(f"  [{name}] {r.status_code} {r.headers.get('Content-Type')!r} final={r.url[:90]}")
-        text = r.text
-        log(f"    {text[:1500]}")
-        try:
-            data = r.json()
-        except ValueError:
-            out[name] = {"status": r.status_code, "json": False}; continue
-        resp = data.get("response", data) if isinstance(data, dict) else {}
-        qs = resp.get("query_summary") or {}
-        out[name] = {"status": r.status_code, "top_keys": sorted(data) if isinstance(data, dict) else None,
-                     "response_keys": sorted(resp) if isinstance(resp, dict) else None,
-                     "query_summary": qs,
-                     "review_keys": sorted((resp.get("reviews") or [{}])[0]) if resp.get("reviews") else None}
-    # The same summary request as plain query parameters: one report says they work too.
-    r = get_raw(GAR, params={"appid": appid, "num_per_page": 0, "language": "all",
-                             "purchase_type": "all"})
-    if r is not None:
-        log(f"  [plain query params] {r.status_code} {r.headers.get('Content-Type')!r}")
-        log(f"    {r.text[:600]}")
+    for name, body in GAR_VARIANTS:
+        status, resp, text = gar(appid, body)
+        if resp is None:
+            log(f"  [{name}] {status} not JSON / no response: {text[:300]!r}")
+            out[name] = {"status": status}
+            continue
+        log(f"  [{name}] {status} {describe(resp)}")
+        out[name] = {"status": status, "keys": sorted(resp), "summary": resp.get("query_summary"),
+                     "day_range_used": resp.get("day_range_used"),
+                     "total_matching": resp.get("total_matching")}
+
+    # Paging: a second page through the cursor, newest-first, must continue where page 1
+    # ended (no repeated ids, older timestamps). This is what playtime_refresh.py walks.
+    status, p1, _ = gar(appid, dict(ALL, num_per_page=20, filter=1, cursor="*"))
+    if p1 and p1.get("cursor"):
+        status, p2, _ = gar(appid, dict(ALL, num_per_page=20, filter=1, cursor=p1["cursor"]))
+        if p2:
+            ids1 = {rv.get("recommendationid") for rv in p1.get("reviews") or []}
+            ids2 = [rv.get("recommendationid") for rv in p2.get("reviews") or []]
+            t1 = [rv.get("timestamp_created") for rv in p1.get("reviews") or []]
+            t2 = [rv.get("timestamp_created") for rv in p2.get("reviews") or []]
+            log(f"  [paging filter=1] page1 {len(ids1)} / page2 {len(ids2)} reviews, "
+                f"overlap {len(ids1 & set(ids2))}, page1 oldest {min(t1, default=None)} "
+                f"vs page2 newest {max(t2, default=None)}, next cursor {p2.get('cursor')!r}")
+    sample = (p1 or {}).get("reviews") or []
+    if sample:
+        log(f"  review fields: {sorted(sample[0])}")
+        log(f"  author fields: {sorted(sample[0].get('author') or {})}")
     return out
 
 
