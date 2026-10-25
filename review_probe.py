@@ -126,6 +126,63 @@ def get_json(url, *, params=None):
 
 
 # --------------------------------------------------------------------------- #
+# Q0 — GetAppReviews, the replacement Valve named when it switched `appreviews` off on
+# 22 Oct 2026 (it has redirected to the store front page since; ARCHITECTURE §16).
+# The docs and third-party migrations disagree on parameter names (`language` vs a
+# `languages` list, `purchase_type` "all" vs an enum) and on what the defaults count, and
+# a wrong guess still answers 200, just with smaller numbers. So this dumps the RAW reply
+# for each variant: the totals decide which spelling matches what appreviews used to give
+# (War Thunder 236390 held 71% / 792,828 at language=all, purchase_type=all).
+# --------------------------------------------------------------------------- #
+GAR = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
+
+GAR_VARIANTS = [
+    ("defaults",               {"num_per_page": 0}),
+    ("language=all purchase=all",
+                               {"num_per_page": 0, "language": "all", "purchase_type": "all"}),
+    ("languages=[all] purchase=all",
+                               {"num_per_page": 0, "languages": ["all"], "purchase_type": "all"}),
+    ("language=all purchase=1",
+                               {"num_per_page": 0, "language": "all", "purchase_type": 1}),
+    ("...+offtopic included",  {"num_per_page": 0, "language": "all", "purchase_type": "all",
+                                "filter_offtopic_activity": False}),
+    ("2 recent reviews",       {"num_per_page": 2, "filter": "recent", "language": "all",
+                                "purchase_type": "all", "cursor": "*"}),
+]
+
+
+def probe_getappreviews(appid):
+    hr(f"Q0  GetAppReviews — what replaces appreviews  (appid {appid})")
+    out = {}
+    for name, params in GAR_VARIANTS:
+        body = dict(params, appid=appid)
+        r = get_raw(GAR, params={"input_json": json.dumps(body)})
+        time.sleep(DELAY)
+        if r is None:
+            log(f"  [{name}] no response"); out[name] = None; continue
+        log(f"  [{name}] {r.status_code} {r.headers.get('Content-Type')!r} final={r.url[:90]}")
+        text = r.text
+        log(f"    {text[:1500]}")
+        try:
+            data = r.json()
+        except ValueError:
+            out[name] = {"status": r.status_code, "json": False}; continue
+        resp = data.get("response", data) if isinstance(data, dict) else {}
+        qs = resp.get("query_summary") or {}
+        out[name] = {"status": r.status_code, "top_keys": sorted(data) if isinstance(data, dict) else None,
+                     "response_keys": sorted(resp) if isinstance(resp, dict) else None,
+                     "query_summary": qs,
+                     "review_keys": sorted((resp.get("reviews") or [{}])[0]) if resp.get("reviews") else None}
+    # The same summary request as plain query parameters: one report says they work too.
+    r = get_raw(GAR, params={"appid": appid, "num_per_page": 0, "language": "all",
+                             "purchase_type": "all"})
+    if r is not None:
+        log(f"  [plain query params] {r.status_code} {r.headers.get('Content-Type')!r}")
+        log(f"    {r.text[:600]}")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Q1 — CORS. The one that decides whether this feature needs a backend at all.
 # --------------------------------------------------------------------------- #
 def probe_cors(appid):
@@ -462,6 +519,9 @@ def main():
 
     log("REVIEW DIGEST — PHASE 0 PROBE")
     log(f"appids: {appids}  ·  pages/game: {PAGES}  ·  delay: {DELAY}s")
+
+    # Q0 per game: the replacement endpoint, raw, before anything else.
+    report["getappreviews"] = {str(a): probe_getappreviews(a) for a in appids}
 
     # Q1 once — it is a property of the endpoint, not of a game.
     report["cors"] = probe_cors(appids[0])
