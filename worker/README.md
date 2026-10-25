@@ -55,9 +55,9 @@ curl -sI -H "Origin: https://mlmariss.github.io" \
 
 | | |
 |---|---|
-| **Forwards** | exactly one upstream shape — `appreviews/<numeric appid>` — with only the parameters in `ALLOWED_PARAMS` (plan §4). Everything else the caller sends is dropped |
-| **`json=1`** | always set by the Worker; a caller cannot override it |
-| **`num_per_page`** | clamped to 0–100. **Zero is preserved** — it means "summary only, no bodies", which is how the bundle header fetches its population anchor in one cheap call |
+| **Forwards** | exactly one upstream call — `IUserReviewsService/GetAppReviews` for one numeric appid — built from the parameters in `ALLOWED_PARAMS` (plan §4). Everything else the caller sends is dropped. Until 22 Oct 2026 this was `store.steampowered.com/appreviews`, which Valve switched off (it redirects to the store front page) |
+| **Translates** | the page's appreviews-style query string into GetAppReviews' `input_json` (`language` → `languages: [...]`, `purchase_type=all` → `1`, `filter=recent` → the measured newest-first value, `filter_offtopic_activity` → a boolean), and the reply back into appreviews' shape (`success: 1` beside `query_summary`, `reviews`, `cursor`). Steam silently ignores a spelling it doesn't know and counts its defaults instead, so only measured mappings exist; anything else is dropped, never guessed (ARCHITECTURE §16) |
+| **`num_per_page`** | clamped to 1–100. A caller's **0** ("summary only", the bundle header's cheap anchor call) becomes **1**: GetAppReviews doesn't honour 0 and serves its default 20 |
 | **CORS** | scoped to `ALLOWED_ORIGINS`, never `*` |
 | **Caches** | 30 min at the edge, keyed on the normalised upstream URL. Keeps the shared Worker IP clear of Steam's rate limiter — which matters more here than for the scrapers, since they get a fresh runner IP and every user of this Worker shares one pool |
 | **Strips** | Steam's `Set-Cookie` (`browserid`, `steamCountry`) — useless to the page and must never enter the shared cache |
@@ -74,6 +74,7 @@ protections that actually hold.
 node worker/test.mjs
 ```
 
-Covers the appid validation (traversal, non-numeric, out-of-range), the parameter allowlist,
-`num_per_page` clamping including the zero case, and the CORS origin allowlist. It needs no
+Covers the appid validation (traversal, non-numeric, out-of-range), the parameter allowlist and
+its translation to GetAppReviews, `num_per_page` clamping including the zero case, the reply
+translation back to appreviews' shape, and the CORS origin allowlist. It needs no
 Cloudflare runtime — these are pure functions, exported for exactly that reason.

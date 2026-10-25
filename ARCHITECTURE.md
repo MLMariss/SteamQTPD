@@ -953,7 +953,9 @@ tiers `0-3d` / `3-10d` / `10-30d` → PICS drift → `last_modified` → tiers `
 `180-365d`. Within a rank, oldest-scraped first. Set `REVIEW_TIER_REFRESH=0` and
 `PICS_REV_DELTA=0` to restore the old `last_modified`-only behaviour exactly.
 
-Per-game cost is ~2 storefront calls (appdetails + appreviews), which sets the pace ceiling
+Per-game cost is ~2 storefront calls (appdetails + the review summary — GetAppReviews since
+Valve retired `appreviews` on 22 Oct 2026, on the Web API host but still paced on this budget,
+§16), which sets the pace ceiling
 (§14). New games are seeded ahead of the queue via `seeds.txt` — human-edited only, the
 scraper never writes to that file — but the reconciliation against it (`reconcile_seeds` in
 scraper.py) is a **live, declarative diff**, not a one-shot consume:
@@ -1265,7 +1267,8 @@ Surfaces **how long people actually play**, split by whether they recommended th
 set; the frontend only needs medians. So `playtime_refresh.py` maintains the big raw working
 set (sharded — see below) and `playtime_summarize.py` distills it into the lean `playtime.json`.
 
-**Raw scraper.** Pulls reviews via Steam's `appreviews` and stores `playtime_forever`
+**Raw scraper.** Pulls reviews via Steam's `GetAppReviews` (`appreviews` until Valve switched it
+off on 22 Oct 2026, §16), newest first (`filter: 1`), and stores `playtime_forever`
 (**minutes**, Steam's native unit — converted to hours only at display time) per review.
 **`playtime_at_review` is deliberately not used** (decided and re-decided).
 Reviews are keyed by **`recommendationid`**, not cursor offset — cursor positions shift as
@@ -3010,7 +3013,8 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   impossible combination is undone. `test_price_flags.py` covers the rule and the two real
   records.
 - **Review percentages differ from the store page, deliberately.** `rating_from_reviews()`
-  queries `appreviews` with `purchase_type=all`, which counts every review — key, gift and
+  asks GetAppReviews for every purchase type and language (`purchase_type: 1`, `languages:
+  ["all"]`; `appreviews`' `purchase_type=all` until 22 Oct 2026), which counts every review — key, gift and
   giveaway copies included. The store page's headline summary counts **Steam purchasers only**
   and drops flagged review bombs, so its count is lower and usually its percentage is higher
   (Moonlighter: 21,971 reviews / 82% here vs 17,224 / *Very Positive* there). Both are correct
@@ -3050,6 +3054,32 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Reviews come from GetAppReviews (Oct 2026).** The cause of the wipe below: Valve switched
+  `store.steampowered.com/appreviews` off on **22 Oct 2026** (Steamworks announcement), and
+  since then it redirects every caller to the store front page — for the scraper, the playtime
+  job and the Review Digest's Worker alike, and in an ordinary browser too. Its replacement,
+  `api.steampowered.com/IUserReviewsService/GetAppReviews/v1/`, takes no key, reads its
+  parameters from one `input_json` value and wraps the reply in `response`, with no `success`
+  field; `query_summary` and the review objects keep their old field names. Measured on a
+  runner (`review_probe.py` Q0, 25 Oct): **the old spellings are silently ignored** and leave
+  Steam's defaults, English and Steam purchases only — War Thunder 834 instead of 792,828 — so
+  a wrong guess looks like an answer. Every review is counted by `languages: ["all"]` +
+  `purchase_type: 1` (War Thunder 793,469 at 71%, against appreviews' 792,828 at 71% three days
+  earlier); `filter: 1` sorts newest first over the whole list, 100 to a page, and the cursor
+  pages on without repeats (the string `"recent"` is ignored, leaving helpful-first over 30
+  days); `num_per_page: 0` isn't honoured, so the
+  summary call asks for 1.
+  - `scraper.py` `rating_from_reviews()` and `playtime_refresh.py` `scrape_game()` send exactly
+    that; `test_review_guard.py` pins the spellings. Both stay on their existing pace even
+    though the Web API host isn't the storefront — its keyless limit isn't documented.
+  - The `qtpd-reviews` Worker translates both ways — appreviews' query string in, appreviews'
+    reply shape (`success: 1` beside `query_summary`, `reviews`, `cursor`) out — so
+    `index.html` is unchanged. It only takes effect once redeployed (`npx wrangler deploy` in
+    `worker/`). A value nobody has measured (`purchase_type=steam`, `review_type`, other
+    filters) is dropped rather than guessed; `worker/test.mjs` covers the translation.
+  - The playtime walk no longer reads a reply without `reviews` or `cursor` as the end of the
+    list: that is a failed call, and `exhausted` is persisted (§9).
+
 - **Review wipe, 22-24 Oct 2026: a failed review fetch no longer stores "0 reviews".** From
   22 Oct 23:05 UTC Steam's `appreviews` stopped giving the Actions runners a usable answer
   (last good reply 23:04:59, first zero 23:05:12; the run log showed only `rating=None`, no 403
@@ -3078,8 +3108,9 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
     all of it.
   - **Not repaired:** games first scraped during the outage never had a good fetch, so they hold
     `(None, 0)` until `appreviews` answers again. One is ONE PIECE: Grand Gourmet (3905010),
-    out 22 Oct 22:00 UTC. The young-game tiers retry them every 6 h. The outage's cause is not
-    known yet; the new log lines will say what Steam sends. `playtime_refresh.py` reads the
+    out 22 Oct 22:00 UTC. The young-game tiers retry them every 6 h. The cause turned out to
+    be Valve retiring `appreviews` (entry above): the new log lines showed its redirect to the
+    store front page. `playtime_refresh.py` reads the
     same endpoint and logged `+0 reviews` over the same window. It keeps a game's stored reviews
     on a failed visit, so nothing was lost there, but those visits still stamped `scraped_at`.
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Regression tests for the review wipe of 22-24 Oct 2026 (scraper.py, ARCHITECTURE §16).
 
-From 22 Oct 23:05 UTC Steam's appreviews stopped giving the runners a usable answer, and
-rating_from_reviews() returned the same (None, 0) for "failed" as for "no reviews". Every
-refresh stored that zero over the real count: 15k+ games, War Thunder's 792,828 reviews
-among them. Pure logic only: Steam is stubbed, no network, no git."""
+From 22 Oct 23:05 UTC Steam's appreviews (switched off by Valve, redirecting to the store
+front page) gave no usable answer, and rating_from_reviews() returned the same (None, 0) for
+"failed" as for "no reviews". Every refresh stored that zero over the real count: 42,611
+games, War Thunder's 792,828 reviews among them. The fetch now uses GetAppReviews, whose
+old-style parameter spellings Steam silently ignores. Pure logic only: Steam is stubbed, no
+network, no git."""
 import json, pathlib, sys, tempfile, types
 
 # Stub `requests` so the module imports without the dependency present.
@@ -33,7 +35,8 @@ def check(name, cond):
 
 
 def steam(reviews, news, appid=236390):
-    """A fake get(): appdetails answers, appreviews / news give what the test says."""
+    """A fake get(): appdetails answers, GetAppReviews / news give what the test says.
+    Every review request's input_json is recorded in SENT."""
     details = {str(appid): {"success": True, "data": {
         "type": "game", "name": "War Thunder", "is_free": True,
         "release_date": {"date": "Aug 15, 2013", "coming_soon": False},
@@ -41,29 +44,39 @@ def steam(reviews, news, appid=236390):
     def get(url, *, params=None, timeout=30, expect_json=False):
         if "appdetails" in url:
             return details
-        if "appreviews" in url:
+        if "GetAppReviews" in url:
+            SENT.append(json.loads(params["input_json"]))
             return reviews
         return news
     return get
 
 
-ZERO = {"success": 1, "query_summary": {"total_positive": 0, "total_negative": 0}}
-REAL = {"success": 1, "query_summary": {"total_positive": 600, "total_negative": 400}}
+SENT = []
+ZERO = {"response": {"query_summary": {"total_positive": 0, "total_negative": 0}}}
+REAL = {"response": {"query_summary": {"total_positive": 600, "total_negative": 400}}}
 NEWS = {"appnews": {"newsitems": [{"date": 1792800000, "tags": ["patchnotes"]}]}}
 NO_NEWS = {"appnews": {"newsitems": []}}
 PREV = {"appid": 236390, "rating_pct": 71, "review_count": 792828, "last_update_ts": 1792000000}
 
 print("\n== rating_from_reviews: failure is not 'no reviews' ==")
-for name, reply in [("no reply / non-JSON body", None),
-                    ("success != 1", {"success": 2}),
-                    ("no query_summary", {"success": 1}),
-                    ("summary without totals", {"success": 1, "query_summary": {"num_reviews": 0}})]:
+for name, reply in [("no reply / non-JSON body (the old endpoint's redirect)", None),
+                    ("no response wrapper", {"query_summary": {"total_positive": 5, "total_negative": 1}}),
+                    ("empty response", {"response": {}}),
+                    ("summary without totals", {"response": {"query_summary": {"num_reviews": 0}}})]:
     S.get = steam(reply, NEWS)
     check(f"{name} -> FAILED", S.rating_from_reviews(236390) is S.FAILED)
 S.get = steam(ZERO, NEWS)
 check("Steam's own 0/0 -> (None, 0)", S.rating_from_reviews(236390) == (None, 0))
 S.get = steam(REAL, NEWS)
 check("600 up / 400 down -> (60, 1000)", S.rating_from_reviews(236390) == (60, 1000))
+
+print("\n== the request counts every review, in the spellings Steam honours ==")
+# Measured 25 Oct 2026: `language` and purchase_type "all" are ignored without an error and
+# leave English + Steam purchases only (War Thunder 834 of 792,828).
+req = SENT[-1]
+check("appid sent",                          req.get("appid") == 236390)
+check("languages: ['all'] (not `language`)", req.get("languages") == ["all"] and "language" not in req)
+check("purchase_type: 1 (not \"all\")",      req.get("purchase_type") == 1)
 
 print("\n== keep_reviews: the stored count survives a bad answer ==")
 check("FAILED keeps the stored pair",          S.keep_reviews(S.FAILED, PREV) == (71, 792828))
@@ -91,7 +104,7 @@ check("reviews kept (was wiped to 0)", (rec["rating_pct"], rec["review_count"]) 
 check("last update kept",              rec["last_update_ts"] == 1792000000)
 S.get = steam(ZERO, NEWS)
 rec = S.build_record(236390, prev=dict(PREV))
-check("success:1 with 0/0 after 792k reviews is kept too", rec["review_count"] == 792828)
+check("a 0/0 summary after 792k reviews is kept too", rec["review_count"] == 792828)
 S.get = steam(REAL, NEWS)
 rec = S.build_record(236390, prev=dict(PREV))
 check("a working fetch still updates", (rec["rating_pct"], rec["review_count"]) == (60, 1000))

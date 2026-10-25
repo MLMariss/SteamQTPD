@@ -126,6 +126,102 @@ def get_json(url, *, params=None):
 
 
 # --------------------------------------------------------------------------- #
+# Q0 — GetAppReviews, the replacement Valve named when it switched `appreviews` off on
+# 22 Oct 2026 (it has redirected to the store front page since; ARCHITECTURE §16).
+# The docs and third-party migrations disagree on parameter names (`language` vs a
+# `languages` list, `purchase_type` "all" vs an enum) and on what the defaults count, and
+# a wrong guess still answers 200, just with smaller numbers. So this dumps the RAW reply
+# for each variant: the totals decide which spelling matches what appreviews used to give
+# (War Thunder 236390 held 71% / 792,828 at language=all, purchase_type=all).
+# --------------------------------------------------------------------------- #
+GAR = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
+
+# Run 1 (25 Oct) settled the spellings: `language` and purchase_type "all" are ignored
+# (War Thunder 834 = the default, English + Steam purchases only); `languages: ["all"]`
+# works (1,855) and so does purchase_type 1 (329,175). It also showed filter "recent" is
+# ignored (day_range_used 30, helpful order), and num_per_page 0 is not honoured. Run 2
+# answered the rest: the combination gives War Thunder 793,469 at 71% (appreviews: 792,828
+# at 71% three days earlier); filter 1 is newest-first over the whole list, 100 to a page,
+# with a clean cursor (no overlap); every string spelling of "recent" is ignored; review
+# and author fields are unchanged; including off-topic activity adds review bombs
+# (918,903 at 64%), so the scraper keeps Steam's default and excludes them.
+ALL = {"languages": ["all"], "purchase_type": 1}
+
+GAR_VARIANTS = [
+    ("all langs + all purchases",  dict(ALL, num_per_page=1)),
+    ("...+offtopic included",      dict(ALL, num_per_page=1, filter_offtopic_activity=False)),
+    ("english + all purchases",    {"languages": ["english"], "purchase_type": 1, "num_per_page": 1}),
+    ("languages=[] (docs: English)", {"languages": [], "purchase_type": 1, "num_per_page": 1}),
+] + [
+    (f"filter={f!r}", dict(ALL, num_per_page=5, filter=f, cursor="*"))
+    for f in (0, 1, 2, 3, "Recent", "recent", "k_EUserReviewsFilterRecent", "updated", "all")
+] + [
+    ("100 per page, filter=1",     dict(ALL, num_per_page=100, filter=1, cursor="*")),
+]
+
+
+def gar(appid, body):
+    """One GetAppReviews call -> (status, parsed `response` dict | None, raw text)."""
+    r = get_raw(GAR, params={"input_json": json.dumps(dict(body, appid=appid))})
+    time.sleep(DELAY)
+    if r is None:
+        return None, None, ""
+    try:
+        data = r.json()
+    except ValueError:
+        return r.status_code, None, r.text
+    return r.status_code, (data.get("response") if isinstance(data, dict) else None), r.text
+
+
+def describe(resp):
+    """The parts of a reply that decide the migration, on one line."""
+    qs = resp.get("query_summary") or {}
+    revs = resp.get("reviews") or []
+    ts = [rv.get("timestamp_created") for rv in revs]
+    order = ("newest-first" if ts == sorted(ts, reverse=True) else
+             "oldest-first" if ts == sorted(ts) else "unsorted") if len(ts) > 1 else "-"
+    pos, neg = qs.get("total_positive"), qs.get("total_negative")
+    pct = round(pos / (pos + neg) * 100) if pos is not None and neg is not None and pos + neg else None
+    return (f"total={qs.get('total_reviews')} (+{pos}/-{neg} = {pct}%) | {len(revs)} reviews "
+            f"{order} | day_range_used={resp.get('day_range_used')} "
+            f"total_matching={resp.get('total_matching')} | cursor={resp.get('cursor')!r}")
+
+
+def probe_getappreviews(appid):
+    hr(f"Q0  GetAppReviews — what replaces appreviews  (appid {appid})")
+    out = {}
+    for name, body in GAR_VARIANTS:
+        status, resp, text = gar(appid, body)
+        if resp is None:
+            log(f"  [{name}] {status} not JSON / no response: {text[:300]!r}")
+            out[name] = {"status": status}
+            continue
+        log(f"  [{name}] {status} {describe(resp)}")
+        out[name] = {"status": status, "keys": sorted(resp), "summary": resp.get("query_summary"),
+                     "day_range_used": resp.get("day_range_used"),
+                     "total_matching": resp.get("total_matching")}
+
+    # Paging: a second page through the cursor, newest-first, must continue where page 1
+    # ended (no repeated ids, older timestamps). This is what playtime_refresh.py walks.
+    status, p1, _ = gar(appid, dict(ALL, num_per_page=20, filter=1, cursor="*"))
+    if p1 and p1.get("cursor"):
+        status, p2, _ = gar(appid, dict(ALL, num_per_page=20, filter=1, cursor=p1["cursor"]))
+        if p2:
+            ids1 = {rv.get("recommendationid") for rv in p1.get("reviews") or []}
+            ids2 = [rv.get("recommendationid") for rv in p2.get("reviews") or []]
+            t1 = [rv.get("timestamp_created") for rv in p1.get("reviews") or []]
+            t2 = [rv.get("timestamp_created") for rv in p2.get("reviews") or []]
+            log(f"  [paging filter=1] page1 {len(ids1)} / page2 {len(ids2)} reviews, "
+                f"overlap {len(ids1 & set(ids2))}, page1 oldest {min(t1, default=None)} "
+                f"vs page2 newest {max(t2, default=None)}, next cursor {p2.get('cursor')!r}")
+    sample = (p1 or {}).get("reviews") or []
+    if sample:
+        log(f"  review fields: {sorted(sample[0])}")
+        log(f"  author fields: {sorted(sample[0].get('author') or {})}")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Q1 — CORS. The one that decides whether this feature needs a backend at all.
 # --------------------------------------------------------------------------- #
 def probe_cors(appid):
@@ -462,6 +558,9 @@ def main():
 
     log("REVIEW DIGEST — PHASE 0 PROBE")
     log(f"appids: {appids}  ·  pages/game: {PAGES}  ·  delay: {DELAY}s")
+
+    # Q0 per game: the replacement endpoint, raw, before anything else.
+    report["getappreviews"] = {str(a): probe_getappreviews(a) for a in appids}
 
     # Q1 once — it is a property of the endpoint, not of a game.
     report["cors"] = probe_cors(appids[0])

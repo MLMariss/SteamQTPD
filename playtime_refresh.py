@@ -4,7 +4,8 @@ Steam QHPP — playtime refresher (identity-keyed, sentiment-split)
 =================================================================
 A SEPARATE, independent job from scraper.py. It captures, per game, how long
 reviewers have actually played it — split by whether they recommended it — from
-the public `appreviews` endpoint (the "X hrs on record" on each review card).
+Steam's public review list — `appreviews` until Valve switched it off on 22 Oct 2026,
+IUserReviewsService/GetAppReviews since (the "X hrs on record" on each review card).
 
 This maintains the BIG file (playtime_raw.json). A separate script,
 playtime_summarize.py, reads this file and writes the small frontend-facing
@@ -223,7 +224,18 @@ SHARD_MIN_HOT = int(os.environ.get("SHARD_MIN_HOT", "1"))   # skip shards with f
 # the sweep to reach it. Out-of-range / non-numeric entries are ignored.
 FORCE_SHARDS_ENV = "FORCE_SHARDS"
 
-STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (appreviews is keyless)
+STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (GetAppReviews is keyless)
+
+# Valve switched store.steampowered.com/appreviews off on 22 Oct 2026 (it has redirected to
+# the store front page since, so every walk ended on page 1 with "+0 reviews"). GetAppReviews
+# replaces it: parameters in input_json, the reply wrapped in "response". Steam IGNORES a
+# spelling it doesn't know and counts its defaults instead (English + Steam purchases only),
+# so these were measured on a runner (review_probe.py Q0, 25 Oct 2026) — the same values
+# scraper.py sends. A string filter ("recent") is ignored the same way and leaves the
+# helpful-first order, which would break the newest-first walk below.
+REVIEWS_API = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
+REVIEWS_ALL = {"languages": ["all"], "purchase_type": 1}
+REVIEWS_NEWEST_FIRST = 1             # measured: newest-first over the whole list, 100/page, clean cursor
 RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "180"))
 # G2 (revised): commit the raw file to git every COMMIT_SECONDS *during* the run —
 # not once at the end. A single end-of-run commit is fragile: GitHub runners are
@@ -238,7 +250,7 @@ TIME_BUFFER = 90
 # On a normal pass we try to reach TARGET_REVIEWS *stored* reviews per game. New
 # reviews at the top are always taken; growth beyond what we have walks deeper.
 TARGET_REVIEWS = int(os.environ.get("TARGET_REVIEWS", "200"))
-PER_PAGE = 100                    # appreviews hard max is 100/page
+PER_PAGE = 100                    # GetAppReviews hard max is 100/page
 # One-off deep pass: `DEEPEN_TARGET=1000 python playtime_refresh.py` raises the
 # target for THIS run and prefers games below it. Capped by PER_GAME_CAP.
 DEEPEN_TARGET = int(os.environ.get("DEEPEN_TARGET", "0"))
@@ -622,7 +634,7 @@ def _parse_review(rv):
 # Scrape one game: grow (new + deeper) + refresh-on-revisit, with the G1 cap
 # --------------------------------------------------------------------------- #
 def scrape_game(appid, stored_reviews, target, deep=False):
-    """Walk appreviews newest-first, updating `stored_reviews` (a dict keyed by
+    """Walk GetAppReviews newest-first, updating `stored_reviews` (a dict keyed by
     recommendationid) IN PLACE. Returns (added, refreshed, exhausted).
 
       * unseen id           -> add (respecting the per-game cap via compaction)
@@ -650,13 +662,14 @@ def scrape_game(appid, stored_reviews, target, deep=False):
     max_pages = (target // PER_PAGE) + 5
 
     while pages < max_pages:
-        data = get(f"https://store.steampowered.com/appreviews/{appid}",
-                   params={"json": 1, "language": "all", "purchase_type": "all",
-                           "num_per_page": PER_PAGE, "filter": "recent",
-                           "cursor": cursor})
+        data = get(REVIEWS_API, params={"input_json": json.dumps(
+                   dict(REVIEWS_ALL, appid=appid, num_per_page=PER_PAGE,
+                        filter=REVIEWS_NEWEST_FIRST, cursor=cursor))})
         time.sleep(STEAM_DELAY)
-        if not isinstance(data, dict) or data.get("success") != 1:
-            break
+        resp = data.get("response") if isinstance(data, dict) else None
+        if not isinstance(resp, dict) or not ("reviews" in resp or "cursor" in resp):
+            break                      # no usable answer: stop, but don't call it exhausted
+        data = resp
         reviews = data.get("reviews") or []
         if not reviews:
             exhausted = True

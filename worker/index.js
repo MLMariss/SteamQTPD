@@ -1,5 +1,6 @@
 /**
- * qtpd-reviews — Cloudflare Worker passthrough for Steam's `appreviews` endpoint.
+ * qtpd-reviews — Cloudflare Worker passthrough for Steam's review data: `appreviews` until
+ * Valve switched it off on 22 Oct 2026, `IUserReviewsService/GetAppReviews` since.
  *
  * WHY THIS EXISTS
  * ---------------
@@ -7,7 +8,8 @@
  * `store.steampowered.com/appreviews/` returns **no** `Access-Control-Allow-Origin`
  * header, so a page on GitHub Pages cannot call it directly. QTPD is static — there is no
  * application server — so the only way to reach Steam from the browser is a proxy. This is
- * that proxy, and it is the sole backend the Review Digest needs.
+ * that proxy, and it is the sole backend the Review Digest needs. It keeps speaking
+ * appreviews' query string and reply shape to the page, and translates both ways.
  *
  * ITS SOURCE LIVES IN THE REPO ON PURPOSE. The older wishlist Worker
  * (qhpp-wishlist.mlmariss.workers.dev) was deployed without its source in git, and it is
@@ -33,18 +35,31 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:8000",
 ]);
 
-// Exactly the parameters REVIEW_DIGEST_PLAN.md §4 uses. Anything else the caller sends is
-// dropped rather than forwarded — an allowlist, never a denylist.
+// Valve switched `store.steampowered.com/appreviews` off on 22 Oct 2026 — it has redirected
+// to the store front page since, so this Worker handed the page Steam's home page HTML. The
+// replacement is GetAppReviews on the Web API host: no key, parameters in one `input_json`
+// value, the reply wrapped in `response` with no `success` field.
+const UPSTREAM = "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/";
+
+// The page still speaks appreviews' query string, so the Worker translates it. Steam IGNORES
+// a field it doesn't recognise without an error and counts its defaults instead — English
+// and Steam purchases only, which turned War Thunder's 792,828 into 834 — so every mapping
+// below was measured on a runner (review_probe.py Q0, 25 Oct 2026), and a value nobody has
+// measured is dropped rather than guessed. The allowlist is the same as before.
 const ALLOWED_PARAMS = new Set([
-  "filter",                    // recent | updated | all
-  "language",                  // english | all | ...
-  "review_type",               // all | positive | negative
-  "purchase_type",             // all | steam | non_steam_purchase
-  "num_per_page",              // clamped to 100 below (Steam's own hard max)
+  "filter",                    // recent | updated | all  -> FILTERS
+  "language",                  // english | all | ...     -> languages: [value]
+  "purchase_type",             // all                     -> 1
+  "num_per_page",              // clamped to 1-100 below
   "cursor",                    // "*" then whatever Steam echoes back
   "day_range",                 // only meaningful with filter=all
   "filter_offtopic_activity",  // 0 includes review bombs — QTPD sends 0 (plan §5)
 ]);
+// filter: 1 is newest-first over the whole list (total_matching = every review). The strings
+// "recent" / "Recent" / "k_EUserReviewsFilterRecent" are ignored and leave the default,
+// helpful-first over the last 30 days. 2 looks like "updated" but wasn't confirmed.
+export const FILTERS = { recent: 1 };
+const PURCHASE_TYPES = { all: 1 };
 
 // Steam's numbers barely move in half an hour, and a digest is often re-opened moments
 // after it is closed. Caching also keeps this Worker's shared egress IP well clear of the
@@ -52,12 +67,10 @@ const ALLOWED_PARAMS = new Set([
 // (they get a fresh runner IP; every user of this Worker shares one pool).
 const CACHE_SECONDS = 1800;
 
-// Mirrors the cookies the repo's Python scrapers send, so mature-gated titles return
-// reviews instead of an age-check interstitial.
+// The store's age-gate cookies went with appreviews: the Web API host doesn't read them.
 const UPSTREAM_HEADERS = {
   "User-Agent": "Mozilla/5.0 (steam-qtpd review-digest; +https://github.com/MLMariss/SteamQTPD)",
   "Accept-Language": "en-US,en;q=0.9",
-  "Cookie": "birthtime=568022401; mature_content=1; Steam_Language=english; wants_mature_content=1",
 };
 
 /** CORS headers for a request, or null when the origin is not allowed. */
@@ -80,31 +93,59 @@ export function corsHeaders(origin) {
 export function buildUpstreamUrl(searchParams) {
   const appid = searchParams.get("appid");
   // Steam appids are plain integers. Anchored, digits only, bounded — this is what stops
-  // the Worker being pointed at an arbitrary path on store.steampowered.com.
+  // the Worker being pointed at anything but one game's reviews.
   if (!appid || !/^[0-9]{1,8}$/.test(appid)) {
     return { error: "appid must be 1-8 digits", status: 400 };
   }
 
-  const out = new URL(`https://store.steampowered.com/appreviews/${appid}`);
-  out.searchParams.set("json", "1");        // always; never taken from the caller
+  // Built in a fixed key order, so two callers who ordered their query string differently
+  // still produce the same upstream URL — and share one cache entry.
+  const input = { appid: Number(appid) };
+  const get = (k) => (ALLOWED_PARAMS.has(k) ? searchParams.get(k) : null);
 
-  for (const [key, value] of searchParams) {
-    if (!ALLOWED_PARAMS.has(key)) continue;  // silently dropped, not an error
-    if (key === "num_per_page") {
-      // Steam's hard max is 100; clamp rather than reject so a caller asking for more gets
-      // a page instead of a failure. ZERO IS LEGITIMATE and must survive: num_per_page=0
-      // returns query_summary with no review bodies, which is how the bundle header gets
-      // its population anchor for one cheap call (scraper.py:rating_from_reviews and
-      // review_probe.py both rely on it). An earlier `|| 100` fallback silently turned that
-      // into a full page fetch, so NaN is distinguished from 0 explicitly.
-      const parsed = parseInt(value, 10);
-      const n = Number.isNaN(parsed) ? 100 : Math.min(100, Math.max(0, parsed));
-      out.searchParams.set(key, String(n));
-      continue;
-    }
-    out.searchParams.set(key, value);
+  const filter = get("filter");
+  if (filter != null && Object.hasOwn(FILTERS, filter)) input.filter = FILTERS[filter];
+
+  const language = get("language");
+  if (language != null && /^[a-z_]{2,24}$/.test(language)) input.languages = [language];
+
+  const purchase = get("purchase_type");
+  if (purchase != null && Object.hasOwn(PURCHASE_TYPES, purchase)) input.purchase_type = PURCHASE_TYPES[purchase];
+
+  const perPage = get("num_per_page");
+  if (perPage != null) {
+    // Steam's hard max is 100; clamp rather than reject so a caller asking for more gets a
+    // page instead of a failure. appreviews took 0 to mean "summary only", but GetAppReviews
+    // doesn't honour 0 and serves its default 20 — so 0 becomes 1, the cheapest page that
+    // still carries query_summary, which is all the page's anchor call reads.
+    const parsed = parseInt(perPage, 10);
+    input.num_per_page = Number.isNaN(parsed) ? 100 : Math.min(100, Math.max(1, parsed));
   }
-  return { url: out.toString() };
+
+  const cursor = get("cursor");
+  if (cursor != null && cursor.length <= 200) input.cursor = cursor;
+
+  const dayRange = parseInt(get("day_range"), 10);
+  if (!Number.isNaN(dayRange)) input.day_range = Math.min(3650, Math.max(1, dayRange));
+
+  const offtopic = get("filter_offtopic_activity");
+  if (offtopic === "0" || offtopic === "1") input.filter_offtopic_activity = offtopic === "1";
+
+  return { url: `${UPSTREAM}?input_json=${encodeURIComponent(JSON.stringify(input))}` };
+}
+
+/**
+ * GetAppReviews' reply in appreviews' shape — `success: 1` beside query_summary, reviews and
+ * cursor at the top level — so the page reads it unchanged, or null when it carries none of
+ * the three (the page then reports "Steam returned no data" rather than parsing something
+ * else). Any one is enough: only the first page was measured to carry query_summary, and a
+ * later page that lacks it is still a page of reviews.
+ */
+export function toLegacyShape(data) {
+  const resp = data && typeof data === "object" ? data.response : null;
+  if (!resp || typeof resp !== "object") return null;
+  if (!("query_summary" in resp || "reviews" in resp || "cursor" in resp)) return null;
+  return { success: 1, ...resp };
 }
 
 function json(body, status, extraHeaders) {
@@ -183,9 +224,14 @@ export default {
 
       // Rebuild the response rather than forwarding Steam's: its Set-Cookie (browserid,
       // steamCountry) is useless to the page, would be stored against this Worker's own
-      // domain, and must never be written into the shared cache.
-      const body = await fetched.text();
-      upstream = new Response(body, {
+      // domain, and must never be written into the shared cache. The body is translated to
+      // appreviews' shape; a reply without review data is an error, and is not cached.
+      let legacy = null;
+      try { legacy = toLegacyShape(JSON.parse(await fetched.text())); } catch (e) {}
+      if (!legacy) {
+        return json({ error: "Steam answered without review data" }, 502, cors || {});
+      }
+      upstream = new Response(JSON.stringify(legacy), {
         status: 200,
         headers: {
           "Content-Type": "application/json; charset=utf-8",
