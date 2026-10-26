@@ -98,6 +98,14 @@
   /* ---- header (scrolls away; table header takes over as sticky, see thead below) ---- */
   .topbar{position:relative; z-index:40; padding-top:10px; background:var(--bg)}
   .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  /* The suggestion lists (title search, publisher/developer) hang below their input, and this
+     clip cut every row past the bar's bottom edge: "fall" showed two of its eight rows, which
+     read as "only two games match". The clip is lifted while a list is open. Narrow screens
+     already run unclipped (see the mobile top-bar block). */
+  .barwrap:has(.simsug:not([hidden])){overflow:visible}
+  /* …which un-clips the "Show filters" strip too, the one fill that reaches the bar's lower
+     corners. It carries the curve itself (13px = 14px less the border), as on narrow screens. */
+  .barwrap > .collapse-handle{border-radius:0 0 13px 13px}
   .bar-main{display:flex; align-items:center; gap:16px; padding:12px var(--pad-x); flex-wrap:wrap}
   .brand{display:flex; align-items:baseline; gap:13px; flex:none}
   .logo{font-family:inherit; font-weight:700; font-size:28px; letter-spacing:-.04em; line-height:1;
@@ -940,7 +948,7 @@
   .simsug{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:60;
         background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
         padding:4px; box-shadow:0 8px 24px #0008;
-        max-height:min(62vh, 360px); overflow:auto; overscroll-behavior:contain}
+        max-height:min(70vh, 440px); overflow:auto; overscroll-behavior:contain}
   /* Second section header: the "…or similar" alternative, ruled off from the exact titles. */
   .simsug .ss-h.ss-alt{margin-top:4px; padding-top:6px; border-top:1px solid var(--line)}
   .simsug[hidden]{display:none}
@@ -4828,7 +4836,7 @@ function findSimilar(appid){
 // to find nothing at all; here it offers the real title, and picking it puts the real title —
 // ™ and all — into the box, where the ordinary filter does match it. Normalising 130k titles
 // per keystroke is not free, so each one is cached on its game as _nt.
-const SIMSUG_JUMP = 5, SIMSUG_SIM = 3, SIMSUG_UP = 3;   // SIMSUG_UP: the trailing release group
+const SIMSUG_JUMP = 8, SIMSUG_SIM = 3, SIMSUG_UP = 3;   // SIMSUG_UP: the trailing release group
 const simSugNorm = s => String(s).toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, "")
                                  .replace(/[^a-z0-9]+/g, " ").trim();
 function simSugRank(g, q){
@@ -4879,8 +4887,15 @@ function renderSimSug(){
   // for one you can buy. The group the Release toggle points at comes first and gets the longer
   // list; the other trails with a short one. Upcoming rows only exist once upcoming.json has
   // loaded — typing starts that fetch, and ensureUpcoming() re-renders this list when it lands.
+  // One row per title as the eye reads it: titles that differ only in case or punctuation
+  // ("FALL", "Fall", ".fall") collapse to their best-ranked game. Picking a row searches its
+  // text, so the duplicates all led to the same list — and "fall" has five exact matches, which
+  // filled every slot, so Fallout 4 and Human Fall Flat never made it onto the list. The ≈ rows
+  // get the same treatment: three "≈ FALL" rows read as one game listed three times.
+  const oneEach = list => { const seen = new Set(); return list.filter(g => !seen.has(g._nt) && seen.add(g._nt)); };
   const rel = [], up = [];
   for(const g of hits) (g.upcoming ? up : rel).push(g);
+  const relU = oneEach(rel), upU = oneEach(up);
   const upFirst = state.release === "upcoming";
   // Only games Find-similar can actually act on get a ≈ row — no tags, no main tags, no result.
   // Released games only: Find similar lists released games, so an upcoming seed would point at
@@ -4888,7 +4903,7 @@ function renderSimSug(){
   // sorts a game's whole tag list, and a two-letter query matches thousands of titles, so
   // filtering the lot first would do that work thousands of times per keystroke to keep three rows.
   const sim = [];
-  for(const g of rel){
+  for(const g of relU){
     if(sim.length >= SIMSUG_SIM) break;
     if((g.tags || []).length && similarKeyTags(g).length) sim.push(g);
   }
@@ -4896,8 +4911,8 @@ function renderSimSug(){
     `<button type="button" data-pick="${esc(g.title)}" title="${esc("Search for exactly “" + g.title + "”")}"><i>→</i><span>${esc(g.title)}</span>`
     + (g.unknown ? "<em>status unknown</em>" : g.upcoming ? `<em>${esc(upLabel(g))}</em>` : "") + `</button>`;
   const groups = [
-    {head: upFirst ? "Released" : "Show just this game", rows: rel.slice(0, upFirst ? SIMSUG_UP : SIMSUG_JUMP)},
-    {head: "Coming soon", rows: up.slice(0, upFirst ? SIMSUG_JUMP : SIMSUG_UP)},
+    {head: upFirst ? "Released" : "Show just this game", rows: relU.slice(0, upFirst ? SIMSUG_UP : SIMSUG_JUMP)},
+    {head: "Coming soon", rows: upU.slice(0, upFirst ? SIMSUG_JUMP : SIMSUG_UP)},
   ].filter(x => x.rows.length);
   if(upFirst) groups.reverse();
   let html = groups.map((x, n) => `<div class="ss-h${n ? " ss-alt" : ""}">${x.head}</div>` + x.rows.map(pickBtn).join("")).join("");
