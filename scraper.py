@@ -141,6 +141,19 @@ REVIEW_LIVE_MAX_AGE_DAYS = float(os.environ.get("REVIEW_LIVE_MAX_AGE_DAYS", "30"
 # the tiers rather than replacing them. Set to 0 to disable.
 PICS_REV_DELTA = int(os.environ.get("PICS_REV_DELTA", "3"))
 
+# Fix 3 — REVIEW_FLOOR_DAYS (Oct 2026): past the last tier a game was re-scraped only when
+# its store page moved or PICS caught its % drifting, so a year-old game with a quiet store
+# page kept its review COUNT from whenever it was first scraped — on 26 Oct 2026 ~72k games
+# still carried counts from the first full sweep in early July, a median of 109 days old
+# (the pipeline monitor's per-game age chart). The floor re-scrapes any stored game whose
+# `scraped_at` is older than this, ranked BEHIND every other trigger, so it only spends run
+# time the real work left over. Steady state ~105k / 60 = ~1.75k refreshes/day (~3.5k
+# storefront calls, under an hour of run time); the first pass is the ~72k backlog, drained
+# oldest-first from the spare capacity over a few days. New games keep their NEW_RESERVE_FRAC
+# share of every run meanwhile (~15 a run, done in its first minutes); only a flood of new
+# apps would notice, held to that share instead of the whole run. Set to 0 to disable.
+REVIEW_FLOOR_DAYS = float(os.environ.get("REVIEW_FLOOR_DAYS", "60"))
+
 # TOP_TAGS / SteamSpy tags moved to tags_refresh.py (it was the slowest per-game call).
 COUNTRY = "us"                  # cc=us => USD prices
 
@@ -1000,8 +1013,8 @@ def git_checkpoint(msg):
 # --------------------------------------------------------------------------- #
 def review_tier(release_ts, now):
     """(tier_index, cooldown_seconds) for a game's age since release, or None when it
-    is older than the last tier (or has no usable release_ts) — those keep the old
-    last_modified-only behaviour."""
+    is older than the last tier (or has no usable release_ts) — those are refreshed by
+    last_modified, PICS drift and the REVIEW_FLOOR_DAYS floor instead."""
     if not release_ts or release_ts > now:
         return None
     age_days = (now - release_ts) / 86400
@@ -1049,11 +1062,12 @@ def select_work(master, has_lm, processed, catalog, released=None):
     last_modified signal. Their store details are upcoming_refresh.py's job, batched daily
     off the storefront budget — this scraper no longer sweeps them one call at a time.
     REFRESH = stored (released) games due for a re-scrape, ranked by why they're due
-    (see the rank table below) and oldest-touched first within each rank. Three
+    (see the rank table below) and oldest-touched first within each rank. Four
     triggers, in the order they were added:
       * last_modified moved past scraped_at (the original signal — store/depot only),
       * the game's age-since-release tier cooldown elapsed (REVIEW_TIERS),
-      * PICS's review percentage disagrees with our stored one (PICS_REV_DELTA).
+      * PICS's review percentage disagrees with our stored one (PICS_REV_DELTA),
+      * nothing re-scraped it for REVIEW_FLOOR_DAYS (the floor; last in the queue).
     Ahead of all three, the forced queue and any record still carrying free-promo
     residue (promo_residue) are re-scraped first, then every stored game Steam stopped
     answering for (catalog["recheck"] or marked `unknown`; strike_no_answer).
@@ -1139,9 +1153,11 @@ def select_work(master, has_lm, processed, catalog, released=None):
     #   3      PICS says our stored rating_pct is provably wrong
     #   4      last_modified moved (a real store-page change)  <- the old sole trigger
     #   5..8   tiers 30-60d / 60-90d / 90-180d / 180-365d      (slow backfill)
+    #   9      REVIEW_FLOOR_DAYS passed with no other trigger  (spare capacity only)
     #   -1     Steam stopped answering for it (strike_no_answer): asked again every run, first
-    RANK_UNANSWERED, RANK_PICS, RANK_LM = -1, 3, 4
-    n_tier = n_pics = n_lm = n_unans = 0
+    RANK_UNANSWERED, RANK_PICS, RANK_LM, RANK_FLOOR = -1, 3, 4, 9
+    floor_s = REVIEW_FLOOR_DAYS * 86400
+    n_tier = n_pics = n_lm = n_unans = n_floor = 0
     recheck = catalog.get("recheck") or {}
 
     cands = []
@@ -1186,13 +1202,18 @@ def select_work(master, has_lm, processed, catalog, released=None):
                 n_pics += 1
                 rank = RANK_PICS if rank is None else min(rank, RANK_PICS)
 
+        # The floor: only what no other trigger queued (a tier game is due long before it).
+        if rank is None and floor_s > 0 and (now - sat) >= floor_s:
+            n_floor += 1
+            rank = RANK_FLOOR
+
         if rank is not None:
             cands.append((rank, sat, aid))   # within a rank: oldest-scraped first
     cands.sort()
-    if REVIEW_TIER_REFRESH or PICS_REV_DELTA > 0:
+    if REVIEW_TIER_REFRESH or PICS_REV_DELTA > 0 or floor_s > 0:
         log(f"Refresh triggers: {n_unans} unanswered, {n_tier} age-tier, {n_pics} PICS "
-            f"review-drift (>={PICS_REV_DELTA}pt), {n_lm} last_modified "
-            f"(overlapping; {len(cands)} distinct)")
+            f"review-drift (>={PICS_REV_DELTA}pt), {n_lm} last_modified, {n_floor} "
+            f"{REVIEW_FLOOR_DAYS:g}-day floor (overlapping; {len(cands)} distinct)")
     refresh_ids = forced + promo_bad + [a for _, _, a in cands]
     return new_ids, refresh_ids
 
@@ -1226,7 +1247,8 @@ def main():
         f"(both interleave into the refresh queue)")
     if REVIEW_TIER_REFRESH:
         log("Review tiers (age since release -> cooldown): "
-            + ", ".join(f"<={d}d:{c}d" for d, c in REVIEW_TIERS))
+            + ", ".join(f"<={d}d:{c}d" for d, c in REVIEW_TIERS)
+            + (f"; older: {REVIEW_FLOOR_DAYS:g}d floor" if REVIEW_FLOOR_DAYS > 0 else ""))
 
     skipped = set(catalog["skipped"])
     pending = dict(catalog.get("pending") or {})

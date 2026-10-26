@@ -27,20 +27,22 @@
     --text:#f1f4fb; --title:#ffffff; --muted:#b9c4dd; --muted-2:#94a0c0; --gold:#ffc24d;
     --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"Chivo Mono",ui-monospace,monospace;
     /* Chart colours, validated on --panel (#192133) with the dataviz six-check script:
-       blue/orange/aqua pass every check; failures use status-critical, beside blue, never
-       beside green (red/green fails the colour-blind check). */
+       blue/orange/aqua pass every check; failures use status-critical, never beside green
+       (red/green fails the colour-blind check). */
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --critical:#d03b3b;
     color-scheme:dark;
   }
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
   body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5}
-  main{max-width:1180px; margin:0 auto; padding:24px 16px 56px}
+  /* Fluid up to 1920px: the small multiples go 1 → 2 → 3 → 4 a row as the screen widens. */
+  main{max-width:1920px; margin:0 auto; padding:24px clamp(16px, 3vw, 48px) 56px}
   a{color:var(--gold)}
   .crumbs{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-bottom:14px}
   .crumbs a{color:var(--muted)}
   h1{font-size:1.7rem; line-height:1.2; margin:0 0 6px; color:var(--title)}
   h2{font-size:1.15rem; margin:0 0 4px; color:var(--title)}
-  .lede{color:var(--muted); margin:0 0 18px; max-width:760px}
+  .lede{color:var(--muted); margin:0 0 18px}
   .asof{font-family:var(--mono); font-size:12.5px; color:var(--muted-2)}
 
   .filters{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 18px}
@@ -53,25 +55,55 @@
   .seg button[aria-pressed="true"]{background:var(--panel-2); color:var(--title); font-weight:600}
   .seg button:hover{background:rgba(255,255,255,.04)}
 
-  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:12px; margin-bottom:22px}
-  .tile{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px}
-  .tile .k{font-size:13px; color:var(--muted-2)}
-  .tile .v{font-size:24px; font-weight:600; color:var(--title); margin-top:2px}
+  /* Shown only when Steam stops answering review fetches (the 22–24 Oct 2026 wipe's signature). */
+  .banner{display:flex; gap:10px; align-items:flex-start; background:var(--panel);
+          border:1px solid var(--critical); border-left-width:4px; border-radius:10px;
+          padding:12px 14px; margin:0 0 18px; color:var(--text)}
+  .banner::before{content:"⚠"; color:var(--critical); font-weight:700}
+  .banner b{color:var(--title)}
+
+  .tiles{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-bottom:22px}
+  @media (max-width:719px){ .tiles > .tile:last-child:nth-child(odd){grid-column:1 / -1} }
+  @media (min-width:720px){ .tiles{grid-template-columns:repeat(3, minmax(0, 1fr))} }
+  @media (min-width:1100px){ .tiles{grid-template-columns:repeat(5, minmax(0, 1fr))} }
+  .tile{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; min-width:0}
+  .tile .k{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted-2)}
+  .tile .v{font-size:24px; font-weight:600; color:var(--title); margin-top:2px; font-variant-numeric:tabular-nums}
   .tile .d{font-size:13px; color:var(--muted); margin-top:2px}
   .tile .alert{color:var(--text); font-weight:600}
   .tile .alert::before{content:"⚠ "; color:var(--critical)}
 
   section{background:var(--panel); border:1px solid var(--line); border-radius:12px;
-          padding:16px 16px 12px; margin-bottom:18px}
+          padding:16px 16px 12px; margin-bottom:18px; min-width:0}
+  @media (max-width:520px){ section{padding:14px 12px 10px} }
+  /* Catalog and Scrape runs side by side once there's room for two full-size charts. */
+  .pair{display:grid; gap:18px; margin-bottom:18px}
+  .pair > section{margin:0}
+  @media (min-width:1200px){ .pair{grid-template-columns:minmax(0, 1fr) minmax(0, 1fr)} }
   .sub{color:var(--muted-2); font-size:13.5px; margin:0 0 10px}
   .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:13px; color:var(--muted); margin:0 0 6px}
   .legend i{display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px}
   .legend i.line{height:2px; border-radius:1px; vertical-align:3px; width:16px}
-  .multi{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px}
-  .mini{border:1px solid var(--line); border-radius:10px; padding:8px 10px 2px}
-  .mini .mh{display:flex; justify-content:space-between; gap:8px; align-items:baseline}
-  .mini .mn{font-size:13px; color:var(--muted)}
-  .mini .mv{font-family:var(--mono); font-size:13px; color:var(--title); white-space:nowrap}
+  .multi{display:grid; grid-template-columns:minmax(0, 1fr); gap:12px}
+  @media (min-width:640px){ .multi{grid-template-columns:repeat(2, minmax(0, 1fr))} }
+  @media (min-width:1024px){ .multi{grid-template-columns:repeat(3, minmax(0, 1fr))} }
+  @media (min-width:1500px){ .multi{grid-template-columns:repeat(4, minmax(0, 1fr))} }
+  .mini{border:1px solid var(--line); border-radius:10px; padding:8px 10px 2px; min-width:0}
+  .mini .mh{display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 10px; align-items:center}
+  .mini .mn{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); min-width:0}
+  .mini .mv{display:flex; gap:10px; font-family:var(--mono); font-size:13px; color:var(--title); white-space:nowrap; margin-left:auto}
+  .mini .mv i{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px}
+
+  /* The ⓘ beside a label: hover, focus or tap opens one shared popover (#pop). */
+  .info{appearance:none; position:relative; flex:none; width:17px; height:17px; padding:0; border-radius:50%;
+        border:1px solid var(--axis); background:transparent; color:var(--muted-2); cursor:help;
+        font:600 10.5px/1 var(--mono); display:inline-flex; align-items:center; justify-content:center}
+  .info::after{content:""; position:absolute; inset:-9px}          /* a ~35px touch target */
+  .info:hover, .info[aria-expanded="true"]{border-color:var(--muted); color:var(--title)}
+  .info:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  .pop{position:absolute; z-index:20; width:max-content; max-width:min(360px, calc(100vw - 24px));
+       background:#0b1020; border:1px solid var(--line); border-radius:8px; padding:9px 11px;
+       font-size:13px; line-height:1.45; color:var(--text); box-shadow:0 6px 18px rgba(0,0,0,.45)}
 
   .chart{position:relative; width:100%}
   .chart svg{display:block; width:100%; overflow:visible}
@@ -104,7 +136,8 @@
   <h1>Pipeline monitor</h1>
   <p class="lede">How fresh and how complete the Steam data behind QTPD is, over time. A snapshot is
     recorded after every catalog scrape and every two hours; history before 25 Oct 2026 is rebuilt from
-    the repository at one point a day. <span class="asof" id="asof"></span></p>
+    the repository at one point a day. Tap or hover <span aria-hidden="true">ⓘ</span> for what a number
+    means. <span class="asof" id="asof"></span></p>
 
   <div class="filters" role="group" aria-label="Time range">
     <span class="lab">Range</span>
@@ -116,40 +149,44 @@
     </div>
   </div>
 
+  <div class="banner" id="alert" role="status" hidden></div>
   <div class="tiles" id="tiles"></div>
 
-  <section aria-labelledby="h-catalog">
-    <h2 id="h-catalog">Catalog</h2>
-    <p class="sub">Games stored in <code>games.json</code> at each snapshot.</p>
-    <div class="chart" id="c-games"></div>
-    <details><summary>Table</summary><div class="tbl" id="t-catalog"></div></details>
-  </section>
+  <div class="pair">
+    <section aria-labelledby="h-catalog">
+      <h2 id="h-catalog">Catalog</h2>
+      <p class="sub">Released games stored in <code>games.json</code> at each snapshot. It grows as the
+        scraper finds new releases; unreleased games wait outside it until they come out.</p>
+      <div class="chart" id="c-games"></div>
+      <details><summary>Table</summary><div class="tbl" id="t-catalog"></div></details>
+    </section>
 
-  <section aria-labelledby="h-runs">
-    <h2 id="h-runs">Scrape runs</h2>
-    <p class="sub">One column per run of the catalog scraper: games scraped for the first time and games
-      refreshed. Below it, the review fetches each run made, answered by Steam or failed; runs before 25 Oct
-      2026 did not record them.</p>
-    <div class="legend"><span><i style="background:var(--s1)"></i>Refreshed</span><span><i style="background:var(--s2)"></i>New</span></div>
-    <div class="chart" id="c-runs"></div>
-    <div class="legend" style="margin-top:12px"><span><i style="background:var(--s1)"></i>Answered</span><span><i style="background:var(--critical)"></i>Failed (Steam gave no usable answer)</span></div>
-    <div class="chart" id="c-reviews"></div>
-    <details><summary>Table</summary><div class="tbl" id="t-runs"></div></details>
-  </section>
+    <section aria-labelledby="h-runs">
+      <h2 id="h-runs">Scrape runs</h2>
+      <p class="sub">One column per run of the catalog scraper: stored games it re-scraped (refreshed) and
+        games it scraped for the first time (new).</p>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Refreshed</span><span><i style="background:var(--s2)"></i>New</span></div>
+      <div class="chart" id="c-runs"></div>
+      <details><summary>Table</summary><div class="tbl" id="t-runs"></div></details>
+    </section>
+  </div>
 
   <section aria-labelledby="h-files">
     <h2 id="h-files">Time since each file was refreshed</h2>
-    <p class="sub">Age of each data file at the snapshot: it climbs while the file waits and drops when its
-      job writes it again. A line that keeps climbing is a job that stopped writing.</p>
+    <p class="sub">How long before each snapshot the file was last written: the line climbs while the file
+      waits and drops when its job writes it again, so a line that keeps climbing is a job that stopped
+      writing. The figure on each card is that age at the latest snapshot; <span aria-hidden="true">ⓘ</span>
+      says which job writes the file and how often.</p>
     <div class="multi" id="c-files"></div>
     <details><summary>Table</summary><div class="tbl" id="t-files"></div></details>
   </section>
 
   <section aria-labelledby="h-rows">
     <h2 id="h-rows">How old the per-game data is</h2>
-    <p class="sub">Age of each game's own timestamp in the file: half the catalog is fresher than the median,
-      95% is fresher than the 95th percentile. Review counts sit in <code>games.json</code>; old games are
-      re-scraped only when their store page changes, so their counts age.</p>
+    <p class="sub">Every game carries the time its data was last fetched. Half the games were fetched more
+      recently than the median, 95% more recently than the 95th percentile. Each source has its own refresh
+      rule, so how old is normal differs per card. The split of review counts by release age starts on
+      26 Oct 2026; before it only the all-games line was recorded.</p>
     <div class="legend"><span><i class="line" style="background:var(--s1)"></i>Median</span><span><i class="line" style="background:var(--s2)"></i>95th percentile</span></div>
     <div class="multi" id="c-rows"></div>
     <details><summary>Table</summary><div class="tbl" id="t-rows"></div></details>
@@ -157,8 +194,8 @@
 
   <section aria-labelledby="h-cov">
     <h2 id="h-cov">Coverage</h2>
-    <p class="sub">Share of catalog games that carry each layer. History rebuilt from git has no tags, trailer
-      or Steam-metadata counts (those files were too large to replay).</p>
+    <p class="sub">Share of catalog games that carry each layer, and how many games that is. History rebuilt
+      from git has no tags, trailer or Steam-metadata counts (those files were too large to replay).</p>
     <div class="multi" id="c-cov"></div>
     <details><summary>Table</summary><div class="tbl" id="t-cov"></div></details>
   </section>
@@ -173,10 +210,48 @@ const LABEL = {
   files: {games:"Catalog (games.json)", prices:"Prices", recent:"30-day scores", playtime:"Playtime",
           ratings:"Weighted rating", hltb:"HLTB times", tags:"Tags", trailers:"Trailers", length:"Length",
           updates:"Update history", pics:"Steam metadata (PICS)", upcoming:"Upcoming games"},
-  rows:  {games:"Review counts & game records", prices:"Prices", recent:"30-day scores", hltb:"HLTB times"},
+  rows:  {games_young:"Review counts · released < 1 yr ago", games_old:"Review counts · released > 1 yr ago",
+          games:"Review counts · all games", prices:"Prices", recent:"30-day scores", hltb:"HLTB times"},
   cov:   {reviews:"Has reviews", prices:"Has a price", recent:"Has a 30-day score", playtime:"Has playtime",
           ratings:"Has a weighted rating", hltb:"Has an HLTB time", tags:"Has tags", trailers:"Has a trailer",
           length:"Has a length estimate", pics:"Has Steam metadata"},
+};
+// What each number means, for the ⓘ popovers. Cadences are the workflows' crons (FRESHNESS.md).
+const TIP = {
+  files: {
+    games:"games.json — the catalog scraper (job 1). It runs every 6 hours for up to 5.5 hours and saves every ~10 minutes while it runs, so a normal age is minutes, up to about an hour between runs.",
+    prices:"prices.json — the price and sale sweep (job 2.1), every hour. Normal: under about an hour.",
+    recent:"recent.json — 30-day review scores (job 2.2), every 6 hours. Normal: under about 7 hours.",
+    playtime:"playtime.json — playtime medians (job 3.1), rebuilt after each playtime pass (job 2.3, every 3 hours; a pass can run for hours). Normal: under about 6 hours.",
+    ratings:"ratings.json — playtime-weighted ratings (job 3.2), rebuilt with playtime after each pass. Normal: under about 6 hours.",
+    hltb:"hltb.json — HowLongToBeat times (job 2.5), every 2 hours. Normal: under about 3 hours.",
+    tags:"tags.json — SteamSpy tags (job 2.6), every 2 hours, but it writes only while some games still lack tags, so a quiet stretch can be normal.",
+    trailers:"trailers.json — store trailers (job 2.8), daily at 05:13 UTC. Normal: under a day.",
+    length:"length.json — length estimates (job 3.4), rebuilt after each playtime pass. Normal: under about 6 hours.",
+    updates:"updates.json — update history (job 3.3), rebuilt after each update-events pass (job 2.4, every 6 hours). Normal: under about 7 hours.",
+    pics:"pics.json — Steam's own app metadata (job 2.7), daily at 03:20 UTC, plus catch-up passes for new games three times a day. Normal: under a day.",
+    upcoming:"upcoming.json — unreleased games (job 2.11), daily at 00:23 UTC. Normal: under a day.",
+  },
+  rows: {
+    games_young:"How long ago each game released in the past year last had its reviews (and the rest of its store record) fetched. These are re-checked on a ladder: every 6 hours in the first 3 days after release, widening to every 15 days by the first anniversary. Normal: a few days at most.",
+    games_old:"The same for games released more than a year ago — most of the catalog. They are re-scraped when their store page changes, when Steam's own rating % drifts 3+ points from ours, and, since 26 Oct 2026, at least every 60 days. Before that rule most still carried the review counts from the first full scrape in early July, so this climbed a day per day; it falls below 60 days as that backlog drains.",
+    games:"Both groups together — the only review-age series recorded before 26 Oct 2026. Older games are about four in five of the catalog, so the median sits among them; that is why it rose by exactly a day every day.",
+    prices:"When each game's price was last checked. The hourly sweep re-checks every priced game, so both lines should stay near zero.",
+    recent:"When each game's 30-day review score was last checked: every 4 days for games patched in the last 90 days, every 30 days for the rest. The lines saw-tooth as the 30-day batch ages and is redone.",
+    hltb:"When each game's HowLongToBeat entry was last fetched. Complete entries are re-fetched once a year and partial ones every 14 days: completion times barely move, so an age of months here is by design, not a stall.",
+  },
+  cov: {
+    reviews:"Games with at least one Steam review counted.",
+    prices:"Games with a price record. Free games, and games Steam sells no package for, have none.",
+    recent:"Games with a 30-day review score. Steam shows one only for games out 45+ days with reviews in the last 30 days, so a low share is expected.",
+    playtime:"Games with a playtime median, read from the playtime their reviewers recorded. Games with under 5 reviews are skipped by design.",
+    ratings:"Games with a playtime-weighted rating (each review weighted by the reviewer's hours). Built from the same reviews as playtime, so it tracks that share.",
+    hltb:"Games matched to a HowLongToBeat entry with at least one time. Many small games are not listed there.",
+    tags:"Games with SteamSpy user tags.",
+    trailers:"Games with a store trailer.",
+    length:"Games with a Length estimate, built from the playtime of reviewers who recommend the game.",
+    pics:"Games with Steam's own app metadata (PICS): the adult flag, review %, categories.",
+  },
 };
 const C = {s1:"var(--s1)", s2:"var(--s2)", s3:"var(--s3)", crit:"var(--critical)", panel:"#192133", line:"#2c3858", axis:"#46557a"};
 const NS = "http://www.w3.org/2000/svg";
@@ -225,6 +300,8 @@ function rangeTicks(lo, hi, n){
 }
 // Ages are charted in hours or days, whichever suits the largest value shown.
 function ageUnit(max){ return max > 3*DAY ? {div:DAY, sfx:"d"} : {div:3600, sfx:"h"}; }
+// A chart's height follows its width, so a wide screen gets taller charts and a phone stays compact.
+const fitH = (host, ratio, lo, hi) => Math.round(Math.max(lo, Math.min(hi, host.clientWidth * ratio)));
 
 // ---------- svg helpers ----------
 function svgEl(tag, attrs, parent){
@@ -246,9 +323,58 @@ function placeTip(tip, host, x, y){
   tip.style.top = Math.max(0, y - 10) + "px";
 }
 
+// ---------- ⓘ popovers ----------
+// One shared popover. Hover or keyboard focus opens it while there; a click or tap pins it until
+// the next click, tap elsewhere, or Escape.
+const pop = document.createElement("div");
+pop.className = "pop"; pop.id = "pop"; pop.setAttribute("role", "tooltip"); pop.hidden = true;
+document.body.appendChild(pop);
+let popFor = null, popPinned = false;
+function info(text){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "info"; b.textContent = "i";
+  b.setAttribute("aria-label", "What this means"); b.setAttribute("aria-expanded", "false");
+  b.dataset.tip = text;
+  return b;
+}
+function openPop(b){
+  if(popFor && popFor !== b) closePop();
+  popFor = b; pop.textContent = b.dataset.tip; pop.hidden = false;
+  b.setAttribute("aria-expanded", "true"); b.setAttribute("aria-describedby", "pop");
+  const r = b.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  const left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2));
+  const top = r.bottom + 8 + h > innerHeight - 8 && r.top - 8 - h > 8 ? r.top - 8 - h : r.bottom + 8;
+  pop.style.left = left + scrollX + "px"; pop.style.top = top + scrollY + "px";
+}
+function closePop(){
+  if(popFor){ popFor.setAttribute("aria-expanded", "false"); popFor.removeAttribute("aria-describedby"); }
+  popFor = null; popPinned = false; pop.hidden = true;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".info");
+  if(b){ if(popFor === b && popPinned) closePop(); else { openPop(b); popPinned = true; } return; }
+  if(!pop.contains(e.target)) closePop();
+});
+document.addEventListener("pointerover", e => {
+  const b = e.pointerType === "mouse" && e.target.closest(".info");
+  if(b && popFor !== b && !popPinned) openPop(b);
+});
+document.addEventListener("pointerout", e => {
+  const b = e.pointerType === "mouse" && e.target.closest(".info");
+  if(b && b === popFor && !popPinned && !b.contains(e.relatedTarget) && document.activeElement !== b) closePop();
+});
+document.addEventListener("focusin", e => {
+  const b = e.target.closest && e.target.closest(".info");
+  if(b){ if(popFor !== b) openPop(b); } else if(!pop.contains(e.target)) closePop();
+});
+document.addEventListener("keydown", e => { if(e.key === "Escape") closePop(); });
+
 // ---------- line chart ----------
-// series: [{name, color, pts:[[t, v|null], ...]}] sharing the same t's. Breaks the line at nulls.
-function lineChart(host, {series, t0, t1, height, yMax, fit, yFmt, axisFmt, label}){
+// series: [{name, color, pts:[[t, v|null], ...]}] sharing the same t's. Breaks the line at nulls
+// (a snapshot older than a field reads it as undefined, which is treated the same). `unit` is the
+// axis's display unit in data units (3600 for hours), so ticks land on round hours, not seconds.
+function lineChart(host, {series, t0, t1, height, yMax, fit, unit, yFmt, axisFmt, label}){
   host.textContent = "";
   const all = series.flatMap(s => s.pts.filter(p => p[1] != null));
   if(!all.length){
@@ -258,7 +384,8 @@ function lineChart(host, {series, t0, t1, height, yMax, fit, yFmt, axisFmt, labe
   const W = Math.max(240, host.clientWidth), H = height;
   const ml = 46, mr = 10, mt = 8, mb = 20, pw = W - ml - mr, ph = H - mt - mb;
   const vals = all.map(p => p[1]), max = yMax != null ? yMax : Math.max(...vals);
-  const ticks = fit ? rangeTicks(Math.min(...vals), max, H > 160 ? 4 : 2) : niceTicks(max, H > 160 ? 4 : 2);
+  const U = unit || 1, nt = H > 150 ? 4 : 3;
+  const ticks = (fit ? rangeTicks(Math.min(...vals) / U, max / U, nt) : niceTicks(max / U, nt)).map(v => v * U);
   const bot = ticks[0], top = ticks[ticks.length - 1] > bot ? ticks[ticks.length - 1] : bot + 1;
   const x = t => ml + (t1 > t0 ? (t - t0) / (t1 - t0) : 1) * pw;
   const y = v => mt + ph - ((v - bot) / (top - bot)) * ph;
@@ -430,15 +557,24 @@ try { const v = localStorage.getItem("qtpd-monitor-days"); if(v != null && ["0",
 function idx(list, name){ return list.indexOf(name); }
 function snapsIn(t0){ return M.snaps.filter(s => s[0] >= t0); }
 
-function tile(host, k, v, d, alert){
+function tile(host, k, v, d, alert, tipText){
   const e = document.createElement("div"); e.className = "tile";
-  const a = document.createElement("div"); a.className = "k"; a.textContent = k;
+  const a = document.createElement("div"); a.className = "k";
+  const n = document.createElement("span"); n.textContent = k; a.appendChild(n);
+  if(tipText) a.appendChild(info(tipText));
   const b = document.createElement("div"); b.className = "v"; b.textContent = v;
   const c = document.createElement("div"); c.className = "d" + (alert ? " alert" : ""); c.textContent = d;
   e.append(a, b, c); host.appendChild(e);
 }
 
+// A review-age tile for one group of games (index gi into the per-game age arrays).
+function ageTile(host, last, gi, k, tipText){
+  const p50 = gi >= 0 ? last[5][gi] : null, p95 = gi >= 0 ? last[6][gi] : null;
+  tile(host, k, fmtAge(p50), p50 == null ? "recorded from the next snapshot" : `median · 95% fresher than ${fmtAge(p95)}`, false, tipText);
+}
+
 function render(){
+  closePop();
   const now = Math.floor(Date.now() / 1000);
   const snaps = M.snaps, runs = M.runs;
   const last = snaps[snaps.length - 1];
@@ -447,44 +583,64 @@ function render(){
   document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === DAYS)));
   $("#asof").textContent = last ? `Last snapshot ${fmtWhen(last[0])} UTC (${last[1]}).` : "";
 
+  // Alert: only when Steam stopped answering review fetches on the latest run that counted them.
+  const rr = [...runs].reverse().find(r => r[6] != null), alert = $("#alert");
+  alert.hidden = !(rr && rr[7] > rr[6]);
+  if(!alert.hidden){
+    alert.textContent = "";
+    const b = document.createElement("b"); b.textContent = "Steam stopped answering review requests. ";
+    const s = document.createElement("span");
+    s.textContent = `The latest scrape run (saved ${fmtWhen(rr[1])} UTC) got ${fmtInt(rr[7])} failed review fetches against ` +
+                    `${fmtInt(rr[6])} answered, so review counts are not being refreshed. Per-run counts are in the Scrape runs table.`;
+    const w = document.createElement("div"); w.append(b, s); alert.appendChild(w);
+  }
+
   // Tiles
   const tiles = $("#tiles"); tiles.textContent = "";
   if(last){
     const weekAgo = snaps.filter(s => s[0] <= last[0] - 7 * DAY).pop();
     tile(tiles, "Games in catalog", fmtInt(last[2]),
-         weekAgo ? `${last[2] - weekAgo[2] >= 0 ? "+" : ""}${fmtInt(last[2] - weekAgo[2])} in 7 days` : `${fmtInt(last[3])} upcoming waiting`);
+         weekAgo ? `${last[2] - weekAgo[2] >= 0 ? "+" : ""}${fmtInt(last[2] - weekAgo[2])} in 7 days` : `${fmtInt(last[3])} upcoming waiting`,
+         false, `Released games stored in games.json at the latest snapshot, and the change over 7 days. ` +
+                `Unreleased games (${fmtInt(last[3])} now) wait outside the catalog and join it when they come out.`);
   }
   const lr = runs[runs.length - 1];
   if(lr) tile(tiles, "Last scrape run", fmtAge(now - lr[1]) + " ago",
-              `+${fmtInt(lr[3])} new · ${fmtInt(lr[4])} refreshed${lr[9] ? "" : " · still running"}`);
-  const rr = [...runs].reverse().find(r => r[6] != null);
-  if(rr){
-    const tot = (rr[6] || 0) + (rr[7] || 0);
-    const bad = tot && rr[7] > rr[6];
-    tile(tiles, "Review fetches, latest run", tot ? fmtPct(rr[6] / tot) + " answered" : "—",
-         bad ? `Steam not answering: ${fmtInt(rr[7])} failed` : `${fmtInt(rr[7])} failed of ${fmtInt(tot)}`, bad);
-  }
+              `+${fmtInt(lr[3])} new · ${fmtInt(lr[4])} refreshed${lr[9] ? "" : " · still running"}`, false,
+              "When the catalog scraper last saved, counted from now, and what that run added (new games) and " +
+              "re-scraped (refreshed). It runs every 6 hours for up to 5.5 hours and saves every ~10 minutes, " +
+              "so “still running” is normal.");
+  // Re-checks: what the runs saved in the last 24 hours refreshed. A run is counted whole once it
+  // saved inside the window, so this can run up to one run's worth over a strict 24 hours.
+  const day = runs.filter(r => (r[1] || 0) >= now - DAY), week = runs.filter(r => (r[1] || 0) >= now - 7 * DAY);
+  const reck = day.reduce((a, r) => a + (r[4] || 0), 0), reckW = week.reduce((a, r) => a + (r[4] || 0), 0);
+  if(runs.length) tile(tiles, "Games re-checked, 24h", fmtInt(reck),
+       !day.length ? "no scrape run saved in 24 hours"
+                   : `${last && last[2] ? Math.round(reck / last[2] * 100) + "% of the catalog · " : ""}${fmtCompact(reckW)} in 7 days`,
+       !day.length,
+       "Stored games the scraper re-fetched from Steam's store (reviews, price, details) in runs saved in the last " +
+       "24 hours. A game re-checked twice counts twice: the newest releases are re-checked every 6 hours.");
   if(last){
-    const gi = idx(M.row_ages, "games");
-    tile(tiles, "Median review-count age", fmtAge(last[5][gi]), `95% are fresher than ${fmtAge(last[6][gi])}`);
+    const gy = idx(M.row_ages, "games_young"), go = idx(M.row_ages, "games_old");
+    ageTile(tiles, last, gy, "Reviews · released < 1 yr", TIP.rows.games_young);
+    ageTile(tiles, last, go, "Reviews · released > 1 yr", TIP.rows.games_old);
   }
 
   // Catalog
-  lineChart($("#c-games"), {series:[{name:"Games stored", color:C.s1, pts:S.map(s => [s[0], s[2]])}],
-    t0, t1, height:220, fit:true, yFmt:fmtInt, axisFmt:v => (v / 1e3).toFixed(1).replace(/\.0$/, "") + "K", label:"Games stored over time"});
+  const cg = $("#c-games");
+  lineChart(cg, {series:[{name:"Games stored", color:C.s1, pts:S.map(s => [s[0], s[2]])}],
+    t0, t1, height:fitH(cg, 0.3, 200, 300), fit:true, yFmt:fmtInt, axisFmt:v => (v / 1e3).toFixed(1).replace(/\.0$/, "") + "K", label:"Games stored over time"});
   table($("#t-catalog"), ["Snapshot (UTC)", "Source", "Games", "Upcoming waiting"],
         [...S].reverse().map(s => [fmtWhen(s[0]), s[1], fmtInt(s[2]), fmtInt(s[3])]));
 
   // Runs
   const runBars = R.map(r => ({t:r[1],
     segs:[{name:"Refreshed", color:C.s1, v:r[4]}, {name:"New", color:C.s2, v:r[3]}],
-    detail:[["games stored", fmtInt(r[2])], ["held pending", fmtInt(r[5])]]}));
-  columnChart($("#c-runs"), {bars:runBars, height:200, label:"Games new and refreshed per scrape run"});
-  const revBars = R.filter(r => r[6] != null).map(r => ({t:r[1],
-    segs:[{name:"Answered", color:C.s1, v:r[6]}, {name:"Failed", color:C.crit, v:r[7]}],
-    detail:r[8] ? [["zero kept", fmtInt(r[8])]] : []}));
-  columnChart($("#c-reviews"), {bars:revBars, height:160, label:"Review fetches answered and failed per scrape run"});
-  table($("#t-runs"), ["Run saved (UTC)", "Stored", "New", "Refreshed", "Pending", "Answered", "Failed", "Final"],
+    detail:[["games stored", fmtInt(r[2])], ["held pending", fmtInt(r[5])]]
+           .concat(r[6] != null ? [["reviews answered", fmtInt(r[6])], ["reviews failed", fmtInt(r[7])]] : [])}));
+  const cr = $("#c-runs");
+  columnChart(cr, {bars:runBars, height:fitH(cr, 0.3, 200, 300), label:"Games new and refreshed per scrape run"});
+  table($("#t-runs"), ["Run saved (UTC)", "Stored", "New", "Refreshed", "Pending", "Reviews answered", "Reviews failed", "Final"],
         [...R].reverse().map(r => [fmtWhen(r[1]), fmtInt(r[2]), fmtInt(r[3]), fmtInt(r[4]), fmtInt(r[5]),
                                    fmtInt(r[6]), fmtInt(r[7]), r[9] ? "yes" : "checkpoint"]));
 
@@ -494,44 +650,55 @@ function render(){
     const pts = S.map(s => [s[0], s[4][i]]);
     const vals = pts.map(p => p[1]).filter(v => v != null);
     const u = ageUnit(Math.max(0, ...vals));
-    mini(fhost, LABEL.files[f] || f, last ? fmtAge(last[4][i]) : "—", host => lineChart(host,
-      {series:[{name:LABEL.files[f] || f, color:C.s1, pts}], t0, t1, height:120,
-       yFmt:fmtAge, axisFmt:v => (v / u.div).toFixed(v / u.div < 10 && v % u.div ? 1 : 0).replace(/\.0$/,"") + u.sfx,
+    mini(fhost, LABEL.files[f] || f, last ? fmtAge(last[4][i]) : "—", TIP.files[f], host => lineChart(host,
+      {series:[{name:LABEL.files[f] || f, color:C.s1, pts}], t0, t1, height:fitH(host, 0.42, 130, 190), unit:u.div,
+       yFmt:fmtAge, axisFmt:v => +(v / u.div).toFixed(1) + u.sfx,
        label:`Age of ${f}.json over time`}));
   });
   table($("#t-files"), ["Snapshot (UTC)", ...M.files.map(f => LABEL.files[f] || f)],
         [...S].reverse().map(s => [fmtWhen(s[0]), ...s[4].map(fmtAge)]));
 
-  // Per-game ages
+  // Per-game ages: the review-count split first, then the all-games line that carries the history.
+  const order = ["games_young", "games_old", "games", "prices", "recent", "hltb"].filter(f => M.row_ages.includes(f))
+                .concat(M.row_ages.filter(f => !LABEL.rows[f]));
   const rhost = $("#c-rows"); rhost.textContent = "";
-  M.row_ages.forEach((f, i) => {
+  order.forEach(f => {
+    const i = idx(M.row_ages, f);
     const p50 = S.map(s => [s[0], s[5][i]]), p95 = S.map(s => [s[0], s[6][i]]);
     const vals = [...p50, ...p95].map(p => p[1]).filter(v => v != null);
     const u = ageUnit(Math.max(0, ...vals));
-    mini(rhost, LABEL.rows[f] || f, last ? `${fmtAge(last[5][i])} · ${fmtAge(last[6][i])}` : "—", host => lineChart(host,
-      {series:[{name:"Median", color:C.s1, pts:p50}, {name:"95th percentile", color:C.s2, pts:p95}], t0, t1, height:140,
-       yFmt:fmtAge, axisFmt:v => (v / u.div).toFixed(0) + u.sfx, label:`Per-game data age, ${f}`}));
+    mini(rhost, LABEL.rows[f] || f, last ? [[C.s1, fmtAge(last[5][i])], [C.s2, fmtAge(last[6][i])]] : "—", TIP.rows[f], host => lineChart(host,
+      {series:[{name:"Median", color:C.s1, pts:p50}, {name:"95th percentile", color:C.s2, pts:p95}], t0, t1, height:fitH(host, 0.42, 130, 190),
+       unit:u.div, yFmt:fmtAge, axisFmt:v => +(v / u.div).toFixed(1) + u.sfx, label:`Per-game data age, ${LABEL.rows[f] || f}`}));
   });
-  table($("#t-rows"), ["Snapshot (UTC)", ...M.row_ages.flatMap(f => [`${LABEL.rows[f] || f} median`, "95th"])],
-        [...S].reverse().map(s => [fmtWhen(s[0]), ...M.row_ages.flatMap((f, i) => [fmtAge(s[5][i]), fmtAge(s[6][i])])]));
+  table($("#t-rows"), ["Snapshot (UTC)", ...order.flatMap(f => [`${LABEL.rows[f] || f} median`, "95th"])],
+        [...S].reverse().map(s => [fmtWhen(s[0]), ...order.flatMap(f => { const i = idx(M.row_ages, f); return [fmtAge(s[5][i]), fmtAge(s[6][i])]; })]));
 
   // Coverage
   const chost = $("#c-cov"); chost.textContent = "";
   M.coverage.forEach((f, i) => {
     const pts = S.map(s => [s[0], s[7][i] != null && s[2] ? s[7][i] / s[2] : null]);
-    mini(chost, LABEL.cov[f] || f, last && last[7][i] != null ? `${fmtPct(last[7][i] / last[2])} · ${fmtCompact(last[7][i])}` : "—", host => lineChart(host,
-      {series:[{name:LABEL.cov[f] || f, color:C.s3, pts}], t0, t1, height:120, yMax:1,
+    mini(chost, LABEL.cov[f] || f, last && last[7][i] != null ? `${fmtPct(last[7][i] / last[2])} · ${fmtCompact(last[7][i])}` : "—", TIP.cov[f], host => lineChart(host,
+      {series:[{name:LABEL.cov[f] || f, color:C.s3, pts}], t0, t1, height:fitH(host, 0.42, 130, 190), yMax:1,
        yFmt:fmtPct, axisFmt:v => Math.round(v * 100) + "%", label:`Coverage over time: ${f}`}));
   });
   table($("#t-cov"), ["Snapshot (UTC)", "Games", ...M.coverage.map(f => LABEL.cov[f] || f)],
         [...S].reverse().map(s => [fmtWhen(s[0]), fmtInt(s[2]), ...s[7].map(c => c == null ? "—" : `${fmtPct(c / s[2])} (${fmtInt(c)})`)]));
 }
 
-function mini(parent, name, value, draw){
+// One small multiple: a name (with its ⓘ), the latest value top right, and the chart. `value` is a
+// string, or [[colour, text], ...] for a two-series card, each figure keyed by its series' dot.
+function mini(parent, name, value, tipText, draw){
   const box = document.createElement("div"); box.className = "mini";
   const head = document.createElement("div"); head.className = "mh";
-  const n = document.createElement("span"); n.className = "mn"; n.textContent = name;
-  const v = document.createElement("span"); v.className = "mv"; v.textContent = value;
+  const n = document.createElement("span"); n.className = "mn";
+  const nt = document.createElement("span"); nt.textContent = name; n.appendChild(nt);
+  if(tipText) n.appendChild(info(tipText));
+  const v = document.createElement("span"); v.className = "mv";
+  if(Array.isArray(value)) for(const [color, text] of value){
+    const s = document.createElement("span"), dot = document.createElement("i");
+    dot.style.background = color; s.append(dot, text); v.appendChild(s);
+  } else v.textContent = value;
   head.append(n, v);
   const host = document.createElement("div"); host.className = "chart";
   box.append(head, host); parent.appendChild(box);
@@ -543,8 +710,14 @@ document.querySelectorAll("#range button").forEach(b => b.addEventListener("clic
   try { localStorage.setItem("qtpd-monitor-days", String(DAYS)); } catch(e){}
   if(M) render();
 }));
-let resizeTimer = 0;
-addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if(M) render(); }, 150); });
+// Re-render on a width change only: a phone's address bar showing or hiding fires resize with
+// the same width, and a redraw there would close an open popover mid-read.
+let resizeTimer = 0, lastW = innerWidth;
+addEventListener("resize", () => {
+  if(innerWidth === lastW) return;
+  lastW = innerWidth;
+  clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if(M) render(); }, 150);
+});
 
 fetch("monitor.json", {cache:"no-store"})
   .then(r => { if(!r.ok) throw new Error(`monitor.json: HTTP ${r.status}`); return r.json(); })

@@ -31,8 +31,8 @@ check("nothing valid -> (None, None)", M.ages(T, [None, 0]) == (None, None))
 print("\n== snapshot: one row from whatever files are readable ==")
 FILES = {
     "games":   {"generated_at": T - 2 * H, "games": [
-                   {"appid": 1, "review_count": 10, "scraped_at": T - D},
-                   {"appid": 2, "review_count": 0,  "scraped_at": T - 3 * D},
+                   {"appid": 1, "review_count": 10, "scraped_at": T - D, "release_ts": T - 30 * D},
+                   {"appid": 2, "review_count": 0,  "scraped_at": T - 3 * D, "release_ts": T - 900 * D},
                    {"appid": 3, "review_count": 5,  "scraped_at": T - 2 * D}]},
     "prices":  {"generated_at": T - H, "prices": {"1": {"scraped_at": T - H}, "2": {"scraped_at": T - H},
                                                   "99": {"scraped_at": T - H}}},      # 99: not in catalog
@@ -53,6 +53,9 @@ check("unread file with no git time -> None", age["trailers"] is None)
 p50 = dict(zip(M.ROW_AGES, row[5]))
 check("games row age: median of 1d/2d/3d", p50["games"] == 2 * D)
 check("prices row age counts catalog games only", p50["prices"] == H)
+check("games split: released within a year", p50["games_young"] == D)
+check("games split: older (3d) and undated (2d) together, upper median", p50["games_old"] == 3 * D)
+check("an older snapshot's shorter arrays still line up by name", M.ROW_AGES[:4] == ["games", "prices", "recent", "hltb"])
 cov = dict(zip(M.COVERAGE, row[7]))
 check("reviews = games with a review count", cov["reviews"] == 2)
 check("prices coverage excludes a non-catalog appid", cov["prices"] == 2)
