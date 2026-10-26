@@ -1,0 +1,102 @@
+name: 4.6 Industry stats -> stats.json
+
+# Steam by the numbers (stats.html, opened from the game counter on the main page): every release
+# aggregated by month, plus the sale history new releases need for "days to first sale", kept in
+# sales_state.json. See stats.py and ARCHITECTURE §11.8.
+on:
+  schedule:
+    - cron: "43 */3 * * *"    # backstop only: GitHub drops most crons on this repo
+  workflow_dispatch:          # dispatched by the price job after every pass (~hourly;
+    inputs:                   # price_and_sale.py trigger_deploy) — the clock that actually keeps time
+      backfill:
+        description: "Replay prices.json from git history into sales_state.json (one point a day) instead of one live record"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write             # commits stats.json + sales_state.json
+  actions: write              # the live run dispatches the backfill when the sale history has a gap
+
+concurrency:
+  group: stats-json           # one writer per file; a backfill and a live run never overlap
+  cancel-in-progress: false
+
+jobs:
+  stats:
+    if: github.event_name != 'workflow_dispatch' || !inputs.backfill
+    runs-on: ubuntu-latest
+    timeout-minutes: 15       # ~30 s of work; the checkout is the rest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          # Shallow + sparse (ARCHITECTURE §4 "Checkouts"): every file stats.py reads, and the two
+          # it writes. Sparse also makes this a partial clone, so nothing else downloads.
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /stats.py
+            /stats.json
+            /sales_state.json
+            /games.json
+            /prices.json
+            /pics.json
+            /tags.json
+            /ea_dates.json
+            /length.json
+            /demos.json
+            /lookups/
+            /gitsync.py
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git (stats.py commits its files itself)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Record prices, rebuild stats
+        env:
+          GH_TOKEN: ${{ github.token }}   # `gh workflow run stats.yml -f backfill=true` on a gap
+        run: python stats.py
+
+  backfill:
+    if: github.event_name == 'workflow_dispatch' && inputs.backfill
+    runs-on: ubuntu-latest
+    timeout-minutes: 60       # ~120 days at ~2.5 s each; saved every 15 days, re-runnable
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          # FULL history, but sparse: commits and trees only (a partial clone), which is what
+          # `git log` needs to pick each day's last commit. prices.json is streamed per day from
+          # raw.githubusercontent.com, never stored.
+          fetch-depth: 0
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /stats.py
+            /stats.json
+            /sales_state.json
+            /games.json
+            /prices.json
+            /pics.json
+            /tags.json
+            /ea_dates.json
+            /length.json
+            /demos.json
+            /lookups/
+            /gitsync.py
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Configure git (stats.py commits its files itself)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Replay prices from git history
+        run: python stats.py --backfill

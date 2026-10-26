@@ -601,6 +601,11 @@ def main():
              ts_map={}, cov=None, window="n/a (monitor)",
              note="After every scrape (`workflow_run`) and every price pass (dispatched by "
                   "2.1), with a 2-hourly backstop cron; charted by monitor.html (§11.7)."),
+        dict(key="4.6", kind="monitor", wf="stats.yml", label="Steam by the numbers",
+             script="stats.py", owns="stats.json", stamp=json_stamp("stats.json"),
+             ts_map={}, cov=None, window="n/a (monitor)",
+             note="Dispatched by 2.1 after every price pass, with a 3-hourly backstop cron; "
+                  "also keeps the sale history in `sales_state.json`. Charted by stats.html (§11.8)."),
         dict(key="0", kind="publish", wf="pages.yml", label="Pages deploy", script="—",
              owns="(site)", stamp=None, ts_map={}, cov=None, window="n/a (publish)",
              note="Republishes current `main`. Leaves no artifact in the repo, so there is "

@@ -514,11 +514,14 @@ def trigger_deploy():
     `actions: write` and GH_TOKEN in prices.yml); pages.yml's concurrency group queues it
     behind a deploy already in flight. Best effort — a failed dispatch leaves the cron.
     The same dispatch takes the pipeline monitor's snapshot (monitor.yml, src=prices): its
-    2-hourly cron fired 3 times in 8 on 25-26 Oct 2026, and a pass is a steady ~hourly clock."""
+    2-hourly cron fired 3 times in 8 on 25-26 Oct 2026, and a pass is a steady ~hourly clock.
+    And it rebuilds Steam by the numbers (stats.yml), which records this pass's discounts
+    into the sale history (stats.py)."""
     if not IN_ACTIONS:
         return
     for wf, extra, what in (("pages.yml", [], "deploy"),
-                            ("monitor.yml", ["-f", "src=prices"], "monitor snapshot")):
+                            ("monitor.yml", ["-f", "src=prices"], "monitor snapshot"),
+                            ("stats.yml", [], "stats rebuild")):
         try:
             r = subprocess.run(["gh", "workflow", "run", wf, "--ref", "main", *extra],
                                capture_output=True, text=True, timeout=60)

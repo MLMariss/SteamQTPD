@@ -77,6 +77,10 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   The owner reaffirmed this on 2026-09-23 when review-based Length put an unflagged game tagged
   *Sexual Content / Hentai* at the top of two niche shelves: **no tag-based pushing down** — "we
   are not making decisions for others". The flag stays the only lock.
+  **Steam by the numbers** (`stats.html`, owner 2026-10-26: "counts all, rankings hide"): totals —
+  release counts, prices, EA, AI, Deck, reception — count every game; anything that ranks or names
+  games (tag and genre rankings, biggest releases) is built over games that pass `adult=hide`, and
+  `stats.py` fails the job if a named list ever holds an adult game.
 - This rule is not a default to weigh against other goals. It outranks result counts, shelf
   breadth, and "the metric says it is good value".
 
