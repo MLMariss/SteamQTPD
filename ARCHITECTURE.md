@@ -630,7 +630,10 @@ the price job reaches it still renders a price. `scraped_at` is the staleness ke
 refresh trigger in §6 compares against, and `is_free` lives **here**, not in `prices.json`.
 `is_free` / `discount_pct` are **reconciled against the prices at capture** — a live free-to-keep
 promo answers `is_free: true` + `discount_percent: 100` on top of the full price, and stored
-verbatim that snapshot outlives the promo (§15).
+verbatim that snapshot outlives the promo (§15). Optional **`unknown`** (Oct 2026): present only
+on a game Steam's store has not answered for in `MAX_RECHECK` checks running — the time of the
+latest unanswered check; the rest of the record, `scraped_at` included, is the last answer
+(§11 *Status unknown*).
 
 **`reviews_restore.json`** (temporary) — `{ _note, _format: [rating_pct, review_count],
 wiped_from, sources, count, "games": {appid: [rating_pct, review_count]} }`. Each game's last
@@ -643,7 +646,8 @@ never written; not read by the frontend. Delete it once a scrape run has saved a
 the active seeds, §6), `force_refresh` (the drained-first forced queue), `seeds_ledger`
 (`{seed_key: {kind, resolved_ts, ids, forced_applied}}`), and **`recheck`** (`{appid:
 strikes}` — apps whose `appdetails` returned `success:false`, retried across runs until they
-resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1), and **`runs`** (the last
+resolve or hit `MAX_RECHECK`, then moved to `skipped`; §3.1. A *stored* game is never moved:
+its strikes keep counting and its record is marked `unknown` — §11 *Status unknown*), and **`runs`** (the last
 `RUNS_KEPT` = 400 runs, one line each — `start`, `saved`, `stored`, `new`, `refreshed`, `pending`,
 `reviews_answered` / `_failed` / `_zero_kept`, `final` — upserted at every save by
 `record_run()`, read by `monitor.py`; §11.7). (`tba_probed`, the retired TBA
@@ -933,6 +937,9 @@ prior 30 days had a **median scrape age of 13 days**. Three triggers now feed on
 | 1 | `last_modified` moved past `scraped_at` | store/depot edits (the original signal) |
 | 2 | **`REVIEW_TIERS`** — per-game cooldown widening with age since release | review score/count drift on everything under a year old |
 | 3 | **`PICS_REV_DELTA`** — `pics.json`'s `rev` % disagrees with stored `rating_pct` by ≥3 pt | provably-stale scores on games of *any* age |
+
+Ahead of all three (Oct 2026): every stored game in `catalog["recheck"]` or marked `unknown` —
+Steam stopped answering for it — is asked again every run, first (§11 *Status unknown*).
 
 **`REVIEW_TIERS`** = `(max_age_days, cooldown_days)`: `≤3d→6h`, `≤10d→12h`, `≤30d→1d`,
 `≤60d→2d`, `≤90d→3.5d`, `≤180d→7d`, `≤365d→15d`. Past a year, trigger 1 + 3 take over. The
@@ -2063,6 +2070,30 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
   itself, its sort and *Released within* are unchanged: they still mean what Steam's release date
   means.
 
+**Status unknown (Oct 2026).** A stored game Steam's store stopped answering for. Valkyrie Girl
+(4671710) was the case: stored in June as an upcoming shell, its store page then gave no game
+(`appdetails` `success:false`), and four months later it still headed *Upcoming, Released ↑* on
+its June date ("Q2 2026 · due"). The `recheck` rule (§5) was written for apps never stored; for a
+stored one it moved the appid to `skipped` and left the record in `games.json`, frozen, with its
+strikes starting over. Now (`scraper.py` `strike_no_answer()`):
+
+- **The record is kept and asked again every run**, ahead of every other refresh
+  (`select_work()`'s first rank). Its strikes keep counting; it never goes to `skipped`. A run of
+  blips must not lose a real game: 3,155 stored games, ELDEN RING among them, sit in `skipped`
+  from earlier `success:false` answers and are scraped fine.
+- **From `MAX_RECHECK` (4) strikes it carries `unknown`**: the time of the latest unanswered
+  check. `scraped_at` is left alone, so it still says when Steam last answered. Any answer clears
+  it: a scrape replaces the record, and a pending or not-a-game answer drops the field.
+- **The page lists it only for a typed search** (`passNonRange()`): the user named that game. The
+  default view, *Upcoming*, shelves, Lucky, Wishlist only, Find similar and Publisher all leave it
+  out, and `presets.py` skips it so shelf counts match. Found by name, it carries a coral
+  **Unknown status** badge where *Upcoming* / *1.0* would sit (it replaces them; neither can be
+  vouched for), "status unknown" in the title suggestions, and the Released tip gains when Steam
+  last answered and how old that is ("Last data from Steam: 2026-JUN-27, 4 mo old").
+- **Residual:** `success:false` cannot tell delisted from region-locked (cc=us) from gone, so the
+  badge says *unknown* and claims nothing more. A game whose store page dies while Steam keeps
+  answering `success:true` is not caught by this.
+
 **Free-only mode.** Dividing by a zero price is undefined, so free games normally show no QTPD.
 But when the price-type filter is narrowed to **Free alone** (`freeMode()` — `priceClass` is
 exactly `{free}`), the QTPD column switches to **`freeScore()`** = `hours × rating%` with no
@@ -2891,7 +2922,8 @@ Each job's knobs live at the top of its own script:
   (§16 revert plan).
 - **`MAX_RECHECK` (4, env)** (scraper) — how many runs an app whose `appdetails` returns
   `success:false` is retried before moving to `skipped`. `success:false` lumps region-locked and
-  transient blips in with dead apps, hence the retries (§5, `catalog["recheck"]`).
+  transient blips in with dead apps, hence the retries (§5, `catalog["recheck"]`). For a stored
+  game it is instead the strike count at which the record is marked `unknown` (§11 *Status unknown*).
 - **`SEED_RESOLVE_TTL` (24h)** (scraper) — how often a term/URL seed is live-re-resolved, so a
   search term keeps catching newly-released matches (§6).
 - **`HLTB_MIN_SIMILARITY` (0.65)** — HLTB title-match threshold.
@@ -3113,6 +3145,13 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Status unknown (Oct 2026).** A stored game Steam's store stops answering for is no longer
+  left frozen on the site. `scraper.py` keeps its record and asks again every run; from
+  `MAX_RECHECK` (4) unanswered checks the record carries `unknown`, cleared by the next answer.
+  The page lists such a game only for a typed search, badged *Unknown status*, with its last
+  answer's date in the Released tip; `presets.py` skips it. Valkyrie Girl, heading *Upcoming* on
+  a June date, was the case. Full design in §11 *Status unknown*; `test_unknown_status.py`.
 
 - **Pipeline monitor (Oct 2026).** A history of the pipeline, charted on a new page,
   `monitor.html`, opened from the data-age counter in the top bar (unstyled, so nothing on the

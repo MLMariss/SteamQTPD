@@ -254,7 +254,10 @@ Each of these implies a new scrape and a new JSON file merged by `appid` in the 
   after **`MAX_RECHECK` (=4, env-overridable)** strikes is it promoted to a permanent skip. A
   success or pending result clears its strikes; each run also prunes entries no longer in
   Steam's app list (delisted-and-removed apps), so nothing lingers in limbo. See §5. *Low
-  impact (small count), low effort; safe quick win.*
+  impact (small count), low effort; safe quick win.* *Follow-up (Oct 2026):* that design
+  missed games already **stored** — skipping one never removed its record, so it sat on the site
+  frozen (Valkyrie Girl, four months). A stored game now keeps its record, is asked every run,
+  and is marked `unknown` from `MAX_RECHECK` strikes (ARCHITECTURE §11 *Status unknown*).
 
 ### 3.2 Frontend / UX (no new scraping)
 

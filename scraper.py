@@ -96,6 +96,8 @@ MAX_RECHECK = int(os.environ.get("MAX_RECHECK", "4"))  # appdetails success:fals
                                 # before a game is treated as a permanent skip. success:false
                                 # lumps region-locked (cc=us) + transient blips with dead apps,
                                 # so we retry across this many runs before giving up (§3.1).
+                                # A STORED game is never skipped: at this many it is marked
+                                # `unknown` and still asked every run (strike_no_answer).
 
 # --- Review freshness: age-tiered refresh + PICS drift trigger (Jul 2026) ----
 # WHY: Steam's last_modified (GetAppList) tracks store/depot changes, NOT review
@@ -710,6 +712,30 @@ def promo_residue(rec):
         free, rec.get("price_initial"), rec.get("price_final"), disc)
 
 
+def strike_no_answer(aid, rec, recheck, skipped, now):
+    """appdetails said success:false for `aid`; `rec` is its stored record, or None.
+    An app we never stored keeps the bounded retry: MAX_RECHECK strikes, then `skipped`.
+    A STORED game is never given up on that way. Moving one to `skipped` never removed its
+    record — it stayed in games.json, frozen, and its strikes started over (Valkyrie Girl sat
+    in the Upcoming view four months after Steam stopped answering for it) — and a run of
+    blips must not lose a real game either. So its strikes keep counting, select_work asks
+    again every run, and from MAX_RECHECK on the record carries `unknown`: the time of the
+    latest unanswered check. `scraped_at` is left alone, so it still says when Steam last
+    answered. The site shows such a game only to a typed search, badged. The next answer
+    replaces the record, mark and all."""
+    strikes = recheck.get(aid, 0) + 1
+    if rec is None:
+        if strikes >= MAX_RECHECK:
+            skipped.add(aid)
+            recheck.pop(aid, None)
+        else:
+            recheck[aid] = strikes
+        return
+    recheck[aid] = strikes
+    if strikes >= MAX_RECHECK or rec.get("unknown"):
+        rec["unknown"] = int(now)
+
+
 def parse_price(appid, d):
     """(is_free, price_initial, price_final, discount_pct) from an appdetails data block."""
     is_free = bool(d.get("is_free"))
@@ -1029,7 +1055,8 @@ def select_work(master, has_lm, processed, catalog, released=None):
       * the game's age-since-release tier cooldown elapsed (REVIEW_TIERS),
       * PICS's review percentage disagrees with our stored one (PICS_REV_DELTA).
     Ahead of all three, the forced queue and any record still carrying free-promo
-    residue (promo_residue) are re-scraped first.
+    residue (promo_residue) are re-scraped first, then every stored game Steam stopped
+    answering for (catalog["recheck"] or marked `unknown`; strike_no_answer).
     """
     now = int(time.time())
     skipped = set(catalog["skipped"])
@@ -1112,14 +1139,20 @@ def select_work(master, has_lm, processed, catalog, released=None):
     #   3      PICS says our stored rating_pct is provably wrong
     #   4      last_modified moved (a real store-page change)  <- the old sole trigger
     #   5..8   tiers 30-60d / 60-90d / 90-180d / 180-365d      (slow backfill)
-    RANK_PICS, RANK_LM = 3, 4
-    n_tier = n_pics = n_lm = 0
+    #   -1     Steam stopped answering for it (strike_no_answer): asked again every run, first
+    RANK_UNANSWERED, RANK_PICS, RANK_LM = -1, 3, 4
+    n_tier = n_pics = n_lm = n_unans = 0
+    recheck = catalog.get("recheck") or {}
 
     cands = []
     for k, rec in processed.items():
         aid = int(k); sat = rec.get("scraped_at", 0)
         if aid in forced_set or aid in promo_set:
             continue                       # queued explicitly up front; don't double-add
+        if aid in recheck or rec.get("unknown"):
+            n_unans += 1
+            cands.append((RANK_UNANSWERED, sat, aid))
+            continue
         if has_lm:
             lm = master.get(aid)
             changed = lm is not None and lm > sat
@@ -1157,8 +1190,8 @@ def select_work(master, has_lm, processed, catalog, released=None):
             cands.append((rank, sat, aid))   # within a rank: oldest-scraped first
     cands.sort()
     if REVIEW_TIER_REFRESH or PICS_REV_DELTA > 0:
-        log(f"Refresh triggers: {n_tier} age-tier, {n_pics} PICS review-drift "
-            f"(>={PICS_REV_DELTA}pt), {n_lm} last_modified "
+        log(f"Refresh triggers: {n_unans} unanswered, {n_tier} age-tier, {n_pics} PICS "
+            f"review-drift (>={PICS_REV_DELTA}pt), {n_lm} last_modified "
             f"(overlapping; {len(cands)} distinct)")
     refresh_ids = forced + promo_bad + [a for _, _, a in cands]
     return new_ids, refresh_ids
@@ -1200,8 +1233,9 @@ def main():
     recheck = dict(catalog.get("recheck") or {})   # {appid: attempts} soft-skip retries (§3.1)
     # Drop recheck entries no longer in Steam's app list (delisted + removed): they can't be
     # re-scraped, so they'd otherwise linger forever without ever reaching the strike cap.
-    # If such an app is relisted later it re-enters as fresh work with a clean slate.
-    recheck = {aid: n for aid, n in recheck.items() if aid in master}
+    # If such an app is relisted later it re-enters as fresh work with a clean slate. A stored
+    # game keeps its strikes: it is asked again every run regardless (strike_no_answer).
+    recheck = {aid: n for aid, n in recheck.items() if aid in master or str(aid) in processed}
     # Durable forced-refresh queue: an '!'-seed's stored matches stay queued across runs
     # until actually re-scraped, so a budget-limited run doesn't drop them. The
     # forced_applied latch in the ledger stops them being re-added (no loop).
@@ -1348,21 +1382,18 @@ def main():
             _, _pdate, pts = res
             pending[aid] = pts
             recheck.pop(aid, None)          # it responded -> not a dead app after all
+            processed.get(str(aid), {}).pop("unknown", None)
             n_pend += 1
         elif res == "recheck":
             # appdetails success:false: retry across runs (region-lock / transient blip)
-            # rather than dropping forever. Only after MAX_RECHECK strikes is it a hard skip.
-            strikes = recheck.get(aid, 0) + 1
-            if strikes >= MAX_RECHECK:
-                skipped.add(aid)
-                recheck.pop(aid, None)
-            else:
-                recheck[aid] = strikes
+            # rather than dropping forever. Only an app we never stored is ever a hard skip.
+            strike_no_answer(aid, processed.get(str(aid)), recheck, skipped, time.time())
             pending.pop(aid, None)
         elif res == "skip":
             skipped.add(aid)
             recheck.pop(aid, None)
             pending.pop(aid, None)
+            processed.get(str(aid), {}).pop("unknown", None)
 
         if time.time() - last_tick > CHECKPOINT_SECONDS:
             if time.time() - last_commit > COMMIT_SECONDS:
@@ -1389,7 +1420,8 @@ def main():
                    f"{n_pend} pending)")
     log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending. "
         f"Stored {len(processed)}, skipped {len(skipped)}, waiting {len(pending)}, "
-        f"rechecking {len(recheck)}.")
+        f"rechecking {len(recheck)}, "
+        f"{sum(1 for r in processed.values() if r.get('unknown'))} stored marked unknown.")
     rs = REVIEW_STATS
     log(f"Reviews: {rs['answered']} answered, {rs['failed']} failed and "
         f"{rs['zero_kept']} zero-after-count, both kept the stored value.")
