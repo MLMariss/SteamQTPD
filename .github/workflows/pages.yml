@@ -27,6 +27,7 @@ on:
       - index.html                # a look/layout change -> deploy right away
       - how-it-works.html         # the explainer page
       - monitor.html              # the pipeline monitor (its data, monitor.json, rides the 30-min republish)
+      - stats.html                # Steam by the numbers (its data, stats.json, rides the same republish)
       - .github/workflows/pages.yml   # a change to WHAT gets published should publish it
       - seo_snapshot.py               # changes what the published page contains
       - sitemap.xml
@@ -95,6 +96,7 @@ jobs:
           # the pings below come from whoever controls this site. Public by design.
           cp how-it-works.html _site/
           cp monitor.html _site/
+          cp stats.html _site/
           for f in *.txt; do [[ "$f" =~ ^[0-9a-f]{32}\.txt$ ]] && cp "$f" _site/; done; true
 
       # Stamp today's date (UTC) as <lastmod> on the tool's own URL in the PUBLISHED sitemap.

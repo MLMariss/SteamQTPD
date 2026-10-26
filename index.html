@@ -135,7 +135,8 @@
   .field-x:hover{color:#ffb0b0}
   .has-q > .field-x{display:block}
   .meta{font-family:var(--mono); font-size:13px; color:var(--muted); text-align:right; line-height:1.55; flex:none}
-  .meta .meta-age{color:inherit; text-decoration:none; cursor:pointer}   /* the link to monitor.html, unstyled on purpose */
+  /* the links to monitor.html (the age) and stats.html (the game count), unstyled on purpose */
+  .meta .meta-age, .meta .meta-count{color:inherit; text-decoration:none; cursor:pointer}
   .meta .n{color:var(--text)}
   .preview-badge{display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid var(--gold-deep);
         color:var(--gold); border-radius:999px; font-size:12px; letter-spacing:.05em; text-transform:uppercase}
@@ -5769,13 +5770,15 @@ function renderMeta(){
   // anywhere: what the two numbers count, what the timestamp is the age OF (the scrape, not the
   // page load), and why USD is asserted. Each group carries its own tip rather than one blob over
   // the whole line — the tooltip engine picks up any [title] and adds the help cursor for free.
-  const countTip = "Results — games matching your current filters, out of every game in the catalogue the Release toggle picks (released, upcoming or both).";
+  const countTip = "Results — games matching your current filters, out of every game in the catalogue the Release toggle picks (released, upcoming or both). Click to open Steam by the numbers: what comes out on Steam, month by month — releases, tags, prices, Early Access and sales.";
   const ageTip   = "Data age — how long since the scraper last refreshed prices and reviews. Updates run continuously, so this is usually minutes, not days. Click to open the pipeline monitor: how fresh and complete every data layer has been, scrape by scrape.";
   const curTip   = "Currency — every price here is US dollars from the Steam US store. There is no currency conversion.";
-  const counts = `<span title="${esc(countTip)}"><span class="n">${total}</span> / ${state.scopeCount ?? d.games.length} games</span>`;
-  // The age is the way into monitor.html — a plain link that looks exactly like the text around
-  // it (.meta-age): the counter is read far more often than it is clicked, so it adds no colour,
-  // underline or hover state to a strip every page view shows.
+  // The age is the way into monitor.html and the game count the way into stats.html — plain links
+  // that look exactly like the text around them (.meta-age, .meta-count): the strip is read far
+  // more often than it is clicked, so it gains no colour, underline or hover state.
+  const countText = `<span class="n">${total}</span> / ${state.scopeCount ?? d.games.length} games`;
+  const counts = d.sample ? `<span title="${esc(countTip)}">${countText}</span>`
+                          : `<a class="meta-count" href="stats.html" title="${esc(countTip)}">${countText}</a>`;
   const when   = d.sample ? '' : `<a class="meta-age" href="monitor.html" title="${esc(ageTip)}">${relTime(d.generated_at)}</a> · `;
   $("#meta").innerHTML = `${counts} · ${when}<span title="${esc(curTip)}">USD</span>${badge}${hid}`;
   const ub = $("#unhide"); if(ub) ub.addEventListener("click", unhideAll);

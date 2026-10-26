@@ -70,6 +70,7 @@ they aren't re-proposed. Sorted roughly by value-to-effort within each group.
 | Scraper throughput levers (reviews-only pass) | §3.5 | Not needed today; documented for when it is |
 | Uniform-refresh review (dormant lanes) | §3.5 | Waiting for the fill frontier to fully drain |
 | isthereanydeal · sequel graph · dev-team grouping · buzz metric · trading cards · studio health | §3.3 | Source feasibility, per item |
+| **Price history layer** (every game's prices and sales over time) | §3.1 | **Parked by the owner (Oct 2026) for a later update** — design only for now |
 
 Open items living in **other** docs (not duplicated here — go to the source):
 
@@ -95,6 +96,19 @@ Items are grouped by the part of the system they touch. See the intro above for 
 constraints every item must respect, and the status index for what is actually open.
 
 ### 3.1 New data sources / metrics (scraper work)
+
+**Price history layer — PARKED (owner, 26 Oct 2026: "a separate task — park it for next update").**
+Keep every game's price and discount history, so the site can show a game's price over time, its
+lowest price, how often and how deep it goes on sale, and a histogram of its prices. Today only
+the current discount exists (`prices.json`); Steam by the numbers (ARCHITECTURE §11.8) keeps a
+narrow slice in `sales_state.json` — new releases only, up to their first sale after launch.
+The natural owner is `price_and_sale.py`, which sees every price every hour: a second file it
+alone writes (one writer per file), episodes as `[start day, end day, %]` per game rather than
+hourly samples. Git already holds the raw material from 29 Jun 2026 (`prices.json` at every
+commit), and `stats.py --backfill` shows the replay costs ~5 minutes for four months at one point a
+day. Open: per-game episodes for all ~115k priced games (sizing: `sales_state.json` is ~420 KB
+for ~9.5k games, so ~5 MB for the catalog), whether the page fetches it whole or sharded, and how
+a price change (not a sale) is recorded.
 
 Each of these implies a new scrape and a new JSON file merged by `appid` in the frontend
 (§11). Listed roughly by value-to-effort.

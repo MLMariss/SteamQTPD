@@ -508,12 +508,12 @@ pipeline hierarchy:
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
-| `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4), monitor (4.5) |
+| `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4), monitor (4.5), stats (4.6) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**30 workflow files, 29 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **20 of the 30 are cron-scheduled** (monitor
-4.5 also fires on `workflow_run`); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
+**31 workflow files, 30 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **21 of the 31 are cron-scheduled** (monitor
+4.5 also fires on `workflow_run`; monitor 4.5 and stats 4.6 are also dispatched by the price job); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 ea-dates-probe 0.5, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml`,
 `presets.yml` and `monitor.yml` match the scrape workflow's **exact `name:` string**, so renaming
@@ -604,6 +604,7 @@ each single-writes its `.md`):
 | `freshness.yml`     | `freshness.py`    | `FRESHNESS.md`| `0 7 * * *` (daily, the morning oversight pass)  | `freshness-md`    |
 | `presets.yml`       | `presets.py`      | `presets.json`| `workflow_run` after **scrape** succeeds (~4×/day) | `presets-json`    |
 | `monitor.yml`       | `monitor.py`      | `monitor.json`| `workflow_run` after **every** scrape + dispatched by the price job after **every** pass (~hourly) + `17 */2 * * *` backstop; manual `backfill` | `monitor-json` |
+| `stats.yml`         | `stats.py`        | `stats.json` + `sales_state.json` | dispatched by the price job after **every** pass (~hourly) + `43 */3 * * *` backstop; `backfill` dispatched by itself on a gap, or by hand | `stats-json` |
 
 `coverage.py` recomputes every coverage figure from the live files + shards and self-commits
 `COVERAGE.md`. It reports **two axes** (full design in §11.5): **Axis 1 — total coverage**
@@ -709,7 +710,24 @@ row_p95[], coverage[]]`, each array in the order its name list gives (`files`, `
 `coverage`); ages are seconds before `t`, coverage counts catalog games, `null` = not measured.
 `src` is `scrape` / `cron` / `manual` / `backfill`. Runs follow `catalog.json` `runs`; lines
 rebuilt from commit messages have `start: null` and no review counts. Written only by
-`monitor.py`, read only by `monitor.html` (§11.7). `pics.json` gained a `generated_at` (Oct
+`monitor.py`, read only by `monitor.html` (§11.7).
+
+**`stats.json`** (~310 KB, served) — Steam by the numbers, every figure **per release month**
+from `m0` to the current month, so the page sums months into quarters and years: `m` (named
+arrays: releases, releases without the adult flag, PICS-covered, AI / AI-live, Deck 1-3,
+controller, VR, demo, EA launches / still in EA, rated, rating sum, Length count, priced, price
+sum in cents, free), histograms as one array per bin (`priceb` by `price_ub`, `revb` by
+`rev_edges`, `lenb` by `len_edges`, `lab` by Steam's nine review `labels`), `tags` / `genres`
+(`names` + one array each, over games without the adult flag), `daily` (releases per UTC day
+from `d0`), `top` (`{month: [[appid, title, reviews, pct, left_ea], ...]}`, ten per month, adult
+games never), `ea_out` (`{month: [days in EA, ...]}` by 1.0 month), `sale` (`{month: {n, l, lp,
+e:{day: count}, c:{day: count}, ep}}`: games watched from launch, launch discounts and their %
+sum, first sales after launch week and censored games by day since release, first-sale % sum),
+`sale_days` (`[day, priced, on sale, % sum]` per UTC day) and `now` (in EA now and its age bins,
+announced 1.0 dates). **`sales_state.json`** (~420 KB, not served) — its memory: `games`
+`{appid: [first priced day, last seen day, start, last on sale, deepest %, ...]}` for games
+watched since release, up to their first sale after the launch week; `days` as above;
+`last_day`. Both written only by `stats.py` (§11.8). `pics.json` gained a `generated_at` (Oct
 2026) so its age can be read like every other file's.
 
 **`upcoming.json`** — `{ generated_at, count, swept_at, "released": [appid, ...], "games":
@@ -3078,6 +3096,73 @@ still line up by name.
 `test_monitor.py` covers the snapshot maths (the young / old split included), the run merge,
 the daily sampling and the file round trip.
 
+## 11.8 Steam by the numbers (`stats.py` → `stats.json` → `stats.html`)
+
+The rest of the site asks what a game is worth; this page asks what Steam is doing. It is opened
+from the **game counter** in the main page's top bar (`renderMeta()`, `.meta-count` — the
+"29551 / 133591 games" figures), a plain link styled like the text around it, exactly as the
+data-age counter opens the monitor. `noindex`, unlisted: reached from the site, not from search.
+
+**What it shows**, for a month, quarter or year picked on a timeline (a column click, ‹ ›, the
+arrow keys, or a year × month heatmap cell), against the period before or the same one a year
+earlier, every chart and tile following the pick: releases per day and per weekday; the most
+common tags and genres with what rose and fell; price ranges and the median / mean price over
+time; Early Access launches, how long the games that left it in the period had spent in it, and
+how many are in it now; how soon a new release first goes on sale and how much of the store is
+on sale each day; AI disclosure, Steam Deck, controller and VR shares over time; reviews per
+game, the Steam rating mix, Length, the period's biggest releases; and demos. A period still in
+progress is marked *so far*, and release counts compare per day so it compares fairly. The URL
+hash holds the pick (`#2026-09`, `#2026-Q3`, `#2026`, `&vs=yoy`), so a view can be linked.
+
+**Grouped by release month, measured today.** `stats.py` aggregates per release month, so a
+quarter or a year is a sum; every median the page shows is read off a per-month histogram (price
+points, Length hours) or list (EA durations), so it holds at any grouping. Prices, tags, reviews
+and Deck ratings are what the catalog says now — Steam keeps no launch prices for us to read —
+and the page says so where it matters. A game that left Early Access is dated by its 1.0 launch,
+as Steam dates it (Valheim tops September 2026); the biggest-releases list marks such games
+**1.0**, and the EA charts count its EA start and graduation separately. Shares over fewer than
+20 games are not drawn, so the handful of 2006 releases a month don't set the scale.
+
+**Adult content (CLAUDE.md product rules).** Totals count every game: release counts, prices,
+EA, AI, Deck and reception are industry figures and put no game in front of anyone. What ranks or
+names games — the tag and genre rankings and the biggest-releases list — is built over games
+that pass `adult=hide`, decided as the main page decides it (`is_adult()` mirrors `isAdult()`:
+the storefront flag wherever PICS covers the game, the tag heuristic only where it doesn't).
+`build()` fails the job if a biggest-releases list ever holds an adult game, as `presets.py`
+does for the shelves. The genre ranking leaves out PICS genres 71-74 (Sexual Content, Nudity,
+Violent, Gore): they describe content, not a kind of game, and dropping them drops no game.
+The known residual stands as on the shelves: a PICS-covered game with an unset flag passes.
+
+**Sale timing.** `prices.json` holds only today's discount, so `stats.py` keeps the history it
+needs in `sales_state.json`. A game is **watched** when its first price check comes within 3
+days of its release (`TRACK_SLACK`), so its sales are never measured from one we might have
+missed; for it the job records every sale episode `[start, last day seen on sale, deepest %]`
+up to and including the **first sale starting after the launch week** (`LAUNCH_DAYS` = 7) — a
+sale inside the first week is the launch discount. Games that left Early Access are left out
+(their release date is the 1.0 date). The page turns this into a **Kaplan-Meier** curve: a game
+not yet discounted counts as "not yet, as of its last check", so the median isn't pulled down by
+the games that sold first. First readings (Jul-Aug 2026 releases): ~75% launch with a discount,
+~20% off; the first sale after launch comes at a median 48-69 days, almost never before day 30.
+`sale_days` adds one catalog-wide row a day (games priced, on sale, % sum), the last check of the
+UTC day, for the "how much of Steam is on sale" line.
+
+**When.** Workflow 4.6, dispatched by the price job after every pass (`trigger_deploy()`, next
+to Pages and the monitor), with a 3-hourly backstop cron. Each run records the working tree's
+`prices.json` (each game's check timed by its own `scraped_at`) and rebuilds `stats.json`.
+**History.** `python stats.py --backfill` replays `prices.json` from git, one point a day (the
+last commit of each UTC day, streamed from `raw.githubusercontent.com`), from the state's last
+day — or from the first price commit, 29 Jun 2026 — to the newest commit; 120 days took ~5 min.
+Days must arrive in order per game, so a live run that finds the state two or more days behind
+records nothing and **dispatches the backfill** (`gh workflow run stats.yml -f backfill=true`),
+which fills the gap; that is also how the gap between this page's PR and its merge closes itself.
+
+**Rules.** One writer (`stats.py`, concurrency group `stats-json`); stdlib only;
+`test_stats.py` covers the classifiers, the episode recorder (watching, launch discount, first
+sale, freezing, out-of-order checks), the backfill's daily sampling, and the aggregates — that no
+ranking or list lets an adult-flagged game through. Colours: the selected period is `--s1`, the
+compared one a gray (`#b3bacb`) that clears the normal-vision and colour-blind separation checks
+against it on `--panel`; the rating scale is a diverging pair of validated ordinal arms.
+
 ---
 
 ## 12. Wishlist import & the Cloudflare Worker
@@ -3371,6 +3456,14 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Steam by the numbers (Oct 2026).** A new page, `stats.html`, opened from the game counter in
+  the top bar: releases, tags and genres, price ranges, Early Access length, how soon new games
+  first go on sale, how much of Steam is on sale, AI disclosure, Deck, reception and demos, by
+  month, quarter or year, against the period before or a year earlier. `stats.py` (workflow 4.6,
+  dispatched by the price job) aggregates per release month into `stats.json` and keeps the sale
+  history new releases need in `sales_state.json`, backfilled from git to 29 Jun 2026. Rankings
+  and named lists pass `adult=hide`; totals count every game. Full design in §11.8; `test_stats.py`.
 
 - **Pipeline audit: hangs, faulty writes, launch-day gaps (26 Oct 2026).** A week of Actions
   history (722 runs) and the data files, read together:
