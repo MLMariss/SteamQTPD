@@ -1245,9 +1245,21 @@
         min-height:2.5em;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gmeta-top .grates{flex:none}  /* scores stay put on the right as the title truncates */
-  /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards. */
+  /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards.
+     overflow-x is pinned to hidden because overflow-y:auto silently turns it to auto as well: the
+     action row used to be wider than a narrow card, and the overlay grew a sideways scrollbar thin
+     enough that nobody found it — "Close" sat half outside the card with no visible way to reach
+     it. Everything below is sized to fit the card's width instead, so there is nothing to scroll to. */
   .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:11px;
-        gap:5px; font-family:var(--mono); overflow-y:auto}
+        gap:5px; font-family:var(--mono); overflow-x:hidden; overflow-y:auto}
+  /* Nothing in the column may shrink. The clamped title is overflow:hidden, which drops its flex
+     min-height to 0, so on a short card it was the item that gave way — squashed to a sliver (0px
+     on a two-column phone grid), clipped at the top or overlapped by the Price row. */
+  .ginfo > *{flex:none}
+  /* The opened card's width, not the viewport's, decides how much fits: a 1028px desktop and a
+     390px phone both produce cards under ~230px. Inline-size containment is free here — a grid
+     card's width always comes from its track, never from its content. */
+  .gcard{container-type:inline-size}
   .gcard.open{cursor:default}
   /* Hidden with visibility, NOT display:none. `.ginfo` is position:absolute, so it adds zero
      height — display:none'ing the art and the panel leaves an open card with nothing in flow
@@ -1258,20 +1270,53 @@
      open/close never moves the layout. */
   .gcard.open .gart,.gcard.open .gmeta{visibility:hidden}
   .gcard.open .ginfo{display:flex}
+  /* padding-right keeps the title clear of the ✕ in the corner. */
   .gi-title{font-family:var(--sans); font-weight:600; font-size:13.5px; color:var(--title); line-height:1.2;
+        padding-right:24px;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .gi-title[title]{cursor:default}   /* a tip for the clamped name, not a help target */
+  /* Close is a corner ✕ rather than a fourth button in the action row: four labelled buttons do
+     not fit a card narrower than ~250px, and tapping anywhere on an opened card already closes
+     it, so this only needs to be findable, not big. */
+  .gi-close{position:absolute; top:6px; right:6px; width:22px; height:22px; display:flex; align-items:center;
+        justify-content:center; padding:0; border-radius:6px; border:1px solid var(--line); background:var(--panel);
+        color:var(--muted); font-size:12px; line-height:1; cursor:pointer}
+  .gi-close:hover{color:var(--text); border-color:var(--muted-2)}
   .gi-row{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--muted)}
+  /* One line per row: the label truncates rather than wrapping "median" onto a second line,
+     which on a narrow card was the extra height that pushed the buttons off the bottom. */
+  .gi-row > span{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .gi-row b{color:var(--text); font-weight:600; white-space:nowrap}
   /* Source qualifier after a row label — "Length est.", "Playtime median". Upright, not italic:
      these are names of data sources, not emphasis, and italic mono reads as an error state. */
   .gi-row i{font-style:normal; font-size:11px; color:var(--muted-2); margin-left:4px}
   .gi-row .gi-q{color:var(--gold); font-weight:700}
-  .gi-actions{margin-top:auto; display:flex; gap:7px; padding-top:2px}
-  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:12px;
-        padding:8px 6px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
+  /* Three equal tiles, icon over label. minmax(0,1fr) rather than flex:1, so a tile can never be
+     pushed wider than its third by its own text — the row is exactly the card's width. */
+  .gi-actions{margin-top:auto; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; padding-top:2px}
+  .gi-actions a,.gi-actions button{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0;
+        text-align:center; font-family:var(--mono); font-size:12px; line-height:1.2;
+        padding:6px 3px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
         color:var(--text); text-decoration:none}
+  .gi-actions i{font-style:normal; font-size:13px}
+  .gi-actions span{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .gi-steam{background:var(--gold-soft) !important; border-color:var(--gold-deep) !important; color:var(--gold) !important}
   .gi-actions a:hover,.gi-actions button:hover{border-color:var(--muted-2)}
+  /* Narrow cards (a two-column phone grid is ~165–170px wide): a one-line title, tighter spacing
+     and smaller tile labels, so title + three rows + the tiles fit the card's own height. */
+  @container (max-width:200px){
+    .ginfo{padding:8px; gap:4px}
+    .gi-title{-webkit-line-clamp:1}
+    .gi-close{top:4px; right:4px}
+    .gi-actions{gap:4px}
+    .gi-actions a,.gi-actions button{padding:4px 0; font-size:10.5px; letter-spacing:-.02em}
+    .gi-actions i{font-size:12px}
+  }
+  /* 360px phones give ~154px cards, where "Reviews" at 10.5px is a couple of pixels too wide. */
+  @container (max-width:164px){
+    .ginfo{padding:8px 6px}
+    .gi-actions a,.gi-actions button{font-size:10px}
+  }
 
   /* Grid-only sort control (desktop grid): the sort fields are laid out as a single row of
      buttons — one click to switch, no dropdown to open — with overflow collapsing into "More ▾".
@@ -5213,15 +5258,15 @@ function gridCardHTML(g){
       <div class="gmeta-bot">${qHtml}${sortHtml}</div>
     </div>
     <div class="ginfo">
-      <div class="gi-title">${esc(g.title)}</div>
+      <button type="button" class="gi-close" data-gclose="1" aria-label="Close details" title="Close — or tap anywhere on the card">✕</button>
+      <div class="gi-title" title="${esc(g.title)}">${esc(g.title)}</div>
       <div class="gi-row"><span>Price</span><b>${priceTxt}</b></div>
       <div class="gi-row" title="${esc(lengthTip(g))} This is the length QTPD divides the price by."><span>Length <i>est.</i></span><b>${hStr}</b></div>
       <div class="gi-row" title="${esc(ptTip)}"><span>Playtime <i>median</i></span><b>${ptStr}</b></div>
       <div class="gi-actions">
-        <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener">Steam ↗</a>
-        <button type="button" class="gi-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">Reviews ⇩</button>
-        <button type="button" class="gi-sim" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game's main tags: " + similarKeyTags(g).join(", "))}">≈ Similar</button>
-        <button type="button" data-gclose="1">Close ✕</button>
+        <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener"><i>↗</i><span>Steam</span></a>
+        <button type="button" class="gi-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}"><i>⇩</i><span>Reviews</span></button>
+        <button type="button" class="gi-sim" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game's main tags: " + similarKeyTags(g).join(", "))}"><i>≈</i><span>Similar</span></button>
       </div>
     </div>
   </div>`;
