@@ -663,6 +663,14 @@
   tbody tr:last-child{border-bottom:0}
   tbody tr:nth-child(even){background:rgba(127,160,230,.035)}   /* subtle zebra; translucent so the card gradient still shows through */
   tbody tr:hover{background:#1b2640}                            /* declared after zebra so hover always wins */
+  /* The card's corners are rounded, but nothing inside it is clipped to them: overflow:hidden on
+     .tablecard would make it a scroll container and unstick the header, and overflow:clip would
+     cut off the sort menu that drops out below a short list. So the two square backgrounds that
+     reach the corners carry the curve themselves — the header's opaque fill at the top (it
+     covered the card's top-left border, which read as a notch) and the last row's hover fill at
+     the bottom (it poked out past both lower corners). 13px = the card's 14px less its border. */
+  body:not(.layout-card) thead{border-radius:13px 13px 0 0}
+  body:not(.layout-card) tbody tr:last-child{border-radius:0 0 13px 13px}
 
 
   .gamecell{display:flex; align-items:center; gap:10px; align-self:stretch; width:100%}
@@ -816,6 +824,17 @@
   .thumb.adult.revealed{cursor:default}
   .thumb.adult.revealed::after{content:""; background:none}
   .gmeta{min-width:136px; flex:1}     /* title never collapses below readable width */
+  /* Table only: when the Game column is tight, the art gives way before the title does.
+     The column sits at its 268px floor on every window from 1280px to ~1520px — the fixed-
+     ceiling columns take the free space first — and 150px of art plus the × and gaps left the
+     title ~52px. The 136px floor above then pushed it past the cell, whose overflow:hidden cut
+     names mid-letter ("Pathfinder: Wratł") with no ellipsis, because the clamp never ran out of
+     lines — it never saw the edge. Now the art shrinks first (flex-shrink 4, down to 96px,
+     keeping its ratio), the title takes what is left and its two-line clamp ends in "…".
+     overflow-wrap:anywhere breaks a single word too long for the line rather than clipping it. */
+  body:not(.layout-card) .gamecell .thumb{flex:0 4 auto; min-width:96px; height:auto; aspect-ratio:150/57}
+  body:not(.layout-card) .gamecell .gmeta{flex:1 1 136px; min-width:0}
+  body:not(.layout-card) .gamecell .gtitle{overflow-wrap:anywhere}
   .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gtitle:hover{text-decoration:underline}
