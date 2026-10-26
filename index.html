@@ -307,6 +307,9 @@
      "there's something here, but it isn't a choice right now". Only the pressed button is
      excluded, so "which one is selected" stays the louder signal. */
   .seg button:hover:not([aria-pressed="true"]){background:var(--panel-2); color:var(--text)}
+  /* The pressed button answers the pointer too, with a ring rather than a fill change, so the
+     fill still says which one is selected. */
+  .seg button[aria-pressed="true"]:hover{box-shadow:inset 0 0 0 1px var(--muted-2)}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
 
   /* Min-sale stepper: −5% / readout / +5%. The middle cell is a value, not a button — the two
@@ -1133,6 +1136,11 @@
         color:var(--gold); font-family:var(--mono); font-size:13px; padding:2px 8px; border-radius:7px;
         cursor:pointer; margin:0 1px}
   .filter-summary .sumf:hover{filter:brightness(1.15)}
+  /* The tag chips arrive as one run of buttons with no whitespace between them, and at full rail
+     size they are taller than this line's 26px — so they touched side to side and, once the run
+     wrapped, row to row. A little margin on every side; slightly trimmed padding keeps the chips
+     close to the .sumf filter chips they sit beside. */
+  .filter-summary .chip{margin:3px 3px 3px 0; padding:3px 10px; font-size:13px}
   .filter-summary .sumf.plain{background:var(--panel); border-color:var(--line); color:var(--muted)}
   /* #8 — warning-styled Reset, floated to the line's top-right corner. */
   .filter-summary .sumreset{float:right; margin-left:10px; appearance:none; background:#3a2026;
@@ -1987,13 +1995,13 @@ try{
               <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
           </div>
         </div>
-        <div class="field" title="Price type — which kinds of pricing to include: full-price, on-sale, and/or free. Independent toggles, so you can mix them; turn one off to hide that kind.">
+        <div class="field" title="Price type — which kinds of pricing to include: full-price, on-sale, and/or free. From All, picking one shows only that kind; click others to add them back in (or take one out again). All shows everything.">
           <label>Price type</label>
           <div class="seg" id="priceClass" role="group" aria-label="Price type">
             <button data-pc="all"  aria-pressed="true"  title="All — show every game (default). Click to re-enable all types.">All</button>
-            <button data-pc="full" aria-pressed="true"  title="Full — paid games at full price (not discounted).">Full</button>
-            <button data-pc="sale" aria-pressed="true"  title="Sale — paid games with an active discount.">Sale</button>
-            <button data-pc="free" aria-pressed="true"  title="Free — free-to-play games. Shown alone, QTPD ranks them by playtime × rating (no price).">Free</button>
+            <button data-pc="full" aria-pressed="false" title="Full — paid games at full price (not discounted). From All, shows only these; otherwise adds or removes them.">Full</button>
+            <button data-pc="sale" aria-pressed="false" title="Sale — paid games with an active discount. From All, shows only these; otherwise adds or removes them.">Sale</button>
+            <button data-pc="free" aria-pressed="false" title="Free — free-to-play games. Shown alone, QTPD ranks them by playtime × rating (no price). From All, shows only these; otherwise adds or removes them.">Free</button>
           </div>
         </div>
         <div class="field" id="minSaleField" title="Min sale % — a floor on the size of the discount, so shallow cuts drop out of the table. It starts at the smallest discount in the current results (rounded down to a multiple of 5) and moves in 5% notches. Setting a floor switches Price type off Full — a full-price game has no discount to clear it.">
@@ -3457,6 +3465,9 @@ function render(){
   if(!allGames.length){
     tbody.innerHTML = "";
     $("#gridview").innerHTML = "";
+    // This branch returns before the paging footer below is reached, so the previous list's
+    // "Showing 66 of 7511 — scroll for more…" stayed up right above "No games match".
+    $("#loadmore").style.display = "none";
     empty.style.display = "block";
     empty.innerHTML = (releaseMode() !== "released" && UP_STATUS === "loading")
       ? "<b>Loading upcoming games…</b>"
@@ -5057,11 +5068,14 @@ function pickCo(name){ setCo(name); hideCoSug(); update(); }
 // Any filter/sort/search/page-size change resets to page 1 of the new result set.
 // Reflect state.priceClass onto the band's aria-pressed. "All" is lit only when all three
 // facets are on; each facet button reflects its own membership.
+// With every type included only "All" is lit. Lighting all four at once read as nothing being
+// selected at all — every button wore the same quiet "on" fill — and since pressed buttons take
+// no hover, none of them answered the pointer either.
 function syncPriceClassUI(){
   const allOn = state.priceClass.size === 3;
   $$("#priceClass button").forEach(b => {
     const pc = b.dataset.pc;
-    b.setAttribute("aria-pressed", pc === "all" ? allOn : state.priceClass.has(pc));
+    b.setAttribute("aria-pressed", pc === "all" ? allOn : (!allOn && state.priceClass.has(pc)));
   });
 }
 function update(){ ensureUpcoming(); resetPaging(); computeSaleBounds(); syncMinSaleUI(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
@@ -6271,7 +6285,7 @@ function loadFromURL(){
   setIf("pmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minPrice=n; const el=$("#minprice"); if(el) el.value=n; } });
   setIf("pmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxPrice=n; const el=$("#maxprice"); if(el) el.value=n; } });
   setIf("hmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minHours=n; const el=$("#minhours"); if(el) el.value=n; } });
-  setIf("hmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxHours=n; const el=$("#maxhours"); if(el) el.value=n; } });
+  setIf("hmax", v => { const n=parseFloat(v); if(!isNaN(n) && n > 0){ state.maxHours=n; const el=$("#maxhours"); if(el) el.value=n; } });   // 0 = no bound (see hoursHandler)
   setIf("trend", v => { state.trendSet = new Set(v.split(",").filter(x => ["up","flat","down"].includes(x)));
     if(state.trendSet.size === 0) state.trendSet = new Set(["up","flat","down"]);
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", state.trendSet.has(o.dataset.trend))); });
@@ -6489,9 +6503,19 @@ function init(data){
     // discount to clear the floor. Rather than leave a toggle that visibly does nothing, asking
     // for Full back (directly, or via All) releases the floor. Order matters: clear it FIRST, so
     // setMinSale's own restore of Full can't fight the click being handled.
-    if((pc === "all" || pc === "full") && state.minSale != null) setMinSale(null);
+    if((pc === "all" || pc === "full") && state.minSale != null){
+      setMinSale(null);
+      // Full is back — that was the whole request. Falling through to the toggle below took it
+      // straight out again (setMinSale had just restored it), so the click released the floor
+      // and still left Full off.
+      if(pc === "full"){ state.priceClass.add("full"); syncPriceClassUI(); update(); return; }
+    }
     if(pc === "all"){
       state.priceClass = new Set(["full","sale","free"]);
+    } else if(state.priceClass.size === 3){
+      // From All, a type reads as unlit (see syncPriceClassUI), so clicking it picks it — only
+      // that kind — rather than switching it off, which is what the same click used to do.
+      state.priceClass = new Set([pc]);
     } else if(state.priceClass.has(pc)){
       if(state.priceClass.size > 1) state.priceClass.delete(pc);
       // last one lit: leave as-is (can't reach empty)
@@ -6587,14 +6611,20 @@ function init(data){
   $("#maxprice").addEventListener("input", priceHandler);
   // Length range — the same read-both-boxes shape as priceHandler, so a cleared box means
   // "no bound" rather than zero.
+  // A max of 0 hours is never a real question — no game has a Length of 0 — so it means "no
+  // bound" too. It used to be one slip away: ▼ on the empty max box ("∞") stepped to 0 and the
+  // list went blank. Unlike Price, where max $0 is a real filter (free games).
   const hoursHandler = () => {
-    const lo = $("#minhours").value.trim(), hi = $("#maxhours").value.trim();
+    const lo = $("#minhours").value.trim(), hi = parseFloat($("#maxhours").value);
     state.minHours = lo === "" ? null : Math.max(0, parseFloat(lo));
-    state.maxHours = hi === "" ? null : Math.max(0, parseFloat(hi));
+    state.maxHours = (isNaN(hi) || hi <= 0) ? null : hi;
     update();
   };
   $("#minhours").addEventListener("input", hoursHandler);
   $("#maxhours").addEventListener("input", hoursHandler);
+  // Tidy a typed 0 back to the empty "∞" once the edit is done, so the box shows what the filter
+  // is doing. Not on input: "0" is the first keystroke of "0.5".
+  $("#maxhours").addEventListener("change", e => { const v = parseFloat(e.target.value); if(!isNaN(v) && v <= 0) e.target.value = ""; });
   // `button[data-step]`, NOT `[data-step]`: the attribute is used for two unrelated things.
   // These are the price steppers, whose value names an input id — but every row thumbnail
   // <img> also carries data-step, as the cursor into its T6 fallback chain (stepThumb).
@@ -6606,9 +6636,13 @@ function init(data){
   // priceHandler would read the price boxes and write the price state.
   document.querySelectorAll("button[data-step]").forEach(btn => btn.addEventListener("click", () => {
     const inp = $("#"+btn.dataset.step);
+    const d = parseInt(btn.dataset.d,10);
     let v = parseFloat(inp.value || "0"); if(isNaN(v)) v = 0;
-    v = Math.max(0, v + parseInt(btn.dataset.d,10));
-    inp.value = v;
+    v = Math.max(0, v + d);
+    // Length max steps down to 1 and then back to empty ("∞"), never to 0 — and ▼ on an
+    // already-empty box stays empty (see hoursHandler).
+    if(btn.dataset.step === "maxhours" && d < 0) inp.value = (inp.value.trim() === "" || v < 1) ? "" : v;
+    else inp.value = v;
     (btn.dataset.step.endsWith("hours") ? hoursHandler : priceHandler)();
   }));
   // Preset shelves. Delegated, because renderPresets() replaces the row's innerHTML on every
