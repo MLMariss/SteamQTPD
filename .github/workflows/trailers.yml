@@ -8,12 +8,12 @@ on:
         type: boolean
         default: false
   schedule:
-    # Trailer ids are effectively permanent — once a game's movie id is known it never
-    # needs re-fetching — so this is a backlog-drain job, not a refresh loop. After the
-    # first pass clears the catalog it only picks up newly-released games plus misses
-    # aged past QTPD_TRAILER_MISS_TTL, which is a few hundred appids a day: minutes of
-    # work. Daily at :13 on an hour no other job uses (prices :07, scraper :17, tags
-    # :23, recent :41) so it never contends for the API budget.
+    # Mostly a backlog drain: after the first pass it picks up new games (released and
+    # upcoming), misses aged past QTPD_TRAILER_MISS_TTL (30d), and re-checks each known
+    # trailer every QTPD_TRAILER_VERIFY_DAYS (60d) so a replaced one doesn't go dead —
+    # ~1/60 of the catalogue a day. Minutes of work. GitHub delivers this cron hours late
+    # on this repo, so the minute buys nothing; GetItems is the big api.steampowered.com
+    # budget, not the storefront one, so it contends with nobody anyway.
     - cron: "13 5 * * *"
 
 permissions:
@@ -37,9 +37,8 @@ jobs:
           # Writing to main stays safe: git_checkpoint refuses to push from a non-main
           # checkout, so a branch run can only ever be a dry run.
           ref: ${{ github.ref_name }}
-          # This used to say real runs need depth 0 for the rebase-onto-main checkpoint. They
-          # don't: pics, pics-new, freshness and shard-health have rebased onto main from depth-1
-          # clones all along — `git fetch origin main` brings whatever the rebase needs.
+          # Real runs never needed depth 0: every commit goes through gitsync.py, which fetches
+          # main's tip only (--depth=1) and resets onto it, so no history is ever read.
           # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts"). Full history
           # (fetch-depth: 0) was 9.6 GB and ~30 min of every run, and nothing here reads history;
           # with a sparse list, checkout is also a partial clone, so nothing else is downloaded.
@@ -48,8 +47,11 @@ jobs:
           sparse-checkout: |
             /trailers.py
             /games.json
+            /upcoming.json
             /trailers.json
+            /trailers_upcoming.json
             /trailers_state.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

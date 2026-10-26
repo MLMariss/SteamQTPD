@@ -7140,10 +7140,16 @@ function ensureUpcoming(){
   Promise.all([
     fetch("upcoming.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch("pics_upcoming.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
-  ]).then(([uj, pj]) => {
+    // Trailers of the games only upcoming.json has (trailers.py keeps them out of the boot load).
+    fetch("trailers_upcoming.json", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]).then(([uj, pj, tuj]) => {
     const rows = (uj && Array.isArray(uj.games)) ? uj.games : null;
     if(!rows){ UP_STATUS = "error"; render(); return; }
     const picsUp = (pj && pj.apps) || {};
+    if(tuj && tuj.trailers){
+      window.TRAILERS = Object.assign(window.TRAILERS || {}, tuj.trailers);
+      if(!window.TRAILER_BASE && tuj.base) window.TRAILER_BASE = tuj.base;
+    }
     const held = new Map(state.data.games.map(g => [g.appid, g]));
     for(const r of rows){
       const old = held.get(r.appid);
@@ -7382,11 +7388,12 @@ Promise.all([
   };
   data.games.forEach(game => {
     mergeGame(game, picsMap);
-    // games.json still holds ~330 "shells": games stored while unreleased, before the release
-    // gate (cleanup_shells.py), which the scraper re-files as pending without removing. No past
-    // release date and no reviews means not out yet, so they belong to the Upcoming view, not
-    // the released list they used to sit in. A row with reviews stays released whatever its date
-    // says (Mark of the Ninja has no release_ts but 15k reviews).
+    // "Shells": games stored while unreleased, before the release gate (cleanup_shells.py). The
+    // scraper drops one from games.json the next time Steam calls it coming soon (since Oct 2026;
+    // ~330 were left), so this is the safety net for any still in the file. No past release date
+    // and no reviews means not out yet, so they belong to the Upcoming view, not the released
+    // list. A row with reviews stays released whatever its date says (Mark of the Ninja has no
+    // release_ts but 15k reviews).
     if(!(game.release_ts && game.release_ts <= now) && !game.review_count) game.upcoming = true;
   });
   MERGE_GAME = mergeGame;

@@ -52,9 +52,17 @@ SHARDED FROM DAY ONE
 A per-game dated event list, across ~120k games, is exactly the kind of file that blew
 past GitHub's 100 MB wall for playtime. So updates_raw is sharded the same way from the
 start: 64 buckets keyed (appid // 10) % 64 (dividing by 10 first because Steam appids are
-~all multiples of 10 — `appid % 64` would pile everything into the even buckets). One run
-processes ONE bucket, rotated by GITHUB_RUN_NUMBER, so commits stay small and only one
-writer ever touches a given shard. shard_health.py already reports on any *_raw/ dir.
+~all multiples of 10 — `appid % 64` would pile everything into the even buckets). A run
+works through as many buckets as its budget allows, the one written longest ago first
+(each shard's own `generated_at`), committing each as it finishes; only this job ever
+touches a shard. shard_health.py already reports on any *_raw/ dir.
+
+It used to do ONE bucket per run (GITHUB_RUN_NUMBER % 64): ~40 of the 180 budgeted
+minutes, and each game revisited every ~16 days whatever its cooldown said (the "7d
+active" promise could not be kept). And `scraped_at` was rewritten only when a game's
+events CHANGED, so a game checked and found unchanged kept its old stamp: it was asked
+again on every visit, and FRESHNESS.md read 97% of the layer as overdue (Oct 2026). Now
+every answered check stamps `scraped_at`.
 
 RESUMABILITY / SAFETY
 ---------------------
@@ -74,12 +82,13 @@ import glob
 import json
 import os
 import random
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"
@@ -121,7 +130,6 @@ COOLDOWN_DAYS = 7                # active games: re-check events weekly
 NOUPDATE_COOLDOWN_DAYS = 45      # quiet games: re-check rarely (their history barely changes)
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (endpoint is keyless)
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "QTPD-updates/1.0 (+github.com/MLMariss/SteamQHPP)"})
@@ -144,13 +152,22 @@ def shard_path(bucket):
     return SHARD_DIR / f"{bucket:02d}.json"
 
 
-def bucket_for_run():
-    """Rotate through buckets by CI run number so every shard is revisited in turn.
-    Local/manual runs (no GITHUB_RUN_NUMBER) default to bucket 0."""
-    try:
-        return int(os.environ.get("GITHUB_RUN_NUMBER", "0")) % NSHARDS
-    except ValueError:
+def shard_written_at(bucket):
+    """A shard's own `generated_at` (0 when it doesn't exist yet: swept first). The persisted
+    stamp, not the file's mtime, which a fresh checkout sets to the checkout time."""
+    p = shard_path(bucket)
+    if not p.exists():
         return 0
+    try:
+        return int(json.loads(p.read_text(encoding="utf-8")).get("generated_at") or 0)
+    except (ValueError, OSError):
+        return 0
+
+
+def bucket_order():
+    """Every bucket, the one written longest ago first: a fair sweep, so no shard waits
+    more than a few runs however the budget falls."""
+    return sorted(range(NSHARDS), key=lambda b: (shard_written_at(b), b))
 
 
 def load_shard(bucket):
@@ -333,46 +350,12 @@ def priority(rec, last_update_ts, review_count, now):
 # Git (single-writer hard-reset push — identical strategy to playtime_refresh.py)
 # --------------------------------------------------------------------------- #
 def _robust_commit_shards(msg, names):
-    """Robust single-writer push of exactly the given shard filenames. Hard-resets to
-    origin/main and re-applies only OUR shards, so concurrent other-bucket writers are
-    never clobbered and a rebase can never wedge. Fails LOUD (non-zero exit) if it can't
-    land, so a broken push is a visible RED run — never a silent green one. Shared by the
-    routine one-shard-per-run commit and reshard_all()'s all-NSHARDS commit."""
-    if not IN_ACTIONS:
-        log(f"  (local run — skipping git commit: {msg})")
-        return
-    snaps = {name: (SHARD_DIR / name).read_bytes()
-             for name in names if (SHARD_DIR / name).exists()}
-    last_err = ""
-    for attempt in range(1, 9):
-        try:
-            subprocess.run(["git", "fetch", "origin", "main"],
-                           check=True, capture_output=True, text=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"],
-                           check=True, capture_output=True, text=True)
-            SHARD_DIR.mkdir(exist_ok=True)
-            for name, data in snaps.items():                # re-apply only our shard(s)
-                (SHARD_DIR / name).write_bytes(data)
-            for name in snaps:
-                subprocess.run(["git", "add", f"updates_raw/{name}"], check=True)
-            if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-                log("  (nothing new vs remote; skipping commit)")
-                return
-            subprocess.run(["git", "commit", "-m", msg],
-                           check=True, capture_output=True, text=True)
-            push = subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True)
-            if push.returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            last_err = (push.stderr or push.stdout or "").strip()
-            log(f"  push attempt {attempt}/8 rejected: {last_err[:180]}")
-        except subprocess.CalledProcessError as e:
-            last_err = ((e.stderr or "") + (e.stdout or "")).strip() or str(e)
-            log(f"  git attempt {attempt}/8 error: {last_err[:180]}")
-        time.sleep(2 * attempt + random.uniform(0, 2))
-    log(f"  ERROR: updates shard commit failed after 8 attempts — {last_err[:200]}")
-    sys.exit(1)
+    """Single-writer push of exactly the given shard filenames (gitsync.py): fetch main's tip,
+    reset onto it, put only OUR shards back, push. Concurrent other-bucket writers are never
+    clobbered and nothing walks history. Fails LOUD (non-zero exit) if it can't land, so a
+    broken push is a visible RED run — never a silent green one. Shared by the routine
+    commits and reshard_all()'s all-NSHARDS commit."""
+    gitsync.commit([f"updates_raw/{name}" for name in names], msg, fail_loud=True)
 
 
 def git_commit_shard(bucket, msg):
@@ -391,72 +374,88 @@ def load_games():
     return g.get("games") or list(g.values())
 
 
+def candidates(bucket, games_in_bucket, shard_games, now):
+    """[(appid, rec)] of this bucket's eligible games, highest priority first."""
+    cands = []
+    for rec in games_in_bucket:
+        appid = rec.get("appid")
+        stored = shard_games.get(str(appid))
+        lut = rec.get("last_update_ts")
+        rc = rec.get("review_count")
+        if is_eligible(stored, lut, rc, now):
+            cands.append((priority(stored, lut, rc, now), int(appid), rec))
+    cands.sort(key=lambda t: t[0], reverse=True)
+    return [(appid, rec) for _score, appid, rec in cands]
+
+
+def probe(appid, shard_games):
+    """Ask Steam for one game's update events and fold them in. Returns None when the fetch
+    failed (the stored record is left as it was), else True when the event list changed.
+    An answered check always stamps scraped_at, changed or not: that stamp is what the
+    cooldown and the freshness reports read."""
+    fresh = fetch_events(appid)
+    if fresh is None:
+        return None
+    key = str(appid)
+    prev = shard_games.get(key) or {}
+    prev_events = prev.get("events") or {}
+    merged = merge_events(prev_events, fresh)
+    shard_games[key] = {"events": merged, "scraped_at": int(time.time())}
+    return merged != prev_events or not prev
+
+
 def main():
     start = time.time()
     deadline = start + RUN_MINUTES * 60 - TIME_BUFFER
 
     ensure_sharding()
-    bucket = bucket_for_run()
-    log(f"updates_refresh: bucket {bucket:02d}/{NSHARDS} · run budget {RUN_MINUTES} min")
-
     games = load_games()
     if not games:
         log("games.json empty/missing — nothing to do")
         return 0
-
-    now = int(time.time())
-    shard_games = load_shard(bucket)
-
-    # Candidates: games that hash to THIS bucket and are eligible, ordered by priority.
-    cands = []
+    by_bucket = {}
     for rec in games:
-        appid = rec.get("appid")
-        if appid is None or shard_of(appid) != bucket:
-            continue
-        stored = shard_games.get(str(appid))
-        lut = rec.get("last_update_ts")
-        rc = rec.get("review_count")
-        if not is_eligible(stored, lut, rc, now):
-            continue
-        cands.append((priority(stored, lut, rc, now), int(appid), rec))
-    cands.sort(key=lambda t: t[0], reverse=True)
-    log(f"  {len(cands)} eligible game(s) in this bucket")
+        if rec.get("appid") is not None:
+            by_bucket.setdefault(shard_of(rec["appid"]), []).append(rec)
+    order = bucket_order()
+    log(f"updates_refresh: up to {NSHARDS} buckets, oldest-written first "
+        f"({', '.join(f'{b:02d}' for b in order[:6])}, …) · run budget {RUN_MINUTES} min")
 
-    processed = 0
-    changed = 0
-    last_commit = time.time()
-    for _score, appid, _rec in cands:
+    total_probed = total_changed = buckets_done = 0
+    for bucket in order:
         if time.time() >= deadline:
-            log("  run budget reached — committing and stopping")
             break
-
-        fresh = fetch_events(appid)
-        time.sleep(STORE_DELAY)
-        processed += 1
-        if fresh is None:
-            continue                                        # transient — leave prior record intact
-
-        key = str(appid)
-        prev = shard_games.get(key) or {}
-        prev_events = prev.get("events") or {}
-        merged = merge_events(prev_events, fresh)
-
-        # Only rewrite if something actually changed (avoids churny no-op commits).
-        if merged != prev_events or not prev:
-            shard_games[key] = {"events": merged, "scraped_at": now}
-            changed += 1
-
-        if time.time() - last_commit >= COMMIT_SECONDS:
+        shard_games = load_shard(bucket)
+        cands = candidates(bucket, by_bucket.get(bucket, []), shard_games, int(time.time()))
+        if not cands:
+            continue
+        log(f"  bucket {bucket:02d}: {len(cands)} eligible game(s)")
+        processed = changed = answered = 0
+        last_commit = time.time()
+        for appid, _rec in cands:
+            if time.time() >= deadline:
+                log("  run budget reached — committing and stopping")
+                break
+            res = probe(appid, shard_games)
+            time.sleep(STORE_DELAY)
+            processed += 1
+            if res is not None:
+                answered += 1
+                changed += bool(res)
+            if time.time() - last_commit >= COMMIT_SECONDS:
+                save_shard(bucket, shard_games)
+                git_commit_shard(bucket, f"updates_raw/{bucket:02d}: {len(shard_games)} games "
+                                         f"({changed} changed this run so far)")
+                last_commit = time.time()
+        if answered:
             save_shard(bucket, shard_games)
             git_commit_shard(bucket, f"updates_raw/{bucket:02d}: {len(shard_games)} games "
-                                     f"({changed} changed this run so far)")
-            last_commit = time.time()
-
-    save_shard(bucket, shard_games)
-    git_commit_shard(bucket, f"updates_raw/{bucket:02d}: {len(shard_games)} games "
-                             f"(+{changed} changed, {processed} probed)")
-    log(f"Done. Bucket {bucket:02d}: probed {processed}, changed {changed}, "
-        f"stored {len(shard_games)} games.")
+                                     f"(+{changed} changed, {answered}/{processed} answered)")
+        total_probed += processed
+        total_changed += changed
+        buckets_done += 1
+    log(f"Done. {buckets_done} bucket(s): probed {total_probed}, changed {total_changed} "
+        f"| {(time.time() - start) / 60:.0f} min")
     return 0
 
 

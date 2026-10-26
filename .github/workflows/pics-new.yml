@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 45
     steps:
       # v5 deliberate, as in pics.yml: it preserves the credential-persistence the
-      # fetch -> rebase -> push commit pattern relies on (v6/v7 changed it).
+      # fetch -> reset -> push commit pattern (gitsync.py) relies on (v6/v7 changed it).
       - uses: actions/checkout@v5
         with:
           # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts"). Full history
@@ -56,6 +56,7 @@ jobs:
             /pics.json
             /pics_upcoming.json
             /companies.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:
@@ -87,29 +88,13 @@ jobs:
       - name: Merge PICS shards -> pics.json
         run: python pics_merge.py --in pics --out pics.json
 
-      # Same retried push as pics.yml, and for the same reason: main is written to
-      # continuously by a dozen sibling scrapers and this commit carries pics.json
-      # (~40 MB), so a single-shot push loses the race often enough to matter — and a
-      # lost race here would discard exactly the new games this job exists to fetch.
-      # When there is nothing new, summarize/merge reproduce the same bytes and the
-      # staged diff is empty, so the job exits without a commit.
+      # Same retried commit as pics.yml (gitsync.py), and for the same reason: main is written to
+      # continuously and this commit carries pics.json (~40 MB), so a lost race would discard
+      # exactly the new games this job exists to fetch. When there is nothing new, summarize/merge
+      # reproduce the same bytes and gitsync finds nothing to commit.
       - name: Commit pics_raw + pics + pics.json + companies.json
         run: |
-          set -e
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pics_raw pics pics.json pics_upcoming.json companies.json
-          if git diff --staged --quiet; then
-            echo "No new games this run"
-            exit 0
-          fi
-          git commit -m "PICS catch-up: new games ($(date -u +'%Y-%m-%d %H:%M') UTC)"
-          for i in 1 2 3 4 5 6 7 8; do
-            git fetch origin main
-            if git rebase origin/main && git push origin HEAD:main; then
-              echo "pushed on attempt $i"; exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            sleep $((i * 3 + RANDOM % 5))
-          done
-          echo "ERROR: could not push PICS catch-up after 8 attempts"; exit 1
+          python gitsync.py -m "PICS catch-up: new games ($(date -u +'%Y-%m-%d %H:%M') UTC)" \
+            pics_raw pics pics.json pics_upcoming.json companies.json

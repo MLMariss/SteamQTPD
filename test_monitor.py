@@ -43,6 +43,9 @@ FILES = {
     "playtime": {"generated_at": T - H, "playtime": {"1": [1, 2, 3, 4], "3": [1, 1, 1, 1]}},
     "pics":    {"generated_at": T - 6 * H, "apps": {"1": {"type": "Game"}, "2": {"type": "Game"}, "3": {}}},
     "catalog": {"pending": {"7": None, "8": 1}},
+    "demos":   {"generated_at": T - 4 * H, "demos": {"1": 11, "99": 12}},
+    "shots_state": {"generated_at": T - 5 * H},
+    "shots":   {"shots": {"2": ["ss.jpg"], "3": ["ss.jpg"], "99": ["ss.jpg"]}},
 }
 row = M.snapshot(T, "cron", lambda n: FILES.get(n), {"tags": T - 10 * H})
 check("shape follows SNAP_FORMAT", len(row) == len(M.SNAP_FORMAT) and row[:4] == [T, "cron", 3, 2])
@@ -63,6 +66,9 @@ check("recent coverage needs a 30-day count", cov["recent"] == 1)
 check("hltb coverage needs a time", cov["hltb"] == 1)
 check("playtime and pics counted", cov["playtime"] == 2 and cov["pics"] == 2)
 check("file not read -> coverage None (not 0)", cov["tags"] is None)
+check("demos counted over catalog games", cov["demos"] == 1)
+check("screenshots counted from the shards, catalog games only", cov["shots"] == 2)
+check("screenshot age is the state file's", age["shots_state"] == 5 * H and age["demos"] == 4 * H)
 check("no games.json -> no snapshot", M.snapshot(T, "cron", lambda n: None) is None)
 
 print("\n== runs: the scraper's own lines win over commit messages ==")

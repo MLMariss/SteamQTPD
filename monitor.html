@@ -211,12 +211,14 @@
 const LABEL = {
   files: {games:"Catalog (games.json)", prices:"Prices", recent:"30-day scores", playtime:"Playtime",
           ratings:"Weighted rating", hltb:"HLTB times", tags:"Tags", trailers:"Trailers", length:"Length",
-          updates:"Update history", pics:"Steam metadata (PICS)", upcoming:"Upcoming games"},
+          updates:"Update history", pics:"Steam metadata (PICS)", upcoming:"Upcoming games",
+          demos:"Demos", shots_state:"Screenshots", ea_dates:"Early Access dates"},
   rows:  {games_young:"Review counts · released < 1 yr ago", games_old:"Review counts · released > 1 yr ago",
           games:"Review counts · all games", prices:"Prices", recent:"30-day scores", hltb:"HLTB times"},
   cov:   {reviews:"Has reviews", prices:"Has a price", recent:"Has a 30-day score", playtime:"Has playtime",
           ratings:"Has a weighted rating", hltb:"Has an HLTB time", tags:"Has tags", trailers:"Has a trailer",
-          length:"Has a length estimate", pics:"Has Steam metadata"},
+          length:"Has a length estimate", pics:"Has Steam metadata", shots:"Has screenshots",
+          demos:"Has a demo"},
 };
 // What each number means, for the ⓘ popovers. Cadences are the workflows' crons (FRESHNESS.md).
 const TIP = {
@@ -228,11 +230,14 @@ const TIP = {
     ratings:"ratings.json — playtime-weighted ratings (job 3.2), rebuilt with playtime after each pass. Normal: up to ~8 hours.",
     hltb:"hltb.json — HowLongToBeat times (job 2.5), scheduled every 2 hours. Normal: up to ~6 hours.",
     tags:"tags.json — SteamSpy tags (job 2.6), scheduled every 2 hours, but it writes only while some games still lack tags. Normal: up to ~7 hours; longer can be normal once every game has tags.",
-    trailers:"trailers.json — store trailers (job 2.8), daily at 05:13 UTC. Normal: up to about a day.",
+    trailers:"trailers.json — store trailers (job 2.8), scheduled daily; GitHub starts it hours late. Normal: up to about a day and a half.",
     length:"length.json — length estimates (job 3.4), rebuilt after each playtime pass. Normal: up to ~8 hours.",
     updates:"updates.json — update history (job 3.3), rebuilt after each update-events pass (job 2.4, scheduled every 6 hours). Normal: up to ~6 hours.",
     pics:"pics.json — Steam's own app metadata (job 2.7), daily at 03:20 UTC plus catch-up passes for new games three times a day. Normal: up to ~7 hours.",
-    upcoming:"upcoming.json — unreleased games (job 2.11), daily at 00:23 UTC. Normal: up to about a day.",
+    upcoming:"upcoming.json — unreleased games (job 2.11), scheduled daily; GitHub starts it hours late. Normal: up to about a day and a half.",
+    demos:"demos.json — which games have a demo (job 2.10), one sweep of every game a day. Normal: up to about a day and a half.",
+    shots_state:"Store screenshots (job 2.9), scheduled daily. The age is its state file's, saved every run; the screenshot files themselves change only when a game's stills do. Normal: up to about a day and a half.",
+    ea_dates:"ea_dates.json — Early Access 1.0 dates and EA starts (job 2.12), scheduled daily. Normal: up to about a day and a half.",
   },
   rows: {
     games_young:"How long ago each game released in the past year last had its reviews (and the rest of its store record) fetched. These are re-checked on a ladder: every 6 hours in the first 3 days after release, widening to every 15 days by the first anniversary. Normal: a few days at most.",
@@ -251,6 +256,8 @@ const TIP = {
     hltb:"Games matched to a HowLongToBeat entry with at least one time. Many small games are not listed there.",
     tags:"Games with SteamSpy user tags.",
     trailers:"Games with a store trailer.",
+    shots:"Games with all-ages store screenshots (mature-only sets are not stored).",
+    demos:"Games with a demo on Steam. Most games have none, so this is a share, not a gap.",
     length:"Games with a Length estimate, built from the playtime of reviewers who recommend the game.",
     pics:"Games with Steam's own app metadata (PICS): the adult flag, review %, categories.",
   },

@@ -34,14 +34,14 @@ Reads games.json (read-only) for the appid list.
 
 import json
 import os
-import random
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"          # read-only (owned by scraper.py)
@@ -54,7 +54,6 @@ TIME_BUFFER = 45
 STEAMSPY_DELAY = 1.1                       # SteamSpy asks for ~1 req/sec
 STORE_DELAY = 0.7                          # Steam storefront pacing for the fallback fetch
 MAX_RETRIES = 3
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qhpp tags refresher; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 SESSION = requests.Session()
@@ -198,22 +197,8 @@ def save_tags(tags, store_checked):
 
 
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "tags.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit tags.json on top of the current main (gitsync.py: tip-only fetch, no rebase)."""
+    gitsync.commit(["tags.json"], msg)
 
 
 def main():

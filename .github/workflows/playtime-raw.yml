@@ -23,14 +23,12 @@ on:
     # TIME, not on work. Treat 24 as a ceiling that does not bind, not as a rate.
     # FORCE_SHARDS="27" (or a CSV) can pin specific buckets into a manual run to push a
     # known game through on demand. Shards are loaded, worked and committed ONE AT A TIME,
-    # so commits stay small and peak memory stays at ~one shard. The :23 offset starts each run AFTER the :07 prices slot
-    # (60-min runs) has wound down. NOTE: the ~200/5min storefront budget is nominally
-    # shared with prices (:07 every 3h, 60min), recent (:41 of 4,10,16,22, 180min) and
-    # scrape. With STEAM_DELAY now 1.5s (200/5min, no headroom) this leans on the budget
-    # hard — but recent already sustains 3h@1.5s successfully (separate runner IPs), so
-    # this is expected to hold. WATCH 403 rates after deploy: if they spike, revert delay
-    # to 2.0 and/or drop to fewer slots. The concurrency group below keeps raw runs from
-    # overlapping each other. (hltb :53 / tags :29 hit different hosts.)
+    # so commits stay small and peak memory stays at ~one shard. The ~200/5min storefront
+    # budget is per runner IP, and every job runs on its own runner, so the minute offsets
+    # here buy no budget (GitHub delivers these crons hours late anyway, and prices now runs
+    # hourly passes from one long run). With STEAM_DELAY 1.5s this one job is at ~200/5min.
+    # WATCH 403 rates: if they spike, raise the delay to 2.0 and/or drop to fewer slots.
+    # The concurrency group below keeps raw runs from overlapping each other.
     - cron: "23 1,4,7,10,13,16,19,22 * * *"
 
 permissions:
@@ -55,12 +53,11 @@ jobs:
           # full history is enormous and none of it is used — the script only ever needs
           # the current tree plus the ability to push.
           #
-          # Safe because _robust_commit() does `git fetch origin main` +
-          # `git reset --hard FETCH_HEAD` + `git push origin HEAD:main`. There is no
-          # rebase and no history walk, and FETCH_HEAD is written by an explicit fetch in
-          # a shallow clone exactly as in a full one. Verified end to end against a real
-          # shallow clone: a concurrent commit from another shard's writer is picked up
-          # by FETCH_HEAD, its file survives the reset, and our commit pushes on top.
+          # Safe because every commit goes through gitsync.py: `git fetch --depth=1 origin
+          # main` + `git reset --hard FETCH_HEAD` + our files back + `git push origin
+          # HEAD:main`. There is no rebase and no history walk. The --depth=1 matters: a
+          # plain fetch into this clone downloaded the whole history of any old-based PR
+          # merged mid-run (test_gitsync.py covers both, against a real shallow clone).
           fetch-depth: 1
 
       - uses: actions/setup-python@v6
@@ -120,7 +117,7 @@ jobs:
       # After the raw shards are refreshed and committed above, recompute the small
       # frontend-facing files from the just-updated shards. Each summarizer reads the
       # shard dir directly, self-commits its ONE file (playtime.json / ratings.json)
-      # and rebases onto main — one-writer-per-file holds (raw job never writes those
+      # on top of main (gitsync.py) — one-writer-per-file holds (raw job never writes those
       # two files itself; only these steps do). This closes the raw-vs-summarized lag:
       # previously the summarizers had no cron and only ran by hand, so playtime.json /
       # ratings.json drifted behind the shards. `if: always()` so a soft-failing raw

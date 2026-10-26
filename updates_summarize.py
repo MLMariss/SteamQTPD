@@ -51,11 +51,11 @@ minor — that grouping is a display choice, not baked into the data.
 The tiny frontend file stays small: only timestamps, never event bodies.
 """
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 SHARD_DIR = HERE / "updates_raw"             # dir of NN.json shards (read-only here; owned by updates_refresh.py)
@@ -69,7 +69,6 @@ WINDOWS = [30, 90, 180, 365]
 # via the snapshot counts computed below (which see the full stored set).
 DATES_CAP = 60
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def log(*a):
@@ -120,24 +119,7 @@ def summarize_game(events, now):
 
 
 def git_commit():
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "updates.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m",
-                            "updates summary: refreshed frontend updates.json"], check=False)
-            import random
-            for _attempt in range(1, 9):
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log("  committed updates.json")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:                                   # noqa: BLE001
-        log(f"  git commit failed: {e}")
+    gitsync.commit(["updates.json"], "updates summary: refreshed frontend updates.json")
 
 
 def main():

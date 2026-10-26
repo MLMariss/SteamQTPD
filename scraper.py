@@ -40,7 +40,6 @@ per dollar. Null for free games and games with no HLTB data.
 
 import json
 import os
-import random
 import re
 import subprocess
 import sys
@@ -53,6 +52,8 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 # HLTB lookups moved to hltb_refresh.py (they were the per-game bottleneck).
 
@@ -86,7 +87,7 @@ TIME_BUFFER = 120               # stop scraping this long before the budget, to 
 # checkout, so GitHub cancelled every run before its final save: last_sync froze on 2026-10-02
 # and the coverage/presets jobs, which only follow a successful scrape, stopped running. The
 # budget is now also capped at what is left of the job, minus this reserve for the final save,
-# commit and push (rebase retries included).
+# commit and push (gitsync's retries included).
 FINAL_SAVE_RESERVE = 600
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
@@ -433,22 +434,13 @@ def seed_log(lines):
 
 
 def fetch_origin_seeds():
-    """Return origin/main's current seeds.txt content, so a mid-run web edit is picked
-    up without waiting for the next cron. Read-only: fetches the remote ref and reads
-    the blob via `git show` — never touches the working tree or index, so the scraper
-    still only ever *commits* games.json/catalog.json/seeds_log.txt (seeds.txt stays
-    human-only). Returns None outside Actions or on any git error (caller then skips)."""
-    if not IN_ACTIONS:
-        return None
-    try:
-        subprocess.run(["git", "fetch", "origin", "main"], check=False,
-                       capture_output=True)
-        r = subprocess.run(["git", "show", "origin/main:seeds.txt"],
-                           capture_output=True, text=True)
-        return r.stdout if r.returncode == 0 else None
-    except Exception as e:
-        log(f"  seed origin-fetch failed: {e}")
-        return None
+    """Return main's current seeds.txt content, so a mid-run web edit is picked up without
+    waiting for the next cron. Read-only: fetches main's tip (gitsync.read_main, depth 1 — a
+    plain fetch here pulled the whole history of any old-based PR merged mid-run) and reads
+    the blob via `git show` — never touches the working tree or index, so the scraper still
+    only ever *commits* games.json/catalog.json/seeds_log.txt (seeds.txt stays human-only).
+    Returns None outside Actions or on any git error (caller then skips)."""
+    return gitsync.read_main("seeds.txt")
 
 
 def reconcile_seeds(catalog, processed, seeds_text=None):
@@ -749,6 +741,33 @@ def strike_no_answer(aid, rec, recheck, skipped, now):
         rec["unknown"] = int(now)
 
 
+def is_shell(rec):
+    """True for a stored record whose game Steam now calls "coming soon" (the only place this
+    is asked) and that has no reviews: stored while unreleased, before the release gate.
+    Mark of the Ninja (214560) answers coming soon too but carries 15k reviews, so a real
+    game is never dropped by this."""
+    return rec is not None and not rec.get("review_count")
+
+
+def chain_next_run():
+    """Ask for the next catalog run now. GitHub drops or delays most crons on this repo, and
+    the four 6-hourly slots left the scraper idle ~9% of the time (2-2.6h gaps, 22-26 Oct
+    2026). A run that stopped on its time budget has work left, so it dispatches the next
+    one itself; the steam-scrape group queues it behind this one's last seconds. A run that
+    ran out of work does not, so an empty queue can never spin. Needs `actions: write` and
+    GH_TOKEN in scrape.yml; set the repository variable SCRAPE_CHAIN to 0 to stop chaining
+    (the cron carries on). Best effort: a failed dispatch leaves the cron."""
+    if not IN_ACTIONS or os.environ.get("SCRAPE_CHAIN", "0") != "1":
+        return
+    try:
+        r = subprocess.run(["gh", "workflow", "run", "scrape.yml", "--ref", "main"],
+                           capture_output=True, text=True, timeout=60)
+        log("  next run requested (chained)" if r.returncode == 0
+            else f"  chain dispatch failed: {(r.stderr or r.stdout).strip()}")
+    except Exception as e:
+        log(f"  chain dispatch failed: {e}")
+
+
 def parse_price(appid, d):
     """(is_free, price_initial, price_final, discount_pct) from an appdetails data block."""
     is_free = bool(d.get("is_free"))
@@ -978,34 +997,12 @@ def save_catalog(c):
 
 
 def git_checkpoint(msg):
-    """Commit games.json + catalog.json and push, rebasing onto whatever the other jobs
-    (prices/hltb/tags/recent) have pushed in the meantime. With several Actions all
-    committing to main, a naked push gets rejected ('fetch first') whenever another job
-    pushed between our pull and our push — so we pull --rebase first and retry the
-    pull→push a few times in case another job pushes again mid-rebase. Each job owns
-    distinct files, so the rebase replays cleanly without conflicts."""
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "games.json", "catalog.json", "seeds_log.txt"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-            return                                    # nothing to commit
-        subprocess.run(["git", "commit", "-m", msg], check=False)
-        for attempt in range(1, 9):                   # retry against concurrent pushers
-            subprocess.run(["git", "fetch", "origin", "main"], check=False)
-            subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-            push = subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True)
-            if push.returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            log(f"  push rejected (attempt {attempt}/8), another job pushed; "
-                f"re-pulling and retrying")
-            time.sleep(2 * attempt + random.uniform(0, 2))
-        log(f"  push still failing after retries; progress kept locally, "
-            f"next checkpoint will carry it")
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit games.json + catalog.json + seeds_log.txt on top of whatever the other jobs have
+    pushed (gitsync.py: tip-only fetch, reset, re-apply our files, push, with retries). Each
+    job owns distinct files, so main's tree plus ours never loses anyone's work. A push that
+    still fails keeps the files in the working tree, so the next checkpoint carries them."""
+    if not gitsync.commit(["games.json", "catalog.json", "seeds_log.txt"], msg):
+        log("  progress kept locally; the next checkpoint will carry it")
 
 
 # --------------------------------------------------------------------------- #
@@ -1272,7 +1269,7 @@ def main():
                 f"lands inside the job's {job_timeout}-min timeout")
             budget = max(0, left)
     last_commit = last_tick = time.time()
-    n_new = n_ref = n_pend = 0
+    n_new = n_ref = n_pend = n_shell = 0
 
     # Reserve a guaranteed share of each run for forced re-scrapes (the null-update
     # drain). select_work already front-loads `forced` ahead of last_modified refreshes,
@@ -1356,6 +1353,25 @@ def main():
         if due:
             log(f"  mid-run review refresh: +{len(due)} newly-due young game(s) to front")
 
+    def inject_released():
+        """Mid-run pickup for launches. The queue is built once at the top of a 5.5h run, so
+        a game upcoming_refresh.py reported out an hour in, or a dated pending game whose
+        day arrived, waited for the next run — 17 games spent ~7h of their launch day in
+        neither upcoming.json nor games.json on 26 Oct 2026. Every commit resets the working
+        tree onto main's tip (gitsync.py), so the local upcoming.json is never more than one
+        commit old; whatever is newly out goes to the FRONT of the new-game queue. Idempotent:
+        `handled` and `queued` keep a game from being queued twice."""
+        now_ = int(time.time())
+        out = load_released()
+        due = sorted((a for a, ts in pending.items()
+                      if a not in handled and a not in queued
+                      and ((ts is not None and ts <= now_) or a in out)),
+                     reverse=(NEW_ORDER == "newest"))
+        for a in reversed(due):
+            new_q.appendleft(a); queued.add(a)
+        if due:
+            log(f"  mid-run release pickup: +{len(due)} newly released game(s) to front")
+
     def inject_new_seeds():
         """Mid-run pickup: re-read seeds.txt from origin/main and splice any newly-added
         priorities to the FRONT of the queue, so a web edit lands in THIS run instead of
@@ -1378,9 +1394,11 @@ def main():
             log(f"  mid-run seed pickup: +{len(added_new)} new, "
                 f"+{len(added_forced)} forced re-scrape queued to front")
 
+    out_of_time = False
     while work or forced_q or new_q:
         if budget - (time.time() - start) < TIME_BUFFER:
             log("Time budget reached; wrapping up.")
+            out_of_time = True
             break
         nxt = next_work()
         if nxt is None:
@@ -1406,6 +1424,13 @@ def main():
             recheck.pop(aid, None)          # it responded -> not a dead app after all
             processed.get(str(aid), {}).pop("unknown", None)
             n_pend += 1
+            if is_shell(processed.get(str(aid))):
+                # Stored while unreleased, before the release gate (cleanup_shells.py): it
+                # answers "coming soon" every time, so it was re-probed EVERY run (~330 of
+                # them, ~9 min a run) and never re-stamped. It lives in the pending room now,
+                # and upcoming.json carries its row; it is scraped as new once it is out.
+                del processed[str(aid)]
+                n_shell += 1
         elif res == "recheck":
             # appdetails success:false: retry across runs (region-lock / transient blip)
             # rather than dropping forever. Only an app we never stored is ever a hard skip.
@@ -1429,6 +1454,7 @@ def main():
                 last_commit = time.time()
             inject_new_seeds()              # pull any seeds.txt edit into this run (own fetch)
             requeue_due_young()             # ...and any young game that came due mid-run
+            inject_released()               # ...and any game that came out mid-run
             last_tick = time.time()
 
     catalog["skipped"] = sorted(skipped)
@@ -1440,7 +1466,10 @@ def main():
     save_games(processed); save_catalog(catalog)
     git_checkpoint(f"scrape: {len(processed)} games (+{n_new} new, {n_ref} refreshed, "
                    f"{n_pend} pending)")
-    log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending. "
+    if out_of_time:
+        chain_next_run()
+    log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending"
+        f"{f' ({n_shell} unreleased shell record(s) dropped from games.json)' if n_shell else ''}. "
         f"Stored {len(processed)}, skipped {len(skipped)}, waiting {len(pending)}, "
         f"rechecking {len(recheck)}, "
         f"{sum(1 for r in processed.values() if r.get('unknown'))} stored marked unknown.")

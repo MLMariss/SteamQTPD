@@ -35,6 +35,7 @@ jobs:
             /tags_refresh.py
             /games.json
             /tags.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

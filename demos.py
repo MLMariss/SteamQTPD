@@ -42,12 +42,12 @@ upcoming.json (scraper.py) read-only.
 
 import json
 import os
-import random
-import subprocess
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"            # read-only (owned by scraper.py)
@@ -64,7 +64,6 @@ GETITEMS_DELAY = 1.2                        # matches price_and_sale.py / traile
 MAX_RETRIES = 4
 PHASES = ("upcoming", "released")           # sweep order; the cursor names one of these
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qtpd demo indexer; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 SESSION = requests.Session()
@@ -158,34 +157,9 @@ def save_demos(demos, worklists, swept_at, cursor):
     return len(out)
 
 
-def _on_main():
-    """True when the checkout really is main — a dispatch from another branch is a dry run,
-    so it can never push that branch's code onto main through the HEAD:main push below."""
-    r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                       capture_output=True, text=True)
-    return r.returncode == 0 and r.stdout.strip() == "main"
-
-
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    if not _on_main():
-        log(f"  [dry run: not on main] would have committed: {msg}")
-        return
-    try:
-        subprocess.run(["git", "add", "demos.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit demos.json on top of the current main (gitsync.py: tip-only fetch, no rebase)."""
+    gitsync.commit(["demos.json"], msg)
 
 
 def queue_from(worklists, cursor):

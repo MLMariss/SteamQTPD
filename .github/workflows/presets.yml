@@ -58,23 +58,11 @@ jobs:
             echo "::warning title=Preset shelves need attention::$(sed -n '/^PROBLEMS:/,$p' presets-report.txt | tail -n +2 | tr '\n' ' ')"
           fi
 
+      # Other jobs commit to main continuously, all to DIFFERENT files: gitsync.py puts
+      # presets.json on main's tip and retries if one lands mid-push (red run if it can't).
       - name: Commit presets.json
         run: |
           rm -f presets-report.txt
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- presets.json; then
-            echo "presets.json unchanged — nothing to commit."
-            exit 0
-          fi
-          git add presets.json
-          git commit -m "presets: refresh shelf counts"
-          # Other jobs commit to main continuously. They all write DIFFERENT files, so a
-          # rebase is always clean; retry a few times in case one lands mid-push.
-          for i in 1 2 3 4 5; do
-            if git push origin HEAD:main; then exit 0; fi
-            sleep $((i * 3))
-            git pull --rebase origin main
-          done
-          echo "could not push presets.json after 5 attempts" >&2
-          exit 1
+          python gitsync.py -m "presets: refresh shelf counts" presets.json

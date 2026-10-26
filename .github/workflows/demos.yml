@@ -30,6 +30,7 @@ jobs:
             /games.json
             /upcoming.json
             /demos.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

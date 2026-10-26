@@ -51,13 +51,14 @@ Reads games.json (read-only) for the appid list (and to know which games are fre
 import json
 import math
 import os
-import random
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"          # read-only (owned by scraper.py)
@@ -500,22 +501,8 @@ def save_prices(prices):
 
 
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "prices.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit prices.json on top of the current main (gitsync.py: tip-only fetch, no rebase)."""
+    gitsync.commit(["prices.json"], msg)
 
 
 def trigger_deploy():

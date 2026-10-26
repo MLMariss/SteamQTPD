@@ -11,7 +11,7 @@ on:
     # Pure local recompute (~10s), no network. It writes length_coefs.json ONLY: length.json
     # belongs to 2.3's chained Length step (one writer per file). It used to re-apply too,
     # and 03:17 lands mid-way through 2.3's 01:23 pass, so every Monday the two commits
-    # conflicted and 2.3's was dropped. 2.3 rebases onto main before its Length step, so the
+    # conflicted and 2.3's was dropped. 2.3's commits reset onto main's tip (gitsync.py), so the
     # new coefficients reach length.json when the pass in progress ends (~50 min later).
     - cron: "17 3 * * 1"    # Mondays 03:17 UTC
 

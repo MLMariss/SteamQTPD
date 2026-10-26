@@ -37,6 +37,7 @@ jobs:
             /pics_upcoming.json
             /ea_dates.json
             /ea_dates_state.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

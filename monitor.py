@@ -48,14 +48,18 @@ from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import gitsync                      # commits this job's own files to main (gitsync.py)
+
 HERE = Path(__file__).resolve().parent
 OUT_FILE = HERE / "monitor.json"
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 REPO = os.environ.get("GITHUB_REPOSITORY", "MLMariss/SteamQTPD")
 
-# Every file whose age is tracked, in the order of the file_age array.
+# Every file whose age is tracked, in the order of the file_age array. demos / shots_state /
+# ea_dates were appended 26 Oct 2026 (older snapshots carry shorter arrays; the page reads a
+# missing entry as no data). Screenshots are sharded and their shards are rewritten only when
+# one changes, so their age is the state file's, which shots.py saves every run.
 FILES = ["games", "prices", "recent", "playtime", "ratings", "hltb", "tags", "trailers",
-         "length", "updates", "pics", "upcoming"]
+         "length", "updates", "pics", "upcoming", "demos", "shots_state", "ea_dates"]
 # Files with a per-game timestamp, in the order of the row_p50 / row_p95 arrays. games_young /
 # games_old split games.json's scraped_at at the end of the scraper's review ladder: a game
 # released within YOUNG_DAYS is re-scraped on the age tiers (6h to 15d), an older or undated one
@@ -67,7 +71,7 @@ ROW_AGES = ["games", "prices", "recent", "hltb", "games_young", "games_old"]
 YOUNG_DAYS = 365                 # = scraper.py REVIEW_TIERS[-1][0]
 # Coverage layers, in the order of the coverage array; each is counted over catalog games only.
 COVERAGE = ["reviews", "prices", "recent", "playtime", "ratings", "hltb", "tags", "trailers",
-            "length", "pics"]
+            "length", "pics", "shots", "demos"]
 # The backfill streams only these (~145 MB a day); tags, trailers, pics, updates and upcoming
 # would add ~130 MB for coverage alone, so history has their file age (from git) but no counts.
 BACKFILL_FILES = ["games", "prices", "recent", "playtime", "ratings", "hltb", "length"]
@@ -121,7 +125,8 @@ def per_game(name, d, appids):
                 sum(1 for a, v in m.items() if a in appids and isinstance(v, dict)
                     and any(v.get(k) for k in times)))
     key = {"playtime": "playtime", "ratings": "playtime_ratings", "tags": "tags",
-           "trailers": "trailers", "length": "length", "pics": "apps"}.get(name)
+           "trailers": "trailers", "length": "length", "pics": "apps", "shots": "shots",
+           "demos": "demos"}.get(name)
     if key is None:
         return None, None                      # updates / upcoming: file age only
     m = _keyed(d, key)
@@ -171,6 +176,14 @@ def snapshot(t, src, read, file_times=None):
         if name in COVERAGE:
             cov[name] = covered
         del d
+
+    # Coverage layers whose file isn't one of FILES (the screenshot shards).
+    for name in COVERAGE:
+        if name != "reviews" and name not in FILES:
+            d = read(name)
+            if d is not None:
+                cov[name] = per_game(name, d, appids)[1]
+                del d
 
     catalog = read("catalog")
     pending = len((catalog or {}).get("pending") or {}) if catalog else None
@@ -233,6 +246,17 @@ def merge_runs(existing, catalog_runs, message_runs=()):
 # Live snapshot
 # --------------------------------------------------------------------------- #
 def read_local(name):
+    if name == "shots":                          # 64 shards, read as one {"shots": {...}}
+        shards = sorted((HERE / "shots").glob("shard_*.json"))
+        if not shards:
+            return None
+        rows = {}
+        for f in shards:
+            try:
+                rows.update(json.loads(f.read_text(encoding="utf-8")).get("shots") or {})
+            except (OSError, ValueError):
+                continue
+        return {"shots": rows}
     try:
         return json.loads((HERE / f"{name}.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -369,28 +393,10 @@ def backfill():
 
 
 # --------------------------------------------------------------------------- #
-# Commit (same pattern as coverage.py: fetch, rebase over the other writers, push)
+# Commit (gitsync.py, like every writer: main's tip plus monitor.json, push)
 # --------------------------------------------------------------------------- #
 def git_commit(msg):
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "monitor.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-            log("  monitor.json unchanged; nothing to commit.")
-            return
-        subprocess.run(["git", "commit", "-m", msg], check=False)
-        for attempt in range(1, 6):
-            subprocess.run(["git", "fetch", "origin", "main"], check=False)
-            subprocess.run(["git", "rebase", "--autostash", "FETCH_HEAD"], check=False)
-            if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                              capture_output=True, text=True).returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            time.sleep(2 * attempt + random.uniform(0, 2))
-        log("  ERROR: could not push monitor.json after 5 attempts")
-    except Exception as e:
-        log(f"  git commit failed: {e}")
+    gitsync.commit(["monitor.json"], msg)
 
 
 if __name__ == "__main__":

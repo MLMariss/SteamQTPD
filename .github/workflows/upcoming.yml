@@ -3,7 +3,8 @@ name: 2.11 Upcoming games -> upcoming.json
 on:
   workflow_dispatch:        # run manually from the Actions tab (from a branch: a dry run, see upcoming_refresh.py)
   schedule:
-    - cron: "23 0 * * *"    # daily; ~26 min, done before 2.10 demos (01:11) reads upcoming.json
+    - cron: "23 0 * * *"    # daily, ~26 min. Demos (2.10) and trailers/shots (2.8/2.9) read upcoming.json
+                            # whenever they run; order doesn't matter (each uses the latest file).
 
 permissions:
   contents: write           # commits upcoming.json
@@ -28,6 +29,7 @@ jobs:
             /catalog.json
             /upcoming.json
             /lookups/tags.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

@@ -203,23 +203,26 @@ def _field(spec, lo, hi):
 def _fire_after(cron, after_dt):
     """First fire of a single cron strictly after `after_dt` (UTC), or None.
 
-    Only minute+hour fields are projected; every cron in this repo leaves
-    day/month/weekday as `*`. Anything else returns None and the caller falls
-    back to reporting the raw cron string without a projection — better a blank
-    cell than a confidently wrong 'next run'.
+    Minute, hour and weekday are projected (3.3 length-fit runs `17 3 * * 1`, Mondays);
+    every cron in this repo leaves day-of-month and month as `*`. Anything else returns
+    None and the caller falls back to reporting the raw cron string without a projection
+    — better a blank cell than a confidently wrong 'next run'.
     """
     parts = cron.split()
     if len(parts) != 5:
         return None
     m, h, dom, mon, dow = parts
-    if (dom, mon, dow) != ("*", "*", "*"):
+    if (dom, mon) != ("*", "*"):
         return None
     mins, hrs = _field(m, 0, 59), _field(h, 0, 23)
-    if not mins or not hrs:
+    dows = {d % 7 for d in _field(dow, 0, 7)}           # cron: 0 or 7 = Sunday
+    if not mins or not hrs or not dows:
         return None
     t = (after_dt + timedelta(minutes=1)).replace(second=0, microsecond=0)
-    for day in range(2):
+    for day in range(8):
         base = t + timedelta(days=day)
+        if (base.weekday() + 1) % 7 not in dows:          # Python: Monday = 0
+            continue
         for H in hrs:
             for M in mins:
                 cand = base.replace(hour=H, minute=M)
@@ -251,12 +254,12 @@ def fires_between(crons, start_dt, end_dt, cap=200):
 
 def cadence_seconds(crons, now_dt):
     """WORST-CASE scheduled wait: the largest gap between consecutive fires over
-    the next 7 days. Used for the status ratio because judging an irregular cron
+    the next 15 days (two fires of a weekly cron). Used for the status ratio because judging an irregular cron
     (e.g. `41 4,10,16,22`) by its *average* gap would flag its longest legitimate
     quiet stretch as late."""
     fires = []
     cur = now_dt
-    end = now_dt + timedelta(days=7)
+    end = now_dt + timedelta(days=15)
     while True:
         nxt = next_fire(crons, cur)
         if not nxt or nxt > end:
@@ -379,7 +382,33 @@ def main():
 
     pt_scraped, pt_new, pt_old, pt_deep, pt_deep_unanchored = CV.read_pt_shards()
     upd_ts, upd_pop, upd_shards, upd_new, upd_old = CV.read_upd_shards()
-    pics_ts, pics_pop, pics_shards, pics_new, pics_old = CV.read_pics_raw_shards()
+    # pics_raw also holds every upcoming game; counted against games.json it read -61,090
+    # "pending fill" (Oct 2026), so the catalog row counts catalog games only.
+    pics_ts, pics_pop, pics_shards, pics_new, pics_old = CV.read_pics_raw_shards(only=set(games_ts))
+
+    # ---- the GetItems layers (2.8-2.12) and the upcoming catalogue ----
+    up = CV.read_upcoming()
+    up_ts = {k: r.get("scraped_at") or 0 for k, r in up["rows"].items()}
+    show_ids = set(games_ts) | set(up_ts)          # every game the page can show
+
+    def media(state_name, hit_ids, verify_days):
+        """(cov, ts_map, unstamped) for a trailers/shots-style layer: hits Steam re-confirms
+        every `verify_days` (the state file's `checked`), misses retried, the rest never asked."""
+        st = CV.load(state_name) or {}
+        hits = hit_ids & show_ids
+        checked = {k: int(v) for k, v in (st.get("checked") or {}).items() if k in hits}
+        misses = set(st.get("misses") or {}) & show_ids
+        over = sum(1 for k, t in checked.items() if now - t >= verify_days * DAY)
+        never = len(show_ids - hit_ids - misses)
+        return (len(hits), len(hits) - over, over, never, len(misses)), checked, len(hits) - len(checked)
+
+    tr_cov, tr_checked, tr_unstamped = media("trailers_state.json", CV.read_trailer_ids(), CV.TRAILER_VERIFY_DAYS)
+    sh_cov, sh_checked, sh_unstamped = media("shots_state.json", CV.read_shot_ids(), CV.SHOTS_VERIFY_DAYS)
+    up_window = CV.UPCOMING_FRESH_H * HOUR
+    up_over = sum(1 for t in up_ts.values() if now - t >= up_window)
+    up_cov = (len(up_ts), len(up_ts) - up_over, up_over, len(up["pending"] - set(up_ts)), 0)
+    demos_doc = CV.load("demos.json") or {}
+    ea_doc = CV.load("ea_dates.json") or {}
 
     # Two different floors: playtime scrapes from 5 reviews (where a sentiment-split
     # median first becomes guaranteed), updates keeps its own 10. One shared lambda
@@ -488,6 +517,42 @@ def main():
                   f"game gets its store art in ~6h instead of waiting for this row's daily run. "
                   f"It shares this job's concurrency group, so `pics_refresh.py` stays "
                   f"single-writer; the schedule below is the FULL refresh's."),
+        dict(key="2.8", kind="data", wf="trailers.yml", label="Store trailers", script="trailers.py",
+             owns="trailers.json", stamp=json_stamp("trailers.json"), ts_map=tr_checked, cov=tr_cov,
+             window=f"new games next run · hits re-checked every {CV.TRAILER_VERIFY_DAYS}d · misses "
+                    f"retried after 30d",
+             note=f"Covers games.json and upcoming.json (upcoming-only trailers ride in "
+                  f"`trailers_upcoming.json`). `Skipped by design` = asked, Steam has no playable "
+                  f"trailer (retried after 30d). Table 3 ages are when Steam last confirmed each "
+                  f"hit" + (f"; {tr_unstamped:,} hits have no stamp yet (the next run spreads "
+                            f"them over the window)" if tr_unstamped else "") + "."),
+        dict(key="2.9", kind="data", wf="shots.yml", label="Store screenshots", script="shots.py",
+             owns="shots/", stamp=json_stamp("shots_state.json"), ts_map=sh_checked, cov=sh_cov,
+             window=f"new games next run · hits re-checked every {CV.SHOTS_VERIFY_DAYS}d · misses "
+                    f"retried after 30d",
+             note=f"Covers games.json and upcoming.json. The shards are rewritten only when one "
+                  f"changes, so the stamp is `shots_state.json`'s, saved every run. `Skipped by "
+                  f"design` = asked, no all-ages stills (mature-only sets are declined)"
+                  + (f"; {sh_unstamped:,} hits have no stamp yet" if sh_unstamped else "") + "."),
+        dict(key="2.10", kind="data", wf="demos.yml", label="Store demos", script="demos.py",
+             owns="demos.json", stamp=json_stamp("demos.json"), ts_map={}, cov=None,
+             window="whole catalogue (games.json + upcoming.json) every run; no per-game stamp",
+             note=f"{len(demos_doc.get('demos') or {}):,} games with a demo; last full sweep "
+                  f"{ts_utc(demos_doc.get('swept_at'))} UTC"
+                  + (f", resuming after {demos_doc.get('cursor')}" if demos_doc.get("cursor") else "")
+                  + ". A run that hits its budget leaves a cursor and the next one carries on."),
+        dict(key="2.11", kind="data", wf="upcoming.yml", label="Upcoming games",
+             script="upcoming_refresh.py", owns="upcoming.json", stamp=up["generated_at"],
+             ts_map=up_ts, cov=up_cov,
+             window=f"every pending game, one batched pass a day ({CV.UPCOMING_FRESH_H}h window)",
+             note=f"Rows for the scraper's pending room (`catalog.json`); `Pending fill` = pending "
+                  f"games Steam gave no row for. {len(up['released']):,} reported out, waiting "
+                  f"for the scraper (their rows stay until it has stored them)."),
+        dict(key="2.12", kind="data", wf="ea-dates.yml", label="Early Access dates", script="ea_dates.py",
+             owns="ea_dates.json", stamp=json_stamp("ea_dates.json"), ts_map={}, cov=None,
+             window="every Early Access game every run; no per-game stamp",
+             note=f"{len(ea_doc.get('games') or {}):,} games with an announced 1.0 date or a "
+                  f"remembered EA start."),
         dict(key="3.1", kind="derived", wf="playtime-raw.yml", label="Playtime medians (chained)",
              script="playtime_summarize.py", owns="playtime.json",
              stamp=json_stamp("playtime.json"), ts_map={}, cov=None, derived="2.3",
@@ -498,7 +563,16 @@ def main():
              stamp=json_stamp("ratings.json"), ts_map={}, cov=None, derived="2.3",
              window="recomputed in full on every 2.3 pass",
              note="Derived — freshness inherits from `playtime_raw/`."),
-        dict(key="3.3", kind="derived", wf="updates.yml", label="Update events summary (chained)",
+        dict(key="3.3", kind="derived", wf="length-fit.yml", label="Length calibration (weekly)",
+             script="length_model.py --fit", owns="length_coefs.json",
+             stamp=json_stamp("length_coefs.json"), ts_map={}, cov=None,
+             window="refit weekly", note="Calibration only; `length.json` (3.4) applies it."),
+        dict(key="3.4", kind="derived", wf="playtime-raw.yml", label="Length (chained)",
+             script="length_model.py", owns="length.json",
+             stamp=json_stamp("length.json"), ts_map={}, cov=None, derived="2.3",
+             window="recomputed in full on every 2.3 pass",
+             note="Derived — freshness inherits from `playtime.json` (and so `playtime_raw/`)."),
+        dict(key="2.4s", kind="derived", wf="updates.yml", label="Update events summary (chained)",
              script="updates_summarize.py", owns="updates.json",
              stamp=json_stamp("updates.json"), ts_map={}, cov=None, derived="2.4",
              window="recomputed in full on every 2.4 pass",
@@ -517,11 +591,16 @@ def main():
              ts_map={}, cov=None, window="n/a (monitor)",
              note="Self-report: the stamp in table 1 is the PREVIOUS run's — this run has "
                   "not written the file yet at the moment the row is computed."),
+        dict(key="4.4", kind="monitor", wf="presets.yml", label="Preset shelves", script="presets.py",
+             owns="presets.json", stamp=json_stamp("presets.json"), ts_map={}, cov=None,
+             follows="scrape.yml", window="n/a (monitor)",
+             note="Triggered by `workflow_run` after task 1 succeeds, like 4.2; the only "
+                  "generated file the page downloads."),
         dict(key="4.5", kind="monitor", wf="monitor.yml", label="Pipeline monitor history",
              script="monitor.py", owns="monitor.json", stamp=json_stamp("monitor.json"),
              ts_map={}, cov=None, window="n/a (monitor)",
-             note="Every 2h and after every scrape (`workflow_run`); charted by "
-                  "monitor.html (§11.7)."),
+             note="After every scrape (`workflow_run`) and every price pass (dispatched by "
+                  "2.1), with a 2-hourly backstop cron; charted by monitor.html (§11.7)."),
         dict(key="0", kind="publish", wf="pages.yml", label="Pages deploy", script="—",
              owns="(site)", stamp=None, ts_map={}, cov=None, window="n/a (publish)",
              note="Republishes current `main`. Leaves no artifact in the repo, so there is "

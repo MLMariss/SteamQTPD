@@ -23,12 +23,12 @@ derived stats without re-scraping — everything needed is in the raw reviews.
 """
 
 import json
-import os
 import statistics
-import subprocess
 import sys
 import time
 from pathlib import Path
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 RAW_FILE = HERE / "playtime_raw.json"        # legacy monolith (pre-shard fallback)
@@ -36,7 +36,6 @@ SHARD_DIR = HERE / "playtime_raw"            # dir of NN.json shards (read-only 
 OUT_FILE = HERE / "playtime.json"            # THIS file's output (committed; frontend reads it)
 
 MIN_SEGMENT_FOR_MEDIAN = 3                    # keep in lockstep with playtime_refresh.py
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def log(msg):
@@ -111,24 +110,7 @@ def save_summary(summary, per_game_cap):
 
 
 def git_commit():
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "playtime.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m",
-                            f"playtime summary: refreshed frontend playtime.json"], check=False)
-            for _attempt in range(1, 9):
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log("  committed playtime.json")
-                    break
-                import random
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git commit failed: {e}")
+    gitsync.commit(["playtime.json"], "playtime summary: refreshed frontend playtime.json")
 
 
 def main():

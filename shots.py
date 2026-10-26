@@ -86,9 +86,22 @@ on first hover and caches it — ~400KB once, instead of 25MB on every page load
 page that already pulls ~240MB of JSON. Same idiom as pics_raw/ and updates_raw/.
 
 Output shots_state.json (NOT served; the queue's memory, like catalog.json):
-  { "misses": { "<appid>": <ts> }, "swept_at": <ts> }
+  { "misses": { "<appid>": <ts> }, "checked": { "<appid>": <ts> }, "swept_at": <ts> }
 A miss is re-checked after MISS_TTL_DAYS, because an unreleased or freshly-listed game
-gains screenshots later.
+gains screenshots later. A hit is re-checked after VERIFY_DAYS (`checked` in the state
+file is when Steam last confirmed it): a developer who swaps a still retires its hash,
+and a hit that was never re-asked would rotate dead images. A hit with no stamp yet
+(everything stored before Oct 2026) gets one spread evenly over the window, so the
+re-checks cost ~1/VERIFY_DAYS of the catalogue a day, not one burst.
+
+Which games: everything the page can show, games.json most-reviewed first, then
+upcoming.json's unreleased games (the Upcoming view hovers like any other).
+
+Only what Steam ANSWERS changes anything. A failed call changes nothing: its 50 games
+are asked again next run (until Oct 2026 it came back as an empty list and parked all 50
+as misses for 30 days). A re-checked hit is dropped only when Steam answers for that game
+with no all-ages stills, and never from a batch where none of the known hits came back
+with any (an answer without screenshot data, not 50 games emptied at once).
 
 Ownership (one writer per file):
   scraper.py      -> games.json    (catalog, rating, tags, last_update, release)
@@ -100,16 +113,17 @@ Reads games.json (read-only) for the appid list and review counts.
 
 import json
 import os
-import random
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
 
+import gitsync                      # commits this job's own files to main (gitsync.py)
+
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"                    # read-only (owned by scraper.py)
+UPCOMING_FILE = HERE / "upcoming.json"              # read-only (owned by upcoming_refresh.py)
 SHOTS_DIR = HERE / "shots"                          # this job's output (served, sharded)
 STATE_FILE = HERE / "shots_state.json"              # this job's queue memory (not served)
 
@@ -122,6 +136,7 @@ GETITEMS_BATCH = 50                                 # appids per GetItems call
 GETITEMS_DELAY = 1.2                                # matches trailers.py / price_and_sale.py
 MAX_RETRIES = 4
 MISS_TTL_DAYS = int(os.environ.get("QTPD_SHOTS_MISS_TTL", "30"))
+VERIFY_DAYS = int(os.environ.get("QTPD_SHOTS_VERIFY_DAYS", "60"))   # re-check a hit this often
 
 SHARDS = 64                                         # appid % SHARDS -> shots/shard_NN.json
 
@@ -174,7 +189,6 @@ CANDIDATE_HOSTS = [
 CANDIDATE_ROOTS = ["store_item_assets/steam/apps/", "steam/apps/", ""]
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qtpd screenshot indexer; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 SESSION = requests.Session()
@@ -378,7 +392,8 @@ def probe_shot_hosts(appid, filename):
 # GetItems
 # --------------------------------------------------------------------------- #
 def getitems(appids):
-    """One batched GetItems call -> list of store_item dicts (empty list on failure)."""
+    """One batched GetItems call -> list of store_item dicts, or None when the call failed
+    (so the caller can tell "no screenshots" from "no answer" and keep what it had)."""
     payload = {
         "ids": [{"appid": int(a)} for a in appids],
         "context": {"country_code": os.environ.get("QHPP_CC", "US"), "language": "english"},
@@ -394,9 +409,12 @@ def getitems(appids):
     if STEAM_API_KEY:
         params["key"] = STEAM_API_KEY
     data = get("https://api.steampowered.com/IStoreBrowseService/GetItems/v1/", params=params)
-    if not isinstance(data, dict):
-        return []
-    items = ((data.get("response") or {}).get("store_items")) or []
+    if not isinstance(data, dict) or not isinstance(data.get("response"), dict):
+        if os.environ.get("QTPD_DUMP_SHOTS") == "1":
+            log("=== GetItems gave no answer — nothing to dump ===")
+            sys.exit(1)               # a dump run never writes, even on failure
+        return None
+    items = data["response"].get("store_items") or []
     # Diagnostic twin of trailers.py's QTPD_DUMP_TRAILERS. The response shape here was
     # never verified against a live call (see the module docstring), so this is not a
     # nicety — run it before trusting a single row this parser writes.
@@ -445,23 +463,26 @@ def getitems(appids):
 # Load / save
 # --------------------------------------------------------------------------- #
 def load_catalog():
-    """[(appid, review_count)] from games.json, most-reviewed first.
+    """[(appid, review_count)] for every game the page can show: games.json most-reviewed
+    first, then upcoming.json's unreleased games (review count 0).
 
     Ordering is the whole first-pass strategy: the backlog is ~127k games but the ones
     anybody actually hovers are the popular ones, so stills show up on the games that
     matter within the first run rather than after the full sweep.
     """
-    if not GAMES_FILE.exists():
-        return []
-    try:
-        d = json.loads(GAMES_FILE.read_text(encoding="utf-8"))
-    except ValueError:
-        return []
+    d = load_json(GAMES_FILE, {})
     if d.get("sample"):
         return []
     rows = [(int(g["appid"]), int(g.get("review_count") or 0))
             for g in d.get("games", []) if g.get("appid") is not None]
+    if not rows:
+        return []
     rows.sort(key=lambda r: -r[1])
+    have = {a for a, _ in rows}
+    up = load_json(UPCOMING_FILE, {}).get("games") or []
+    rows += sorted({(int(g["appid"]), 0) for g in up
+                    if isinstance(g, dict) and g.get("appid") is not None
+                    and int(g["appid"]) not in have})
     return rows
 
 
@@ -528,64 +549,48 @@ def save_shots(hits, dirty):
             ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def save_state(misses, swept_at):
+def save_state(misses, checked, swept_at):
+    by_id = lambda m: {str(k): v for k, v in sorted(m.items(), key=lambda kv: int(kv[0]))}
     STATE_FILE.write_text(json.dumps(
         {"generated_at": int(time.time()), "swept_at": swept_at,
-         "misses": {str(k): v for k, v in sorted(misses.items(), key=lambda kv: int(kv[0]))}},
+         "misses": by_id(misses), "checked": by_id(checked)},
         ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def _on_main():
-    """True when the checkout really is main.
-
-    Guard for the workflow's `ref: ${{ github.ref_name }}` checkout: a manual dispatch
-    from a fix branch must never be able to push that branch's code onto main via the
-    `HEAD:main` checkpoint below. A branch run is therefore always a dry run.
-    """
-    r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                       capture_output=True, text=True)
-    return r.returncode == 0 and r.stdout.strip() == "main"
+def spread_stamp(appid, now):
+    """A first `checked` stamp for a hit stored before stamps existed: somewhere in the last
+    VERIFY_DAYS, evenly by appid, so their re-checks spread over the window instead of all
+    coming due together. (Knuth's multiplicative hash: appids are mostly multiples of 10.)"""
+    window = VERIFY_DAYS * 86400
+    return now - (int(appid) * 2654435761) % window
 
 
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    if not _on_main():
-        log(f"  [dry run: not on main] would have committed: {msg}")
-        return
-    try:
-        subprocess.run(["git", "add", "shots", "shots_state.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit shots/ + shots_state.json on top of the current main (gitsync.py). A run
+    dispatched from a branch is a dry run: gitsync never pushes from a non-main checkout."""
+    gitsync.commit(["shots", "shots_state.json"], msg)
 
 
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-def select_work(catalog, hits, misses, now):
-    """Appids to query this run: never-checked first (most-reviewed first), then stale
-    misses (oldest first). A hit is never re-queried — a screenshot's content hash is
-    effectively permanent, and the periodic full re-sweep is a manual dispatch.
+def select_work(catalog, hits, misses, checked, now):
+    """(queue, n_fresh, n_stale, n_verify): appids to query this run. Never-checked first
+    (most-reviewed first), then misses past MISS_TTL_DAYS, then hits Steam last confirmed
+    VERIFY_DAYS ago or more (both oldest first).
 
     This is also what keeps NEW GAMES covered without a second job: a freshly scraped
     appid has no entry in either map, so it lands at the head of `fresh` on the next
     daily run.
     """
-    ttl = MISS_TTL_DAYS * 86400
-    fresh, stale = [], []
+    ttl, vttl = MISS_TTL_DAYS * 86400, VERIFY_DAYS * 86400
+    fresh, stale, verify = [], [], []
     for appid, _rc in catalog:
         key = str(appid)
         if key in hits:
+            at = int(checked.get(key) or 0)
+            if now - at >= vttl:
+                verify.append((at, appid))
             continue
         seen = misses.get(key)
         if seen is None:
@@ -593,7 +598,67 @@ def select_work(catalog, hits, misses, now):
         elif (now - int(seen)) >= ttl:
             stale.append((int(seen), appid))
     stale.sort()
-    return fresh + [a for _ts, a in stale]
+    verify.sort()
+    return (fresh + [a for _ts, a in stale] + [a for _ts, a in verify],
+            len(fresh), len(stale), len(verify))
+
+
+def apply_batch(batch, items, hits, misses, checked, dirty, now):
+    """Fold one answered batch into the maps. Returns (found, changed, removed, mature_only):
+    new hits, re-checked hits whose stills changed, hits dropped, and games offering only
+    mature stills. A hit is dropped only when Steam answered for that game with no all-ages
+    stills, and not at all when none of the batch's known hits came back with any: that is
+    an answer without screenshot data, not 50 games emptied at once."""
+    found = changed = mature_only = 0
+    got, empty = {}, set()
+    seen_ids = set()
+    for it in items:
+        aid = it.get("appid") or it.get("id")
+        if aid is None:
+            continue
+        key = str(aid)
+        seen_ids.add(int(aid))
+        files, only_mature = extract_shots(it)
+        if only_mature:
+            mature_only += 1
+        if files:
+            got[key] = files
+        else:
+            # Nothing storable: no screenshots at all, or all-ages set empty and
+            # only mature stills offered (which this job declines by design).
+            empty.add(key)
+    known = [str(a) for a in batch if str(a) in hits]
+    trust_empty = not known or any(k in got for k in known)
+    for key, files in got.items():
+        if key in hits:
+            changed += hits[key] != files
+        else:
+            found += 1
+        if hits.get(key) != files:
+            dirty.add(shard_of(key))
+        hits[key] = files
+        checked[key] = now
+        misses.pop(key, None)
+    removed = 0
+    for key in empty:
+        if key in hits:
+            if not trust_empty:
+                continue                  # keep it unconfirmed; asked again next run
+            del hits[key]
+            checked.pop(key, None)
+            dirty.add(shard_of(key))
+            removed += 1
+        misses[key] = now
+    # Appids the response dropped entirely (delisted, region-locked, not an app): a miss,
+    # so it doesn't re-queue every run; a hit keeps its stills and waits a full window.
+    for aid in batch:
+        key = str(aid)
+        if int(aid) not in seen_ids:
+            if key in hits:
+                checked[key] = now
+            else:
+                misses[key] = now
+    return found, changed, removed, mature_only
 
 
 def main():
@@ -608,22 +673,28 @@ def main():
     hits, stale_base = load_shots()
     sdoc = load_json(STATE_FILE, {})
     misses = dict(sdoc.get("misses") or {})
+    checked = {k: int(v) for k, v in (sdoc.get("checked") or {}).items() if k in hits}
     swept_at = sdoc.get("swept_at") or 0
+    now = int(time.time())
+    for key in hits:
+        if key not in checked:
+            checked[key] = spread_stamp(key, now)
 
-    queue = select_work(catalog, hits, misses, int(time.time()))
+    queue, n_fresh, n_stale, n_verify = select_work(catalog, hits, misses, checked, now)
     log(f"Catalog {len(catalog)} | have shots {len(hits)} | known misses {len(misses)} | "
-        f"queued {len(queue)} | budget {RUN_MINUTES}min | max {MAX_SHOTS}/game")
+        f"queued {len(queue)} ({n_fresh} new, {n_stale} misses past {MISS_TTL_DAYS}d, "
+        f"{n_verify} hits past {VERIFY_DAYS}d) | budget {RUN_MINUTES}min | max {MAX_SHOTS}/game")
     if not queue:
-        log("Nothing due. (Screenshot hashes are permanent; re-sweep via manual dispatch.)")
+        log("Nothing due.")
         if stale_base:
             log(f"  ...but {len(stale_base)} shard(s) carry an outdated base — rewriting")
             save_shots(hits, stale_base)
-        save_state(misses, int(time.time()))
+        save_state(misses, checked, int(time.time()))
         git_checkpoint("shots: base rewrite" if stale_base else "shots: nothing due")
         return
 
     last_ckpt = time.time()
-    found = checked = mature_only = 0
+    found = checked_n = mature_only = changed = removed = failed = 0
     # Shards carrying an outdated base start dirty, so the correction lands on the next
     # save even for games this run never re-queries.
     dirty = set(stale_base)
@@ -636,48 +707,29 @@ def main():
         batch = queue[i:i + GETITEMS_BATCH]
         items = getitems(batch)
         time.sleep(GETITEMS_DELAY)
-        now = int(time.time())
-        seen_ids = set()
-        for it in items:
-            aid = it.get("appid") or it.get("id")
-            if aid is None:
-                continue
-            key = str(aid)
-            seen_ids.add(int(aid))
-            files, only_mature = extract_shots(it)
-            if only_mature:
-                mature_only += 1
-            if files:
-                hits[key] = files
-                dirty.add(shard_of(key))
-                misses.pop(key, None)
-                found += 1
-            else:
-                # Nothing storable: no screenshots at all, or all-ages set empty and
-                # only mature stills offered (which this job declines by design).
-                misses[key] = now
-        # Appids the response dropped entirely (delisted, region-locked, not an app):
-        # record them as misses so they don't re-queue every single run.
-        for aid in batch:
-            if int(aid) not in seen_ids and str(aid) not in hits:
-                misses[str(aid)] = now
-        checked += len(batch)
+        if items is None:
+            failed += 1                    # no answer: every game keeps what it had
+            continue
+        f, c, r, m = apply_batch(batch, items, hits, misses, checked, dirty, int(time.time()))
+        found, changed, removed, mature_only = found + f, changed + c, removed + r, mature_only + m
+        checked_n += len(batch)
 
         if time.time() - last_ckpt >= CHECKPOINT_SECONDS:
             save_shots(hits, dirty)
-            save_state(misses, swept_at)
+            save_state(misses, checked, swept_at)
             git_checkpoint(f"shots: {len(hits)} with screenshots ({found} new this run)")
             dirty.clear()
             last_ckpt = time.time()
 
-    if checked >= len(queue):
+    if checked_n >= len(queue):
         swept_at = int(time.time())
     save_shots(hits, dirty)
-    save_state(misses, swept_at)
-    git_checkpoint(f"shots: {len(hits)} with screenshots ({found} new this run)")
-    log(f"Done. checked {checked}, found {found}, mature-only declined {mature_only}, "
-        f"total with shots {len(hits)}, misses {len(misses)} | "
-        f"{(time.time()-started)/60:.1f}min")
+    save_state(misses, checked, swept_at)
+    git_checkpoint(f"shots: {len(hits)} with screenshots ({found} new, {changed} changed, "
+                   f"{removed} gone this run)")
+    log(f"Done. checked {checked_n}, found {found}, changed {changed}, gone {removed}, "
+        f"mature-only declined {mature_only}, {failed} failed call(s), total with shots "
+        f"{len(hits)}, misses {len(misses)} | {(time.time()-started)/60:.1f}min")
 
 
 if __name__ == "__main__":
