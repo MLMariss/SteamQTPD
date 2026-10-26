@@ -460,7 +460,8 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
   `.bar-tools` cluster (right of the bar). **Grid** = Steam **header art** (`header.jpg`, capsule
   fallback) + a **QTPD badge overlay** + discount flag + coloured status border (on-sale = gold).
   **Tap a card to expand** → shows QTPD / price / rating / length and **`Steam ↗` / `Close ✕`**
-  actions. *Decisions:* layout is **class-driven** — `body.layout-card` (stacked spec-sheet),
+  actions *(Oct 2026: `Close` became a corner ✕ and the actions three equal tiles, so the face fits
+  a 154px phone card — INESKA_IMPROVEMENTS.md §24)*. *Decisions:* layout is **class-driven** — `body.layout-card` (stacked spec-sheet),
   `body.grid-view` (grid), `body.narrow` — set by `applyLayout()` + a tiny inline FOUC script.
   The **"detailed" view is one thing relabelled per device**: **Table = desktop-only, Card =
   mobile-only** (the off-device button is dimmed and shows a hint toast). View persists in
@@ -559,7 +560,8 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     **"Hide filters" bar is `position:sticky; bottom:0`** — pinned to the viewport bottom so the close
     control is never scrolled off-screen, releasing to scroll up at the panel's end. Needs a
     non-clipping ancestor, so `.barwrap` drops `overflow:hidden` on mobile (rounded corners moved to
-    the first/last child).
+    the first/last child). *(Oct 2026: desktop lifts the same clip while a search-suggestion list is
+    open, which it had been cutting off — INESKA_IMPROVEMENTS.md §30.)*
   - **Random hidden until filtered** — `#randomBtn` shows only when ≥1 non-default filter is active
     (toggled in `renderSummary()` from the `active` flag; applies on all screen sizes).
   - **Scroll-collapsed sticky nav** — once scrolled >24px on mobile, `body.nav-scrolled` (a passive
@@ -604,7 +606,8 @@ for the concrete state/URL/CSS contract, and *Future work* for what's still open
     utilities — `randomPick` / `openExportPopover` / `doExportCSV` (`CSV_COLS`) / `copyLink`;
     sort — `bindSortControl` / `syncMobileSort`.
   - **Shared-class gotcha — `.gmeta` is used by BOTH views.** In the table it's the title cell
-    (`min-width:136px; flex:1`); in a grid card it's the dark info panel (`background:#080b12`).
+    (`min-width:136px; flex:1`, and since Oct 2026 `flex:1 1 136px; min-width:0` in the table so
+    the art shrinks first — INESKA_IMPROVEMENTS.md §29); in a grid card it's the dark info panel (`background:#080b12`).
     The grid rule **must** be scoped `.gcard .gmeta`, not bare `.gmeta`, or the near-black panel
     background bleeds behind table-view titles as an ugly black block. (Regression fixed post-R6.)
   - **"Changed from default" = gold (single source of truth).** A control at its default reads

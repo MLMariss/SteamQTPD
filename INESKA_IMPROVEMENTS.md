@@ -19,8 +19,7 @@ defects observed by a real first-time user, not feature proposals. ROADMAP §3.x
 there a data source, is it worth building"; this file asks "the thing we already built
 confused somebody — why?". Different question, different bar, different lifecycle.
 
-Comments were made in Latvian; each item keeps the original line verbatim so nothing is
-lost in paraphrase, with an English gloss beneath it.
+Each item quotes the comment in English, then the problem, where it lives, and the fix.
 
 ---
 
@@ -51,6 +50,18 @@ lost in paraphrase, with an English gloss beneath it.
 | 21 | The header count strip has no tooltip | Tooltips | **Done** |
 | 22 | Truncated titles can't be read in full | Tooltips | **Done** |
 | 23 | "Per page" only lets the user hurt themselves | Header / paging | **Done** |
+| 24 | "Close" is cut off on the opened grid card | Grid view | **Done** |
+| 25 | Back does not return after Find similar | Navigation | **Done** |
+| 26 | The opened card's scrollbar goes unnoticed | Grid view | **Done** (with 24) |
+| 27 | The opened card's title is hidden under the rows | Grid view | **Done** |
+| 28 | The table's top-left corner looks cut off | Table view | **Done** |
+| 29 | Long table titles are cut mid-letter | Table view | **Done** |
+| 30 | The search dropdown looks cut off | Search | **Done** |
+| 31 | Row hover pokes past the table's rounded corners | Table view | **Done** (with 28) |
+| 32 | Tag chips in the Showing line touch each other | Header / summary | **Done** |
+| 33 | Length max can be set to 0 | Filters | **Done** |
+| 34 | Price type has no hover and looks unselected | Filters | **Done** |
+| 35 | Stale "Showing 66 of 7511" above "No games match" | Paging | **Done** |
 
 ---
 
@@ -58,13 +69,9 @@ lost in paraphrase, with an English gloss beneath it.
 
 **Said** (20:26):
 
-> Sākumā viss, aiz kā uzreiz aizķeras acs un kas raisa jautājumus: Lai gan viss it kā
-> rakstīts un tooltips salikti, vienalga kaut kā pirmais bija "dafaq is this". Manuprāt,
-> šie iederas kaut kur tuvāk saturam.
-
-*"First of all, the thing the eye immediately snags on and that raises questions: even
-though everything is written out and the tooltips are in place, my first reaction was still
-'dafaq is this'. In my opinion these belong somewhere closer to the content."*
+> First of all, the thing the eye immediately snags on and that raises questions: even though
+> everything is written out and the tooltips are in place, my first reaction was still 'dafaq
+> is this'. In my opinion these belong somewhere closer to the content.
 
 **Problem.** `Table / Card / Grid / CSV` sits in the top header bar, far from the results it
 governs. It is the first cluster the eye lands on, before the user has seen a single game,
@@ -86,9 +93,7 @@ being next to the results.
 
 **Said** (20:27), on the toast shown when Table is clicked at 1028px:
 
-> Pardon my french..? :D 1028px screen joprojām ir desktop. :D
-
-*"Pardon my french..? A 1028px screen is still desktop."*
+> Pardon my french..? A 1028px screen is still desktop.
 
 **Problem.** The message says *desktop-only* but the actual gate is a **width** threshold:
 `matchMedia("(max-width:1374px)")` flips the layout to card. The table itself has a hard
@@ -147,15 +152,11 @@ works and still scrolls sideways — the user's call, as before.
 
 **Said** (20:28, on the CSV button showing a tooltip):
 
-> Action uz hover ir.
-
-*"There's an action on hover."*
+> There's an action on hover.
 
 **Said** (20:30, on Table / Card / Grid in the same row):
 
-> A šitiem nav. Ta jā vai nē? :D
-
-*"But these don't have one. So — yes or no?"*
+> But these don't have one. So — yes or no?
 
 **Problem.** Not the tooltips — those are fine. The custom tip engine is delegated over every
 `[title]` element, so CSV and Table/Card/Grid get the identical styled bubble. What differs is
@@ -182,9 +183,7 @@ something here, but not a choice right now". Only the pressed button is excluded
 **Said** (20:31), arrows drawn at two cards in the grid that carry a gold border while
 neighbours don't:
 
-> Nesaprotu, kāpēc daļai ir dzeltenā maliņa un daļai nav.
-
-*"I don't understand why some have the yellow edge and some don't."*
+> I don't understand why some have the yellow edge and some don't.
 
 **Problem.** There are in fact **two different gold cues** stacked on the same card edge and
 nothing distinguishes them or explains either:
@@ -216,9 +215,7 @@ quietly reintroduced item 10. Caught by the height check, which is why it's a sh
 
 **Said** (20:32), on the spec-sheet card view reached from the switcher:
 
-> Nu vot čist nedomāju, ka šitā jābūt. :D
-
-*"Well, I honestly didn't expect it to be like this."*
+> Well, I honestly didn't expect it to be like this.
 
 **Problem.** The detailed single-column view was not what the user anticipated from where
 they clicked — the transition from a dense grid of box art to one tall stacked spec sheet
@@ -240,9 +237,7 @@ the table, stacked one game per card. Used when the window is under 1375px."*
 
 **Said** (20:36), on the `↓ High → Low — flip` button in the sort popover:
 
-> Wut? :D Vnk uz augšu/leju bultiņas divas vairs nav stilīgi?
-
-*"Wut? Are two plain up/down arrows just not stylish enough any more?"*
+> Wut? Are two plain up/down arrows just not stylish enough any more?
 
 **Problem.** A direction toggle is one of the most conventionalised controls on the web — an
 arrow, or a pair of them. This one renders as a compound string that mixes **current state**
@@ -265,20 +260,13 @@ descending shouldn't reverse it.
 
 **Said** (20:38), with an arrow at the `QTPD` logo showing its "Show / hide filters" tooltip:
 
-> Šis ir neierasts risinājums. A ir kaut kāds veids, kā es varu dabūt uz sākuma skatu visu,
-> ko es tur esmu sabakstījusi, ātri un vienkārši? 😅 Jo tas būtu tas, ko es no klikšķa uz
-> QTPD sagaidītu.
-
-*"This is an unusual solution. But is there some way to get everything I've poked at back to
-the starting view, quickly and simply? Because that's what I'd expect from clicking QTPD."*
+> This is an unusual solution. But is there some way to get everything I've poked at back to
+> the starting view, quickly and simply? Because that's what I'd expect from clicking QTPD.
 
 **Said** (20:41):
 
-> Filtrus es varu resetot ar to linku, bet "Sorted by" man tāpat jāver vaļā un jāmēģina
-> atcerēties, kas nu Tev tur bija pašā sākumā.
-
-*"I can reset the filters with that link, but I still have to open 'Sorted by' and try to
-remember what you had there in the first place."*
+> I can reset the filters with that link, but I still have to open 'Sorted by' and try to
+> remember what you had there in the first place.
 
 **Problem.** Two defects in one item:
 
@@ -311,9 +299,7 @@ no sort reset), `#clear` tooltip claim (~L1162).
 
 **Said** (20:44):
 
-> Atkal dažiem action uz hover ir un dažiem nav.
-
-*"Again, some have an action on hover and some don't."*
+> Again, some have an action on hover and some don't.
 
 **Problem.** Same complaint as item 3, and — like item 3 — it turned out to be a real defect
 rather than an impression. `.gcard:hover` sets a border colour, but `.gcard.sale` sets one too,
@@ -339,11 +325,8 @@ responds as one object.
 **Said** (20:46), arrow at the green `90%` on a card, tooltip reading *"Steam review score
 90% · 15,917 revi…"*:
 
-> Varbūt kādu ikonu klāt vai ko? Man no malas pirmajā brīdī vispār nav izpratnes, kas tie
-> par %.
-
-*"Maybe add some icon or something? Coming at it from outside, I have no idea at first what
-those % are."*
+> Maybe add some icon or something? Coming at it from outside, I have no idea at first what
+> those % are.
 
 **Problem.** The card shows a coloured `90%` with no label, no icon and no unit. Its meaning
 — Steam all-time review score — exists **only** in the `title=` tooltip, so it is invisible
@@ -368,9 +351,7 @@ item 4 covers the same ground permanently, on screen.
 
 **Said** (20:49), with a screen recording of the grid resizing as content loads:
 
-> Kad garāks nosaukums, lēkā bloku augstums. Tas parasti nav great.
-
-*"When a title is longer, the block height jumps around. That's usually not great."*
+> When a title is longer, the block height jumps around. That's usually not great.
 
 **Problem.** `.gcard` has no fixed height — it is art (fixed `aspect-ratio:460/215`) plus an
 info panel that grows with its content. `.gname` is clamped to two lines via
@@ -396,11 +377,8 @@ they came in two heights.
 
 **Said** (20:50), with the word "Price" highlighted blue on an opened card:
 
-> Sīkums, bet kaitina: ja netīšam sanāk kaut ko iezīmēt, klikšķinoties, nevar vairs noņemt
-> to sūdu. :D
-
-*"A small thing, but it's annoying: if you accidentally select something while clicking, you
-can't get rid of it any more."*
+> A small thing, but it's annoying: if you accidentally select something while clicking, you
+> can't get rid of it any more.
 
 **Problem.** Repeated or double clicking on a card selects its text — the card is a click
 target, so double-clicks happen naturally. Normally a click on empty space clears a
@@ -489,8 +467,8 @@ separate report. Raise it and it's a small change.
 # Round 2 — grid, sort and tooltip pass
 
 A second sitting on the live site, this time driving the Grid view and the sort bar rather
-than reading the page cold. Same capture rules as above: original line verbatim, English
-gloss beneath, then the problem, where it lives, and a proposed direction. Nothing in this
+than reading the page cold. Same capture rules as above: the comment as said, then the
+problem, where it lives, and a proposed direction. Nothing in this
 round shipped in the same sitting; each `Fix` records the option that was chosen and what
 verifying it showed.
 
@@ -500,11 +478,8 @@ verifying it showed.
 
 **Said**:
 
-> Es liktu vai nu tādu pašu fonta izmēru un weight kā pie vērtējuma vai citu fontu uz tiem
-> akcijas badges.
-
-*"I'd give those sale badges either the same font size and weight as the rating, or a
-different font."*
+> I'd give those sale badges either the same font size and weight as the rating, or a
+> different font.
 
 > Update discount font for better readability, also check other fonts to avoid any shit
 > fonts — we need clear, easy-reading digital fonts.
@@ -612,11 +587,8 @@ the dotted zero was in every number on the site, not just that one chip.
 
 **Said**:
 
-> Ja šis attiecas tikai uz Table view, varbūt paslēpt, ja cits skats izvēlēts? Citādāk
-> uzspied Grid view laikā un gaidi, kādi brīnumi notiks. A nekas nenotiek. 🥲
-
-*"If this only applies to Table view, maybe hide it when another view is selected?
-Otherwise you click it while in Grid view and wait for the miracle. And nothing happens."*
+> If this only applies to Table view, maybe hide it when another view is selected? Otherwise
+> you click it while in Grid view and wait for the miracle. And nothing happens.
 
 **Problem.** Confirmed, and it is exactly as described. The hover preview is bound to
 `.thumb` — the small capsule image in a **table/card row**. A grid card has no `.thumb`; its
@@ -666,15 +638,10 @@ hover preview re-tested unchanged.
 
 **Said**:
 
-> Šis interesanti. Visiem, kas iet līdz simboliem, acīmredzot space ielikts pirms
-> nosaukuma, tāpēc rādās pirmie. Droši vien varētu mēģināt kaut ko samudrīt un rādīt kā
-> pirmos tikai tos, kas sākas ar burtu (latīņu → kirilica → japāņu etc.) un pārējos samest
-> beigās. Bet hz. Nezinu, vai ir vērts čakarēties.
-
-*"Interesting. Everything that ends up next to the symbols apparently has a space put
-before the name, which is why they show first. You could probably rig something so only
-titles starting with a letter come first (Latin → Cyrillic → Japanese etc.) and dump the
-rest at the end. But dunno. Not sure it's worth the hassle."*
+> Interesting. Everything that ends up next to the symbols apparently has a space put before
+> the name, which is why they show first. You could probably rig something so only titles
+> starting with a letter come first (Latin → Cyrillic → Japanese etc.) and dump the rest at
+> the end. But dunno. Not sure it's worth the hassle.
 
 **Problem.** Correct diagnosis. Sorting by Name is
 `dir * a.title.localeCompare(b.title)` on the **raw** title, and Steam ships titles with
@@ -729,10 +696,8 @@ flipping it to the front.
 
 **Said**:
 
-> Izskatās, ka šis īsti nestrādā. Sorted by review score (visible in corner) and it's not
+> Looks like this doesn't really work. Sorted by review score (visible in corner) and it's not
 > sorted by it at all.
-
-*"Looks like this doesn't really work."*
 
 **Problem.** The sort is working. The **card is showing a different number than the one
 being sorted on**, which is worse than a broken sort, because it makes correct output look
@@ -794,11 +759,8 @@ Chromium, every card in a row is 187px before and after, open or closed.
 
 **Said**:
 
-> Tātad mums Grid view ir sorting opcijas, ar parametriem, kas šajā view nemaz netiek
-> rādīti..? Need to be adjusted for this view.
-
-*"So in Grid view we have sorting options with parameters that this view doesn't even
-display..?"*
+> So in Grid view we have sorting options with parameters that this view doesn't even
+> display..? Need to be adjusted for this view.
 
 **Problem.** The grid sort bar is built from the full `SORT_LABELS` map — all thirteen
 fields — while a grid card shows exactly three: QTPD, review score, title (plus price and
@@ -839,9 +801,7 @@ from Playtime.
 
 **Said**:
 
-> Kas ir "Playtime"? Tas pats, kas "Length"? Ja jā, tad tur kaut kas nestrādā.
-
-*"What is 'Playtime'? The same as 'Length'? If so, something's not working there."*
+> What is 'Playtime'? The same as 'Length'? If so, something's not working there.
 
 > So we can sort by playtime (upvote or downvote) but the card shows HLTB length. Maybe
 > worth swapping and showing the playtime — as that value is ~100% there, where HLTB is
@@ -898,10 +858,8 @@ outright that one is time-to-finish and the other time-actually-played.
 
 **Said**:
 
-> Es, piemēram, pis, kas ir HLTB. :D Teorētiski var ielikt atšifrējumu tooltip.
-
-*"I, for one, have no idea what HLTB is. :D You could in theory put the expansion in the
-tooltip."*
+> I, for one, have no idea what HLTB is. :D You could in theory put the expansion in the
+> tooltip.
 
 > Yes, the tooltips are absolutely not helping here.
 
@@ -929,12 +887,9 @@ hours to finish a game. Main story / +Extras / Completionist, with the average b
 
 ## 21 — The header count strip has no tooltip
 
-**Said**:
+**Said**, pointing at `80637 / 126910 games · 43m ago · USD`:
 
-> Izskatās, ka te varbūt trūkst tooltips.
-
-*"Looks like a tooltip might be missing here."* (pointing at `80637 / 126910 games · 43m
-ago · USD`)
+> Looks like a tooltip might be missing here.
 
 **Problem.** Four separate facts crammed into one unlabelled mono line, none explained:
 what the two numbers are (matching your filters / total in the dataset), what `43m ago`
@@ -1000,11 +955,8 @@ grid card is itself a click target.
 
 **Said**:
 
-> Šis vispār ir nepieciešams, ja Tev saturs ielādējas automātiski, tiklīdz aizskrollē līdz
-> apakšai? Kāds dunduks uzliks 2000 un tad besīsies, ka viss bremzē. :D
-
-*"Is this even needed, given the content loads automatically as soon as you scroll to the
-bottom? Some numpty will set 2000 and then get annoyed that everything is slow."*
+> Is this even needed, given the content loads automatically as soon as you scroll to the
+> bottom? Some numpty will set 2000 and then get annoyed that everything is slow.
 
 > True — reduce it to 66 by default and keep it that way.
 
@@ -1040,3 +992,305 @@ default (L1663), URL write (L3782), URL read/validate (L3841–L3842), click bin
 survives so links shared before the removal still resolve — its validator was the
 `[100, 500, 2000]` whitelist noted above, which would have rejected the new default, and is
 now a range check.
+
+---
+
+# Round 3 — narrow screens, navigation and filter details
+
+A third batch of screenshots, several from windows narrower than the original 1028px. Each
+item was reproduced in headless Chromium before it was fixed — on a 390px phone viewport,
+at 1028px, and at the 1300–1440px laptop widths — and re-measured after. All twelve shipped
+together, with the options chosen at review noted per item.
+
+---
+
+## 24 — "Close" is cut off on the opened grid card
+
+**Said**, on an opened card whose fourth button is half outside the card:
+
+> Hi! Let me show you a bit more. It looks like "Close" isn't fully visible on every screen.
+
+**Problem.** The opened card's action row was four labelled buttons (`Steam ↗`, `Reviews ⇩`,
+`≈ Similar`, `Close ✕`), each `flex:1` but never narrower than its own text. Together they
+need ~250px; a desktop grid card is ~220–240px and a two-column phone card ~154–170px, so
+the row overflowed on every common width. Nothing clipped it visibly: `.ginfo` has
+`overflow-y:auto`, and a non-visible `overflow-y` silently turns `overflow-x` to `auto` as
+well, so the overlay scrolled sideways behind a scrollbar thin enough to miss (item 26). On
+a 390px phone `Similar` was half cut too, and `Close` entirely off the card.
+
+**Where.** `index.html` — `.ginfo` (L1288), `.gi-close` (L1316), `.gi-actions` (L1331) and the
+two `@container` blocks after it (L1342); markup in `gridCardHTML()` (L5311).
+
+**Fix — shipped as (A1).**
+
+- `Close` became a small ✕ in the overlay's top-right corner. Tapping anywhere on an opened
+  card already closes it, so the button only needs to be findable.
+- The remaining three actions are equal tiles, icon over label, on a
+  `repeat(3, minmax(0, 1fr))` grid — the row is exactly the card's width, whatever the text.
+- `overflow-x:hidden` on `.ginfo`, so there is never a sideways scroll to discover.
+- The card is a size container (`container-type:inline-size`), so the CARD's width, not the
+  viewport's, decides the compact sizes: under 200px the title clamps to one line and the
+  spacing tightens; under 164px (a 360px phone) the tile labels drop to 10px.
+
+Rejected at review: a 2×2 button block (the opened card would grow taller than the closed
+one, which item 12 made sure never happens) and one card per row on phones (half the games
+per screen). Measured after: zero horizontal overflow and all three labels untruncated at
+360, 390, 1028 and 1600px.
+
+---
+
+## 25 — Back does not return after Find similar
+
+**Said**:
+
+> A pretty weird user experience: after clicking "Similar" I can't get back with the Back
+> button.
+
+**Problem.** `syncURL()` only ever called `history.replaceState()`. The URL stayed shareable,
+but the page never created a history entry, so Back had nothing on this page to return to and
+left the site instead. Preset shelves and picking a title from the search list had the same
+problem: each one replaces the whole question being asked, and none of them could be undone
+with Back.
+
+**Where.** `index.html` — `pushStep()` (L6183), next to `syncURL()`; called from
+`findSimilar()` (L4817), `pickTitle()` (L4939) and `applyPreset()` (L5819); restore in the
+`popstate` handler (L6394).
+
+**Fix — shipped as (D1).** A *jump* — Find similar, a preset shelf, a picked search title —
+now opens a new history entry before it changes the filters, and `syncURL()` writes the
+jump's URL into it. Ordinary edits (typing, steppers, chips, sort) still rewrite the current
+entry, so Back doesn't replay every keystroke. The entry being left records its scroll offset
+and how many pages were loaded; on Back the handler regrows the list to that length and
+scrolls back, landing on the same card. Notes:
+
+- It scrolls twice. On a phone the first scroll past 24px collapses the sticky nav, which
+  moves the content up by the nav's height, and scroll anchoring then left the view ~100px
+  off. The second scroll runs after the nav has settled.
+- `history.scrollRestoration` is `manual`. The browser's own restore would apply the offset
+  before the list had regrown.
+- Forward onto a jump has no saved offset, so it starts at the top, as the jump itself did.
+  `applyPreset()`'s synthetic `popstate` (`isTrusted` false) still leaves the scroll alone,
+  and now resets paging to page one like any other filter change.
+
+Verified on a 390px viewport: scrolled seven pages deep, Find similar, then Back → same URL,
+same seven pages, same card at the same offset.
+
+---
+
+## 26 — The opened card's scrollbar goes unnoticed
+
+**Said**, after finding the scrollbar under the card:
+
+> Ah, there's a scrollbar at the bottom. I didn't even notice it 😄 Dunno, maybe I'd
+> consider an option where you just drag those little blocks to see everything.
+
+**Problem.** The same overflow as item 24, seen from the other side: the only way to reach
+the cut-off button was an inner horizontal scrollbar.
+
+**Fix.** `[Done]` with item 24: everything fits the card's width, and `overflow-x:hidden`
+means there is nothing to scroll to or drag.
+
+---
+
+## 27 — The opened card's title is hidden under the rows
+
+**Said**, on "Towers of Altrac - Epic Defense Battles", whose second line runs under `Price`:
+
+> Part of the title is hidden behind the rest of the content. Could truncate it with "…".
+
+**Problem.** `.gi-title` is clamped with `overflow:hidden`, which drops its flex `min-height`
+to 0. In a short card it was the flex item that gave way: squashed below its two lines (the
+second line drawn under the Price row), clipped at the top ("Black Desert"), and on a
+two-column phone grid squashed to **0px** — no title at all.
+
+**Where.** `index.html` — `.ginfo > *{flex:none}` and `.gi-title` (just below `.ginfo`, L1288).
+
+**Fix.** `[Done]` Nothing in the overlay's column may shrink. The title keeps its two-line
+clamp, which ends in "…", and on cards under 200px it clamps to one line. Row labels stay on
+one line too (`Playtime median` used to wrap onto a second line on narrow cards, which was the
+extra height that pushed the buttons off the bottom).
+
+---
+
+## 28 — The table's top-left corner looks cut off
+
+**Said** (owner, circling the top-left corner of the table, where the GAME header meets the
+card edge):
+
+> The corners are cut off or something.
+
+**Problem.** `.tablecard` has a 14px radius, but nothing inside it is clipped to that radius.
+`overflow:hidden` would make the card a scroll container, and the sticky header would stop
+sticking. The header's opaque square fill therefore covered the card's rounded top-left
+border, which read as a notch.
+
+**Where.** `index.html` — after `tbody tr:hover` (L676–L683).
+
+**Fix.** `[Done]` The two square fills that reach the card's corners carry the curve
+themselves: `thead` gets a 13px top radius and the last row a 13px bottom radius (13px = the
+card's 14px less its border). `overflow:clip` was considered and rejected: it would keep the
+header sticky, but it would also cut off the sort menu that drops out below a short list.
+
+---
+
+## 29 — Long table titles are cut mid-letter
+
+**Said**, on "Encased: A Sci-Fi Post-Apocalyptic RPG" wrapping into the next column:
+
+> Maybe this also needs truncating with "..".
+
+(The same screenshot set shows "Pathfinder: Wratł" — cut through the letter.)
+
+**Problem.** The Game column is `minmax(268px, 2.2fr)`, and on every window from 1280px to about
+1520px it sits at that 268px floor: the fixed-ceiling columns take the free space before any
+`fr` track grows. The 150px art (180px with Tags folded), the hide button and the gaps left
+the title ~52px, but `.gmeta` has a 136px floor, so the title block ran ~80px past the cell.
+The cell's `overflow:hidden` then cut it mid-letter. There was no ellipsis, because the two-line
+clamp never saw the edge. Measured before the fix: every one of the first 40 rows overflowed
+at 1440px.
+
+**Where.** `index.html` — `body:not(.layout-card) .gamecell …` rules after `.gmeta` (L846).
+
+**Fix — shipped as (B1).** In the table (not the card layout) the art gives way first: it
+shrinks with `flex-shrink:4` down to 96px, keeping its ratio. The title takes what is left,
+and its clamp ends in "…". `overflow-wrap:anywhere` breaks a single over-long word instead of
+clipping it. Rejected: raising the column's floor, which would push the switch to the card
+layout ~80px wider. After: zero overflowing rows at 1280, 1290 and 1366px.
+
+---
+
+## 30 — The search dropdown looks cut off
+
+**Said**, typing "fall":
+
+> Should the dropdown show more results, or does it just look like that? Right now it seems
+> like something is cut off.
+
+> I believe if we search just 1 word 'fall' there should be way more titles showing up than
+> just two? Fallout? Falldown? Humans Fall Flat?
+
+**Problem.** Two causes, and the tester's first reading was right:
+
+1. **Clipped.** The list did render eight rows, but `.barwrap` (the rounded box around the
+   search bar) is `overflow:hidden` on desktop, so every row past the bar's bottom edge was
+   cut off. Only "FALL" and "FALL 坠落之后" were visible. Narrow screens already ran unclipped.
+2. **Crowded.** Five games are titled exactly "FALL" or ".fall". Exact matches rank first,
+   so they filled all five title slots, and Fallout never made it onto the list. Picking a row
+   searches its text, so the five rows all led to the same results.
+
+**Where.** `index.html` — `.barwrap:has(...)` (L105–L108), `.simsug` max-height (L951),
+`SIMSUG_JUMP` (L4850) and `oneEach` in `renderSimSug()` (L4906).
+
+**Fix — shipped as (E1).**
+
+- While a suggestion list is open the clip is lifted (`.barwrap:has(.simsug:not([hidden]))`).
+  This covers the publisher/developer list too. The "Show filters" strip carries its own
+  corner curve, so the un-clipped bar still looks rounded.
+- Titles that differ only in case or punctuation collapse to their best-ranked game, in both
+  the title rows and the ≈ rows.
+- The title group shows up to eight rows (was five), and the list's max height grows to
+  `min(70vh, 440px)`.
+
+"fall" now lists FALL, Fallout 4, Fallout: New Vegas, Human Fall Flat, STAR WARS Jedi: Fallen
+Order, Fallout 76, WUCHANG: Fallen Feathers and Fallout Shelter. No row is covered.
+
+---
+
+## 31 — Row hover pokes past the table's rounded corners
+
+**Said**, on the last row of a short list:
+
+> It shows fine at the bottom, but on hover the corners poke out over the rounded edge.
+
+**Problem / Fix.** Same cause as item 28, at the other end of the card: the last row's square
+hover fill reached past both lower corners. `[Done]` with item 28: the last row carries the
+bottom radius.
+
+---
+
+## 32 — Tag chips in the Showing line touch each other
+
+**Said**, on the tag chips in the collapsed filter summary:
+
+> Don't you want to put at least a couple of pixels of space between the bubbles? 😅 In all
+> directions.
+
+**Problem.** `interactedTagChipsHTML()` returns one run of buttons with no whitespace between
+them, and at full rail size each chip (~29px) is taller than the line's 26px. Measured: 0px
+apart side to side, and 0px between rows once the run wrapped.
+
+**Where.** `index.html` — `.filter-summary .chip` (L1143).
+
+**Fix.** `[Done]` Each chip gets a 3px margin, with its padding trimmed slightly to sit closer
+to the `.sumf` filter chips beside it. After: 3px apart side to side, 6px between rows.
+
+---
+
+## 33 — Length max can be set to 0
+
+**Said**, on the Length range with max showing 0:
+
+> Not sure I'd allow choosing zero here. One mistake and there are no results any more.
+
+**Problem.** ▼ on the empty max box ("∞") stepped to 0, and a max of 0 hours matches
+nothing, because no game has a Length of 0. One misclick blanked the list.
+
+**Where.** `index.html` — `hoursHandler` (L6617), the stepper handler (L6642), `hmax` in
+`loadFromURL()` (L6288).
+
+**Fix — shipped as (G1).** A Length max of 0 now means "no bound", like an empty box:
+
+- ▼ steps down to 1 and then back to empty ("∞").
+- ▼ on an empty box stays empty.
+- A typed 0 is ignored while typing, so "0.5" still works, and tidies to empty on `change`.
+- `hmax=0` in a link is ignored.
+
+Price is untouched: max $0 is a real filter (free games).
+
+---
+
+## 34 — Price type has no hover and looks unselected
+
+**Said**, hovering over All / Full / Sale / Free:
+
+> It seems a bit weird that these have no hover state when none of them is selected.
+
+**Problem.** By default all four buttons were pressed. The pressed fill is quiet, and with
+every button wearing it the group read as *nothing* selected. Segment buttons skip the hover
+fill when pressed, so none of the four answered the pointer.
+
+**Where.** `index.html` — markup in the Price type field, `syncPriceClassUI()` (L5074), the
+click handler (L6515), the `.seg` hover ring (L312).
+
+**Fix — shipped as (H1), a behaviour change.**
+
+- With every type included, only **All** is lit.
+- From All, clicking Full, Sale or Free shows *only* that kind. The same click used to
+  switch that kind off. Later clicks add or remove kinds as before, and lighting all three
+  goes back to All.
+- Pressed segment buttons site-wide now answer hover with a ring, not a fill, so the fill
+  still marks the selection.
+
+Found while testing: clicking Full while a Min sale floor had switched it off released the
+floor and then toggled Full straight off again. It now brings Full back, which is what the
+existing comment said it was for.
+
+---
+
+## 35 — Stale "Showing 66 of 7511" above "No games match"
+
+**Said**, on a screenshot with "Showing 66 of 7511 — scroll for more…" underlined above the
+empty-state message:
+
+> Well, I dunno, dunno 😅
+
+**Problem.** `render()` returns early when no games match, before it reaches the code that
+hides the paging footer. The previous list's "Showing 66 of 7511 — scroll for more…" stayed
+on screen above "No games match these filters."
+
+**Where.** `index.html` — the empty branch of `render()` (L3470).
+
+**Fix.** `[Done]` The empty branch hides `#loadmore` itself.
+
+**Not an item:** the round ‹ › arrows at the edges of two of these screenshots are the chat
+app's image-viewer controls, not part of the site.
