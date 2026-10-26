@@ -3,23 +3,22 @@ name: 2.4 Game update events raw -> updates_raw/ shards
 on:
   workflow_dispatch:        # run manually
   schedule:
-    # ONE shard bucket per run (GITHUB_RUN_NUMBER % 64), rotating through all 64 over
-    # ~64 runs so commits stay small and only one writer ever touches a given shard.
+    # As many shard buckets per run as RUN_MINUTES allows, the one written longest ago
+    # first, each committed as it finishes (updates_refresh.py). It did ONE bucket per run
+    # (GITHUB_RUN_NUMBER % 64): ~40 of 180 minutes used, every game revisited every ~16
+    # days, so the 7-day cooldown for actively updated games could not be met.
     #
-    # STOREFRONT BUDGET NOTE: this endpoint (store.steampowered.com/events/…) draws on
-    # the SAME ~200/5min storefront budget as scrape / prices / recent. Those slots are
-    # already dense (prices :07 of 1,4,7,…; playtime-raw :23 of 1,4,7,…; recent :41 of
-    # 4,10,16,22). To avoid piling on, updates runs on the QUIET slots only: :53 of
-    # 2,8,14,20 — four times a day, well clear of the others, and STORE_DELAY is a
-    # conservative 1.6s. update history changes slowly, so 4×/day rotation (all 64
-    # buckets every ~16 days) is plenty. WATCH 403 rates after deploy: if they climb,
-    # drop to :53 of 2,14 (2×/day) or raise STORE_DELAY to 2.0. (hltb :53 hits a
-    # different host, tags :29 another — no contention there; only the 4 storefront jobs
-    # share the budget, and this one is deliberately the lightest.)
+    # STOREFRONT BUDGET NOTE: this endpoint (store.steampowered.com/events/…) is on the
+    # ~200/5min storefront budget. That budget is per runner IP, and each job runs on its
+    # own runner, so it competes with no other job; STORE_DELAY 1.6s keeps this one at
+    # ~190/5min. Once the backlog left by the one-bucket design drains (~3 days), a day's
+    # due games are ~75 minutes of calls. WATCH 403 rates after deploy: if they climb,
+    # raise STORE_DELAY to 2.0. GitHub delivers this cron hours late on this repo, so
+    # the minute is no protection; the concurrency group is what prevents overlap.
     - cron: "53 2,8,14,20 * * *"
 
 permissions:
-  contents: write           # commits one updates_raw/NN.json shard per run + updates.json
+  contents: write           # commits each updates_raw/NN.json shard it finishes + updates.json
 
 concurrency:
   group: steam-updates      # never overlap updates runs (own group)
