@@ -24,7 +24,7 @@ review fetches answered vs failed) are carried over as they are.
 
 Modes
   python monitor.py              one snapshot from the working tree (MONITOR_SRC names the
-                                 trigger: scrape / cron / manual), appended to monitor.json
+                                 trigger: scrape / prices / cron / manual), appended to monitor.json
   python monitor.py --backfill   replay git history: every scrape commit's numbers from its
                                  message, plus one full snapshot per day, its files streamed
                                  from raw.githubusercontent.com at that commit (nothing is
@@ -75,7 +75,7 @@ BACKFILL_FILES = ["games", "prices", "recent", "playtime", "ratings", "hltb", "l
 SNAP_FORMAT = ["t", "src", "games", "pending", "file_age", "row_p50", "row_p95", "coverage"]
 RUN_FORMAT = ["start", "saved", "stored", "new", "refreshed", "pending",
               "reviews_answered", "reviews_failed", "reviews_zero_kept", "final"]
-MAX_SNAPS = 20000                # ~3 years at 16 a day; the oldest drop off first
+MAX_SNAPS = 20000                # ~2 years at ~30 a day (each price pass + scrape); oldest drop first
 BACKFILL_HOUR = 12               # the daily backfill point: the last commit before 12:00 UTC
 
 # "scrape: 133464 games (+72 new, 8667 refreshed, 3240 pending)"; June 2026 had no pending.

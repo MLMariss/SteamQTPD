@@ -9,13 +9,17 @@ on:
     workflows: ["1. Steam game catalog -> games.json"]   # off by its timeout still saved checkpoints
     types: [completed]
   schedule:
-    - cron: "17 */2 * * *"    # every 2h, so the hourly / 3-hourly jobs show between scrapes
-  workflow_dispatch:
-    inputs:
+    - cron: "17 */2 * * *"    # backstop only: GitHub drops most crons on this repo (3 of 8 fired, 25-26 Oct)
+  workflow_dispatch:          # also dispatched by the price job after every pass (~hourly, src=prices;
+    inputs:                   # price_and_sale.py trigger_deploy) — the clock that actually keeps time
       backfill:
         description: "Replay git history into monitor.json (one point a day, ~30 min) instead of one snapshot"
         type: boolean
         default: false
+      src:
+        description: "What started this snapshot, recorded with it (the price job sends 'prices')"
+        type: string
+        default: "manual"
 
 permissions:
   contents: write             # commits monitor.json
@@ -65,7 +69,7 @@ jobs:
 
       - name: Record snapshot
         env:
-          MONITOR_SRC: ${{ github.event_name == 'workflow_run' && 'scrape' || github.event_name == 'schedule' && 'cron' || 'manual' }}
+          MONITOR_SRC: ${{ github.event_name == 'workflow_run' && 'scrape' || github.event_name == 'schedule' && 'cron' || inputs.src || 'manual' }}
         run: python monitor.py
 
   backfill:

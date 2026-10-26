@@ -554,7 +554,7 @@ each single-writes its `.md`):
 | `coverage.yml`      | `coverage.py`     | `COVERAGE.md` | `workflow_run` after **scrape** succeeds (~4×/day) | `coverage-md`     |
 | `freshness.yml`     | `freshness.py`    | `FRESHNESS.md`| `0 7 * * *` (daily, the morning oversight pass)  | `freshness-md`    |
 | `presets.yml`       | `presets.py`      | `presets.json`| `workflow_run` after **scrape** succeeds (~4×/day) | `presets-json`    |
-| `monitor.yml`       | `monitor.py`      | `monitor.json`| `workflow_run` after **every** scrape + `17 */2 * * *`; manual `backfill` | `monitor-json` |
+| `monitor.yml`       | `monitor.py`      | `monitor.json`| `workflow_run` after **every** scrape + dispatched by the price job after **every** pass (~hourly) + `17 */2 * * *` backstop; manual `backfill` | `monitor-json` |
 
 `coverage.py` recomputes every coverage figure from the live files + shards and self-commits
 `COVERAGE.md`. It reports **two axes** (full design in §11.5): **Axis 1 — total coverage**
@@ -2835,8 +2835,11 @@ top bar (`renderMeta()`, `.meta-age`) — a plain link styled exactly like the t
 the strip every page view shows gains no colour, underline or hover state.
 
 **When.** Workflow 4.5: after **every** catalog scrape (`workflow_run`, any conclusion — a run cut
-off by its timeout still saved checkpoints), and every 2 h (`17 */2 * * *`) so the hourly and
-3-hourly jobs show between scrapes. ~16 points a day, ~350 bytes each.
+off by its timeout still saved checkpoints), and after **every price pass**: `price_and_sale.py`
+`trigger_deploy()` dispatches `monitor.yml` (`src=prices`) alongside `pages.yml`, so the hourly and
+3-hourly jobs show between scrapes. That dispatch is the clock: the `17 */2 * * *` cron stays only as
+a backstop, since GitHub drops most crons on this repo (it fired 3 times in 8 on 25–26 Oct 2026,
+leaving a 4-hour gap right after a release of this page). ~30 points a day, ~400 bytes each.
 
 **What a snapshot holds.** Catalog size and the pending room; each served file's age (its own
 `generated_at`); the median and 95th percentile of each game's own timestamp in `games.json`
@@ -3211,6 +3214,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   from the first full sweep in July that no trigger reached. `scraper.py` gained trigger 4,
   `REVIEW_FLOOR_DAYS` (60): any game not re-scraped for that long is queued behind all other
   work. §6 *Refresh triggers*, §11.7.
+
+- **Monitor snapshots ride the price job (Oct 2026).** The monitor's 2-hourly cron fired 3 times in
+  8 on 25–26 Oct, like every cron here. The price job already dispatches the Pages deploy after each
+  pass (~hourly); it now dispatches `monitor.yml` too (`src=prices`, a new `workflow_dispatch` input
+  recorded as the snapshot's source), and the cron stays as a backstop. The page's ⓘ texts now give
+  each file's measured normal age range rather than its nominal schedule. §11.7.
 
 - **Reviews come from GetAppReviews (Oct 2026).** The cause of the wipe below: Valve switched
   `store.steampowered.com/appreviews` off on **22 Oct 2026** (Steamworks announcement), and
