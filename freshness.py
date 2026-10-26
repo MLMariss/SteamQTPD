@@ -115,13 +115,6 @@ BACKLOG_CRIT = 0.25
 # so there is no scraper-declared window to score them against. 24h is OUR
 # observation window: at 8 runs/day every priced row should be re-stamped daily.
 PRICE_FRESH_WINDOW_H = 24
-# Re-check windows of the store-media layers, copied (this script stays stdlib-only, and
-# trailers.py / shots.py import requests): trailers.py / shots.py VERIFY_DAYS.
-TRAILER_VERIFY_DAYS = 60
-SHOTS_VERIFY_DAYS = 60
-# upcoming_refresh.py refreshes every pending game in one daily pass; a row older than this
-# was missed by at least one pass (GitHub's cron can land ~5h late, so a day plus slack).
-UPCOMING_FRESH_H = 36
 
 
 def log(*a):
@@ -409,9 +402,9 @@ def main():
         never = len(show_ids - hit_ids - misses)
         return (len(hits), len(hits) - over, over, never, len(misses)), checked, len(hits) - len(checked)
 
-    tr_cov, tr_checked, tr_unstamped = media("trailers_state.json", CV.read_trailer_ids(), TRAILER_VERIFY_DAYS)
-    sh_cov, sh_checked, sh_unstamped = media("shots_state.json", CV.read_shot_ids(), SHOTS_VERIFY_DAYS)
-    up_window = UPCOMING_FRESH_H * HOUR
+    tr_cov, tr_checked, tr_unstamped = media("trailers_state.json", CV.read_trailer_ids(), CV.TRAILER_VERIFY_DAYS)
+    sh_cov, sh_checked, sh_unstamped = media("shots_state.json", CV.read_shot_ids(), CV.SHOTS_VERIFY_DAYS)
+    up_window = CV.UPCOMING_FRESH_H * HOUR
     up_over = sum(1 for t in up_ts.values() if now - t >= up_window)
     up_cov = (len(up_ts), len(up_ts) - up_over, up_over, len(up["pending"] - set(up_ts)), 0)
     demos_doc = CV.load("demos.json") or {}
@@ -526,7 +519,7 @@ def main():
                   f"single-writer; the schedule below is the FULL refresh's."),
         dict(key="2.8", kind="data", wf="trailers.yml", label="Store trailers", script="trailers.py",
              owns="trailers.json", stamp=json_stamp("trailers.json"), ts_map=tr_checked, cov=tr_cov,
-             window=f"new games next run · hits re-checked every {TRAILER_VERIFY_DAYS}d · misses "
+             window=f"new games next run · hits re-checked every {CV.TRAILER_VERIFY_DAYS}d · misses "
                     f"retried after 30d",
              note=f"Covers games.json and upcoming.json (upcoming-only trailers ride in "
                   f"`trailers_upcoming.json`). `Skipped by design` = asked, Steam has no playable "
@@ -535,7 +528,7 @@ def main():
                             f"them over the window)" if tr_unstamped else "") + "."),
         dict(key="2.9", kind="data", wf="shots.yml", label="Store screenshots", script="shots.py",
              owns="shots/", stamp=json_stamp("shots_state.json"), ts_map=sh_checked, cov=sh_cov,
-             window=f"new games next run · hits re-checked every {SHOTS_VERIFY_DAYS}d · misses "
+             window=f"new games next run · hits re-checked every {CV.SHOTS_VERIFY_DAYS}d · misses "
                     f"retried after 30d",
              note=f"Covers games.json and upcoming.json. The shards are rewritten only when one "
                   f"changes, so the stamp is `shots_state.json`'s, saved every run. `Skipped by "
@@ -551,7 +544,7 @@ def main():
         dict(key="2.11", kind="data", wf="upcoming.yml", label="Upcoming games",
              script="upcoming_refresh.py", owns="upcoming.json", stamp=up["generated_at"],
              ts_map=up_ts, cov=up_cov,
-             window=f"every pending game, one batched pass a day ({UPCOMING_FRESH_H}h window)",
+             window=f"every pending game, one batched pass a day ({CV.UPCOMING_FRESH_H}h window)",
              note=f"Rows for the scraper's pending room (`catalog.json`); `Pending fill` = pending "
                   f"games Steam gave no row for. {len(up['released']):,} reported out, waiting "
                   f"for the scraper (their rows stay until it has stored them)."),

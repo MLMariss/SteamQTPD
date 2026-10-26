@@ -26,9 +26,11 @@ a small **Cloudflare Worker** proxy (§12).
 
 **One writer per file.** Every data layer is owned by exactly one job. No two jobs ever
 write the same file. This is the load-bearing decision that makes parallel scheduled
-Actions safe: two jobs committing *different* files always rebase-merge cleanly, so they
-can run and push concurrently without lock-step coordination or lost work. Adding a data
-source means adding a file + a job, never touching another job's file.
+Actions safe: every job commits through `gitsync.py`, which puts the job's own files on
+main's current tip, and because no other job ever changes those files, "main plus ours" loses
+nobody's work. So jobs run and push concurrently without lock-step coordination (§4
+*Committing*). Adding a data source means adding a file + a job, never touching another job's
+file.
 
 **Merge in the browser.** The frontend downloads each file and merges them by `appid` into
 one in-memory object per game, in a single O(n) pass at load. QTPD is computed client-side
@@ -149,12 +151,29 @@ about it. Dump first, then tighten.
 `{appid: [filename, ...]}`, one flat best-codec-first list from the **first highlight
 only** (TF2 exposes 17 trailers; the panel plays one) — plus an absolute `base` prefix, so
 a Valve host migration is a data change rather than a code change.
-`trailers_state.json` (**not** served) is the queue's memory, `{misses: {appid: ts}}`, so
-games with no playable clip aren't re-queried every run; a miss retries after
-`QTPD_TRAILER_MISS_TTL` days, because an unreleased game gains a trailer later.
-Adaptive-only apps count as misses — they have a trailer we can't play. The first pass
-walks the catalog **most-reviewed first**, so the games anyone actually hovers get covered
-in the opening minutes rather than at the end of the sweep.
+`trailers_state.json` (**not** served) is the queue's memory, `{misses, checked, adaptive,
+swept_at}`. A miss (no playable clip) retries after `QTPD_TRAILER_MISS_TTL` days (30),
+because an unreleased game gains a trailer later. Adaptive-only apps count as misses — they
+have a trailer we can't play. The first pass walks the catalog **most-reviewed first**, so
+the games anyone actually hovers get covered in the opening minutes rather than at the end
+of the sweep.
+
+**Since Oct 2026 (§16):**
+- **Upcoming games are covered.** The catalogue is `games.json` then `upcoming.json`. Their
+  trailers go to **`trailers_upcoming.json`** (same format), which the page fetches together
+  with `upcoming.json` (`ensureUpcoming()`), so the boot-loaded `trailers.json` (~24 MB) doesn't
+  grow. A game that releases moves to `trailers.json` on the next save.
+- **Hits are re-checked.** A hit was never asked again, so a replaced trailer went dead. Each
+  hit is re-confirmed every `QTPD_TRAILER_VERIFY_DAYS` (60). `checked` holds when Steam last
+  confirmed it. Hits stored before stamps existed get one spread evenly over the window
+  (`spread_stamp`), so the re-checks cost ~1/60 of the catalogue a day (~45 calls), not one
+  burst. A changed file list replaces the old one. A hit Steam answers *with no playable
+  trailer* is dropped, but never from a batch where none of the known hits came back with
+  one: that is an answer without trailer data, not 50 trailers gone at once.
+- **A failed call changes nothing.** `getitems` used to return `[]` for "no answer", so all
+  50 games of a failed call were recorded as misses and parked for 30 days. It now returns
+  `None`; those games keep what they had and are asked again next run.
+- `adaptive_available` counts each app once (the `adaptive` set) instead of once per check.
 
 **Frontend.** The clip plays in the enlarged hover popup after a 350 ms dwell, muted,
 cross-faded in only once the browser reports `playing`. It no longer loops forever: when it
@@ -291,8 +310,8 @@ Three things came out of the fix:
    so the frontend never has to work out which of several rootings it is holding.
 3. **The base is self-healing.** `load_shots` returns every shard whose stored `base` no
    longer matches `CDN_HOST`, and those start the next run pre-dirtied. Without it a base
-   correction could never reach rows already committed — a hit is never re-queried, so the
-   broken URLs would have survived every future run until someone forced a full re-sweep.
+   correction could never reach rows already committed — a hit was only re-queried every
+   60 days (never, before Oct 2026), so the broken URLs would have survived until then.
 
 `probe_shot_hosts()` (HEAD across a host × root matrix, requiring an `image/*` content-type
 so an HTML error page served as 200 cannot pass) remains under `QTPD_DUMP_SHOTS=1` for the
@@ -317,8 +336,12 @@ catalog) and **only the row you actually hover ever needs them**. Shipping that 
 would add ~10% to a page that already pulls ~240 MB of JSON, to serve hovers that mostly
 never happen. Checkpoints rewrite **only the shards touched since the last save**, so a few
 hundred new rows produce a small diff rather than a 25 MB one on a repo Pages serves live.
-`shots_state.json` (**not** served) is the queue's memory, `{misses: {appid: ts}}`, retried
-after `QTPD_SHOTS_MISS_TTL` days because a freshly-listed game gains screenshots later.
+`shots_state.json` (**not** served) is the queue's memory, `{misses, checked, swept_at}`: a
+miss retries after `QTPD_SHOTS_MISS_TTL` days because a freshly-listed game gains screenshots
+later, and since Oct 2026 the same three rules as §2.1 apply. Upcoming games are swept too
+(they share the shards: a shard is fetched on hover anyway). Each hit is re-checked every
+`QTPD_SHOTS_VERIFY_DAYS` (60), with stamps spread the same way. Only shards whose rows change
+are rewritten. A failed call no longer parks its 50 games as misses.
 
 **Host resilience.** The stored `base` names one CDN edge, but three serve byte-identical
 files. When a frame fails to load, `startShots` retries the same path across `SHOT_HOSTS`
@@ -411,8 +434,8 @@ changelog.
 
 Each job is a workflow in `.github/workflows/`. All use `actions/checkout@v5` +
 `actions/setup-python@v6` (Node 24). **v5/v6 is deliberate, not the newest** — checkout v5
-preserves the credential-persistence behavior the `fetch → rebase → push` commit pattern
-depends on; v6/v7 changed it. Every writer job has `permissions: contents: write` and a
+preserves the credential-persistence behavior the fetch → reset → push commit pattern
+(`gitsync.py`, *Committing* below) depends on; v6/v7 changed it. Every writer job has `permissions: contents: write` and a
 `concurrency` group so a job never overlaps itself.
 
 **Checkouts (Oct 2026): shallow everywhere, sparse where a job's files are bounded.** Every
@@ -420,10 +443,9 @@ data job commits whole files many times a day (`games.json` alone, 63 MB, ~144 t
 before the cadence change below), so history had reached **9.6 GB** in four months, and the 14
 workflows that cloned it all (`fetch-depth: 0`) spent **28–33 minutes of every run** on checkout
 — the tags job, 28 min for 36 s of work; the scraper, 32 min, which pushed it past its 330-min
-timeout every run. Shallow jobs took 2–5 min. Nothing reads history: every commit is
-`fetch → rebase --autostash → push` (or `fetch → reset --hard → push`), which pics, pics-new,
-freshness and shard-health had always run from depth-1 clones, and the scraper's
-`git show origin/main:seeds.txt` works after its own fetch. So:
+timeout every run. Shallow jobs took 2–5 min. Nothing reads history: every commit goes through
+`gitsync.py` (below), and the scraper reads `seeds.txt` with `git show FETCH_HEAD:seeds.txt`
+after the same tip-only fetch. So:
 - **Every workflow is `fetch-depth: 1`.** A comment in trailers/shots claimed "real runs still
   need depth 0 for the rebase"; that was never true and is now corrected in place.
 - **Thirteen bounded jobs also list their files** (`sparse-checkout`, non-cone): scrape, prices,
@@ -431,20 +453,46 @@ freshness and shard-health had always run from depth-1 clones, and the scraper's
   three probes. With a
   sparse list, `actions/checkout` makes a **partial clone** (`blob:none`), so nothing outside it
   is even downloaded — above all not `playtime_raw/` (1.4 GB of the ~2 GB tree) — and later
-  `git fetch`es carry commits and trees only, blobs on demand. Verified end to end on a local
-  partial clone: rebase over another writer's push, autostash, push, `git show`, and the
-  reset pattern all work; `git add` of a path outside the list is refused, not silently
-  dropped.
+  `git fetch`es carry commits and trees only, blobs on demand. `test_gitsync.py` runs the
+  commit path against real shallow, partial and sparse clones; `git add` of a path outside the
+  list is refused, loudly, not silently dropped.
 - **Adding a file a job reads or writes means adding it to that workflow's list**, or the job
   fails at the read (FileNotFoundError) or the `git add`. **Local modules count too, including
   ones imported inside a function:** `hltb_refresh.py` imports `hltb_selfcheck` inside `main()`,
-  the list missed it, and 2.5 failed on `ModuleNotFoundError` on every run for a day. Jobs that
-  read most of the repo (coverage, freshness, presets, length, playtime summaries, pages) stay
-  full-tree, shallow.
+  the list missed it, and 2.5 failed on `ModuleNotFoundError` on every run for a day. Every
+  writer imports `gitsync.py`, so every sparse list carries `/gitsync.py`; **`test_workflows.py`
+  fails when a sparse list misses any local module a workflow's scripts import** (transitively,
+  including function-level imports). Jobs that read most of the repo (coverage, freshness,
+  presets, length, playtime summaries, pages) stay full-tree, shallow.
 - **Commits are 30 min apart** for the heavy writers (scraper, prices, hltb, tags, recent,
   trailers, shots, demos; most were 5–10 min). Every commit is a permanent new version of the
   file; this slows history growth, it doesn't shrink what is there. Pass-end commits (prices'
   publish, a run's final save) are unchanged.
+
+**Committing (`gitsync.py`, Oct 2026).** Every writer commits the same way, in Python
+(`gitsync.commit(paths, msg)`) or from a workflow step (`python gitsync.py -m MSG PATH...`):
+
+1. copy the job's own paths aside (files, or whole directories, deletions included),
+2. `git fetch --depth=1 --no-tags origin main`: the tip only,
+3. `git reset --hard FETCH_HEAD`: the tree as every other writer left it,
+4. put the job's paths back exactly as it wrote them, `git add -A` them, commit,
+5. push; if another job pushed first, back to 2 (8 attempts, jittered backoff).
+
+Every git call has a timeout (fetch 5 min, reset 10, push 10). Stale `index.lock`s and an older
+job's half-finished rebase are cleared first. A checkout that is not `main` is a dry run, so a
+branch's data never reaches main. It returns False after its attempts (a checkpoint's files
+stay in the working tree, so the next commit carries them). `fail_loud=True` exits 1 instead:
+the shard writers and the workflow steps use that, so a push that can't land is a red run.
+
+*Why.* Jobs used to `git fetch origin main` + `git rebase --autostash origin/main`. In a shallow
+clone, a plain fetch after a merge from a PR branch cut off an older main downloads that
+branch's **whole history** (`test_gitsync.py` reproduces it), and in a partial clone the rebase
+then walks into it one lazily fetched object at a time. Each time a PR from an old branch was
+merged, the jobs running at that moment hung until their timeout killed them. Price runs died
+that way on 22, 23, 24 and 25 Oct 2026 (each losing its finished hourly pass and 1.5–2.5 h of
+the passes after it), and HLTB (25 Oct) and coverage (23 Oct) did too, each within minutes of
+PR #116, #119 or #120. The tip-only fetch never sees that history, and the reset needs no
+merge base. `test_workflows.py` fails if anything commits by rebasing again.
 
 **Naming scheme.** Workflow `name:` fields carry a tier prefix so the Actions sidebar sorts by
 pipeline hierarchy:
@@ -496,8 +544,8 @@ shelves*).
 | `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (**up to 24 buckets/run, oldest-scraped first** — a staleness sweep that cycles all 64 shards in ~8 h, §9); commits every 30 min + per shard. |
 | `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
 | `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
-| `trailers.py`         | `trailers.json`     | daily `13 5 * * *` | Batched `GetItems`; backlog-drain, not a refresh loop (§2.1). + `trailers_state.json`. |
-| `shots.py`            | `shots/shard_NN.json` | daily `47 5 * * *` | Batched `GetItems`; backlog-drain like trailers (§2.2). + `shots_state.json`. |
+| `trailers.py`         | `trailers.json`, `trailers_upcoming.json` | daily `13 5 * * *` | Batched `GetItems`; new games (released and upcoming) next run, misses after 30d, every hit re-checked every 60d (§2.1). + `trailers_state.json`. |
+| `shots.py`            | `shots/shard_NN.json` | daily `47 5 * * *` | Batched `GetItems`; same queue rules as trailers (§2.2). + `shots_state.json`. |
 
 **Non-Steam scrapers** (hit their own sites, so no Steam-budget contention):
 
@@ -524,7 +572,8 @@ its chained step. GitHub keeps one pending run per group, so a raw pass that fir
 cancels it (rerun it then), and starting one while a raw pass is already pending cancels that pass. **3.3 writes only `length_coefs.json`.** It used to re-apply
 `length.json` as well, and because 03:17 Monday falls inside 2.3's 01:23 pass, the two commits
 conflicted every week and 2.3's was dropped (its push of the unchanged head still logged
-"committed"). The chained summarizers rebase onto `main` before the Length step, so new
+"committed"). The chained summarizers each commit on top of `main`'s tip (`gitsync.py`), which
+resets the working tree onto it before the Length step, so new
 coefficients reach `length.json` when the raw pass in progress ends, about 50 minutes after the
 refit.
 
@@ -533,7 +582,7 @@ commits the freshly-updated shards — so the lean frontend files refresh on *ev
 (`23 1,4,7,10,13,16,19,22 * * *`, ~8×/day), immediately tracking the shards instead of lagging
 them. Both steps use `if: always()`, so a soft-failing raw pass (e.g. a 403 storefront-budget
 wrap-up) still publishes summaries from whatever shards exist. Each summarizer still self-commits
-its one file with the standard `fetch → rebase → push` pattern.
+its one file through `gitsync.py`.
 
 *History:* these were previously two standalone workflows (`playtime-summary.yml` :47, and
 `playtime-ratings.yml` :51, both `*/4`), which ran the summarizers every 4h independent of the
@@ -669,7 +718,9 @@ discount_pct?, is_free?, adult? } ] }`, **one row per line**, an absent key mean
 `url` (the page builds it) — the file is ~57k rows and fetched whole. Written by
 `upcoming_refresh.py` (§7): the store details of every game in `catalog["pending"]`, refreshed
 daily by batched `GetItems` and pruned to `pending` each run. `released` lists the pending games
-Steam now says are out; `scraper.py` reads it and scrapes them first (§6 step 3). Same field
+Steam now says are out; `scraper.py` reads it and scrapes them first (§6 step 3), at its next
+checkpoint. A released game keeps its row until the scraper has stored it (Oct 2026), so a
+launch is never in neither file. Same field
 names as a `games.json` row so the page reads both alike; `release_date` is the display text,
 built from Steam's release timestamp and its precision code ("Dec 4, 2026", "December 2026",
 "Q4 2026", "2026", "Coming soon", "To be announced", or the publisher's own message), with the
@@ -705,6 +756,15 @@ them) still gets one. Pruned to the catalogue on save.
 **`pics_upcoming.json`** — same shape as `pics.json` (§9.6): the PICS records of the games
 listed in `upcoming.json`, which `pics_merge.py` moves out of `pics.json` so the default page
 load doesn't carry them. Fetched together with `upcoming.json`.
+
+**`trailers_upcoming.json`** (Oct 2026) — same shape as `trailers.json` (§2.1): the trailers of
+games only `upcoming.json` has, written by `trailers.py` beside `trailers.json` so the boot load
+doesn't carry them. Fetched together with `upcoming.json` and merged into the same lookup.
+
+**`trailers_state.json` / `shots_state.json`** — not served. `{ generated_at, swept_at, "misses":
+{ "<appid>": ts }, "checked": { "<appid>": ts } }` (+ `"adaptive": [appid, ...]` for trailers):
+`misses` is when a game was last asked and had nothing (retried after 30 days), `checked` when
+Steam last confirmed a stored hit (re-checked after 60). §2.1, §2.2.
 
 **`prices.json`** — `{ generated_at, country, count, "prices": { "<appid>": { price_initial,
 price_final, discount_pct, discount_end, scraped_at } } }`. The fast-changing layer;
@@ -834,6 +894,8 @@ drops the clause that quotes the span rather than printing `undefined`.
 `{ "bucket": N, "nshards": 64, "shard_ver": 1, generated_at, "games": { "<appid>": {
 "events": { "<gid>": { ts, type, et } }, scraped_at } } }`. `type` is the resolved tier
 (`major`/`regular`/`minor`), `et` the raw Steam `event_type` int it came from (§9.5).
+`scraped_at` is the last **answered** check, changed or not (until Oct 2026 it moved only when
+the event list changed).
 Note the `shard_ver` here is versioned **independently** of playtime's.
 
 **`updates.json`** — lean frontend summary, owned by `updates_summarize.py`:
@@ -910,6 +972,24 @@ The only job that discovers new games. Each run:
    (`TBA_SWEEP_PER_RUN`, 1,500 storefront calls a run, ~10 days per pass of the room) and a
    short-lived upcoming sweep (`UPCOMING_SWEEP_PER_RUN`) that kept the rows the scraper itself
    wrote then. Those ~2,000 calls a run now go to released games.
+
+   **The launch-day hand-off (Oct 2026).** `upcoming_refresh.py` used to drop a game's row the
+   moment Steam called it out, and the scraper read `released` once, at the start of a 5.5 h
+   run, so a launch sat in neither file until the next run: 17 games spent ~7 h of their launch
+   day off the site on 26 Oct 2026, and 3109040 (GetItems says out, appdetails coming soon)
+   stayed off it. The row now stays until the scraper has stored the game (it leaves `pending`;
+   the page already prefers `games.json`'s row). `inject_released()` re-reads `released` and the
+   dated pending games at every checkpoint (each commit resets the working tree onto main's tip,
+   so the local `upcoming.json` is at most one commit old) and puts whatever is newly out at the
+   front of the new-game queue.
+
+   **Shells leave `games.json` (Oct 2026).** ~330 records stored while unreleased, before the
+   release gate, answered "coming soon" on every refresh. They were never re-stamped, so they
+   were re-probed every run (~9 min a run, first in the floor queue) and pinned the file's
+   oldest-row age. A stored record with **no reviews** that answers coming soon (`is_shell`) is
+   now removed; it waits in the pending room, where `upcoming.json` gives the page its row, and
+   is scraped as new once out. A real game answering the same way is kept (Mark of the Ninja,
+   214560: 15k reviews, no date).
 4. **Run for `RUN_MINUTES`, capped by the job's own clock; commit every `COMMIT_SECONDS`.**
    `scrape.yml` records `JOB_STARTED_AT` before its checkout and passes `JOB_TIMEOUT_MINUTES`
    (= `timeout-minutes`); the budget is the smaller of `RUN_MINUTES` and what is left of the
@@ -919,8 +999,16 @@ The only job that discovers new games. Each run:
    re-probed every TBA game touched since — the touched-TBA list grew run on run), and
    coverage (4.2) and presets (4.4), which only follow a *successful* scrape, stopped running —
    `COVERAGE.md` last updated 30 Sep, the shelves 2 Oct. Progress is committed every
-   `COMMIT_SECONDS` (30 min; was every 10-min checkpoint); seed pickup and the young-game
-   requeue still run every `CHECKPOINT_SECONDS` (10 min), with their own fetch.
+   `COMMIT_SECONDS` (30 min; was every 10-min checkpoint); seed pickup, the young-game requeue
+   and the release pickup still run every `CHECKPOINT_SECONDS` (10 min). Every commit and the
+   seed read go through `gitsync.py` (§4 *Committing*).
+5. **Chain the next run (Oct 2026).** The four 6-hourly crons arrive hours late or not at all,
+   which left the scraper idle 2–2.6 h at a time (~9% of 22–26 Oct). A run that stops on its
+   time budget dispatches the next one itself (`chain_next_run()`: `gh workflow run scrape.yml`,
+   `actions: write` + `GH_TOKEN` in `scrape.yml`); the `steam-scrape` group queues it behind
+   the run's last seconds. A run that runs out of work does not, so an empty queue can't spin.
+   Off switch without a code change: the repository variable `SCRAPE_CHAIN` = `0`. The cron
+   stays as the backstop that restarts a broken chain.
 
 ### Refresh triggers (what makes a stored game due)
 
@@ -1591,12 +1679,20 @@ taxonomy, not a keyword guess. We store the true tier rather than collapse 14 in
 frontend can group major+regular into a single "big" bucket vs minor if it wants — that's a
 display choice, not baked into the data, and it never requires a re-scrape to change.
 
-**The budget trade-off.** This endpoint is on the **storefront budget** (~200/5min) shared with
-scrape/prices/recent — unlike the News-API `last_update_ts`. So it is deliberately its own
-**out-of-band, time-boxed, one-bucket-per-run** job (like playtime), never folded into the main
-scraper, and it runs only on the **quiet cron slots** (`:53` of 2,8,14,20) at a conservative
-`STORE_DELAY=1.6s` so it can't starve prices/catalog. Update history changes slowly, so 4×/day
-rotation (all 64 buckets every ~16 days) is ample.
+**The budget trade-off.** This endpoint is on the **storefront budget** (~200/5min) — unlike the
+News-API `last_update_ts`. That budget is per runner IP and every job gets its own runner, so
+in practice it competes with nobody; it is still its own **out-of-band, time-boxed** job, never
+folded into the main scraper, at a conservative `STORE_DELAY=1.6s` (~190 calls / 5 min).
+
+**A sweep, not a rotation (Oct 2026).** A run used to do ONE bucket, `GITHUB_RUN_NUMBER % 64`:
+~40 of its 180 minutes, and every game revisited every ~16 days whatever its cooldown said, so
+the 7-day promise for actively updated games could not be kept. A run now works through
+buckets **the one written longest ago first** (each shard's own `generated_at`), committing
+each as it finishes, until its budget ends — the playtime job's staleness sweep (§9). And
+`scraped_at` was written only when a game's event list **changed**, so a game checked and
+found unchanged kept its old stamp: it was asked again on every visit, and FRESHNESS.md read
+97% of the layer as overdue (p50 102 days). Every answered check now stamps it. The backlog that
+left drains in ~3 days; after that a day's due games are ~75 minutes of calls.
 
 **Why raw dated events, not stored counts (the staleness fix).** "Updates in the last 30 days"
 rots every single day. Storing pre-computed counts would mean a game scraped today shows stale
@@ -1609,7 +1705,7 @@ ever needed to catch NEW posts, not to keep old counts current.
 **Sharded from day one.** A per-game dated event list across ~120k games is exactly the shape
 that blew past the 100 MB wall for playtime, so `updates_raw/NN.json` is sharded identically:
 64 buckets, key `(appid // 10) % 64` (divide-by-10 first because appids are ~all multiples of
-10), one bucket per run rotated by `GITHUB_RUN_NUMBER`, `shard_ver`-gated reshard hook for any
+10), as many buckets per run as the budget allows (above), `shard_ver`-gated reshard hook for any
 future key change. (It's far lighter than playtime — timestamps, not review objects — so the
 100 MB ceiling is distant. NOTE: `shard_health.py` currently monitors only `playtime_raw/`;
 pointing it at `updates_raw/` too is a cheap future add if these shards ever grow — tracked in
@@ -1634,8 +1730,8 @@ skip git by design, same as every other writer in this codebase).
 **Resumability / safety** mirror the playtime writer exactly: identity-keyed by event `gid`
 (re-runs never double-count; a known gid is already held), **refresh-on-revisit** (a post's
 type/time is updated in place if Steam changed it), a `PER_GAME_CAP=200` ring-buffer (oldest
-events dropped first) bounding growth, commits **every 30 min during the run** via the same
-hard-reset-to-`origin/main` single-writer push (a failed push is a **loud red run**, never a
+events dropped first) bounding growth, commits **every 30 min during the run** and at the end
+of each bucket via `gitsync.py` (§4 *Committing*; a failed push is a **loud red run**, never a
 silent green one), and a transient endpoint failure (403/blip) **skips that game and leaves its
 prior record untouched** — nothing is ever blanked by an error. Eligibility is gated by
 `MIN_REVIEWS_FLOOR=10` and cadence is shorter for actively-updated games (`COOLDOWN_DAYS=7` vs
@@ -2822,6 +2918,13 @@ a real per-game `scraped_at`. An exact figure needs a per-game `scraped_at` adde
 records. **Tags** have no timestamp at all and are Axis-1-only until one is added. Both are
 tracked in [ROADMAP.md](ROADMAP.md) §3.5.
 
+**The newer layers (Oct 2026).** Axis 1 carries rows for store trailers, screenshots, demos and
+EA dates (the last two as incidence, not gaps), and a section for **the upcoming catalogue**:
+pending games (`catalog.json`) against the rows `upcoming.json` holds for them, how many are
+reported out and waiting for the scraper, and the PICS / trailer / screenshot / demo shares of
+the upcoming-only games. PICS is counted over catalogue games only: `pics_raw/` also holds
+every upcoming game, and against `games.json` it read 145.6% covered, −61,090 missing.
+
 ### Invariants
 
 - **One writer:** `coverage.py` → `COVERAGE.md` only, same discipline as `shard_health.py` →
@@ -2878,6 +2981,15 @@ a missed fire really does mean "no successful write". The one exception is handl
   gate, and get a standing alert instead — because a fill-only task with a drained frontier means
   its data is **frozen**, which is the pipeline's real structural freshness gap (tags have no
   rescrape cadence at all; [ROADMAP.md](ROADMAP.md) §3.5).
+
+**Every scheduled data job has a row (Oct 2026).** The registry gained 2.8 trailers, 2.9
+screenshots, 2.10 demos, 2.11 upcoming, 2.12 EA dates, 3.3 length calibration, 3.4 `length.json`
+and 4.4 presets; before, none of them could be flagged as missed. Trailers and screenshots
+are scored per game against their 60-day re-check stamps (`checked`), upcoming against its rows'
+own `scraped_at` (36 h window), demos and EA dates on the job clock only (a sweep, no per-game
+stamp). The updates summary is keyed `2.4s` (3.3 is the length fit). The cron reader projects
+the **weekday** field too (3.3 is `17 3 * * 1`) and scans 15 days for the worst-case cadence;
+it used to return no next run for any weekday cron (`test_freshness.py`).
 
 ### Invariants
 
@@ -2956,6 +3068,11 @@ the files that carry per-game data are streamed; tags, trailers, PICS, updates a
 full-history checkout, sparse so it is a partial clone (commits and trees, no blobs). It saves
 every 10 days replayed and skips days already present, so a timeout loses nothing and a re-run
 resumes.
+
+**The newer layers (Oct 2026).** File ages for `demos.json`, the screenshots (their state
+file's, saved every run: the shards change only when a game's stills do) and `ea_dates.json`,
+and coverage for screenshots and demos, appended to `files` / `coverage`, so older snapshots
+still line up by name.
 
 **Rules.** One writer (`monitor.py`, concurrency group `monitor-json`); stdlib only;
 `test_monitor.py` covers the snapshot maths (the young / old split included), the run merge,
@@ -3254,6 +3371,37 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Pipeline audit: hangs, faulty writes, launch-day gaps (26 Oct 2026).** A week of Actions
+  history (722 runs) and the data files, read together:
+  - **Jobs hung after PR merges.** Price runs on 22, 23, 24 and 25 Oct, HLTB on 25 Oct and
+    coverage on 23 Oct sat in `git fetch` / `git rebase` until their timeouts killed them, each
+    within minutes of a PR from an older branch being merged. In a shallow clone a plain fetch
+    of such a merge downloads the branch's whole history. Every writer now commits through
+    **`gitsync.py`** (tip-only fetch, reset, our files back, push, with timeouts). §4 *Committing*;
+    `test_gitsync.py`, and `test_workflows.py` for the sparse lists.
+  - **A failed GetItems call recorded "no media".** Trailers and screenshots parked all 50 games
+    of a call that got no answer as misses for 30 days. Fixed, and both now cover upcoming
+    games (`trailers_upcoming.json`, loaded with the upcoming catalogue) and re-check every
+    found trailer / still set every 60 days. §2.1, §2.2; `test_media_refresh.py`.
+  - **Update events were never re-stamped when unchanged, and ran one shard a run.** 97% read
+    as overdue; every game waited ~16 days. Every answered check now stamps it, and a run sweeps
+    buckets oldest-first until its budget ends. §9.5; `test_updates_refresh.py`.
+  - **Launches fell off the site for hours.** 17 games on 26 Oct were in neither
+    `upcoming.json` nor `games.json` for ~7 h. The row now stays until the scraper stores the
+    game, and the scraper picks up releases at every checkpoint. **~330 unreleased shells** in
+    `games.json`, re-probed every run, now move to the pending room. **The scraper chains its
+    own runs** (off switch: repository variable `SCRAPE_CHAIN=0`). §6; `test_scraper_handoff.py`.
+  - **Monitoring.** PICS coverage no longer counts upcoming games against the catalogue
+    (145.6% → 100.0%); FRESHNESS.md, COVERAGE.md and the monitor now cover trailers,
+    screenshots, demos, upcoming and EA dates (and 3.3 / 3.4 / 4.4 in FRESHNESS.md), and the
+    cron reader handles weekday crons. §11.5–§11.7; `test_freshness.py`.
+  - **Checked, no change needed:** no two jobs write one file at once (every shared file sits
+    in one concurrency group); the frequent "cancelled" price/scrape runs are mostly a queued
+    run replaced by a newer one (GitHub keeps one pending run per group), not lost work; the
+    scrape timeouts of 19–22 Oct predate the job-clock cap and stopped with it. GitHub delivers
+    the daily crons 4–5 h late and most frequent ones not at all (Pages: 45 of 336 in a week);
+    the dispatch chains (prices → Pages + monitor, scraper → itself) are what keeps cadence.
 
 - **Status unknown (Oct 2026).** A stored game Steam's store stops answering for is no longer
   left frozen on the site. `scraper.py` keeps its record and asks again every run; from

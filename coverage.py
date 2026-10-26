@@ -116,6 +116,13 @@ REVIEW_TIERS = [(3, 0.25), (10, 0.5), (30, 1), (60, 2), (90, 3.5), (180, 7), (36
 REVIEW_FLOOR_DAYS = 60
 # pics_refresh.py (single-window --stale-days gate; default from pics.yml)
 PICS_STALE_DAYS = 14
+# Store-media re-check windows: trailers.py / shots.py VERIFY_DAYS (copied: both import
+# requests, and this stays stdlib-only).
+TRAILER_VERIFY_DAYS = 60
+SHOTS_VERIFY_DAYS = 60
+# upcoming_refresh.py refreshes every pending game in one daily pass; a row older than this was
+# missed by at least one pass (GitHub's cron lands up to ~5h late, so a day plus slack).
+UPCOMING_FRESH_H = 36
 # hltb_refresh.py (different shape: static windows + blank backoff)
 HLTB_PARTIAL_DAYS = 14
 HLTB_FULL_DAYS = 365

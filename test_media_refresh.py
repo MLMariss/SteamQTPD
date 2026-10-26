@@ -11,7 +11,8 @@ import json, pathlib, sys, tempfile, types
 if "requests" not in sys.modules:           # both import requests; nothing here calls it
     m = types.ModuleType("requests")
     m.Session = lambda: types.SimpleNamespace(
-        headers=type("H", (), {"update": lambda s, d: None})(), get=None, head=None)
+        headers=type("H", (), {"update": lambda s, d: None})(),
+        cookies=type("C", (), {"update": lambda s, d: None})(), get=None, head=None)
     m.RequestException = Exception
     sys.modules["requests"] = m
 
@@ -125,6 +126,11 @@ hits, dirty = {"20": ["a.jpg"], "30": ["b.jpg"]}, set()
 S.apply_batch([20, 30], [no_stills(20), no_stills(30)], hits, {}, {}, dirty, NOW)
 check("a batch where every known hit comes back empty removes nothing",
       hits == {"20": ["a.jpg"], "30": ["b.jpg"]} and not dirty)
+
+print("\n== the monitoring docs score the same window the jobs use ==")
+import coverage as CV
+check("coverage.py TRAILER_VERIFY_DAYS = trailers.py VERIFY_DAYS", CV.TRAILER_VERIFY_DAYS == T.VERIFY_DAYS)
+check("coverage.py SHOTS_VERIFY_DAYS = shots.py VERIFY_DAYS", CV.SHOTS_VERIFY_DAYS == S.VERIFY_DAYS)
 
 print(f"\n{'ALL PASS' if not fails else f'{len(fails)} FAILED: ' + '; '.join(fails)}")
 sys.exit(1 if fails else 0)
