@@ -193,6 +193,10 @@ def build():
     now = time.time()
     rows = []
     for g in games:
+        # Status unknown (scraper.py strike_no_answer): Steam's store stopped answering for it,
+        # and the page lists it only for a typed search (passNonRange), which no shelf carries.
+        if g.get("unknown"):
+            continue
         a = str(g.get("appid"))
         pr = prices.get(a) or {}
         ln = length.get(a)
