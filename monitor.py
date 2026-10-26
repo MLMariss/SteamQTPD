@@ -14,7 +14,9 @@ Each snapshot records, at time t:
   * file_age   per file    seconds since the file was last written (its own generated_at)
   * row_p50/95 per file    median and 95th-percentile age of the per-game timestamps
                            (games scraped_at, prices scraped_at, recent recent_scraped_at,
-                           hltb fetched_at): how old the data is that a visitor sees
+                           hltb fetched_at): how old the data is that a visitor sees; games
+                           also split into released within a year / older (games_young /
+                           games_old), which the scraper refreshes on different rules
   * coverage   per layer   how many catalog games carry it (reviews, price, 30-day score,
                            playtime, weighted rating, HLTB, tags, trailer, length, PICS)
 and the scraper's per-run lines (catalog.json `runs`: new / refreshed / pending and the
@@ -54,8 +56,15 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "MLMariss/SteamQTPD")
 # Every file whose age is tracked, in the order of the file_age array.
 FILES = ["games", "prices", "recent", "playtime", "ratings", "hltb", "tags", "trailers",
          "length", "updates", "pics", "upcoming"]
-# Files with a per-game timestamp, in the order of the row_p50 / row_p95 arrays.
-ROW_AGES = ["games", "prices", "recent", "hltb"]
+# Files with a per-game timestamp, in the order of the row_p50 / row_p95 arrays. games_young /
+# games_old split games.json's scraped_at at the end of the scraper's review ladder: a game
+# released within YOUNG_DAYS is re-scraped on the age tiers (6h to 15d), an older or undated one
+# on store-page changes, PICS drift and the 60-day floor (scraper.py REVIEW_TIERS /
+# REVIEW_FLOOR_DAYS). One median over both described neither: on 26 Oct 2026 it read 109 days
+# while the young side was at 2. Appended 26 Oct 2026, so older snapshots carry shorter arrays;
+# the page reads a missing entry as no data.
+ROW_AGES = ["games", "prices", "recent", "hltb", "games_young", "games_old"]
+YOUNG_DAYS = 365                 # = scraper.py REVIEW_TIERS[-1][0]
 # Coverage layers, in the order of the coverage array; each is counted over catalog games only.
 COVERAGE = ["reviews", "prices", "recent", "playtime", "ratings", "hltb", "tags", "trailers",
             "length", "pics"]
@@ -143,7 +152,13 @@ def snapshot(t, src, read, file_times=None):
     p95 = {}
     cov = {"reviews": sum(1 for g in games if g.get("review_count"))}
     p50["games"], p95["games"] = ages(t, [g.get("scraped_at") for g in games])
-    del games_doc, games
+    young, old = [], []
+    for g in games:
+        rt = _int(g.get("release_ts"))
+        (young if rt and 0 <= t - rt <= YOUNG_DAYS * 86400 else old).append(g.get("scraped_at"))
+    p50["games_young"], p95["games_young"] = ages(t, young)
+    p50["games_old"], p95["games_old"] = ages(t, old)
+    del games_doc, games, young, old
 
     for name in FILES[1:]:
         d = read(name)

@@ -2841,20 +2841,41 @@ off by its timeout still saved checkpoints), and every 2 h (`17 */2 * * *`) so t
 **What a snapshot holds.** Catalog size and the pending room; each served file's age (its own
 `generated_at`); the median and 95th percentile of each game's own timestamp in `games.json`
 (`scraped_at` — when its reviews and record were fetched), `prices.json`, `recent.json` and
-`hltb.json`; and how many catalog games carry each layer. The scraper's per-run lines
+`hltb.json`; and how many catalog games carry each layer. Since 26 Oct 2026 the `games.json`
+ages are also split at a year since release (`games_young` / `games_old`, appended to
+`row_ages`, so older snapshots just carry shorter arrays): the two halves run on different
+refresh rules (§6), and one median over both described neither — it read 109 days while the
+young half sat at 2. The scraper's per-run lines
 (`catalog.json` `runs`, §5) are copied as they are: new / refreshed / pending, and the review
 fetches answered vs failed — the number that would have flagged the Oct 2026 wipe (§16) on its
 first run.
 
-**The charts.** Catalog size (a fitted range — a count that only grows is a flat line from 0);
-one column per scrape run, and the review fetches per run, failures in status-critical red
-beside answered in blue (red beside green fails the colour-blind check); a small multiple per
-file for its age, which climbs while the file waits and drops when its job writes it, so a line
-that keeps climbing is a job that stopped; median and 95th-percentile per-game age; coverage as
-a share of the catalog. A 7 / 30 / 90-day / all range row scopes everything; every chart has a
-crosshair or per-column readout (also by keyboard) and a table twin. Colours were run through the
-dataviz six-check validator against `--panel` (#192133). The page is `noindex` — an operations
-view nobody searches for — but linked and crawlable.
+**The tiles.** Catalog size and its 7-day change; the last scrape run; **games re-checked in
+24 h** (the `refreshed` of every run saved in the last 24 hours — a game re-checked twice counts
+twice — with its share of the catalog and the 7-day total); and the median review age of games
+released under / over a year ago. Review fetches answered vs failed are not a tile or a chart
+(at 100% they said nothing): a **banner** in status-critical red appears above the tiles only
+when the latest run that counted them had more failures than answers — the wipe's signature —
+and the counts stay in the runs table and the column readout.
+
+**The charts.** Catalog size (a fitted range — a count that only grows is a flat line from 0)
+beside one column per scrape run; a small multiple per file for its age, which climbs while the
+file waits and drops when its job writes it, so a line that keeps climbing is a job that
+stopped; median and 95th-percentile per-game age (review counts under a year, over a year, and
+the all-games line that carries the history before the split, then prices, 30-day scores, HLTB);
+coverage as a share of the catalog. Every tile and card has an ⓘ: one shared popover, opened by
+hover, keyboard focus or a tap (a tap pins it; Escape or a tap elsewhere closes it), saying what
+the number is, which job writes it and how old is normal — the per-game ages differ by design
+(prices hourly, 30-day scores on a 4 / 30-day cycle, HLTB yearly once complete). A 7 / 30 /
+90-day / all range row scopes everything; every chart has a crosshair or per-column readout
+(also by keyboard) and a table twin. Colours were run through the dataviz six-check validator
+against `--panel` (#192133).
+
+**Layout.** Fluid up to 1920 px: the small multiples run 1 / 2 / 3 / 4 a row at 640 / 1024 /
+1500 px, the tiles 2 / 3 / 5, and Catalog and Scrape runs sit side by side from 1200 px. Chart
+heights follow their width (`fitH`), so wide screens get taller charts and phones stay compact;
+age axes tick in whole hours or days (`unit`), not seconds. The page is `noindex` — an
+operations view nobody searches for — but linked and crawlable.
 
 **History.** `python monitor.py --backfill` (workflow 4.5, manual `backfill: true`) replays git:
 every `scrape:` commit message becomes a run line (`start: null`, no review counts — older runs
@@ -2868,8 +2889,8 @@ every 10 days replayed and skips days already present, so a timeout loses nothin
 resumes.
 
 **Rules.** One writer (`monitor.py`, concurrency group `monitor-json`); stdlib only;
-`test_monitor.py` covers the snapshot maths, the run merge, the daily sampling and the file
-round trip.
+`test_monitor.py` covers the snapshot maths (the young / old split included), the run merge,
+the daily sampling and the file round trip.
 
 ---
 
@@ -3180,6 +3201,16 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `catalog.json` `runs` at every checkpoint (`record_run()`), review fetches answered vs failed
   included. History before it is backfilled from git, one point a day, streamed rather than
   checked out. `pics.json` gained a `generated_at`. Full design in §11.7.
+
+- **Monitor rework + a 60-day review floor (Oct 2026).** The monitor page went fluid up to
+  1920 px (charts sized to their width, Catalog and Scrape runs side by side, tiles in one row),
+  every number gained an ⓘ saying what it is and how old is normal, the review-fetch chart and
+  tile gave way to a banner that shows only when Steam stops answering, and a new tile counts
+  the games re-checked in 24 h. Its per-game review age now splits at a year since release,
+  which showed what the single median hid: under a year, 2.2 days; over a year, 109 — counts
+  from the first full sweep in July that no trigger reached. `scraper.py` gained trigger 4,
+  `REVIEW_FLOOR_DAYS` (60): any game not re-scraped for that long is queued behind all other
+  work. §6 *Refresh triggers*, §11.7.
 
 - **Reviews come from GetAppReviews (Oct 2026).** The cause of the wipe below: Valve switched
   `store.steampowered.com/appreviews` off on **22 Oct 2026** (Steamworks announcement), and
