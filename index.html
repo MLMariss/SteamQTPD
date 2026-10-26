@@ -98,6 +98,14 @@
   /* ---- header (scrolls away; table header takes over as sticky, see thead below) ---- */
   .topbar{position:relative; z-index:40; padding-top:10px; background:var(--bg)}
   .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  /* The suggestion lists (title search, publisher/developer) hang below their input, and this
+     clip cut every row past the bar's bottom edge: "fall" showed two of its eight rows, which
+     read as "only two games match". The clip is lifted while a list is open. Narrow screens
+     already run unclipped (see the mobile top-bar block). */
+  .barwrap:has(.simsug:not([hidden])){overflow:visible}
+  /* …which un-clips the "Show filters" strip too, the one fill that reaches the bar's lower
+     corners. It carries the curve itself (13px = 14px less the border), as on narrow screens. */
+  .barwrap > .collapse-handle{border-radius:0 0 13px 13px}
   .bar-main{display:flex; align-items:center; gap:16px; padding:12px var(--pad-x); flex-wrap:wrap}
   .brand{display:flex; align-items:baseline; gap:13px; flex:none}
   .logo{font-family:inherit; font-weight:700; font-size:28px; letter-spacing:-.04em; line-height:1;
@@ -299,6 +307,9 @@
      "there's something here, but it isn't a choice right now". Only the pressed button is
      excluded, so "which one is selected" stays the louder signal. */
   .seg button:hover:not([aria-pressed="true"]){background:var(--panel-2); color:var(--text)}
+  /* The pressed button answers the pointer too, with a ring rather than a fill change, so the
+     fill still says which one is selected. */
+  .seg button[aria-pressed="true"]:hover{box-shadow:inset 0 0 0 1px var(--muted-2)}
   .seg button:focus-visible{outline:2px solid var(--blue); outline-offset:-2px}
 
   /* Min-sale stepper: −5% / readout / +5%. The middle cell is a value, not a button — the two
@@ -663,6 +674,14 @@
   tbody tr:last-child{border-bottom:0}
   tbody tr:nth-child(even){background:rgba(127,160,230,.035)}   /* subtle zebra; translucent so the card gradient still shows through */
   tbody tr:hover{background:#1b2640}                            /* declared after zebra so hover always wins */
+  /* The card's corners are rounded, but nothing inside it is clipped to them: overflow:hidden on
+     .tablecard would make it a scroll container and unstick the header, and overflow:clip would
+     cut off the sort menu that drops out below a short list. So the two square backgrounds that
+     reach the corners carry the curve themselves — the header's opaque fill at the top (it
+     covered the card's top-left border, which read as a notch) and the last row's hover fill at
+     the bottom (it poked out past both lower corners). 13px = the card's 14px less its border. */
+  body:not(.layout-card) thead{border-radius:13px 13px 0 0}
+  body:not(.layout-card) tbody tr:last-child{border-radius:0 0 13px 13px}
 
 
   .gamecell{display:flex; align-items:center; gap:10px; align-self:stretch; width:100%}
@@ -816,6 +835,17 @@
   .thumb.adult.revealed{cursor:default}
   .thumb.adult.revealed::after{content:""; background:none}
   .gmeta{min-width:136px; flex:1}     /* title never collapses below readable width */
+  /* Table only: when the Game column is tight, the art gives way before the title does.
+     The column sits at its 268px floor on every window from 1280px to ~1520px — the fixed-
+     ceiling columns take the free space first — and 150px of art plus the × and gaps left the
+     title ~52px. The 136px floor above then pushed it past the cell, whose overflow:hidden cut
+     names mid-letter ("Pathfinder: Wratł") with no ellipsis, because the clamp never ran out of
+     lines — it never saw the edge. Now the art shrinks first (flex-shrink 4, down to 96px,
+     keeping its ratio), the title takes what is left and its two-line clamp ends in "…".
+     overflow-wrap:anywhere breaks a single word too long for the line rather than clipping it. */
+  body:not(.layout-card) .gamecell .thumb{flex:0 4 auto; min-width:96px; height:auto; aspect-ratio:150/57}
+  body:not(.layout-card) .gamecell .gmeta{flex:1 1 136px; min-width:0}
+  body:not(.layout-card) .gamecell .gtitle{overflow-wrap:anywhere}
   .gtitle{font-weight:600; font-size:15px; color:var(--title); cursor:pointer; line-height:1.25;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gtitle:hover{text-decoration:underline}
@@ -921,7 +951,7 @@
   .simsug{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:60;
         background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
         padding:4px; box-shadow:0 8px 24px #0008;
-        max-height:min(62vh, 360px); overflow:auto; overscroll-behavior:contain}
+        max-height:min(70vh, 560px); overflow:auto; overscroll-behavior:contain}
   /* Second section header: the "…or similar" alternative, ruled off from the exact titles. */
   .simsug .ss-h.ss-alt{margin-top:4px; padding-top:6px; border-top:1px solid var(--line)}
   .simsug[hidden]{display:none}
@@ -1106,6 +1136,11 @@
         color:var(--gold); font-family:var(--mono); font-size:13px; padding:2px 8px; border-radius:7px;
         cursor:pointer; margin:0 1px}
   .filter-summary .sumf:hover{filter:brightness(1.15)}
+  /* The tag chips arrive as one run of buttons with no whitespace between them, and at full rail
+     size they are taller than this line's 26px — so they touched side to side and, once the run
+     wrapped, row to row. A little margin on every side; slightly trimmed padding keeps the chips
+     close to the .sumf filter chips they sit beside. */
+  .filter-summary .chip{margin:3px 3px 3px 0; padding:3px 10px; font-size:13px}
   .filter-summary .sumf.plain{background:var(--panel); border-color:var(--line); color:var(--muted)}
   /* #8 — warning-styled Reset, floated to the line's top-right corner. */
   .filter-summary .sumreset{float:right; margin-left:10px; appearance:none; background:#3a2026;
@@ -1245,9 +1280,21 @@
         min-height:2.5em;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .gmeta-top .grates{flex:none}  /* scores stay put on the right as the title truncates */
-  /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards. */
+  /* Details overlay — covers the whole card; overflow-y:auto keeps actions reachable on short cards.
+     overflow-x is pinned to hidden because overflow-y:auto silently turns it to auto as well: the
+     action row used to be wider than a narrow card, and the overlay grew a sideways scrollbar thin
+     enough that nobody found it — "Close" sat half outside the card with no visible way to reach
+     it. Everything below is sized to fit the card's width instead, so there is nothing to scroll to. */
   .ginfo{position:absolute; inset:0; background:#0e1320f2; display:none; flex-direction:column; padding:11px;
-        gap:5px; font-family:var(--mono); overflow-y:auto}
+        gap:5px; font-family:var(--mono); overflow-x:hidden; overflow-y:auto}
+  /* Nothing in the column may shrink. The clamped title is overflow:hidden, which drops its flex
+     min-height to 0, so on a short card it was the item that gave way — squashed to a sliver (0px
+     on a two-column phone grid), clipped at the top or overlapped by the Price row. */
+  .ginfo > *{flex:none}
+  /* The opened card's width, not the viewport's, decides how much fits: a 1028px desktop and a
+     390px phone both produce cards under ~230px. Inline-size containment is free here — a grid
+     card's width always comes from its track, never from its content. */
+  .gcard{container-type:inline-size}
   .gcard.open{cursor:default}
   /* Hidden with visibility, NOT display:none. `.ginfo` is position:absolute, so it adds zero
      height — display:none'ing the art and the panel leaves an open card with nothing in flow
@@ -1258,20 +1305,53 @@
      open/close never moves the layout. */
   .gcard.open .gart,.gcard.open .gmeta{visibility:hidden}
   .gcard.open .ginfo{display:flex}
+  /* padding-right keeps the title clear of the ✕ in the corner. */
   .gi-title{font-family:var(--sans); font-weight:600; font-size:13.5px; color:var(--title); line-height:1.2;
+        padding-right:24px;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .gi-title[title]{cursor:default}   /* a tip for the clamped name, not a help target */
+  /* Close is a corner ✕ rather than a fourth button in the action row: four labelled buttons do
+     not fit a card narrower than ~250px, and tapping anywhere on an opened card already closes
+     it, so this only needs to be findable, not big. */
+  .gi-close{position:absolute; top:6px; right:6px; width:22px; height:22px; display:flex; align-items:center;
+        justify-content:center; padding:0; border-radius:6px; border:1px solid var(--line); background:var(--panel);
+        color:var(--muted); font-size:12px; line-height:1; cursor:pointer}
+  .gi-close:hover{color:var(--text); border-color:var(--muted-2)}
   .gi-row{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--muted)}
+  /* One line per row: the label truncates rather than wrapping "median" onto a second line,
+     which on a narrow card was the extra height that pushed the buttons off the bottom. */
+  .gi-row > span{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .gi-row b{color:var(--text); font-weight:600; white-space:nowrap}
   /* Source qualifier after a row label — "Length est.", "Playtime median". Upright, not italic:
      these are names of data sources, not emphasis, and italic mono reads as an error state. */
   .gi-row i{font-style:normal; font-size:11px; color:var(--muted-2); margin-left:4px}
   .gi-row .gi-q{color:var(--gold); font-weight:700}
-  .gi-actions{margin-top:auto; display:flex; gap:7px; padding-top:2px}
-  .gi-actions a,.gi-actions button{flex:1; text-align:center; font-family:var(--mono); font-size:12px;
-        padding:8px 6px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
+  /* Three equal tiles, icon over label. minmax(0,1fr) rather than flex:1, so a tile can never be
+     pushed wider than its third by its own text — the row is exactly the card's width. */
+  .gi-actions{margin-top:auto; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; padding-top:2px}
+  .gi-actions a,.gi-actions button{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0;
+        text-align:center; font-family:var(--mono); font-size:12px; line-height:1.2;
+        padding:6px 3px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--panel);
         color:var(--text); text-decoration:none}
+  .gi-actions i{font-style:normal; font-size:13px}
+  .gi-actions span{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .gi-steam{background:var(--gold-soft) !important; border-color:var(--gold-deep) !important; color:var(--gold) !important}
   .gi-actions a:hover,.gi-actions button:hover{border-color:var(--muted-2)}
+  /* Narrow cards (a two-column phone grid is ~165–170px wide): a one-line title, tighter spacing
+     and smaller tile labels, so title + three rows + the tiles fit the card's own height. */
+  @container (max-width:200px){
+    .ginfo{padding:8px; gap:4px}
+    .gi-title{-webkit-line-clamp:1}
+    .gi-close{top:4px; right:4px}
+    .gi-actions{gap:4px}
+    .gi-actions a,.gi-actions button{padding:4px 0; font-size:10.5px; letter-spacing:-.02em}
+    .gi-actions i{font-size:12px}
+  }
+  /* 360px phones give ~154px cards, where "Reviews" at 10.5px is a couple of pixels too wide. */
+  @container (max-width:164px){
+    .ginfo{padding:8px 6px}
+    .gi-actions a,.gi-actions button{font-size:10px}
+  }
 
   /* Grid-only sort control (desktop grid): the sort fields are laid out as a single row of
      buttons — one click to switch, no dropdown to open — with overflow collapsing into "More ▾".
@@ -1915,13 +1995,13 @@ try{
               <span class="steppers"><button type="button" data-step="maxprice" data-d="1">▲</button><button type="button" data-step="maxprice" data-d="-1">▼</button></span></div>
           </div>
         </div>
-        <div class="field" title="Price type — which kinds of pricing to include: full-price, on-sale, and/or free. Independent toggles, so you can mix them; turn one off to hide that kind.">
+        <div class="field" title="Price type — which kinds of pricing to include: full-price, on-sale, and/or free. From All, picking one shows only that kind; click others to add them back in (or take one out again). All shows everything.">
           <label>Price type</label>
           <div class="seg" id="priceClass" role="group" aria-label="Price type">
             <button data-pc="all"  aria-pressed="true"  title="All — show every game (default). Click to re-enable all types.">All</button>
-            <button data-pc="full" aria-pressed="true"  title="Full — paid games at full price (not discounted).">Full</button>
-            <button data-pc="sale" aria-pressed="true"  title="Sale — paid games with an active discount.">Sale</button>
-            <button data-pc="free" aria-pressed="true"  title="Free — free-to-play games. Shown alone, QTPD ranks them by playtime × rating (no price).">Free</button>
+            <button data-pc="full" aria-pressed="false" title="Full — paid games at full price (not discounted). From All, shows only these; otherwise adds or removes them.">Full</button>
+            <button data-pc="sale" aria-pressed="false" title="Sale — paid games with an active discount. From All, shows only these; otherwise adds or removes them.">Sale</button>
+            <button data-pc="free" aria-pressed="false" title="Free — free-to-play games. Shown alone, QTPD ranks them by playtime × rating (no price). From All, shows only these; otherwise adds or removes them.">Free</button>
           </div>
         </div>
         <div class="field" id="minSaleField" title="Min sale % — a floor on the size of the discount, so shallow cuts drop out of the table. It starts at the smallest discount in the current results (rounded down to a multiple of 5) and moves in 5% notches. Setting a floor switches Price type off Full — a full-price game has no discount to clear it.">
@@ -3385,6 +3465,9 @@ function render(){
   if(!allGames.length){
     tbody.innerHTML = "";
     $("#gridview").innerHTML = "";
+    // This branch returns before the paging footer below is reached, so the previous list's
+    // "Showing 66 of 7511 — scroll for more…" stayed up right above "No games match".
+    $("#loadmore").style.display = "none";
     empty.style.display = "block";
     empty.innerHTML = (releaseMode() !== "released" && UP_STATUS === "loading")
       ? "<b>Loading upcoming games…</b>"
@@ -4736,6 +4819,7 @@ function findSimilar(appid){
   if(!g) return;
   const keys = similarKeyTags(g);
   if(!keys.length) return;
+  pushStep();   // Back returns to the list this was clicked from (see pushStep)
   // The title search would otherwise narrow the list back down to the chosen game.
   state.q = ""; const qi = $("#q"); if(qi) qi.value = "";
   const box = $("#searchBox"); if(box) box.classList.remove("has-q");
@@ -4763,7 +4847,7 @@ function findSimilar(appid){
 // to find nothing at all; here it offers the real title, and picking it puts the real title —
 // ™ and all — into the box, where the ordinary filter does match it. Normalising 130k titles
 // per keystroke is not free, so each one is cached on its game as _nt.
-const SIMSUG_JUMP = 5, SIMSUG_SIM = 3, SIMSUG_UP = 3;   // SIMSUG_UP: the trailing release group
+const SIMSUG_JUMP = 8, SIMSUG_SIM = 3, SIMSUG_UP = 3;   // SIMSUG_UP: the trailing release group
 const simSugNorm = s => String(s).toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, "")
                                  .replace(/[^a-z0-9]+/g, " ").trim();
 function simSugRank(g, q){
@@ -4814,8 +4898,15 @@ function renderSimSug(){
   // for one you can buy. The group the Release toggle points at comes first and gets the longer
   // list; the other trails with a short one. Upcoming rows only exist once upcoming.json has
   // loaded — typing starts that fetch, and ensureUpcoming() re-renders this list when it lands.
+  // One row per title as the eye reads it: titles that differ only in case or punctuation
+  // ("FALL", "Fall", ".fall") collapse to their best-ranked game. Picking a row searches its
+  // text, so the duplicates all led to the same list — and "fall" has five exact matches, which
+  // filled every slot, so Fallout 4 and Human Fall Flat never made it onto the list. The ≈ rows
+  // get the same treatment: three "≈ FALL" rows read as one game listed three times.
+  const oneEach = list => { const seen = new Set(); return list.filter(g => !seen.has(g._nt) && seen.add(g._nt)); };
   const rel = [], up = [];
   for(const g of hits) (g.upcoming ? up : rel).push(g);
+  const relU = oneEach(rel), upU = oneEach(up);
   const upFirst = state.release === "upcoming";
   // Only games Find-similar can actually act on get a ≈ row — no tags, no main tags, no result.
   // Released games only: Find similar lists released games, so an upcoming seed would point at
@@ -4823,7 +4914,7 @@ function renderSimSug(){
   // sorts a game's whole tag list, and a two-letter query matches thousands of titles, so
   // filtering the lot first would do that work thousands of times per keystroke to keep three rows.
   const sim = [];
-  for(const g of rel){
+  for(const g of relU){
     if(sim.length >= SIMSUG_SIM) break;
     if((g.tags || []).length && similarKeyTags(g).length) sim.push(g);
   }
@@ -4831,8 +4922,8 @@ function renderSimSug(){
     `<button type="button" data-pick="${esc(g.title)}" title="${esc("Search for exactly “" + g.title + "”")}"><i>→</i><span>${esc(g.title)}</span>`
     + (g.unknown ? "<em>status unknown</em>" : g.upcoming ? `<em>${esc(upLabel(g))}</em>` : "") + `</button>`;
   const groups = [
-    {head: upFirst ? "Released" : "Show just this game", rows: rel.slice(0, upFirst ? SIMSUG_UP : SIMSUG_JUMP)},
-    {head: "Coming soon", rows: up.slice(0, upFirst ? SIMSUG_JUMP : SIMSUG_UP)},
+    {head: upFirst ? "Released" : "Show just this game", rows: relU.slice(0, upFirst ? SIMSUG_UP : SIMSUG_JUMP)},
+    {head: "Coming soon", rows: upU.slice(0, upFirst ? SIMSUG_JUMP : SIMSUG_UP)},
   ].filter(x => x.rows.length);
   if(upFirst) groups.reverse();
   let html = groups.map((x, n) => `<div class="ss-h${n ? " ss-alt" : ""}">${x.head}</div>` + x.rows.map(pickBtn).join("")).join("");
@@ -4846,6 +4937,7 @@ function renderSimSug(){
 // Picking an exact title just puts that title in the search box, so the list narrows to it
 // through the ordinary title filter — no second code path, and the ✕ still clears it.
 function pickTitle(title){
+  pushStep();
   const qi = $("#q"); if(qi) qi.value = title;
   state.q = title;
   const box = $("#searchBox"); if(box) box.classList.toggle("has-q", !!title);
@@ -4976,11 +5068,14 @@ function pickCo(name){ setCo(name); hideCoSug(); update(); }
 // Any filter/sort/search/page-size change resets to page 1 of the new result set.
 // Reflect state.priceClass onto the band's aria-pressed. "All" is lit only when all three
 // facets are on; each facet button reflects its own membership.
+// With every type included only "All" is lit. Lighting all four at once read as nothing being
+// selected at all — every button wore the same quiet "on" fill — and since pressed buttons take
+// no hover, none of them answered the pointer either.
 function syncPriceClassUI(){
   const allOn = state.priceClass.size === 3;
   $$("#priceClass button").forEach(b => {
     const pc = b.dataset.pc;
-    b.setAttribute("aria-pressed", pc === "all" ? allOn : state.priceClass.has(pc));
+    b.setAttribute("aria-pressed", pc === "all" ? allOn : (!allOn && state.priceClass.has(pc)));
   });
 }
 function update(){ ensureUpcoming(); resetPaging(); computeSaleBounds(); syncMinSaleUI(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
@@ -5213,15 +5308,15 @@ function gridCardHTML(g){
       <div class="gmeta-bot">${qHtml}${sortHtml}</div>
     </div>
     <div class="ginfo">
-      <div class="gi-title">${esc(g.title)}</div>
+      <button type="button" class="gi-close" data-gclose="1" aria-label="Close details" title="Close — or tap anywhere on the card">✕</button>
+      <div class="gi-title" title="${esc(g.title)}">${esc(g.title)}</div>
       <div class="gi-row"><span>Price</span><b>${priceTxt}</b></div>
       <div class="gi-row" title="${esc(lengthTip(g))} This is the length QTPD divides the price by."><span>Length <i>est.</i></span><b>${hStr}</b></div>
       <div class="gi-row" title="${esc(ptTip)}"><span>Playtime <i>median</i></span><b>${ptStr}</b></div>
       <div class="gi-actions">
-        <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener">Steam ↗</a>
-        <button type="button" class="gi-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}">Reviews ⇩</button>
-        <button type="button" class="gi-sim" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game's main tags: " + similarKeyTags(g).join(", "))}">≈ Similar</button>
-        <button type="button" data-gclose="1">Close ✕</button>
+        <a class="gi-steam" href="${esc(g.url)}" target="_blank" rel="noopener"><i>↗</i><span>Steam</span></a>
+        <button type="button" class="gi-rev" data-rdopen="${g.appid}" title="${rdEntryTitle()}"><i>⇩</i><span>Reviews</span></button>
+        <button type="button" class="gi-sim" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game's main tags: " + similarKeyTags(g).join(", "))}"><i>≈</i><span>Similar</span></button>
       </div>
     </div>
   </div>`;
@@ -5500,7 +5595,9 @@ const SUMMARY_EDITORS = {
   upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
   release:  {title:"Release", cur:() => state.release, opts:[["Released",'[data-release="released"]',"released"],["Upcoming",'[data-release="upcoming"]',"upcoming"],["All",'[data-release="all"]',"all"]]},
   rel:      {title:"Released within", cur:() => state.releasedWithin, opts:[["Any",'[data-rel="any"]',"any"],["1mo",'[data-rel="1mo"]',"1mo"],["3mo",'[data-rel="3mo"]',"3mo"],["6mo",'[data-rel="6mo"]',"6mo"],["1yr",'[data-rel="1yr"]',"1yr"],["1yr+",'[data-rel="1yr+"]',"1yr+"]]},
-  pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
+  // `size < 3`: mirrors the buttons — with every type included none of the three reads as picked,
+  // so a click in here means "only this one", exactly as it does on the real control it clicks.
+  pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.size < 3 && state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
   trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
   rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0-99",'[data-rev="0"]',"0"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
@@ -5725,6 +5822,7 @@ function applyPreset(id){
   const p = (PRESETS || []).find(x => x.id === id); if(!p) return;
   // Clicking the active shelf again clears it, so a preset is never a one-way door.
   const next = (activePresetId() === id) ? "" : p.query;
+  pushStep();   // a shelf is a jump: Back returns to the filters it replaced
   history.replaceState(null, "", next ? "?" + next : location.pathname);
   dispatchEvent(new PopStateEvent("popstate"));
   // Deliberately no scroll. Applying a shelf used to scrollIntoView() the table, which pushed
@@ -6074,6 +6172,21 @@ function setPtMetric(m){
 // only when manually moved (qRangeTouched), since it otherwise auto-fits the results.
 let _urlSuspended = false;     // guard so loadFromURL() doesn't trigger a write mid-restore
 
+// syncURL() only ever REPLACES the history entry, so on its own the page adds nothing for Back
+// to return to — after a Find similar, Back left the site. A "jump" replaces the whole question
+// being asked (Find similar, a preset shelf, a title picked from the search list), so it opens
+// a new entry first; syncURL() then writes the jump's URL into that entry. Everything else —
+// typing, steppers, chips, sort — keeps rewriting the current entry, or Back would replay every
+// keystroke. The entry being left remembers how far down the list was and how many pages were
+// loaded, and the popstate handler puts both back, so Back lands where the user left off.
+// Scroll restoration is taken over from the browser for that reason: on Back it would restore
+// the offset before the list had grown to that length.
+if("scrollRestoration" in history) history.scrollRestoration = "manual";
+function pushStep(){
+  history.replaceState({y: Math.round(window.scrollY), pages: state.pagesShown}, "", location.href);
+  history.pushState(null, "", location.href);
+}
+
 function syncURL(){
   if(_urlSuspended) return;
   const p = new URLSearchParams();
@@ -6174,7 +6287,7 @@ function loadFromURL(){
   setIf("pmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minPrice=n; const el=$("#minprice"); if(el) el.value=n; } });
   setIf("pmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxPrice=n; const el=$("#maxprice"); if(el) el.value=n; } });
   setIf("hmin", v => { const n=parseFloat(v); if(!isNaN(n)){ state.minHours=n; const el=$("#minhours"); if(el) el.value=n; } });
-  setIf("hmax", v => { const n=parseFloat(v); if(!isNaN(n)){ state.maxHours=n; const el=$("#maxhours"); if(el) el.value=n; } });
+  setIf("hmax", v => { const n=parseFloat(v); if(!isNaN(n) && n > 0){ state.maxHours=n; const el=$("#maxhours"); if(el) el.value=n; } });   // 0 = no bound (see hoursHandler)
   setIf("trend", v => { state.trendSet = new Set(v.split(",").filter(x => ["up","flat","down"].includes(x)));
     if(state.trendSet.size === 0) state.trendSet = new Set(["up","flat","down"]);
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", state.trendSet.has(o.dataset.trend))); });
@@ -6280,7 +6393,7 @@ function init(data){
     for(const g of state.data.games) if(g.title && g._nt == null) g._nt = simSugNorm(g.title);
   });
 
-  window.addEventListener("popstate", () => {   // back/forward navigation
+  window.addEventListener("popstate", e => {   // back/forward navigation (and applyPreset's synthetic one)
     // reset to defaults, then re-read URL, then refresh everything
     setCo(""); hideCoSug();
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
@@ -6299,7 +6412,19 @@ function init(data){
     syncPriceClassUI();
     computeSaleBounds(); syncMinSaleUI();
     syncReleaseUI(); computeFullCounts(); ensureUpcoming();
+    // A real Back/Forward onto an entry pushStep() left carries the list's length and scroll
+    // offset; anything else (a preset applied in place, an entry with no record) starts at
+    // page one, as any other change of filters does.
+    const saved = history.state;
+    state.pagesShown = (saved && saved.pages) || 1;
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); syncFlagsUI(); render();
+    // Scrolled twice: the first scroll past 24px collapses the phone nav (body.nav-scrolled),
+    // which moves everything below it up by the nav's height, and scroll anchoring keeps the
+    // wrong rows in view — Back landed ~100px off. The second scroll runs once the nav has
+    // settled. A real traversal with no record (Forward onto a jump) starts at the top, as the
+    // jump itself did; applyPreset's synthetic event (isTrusted false) leaves the scroll alone.
+    const y = saved && saved.y != null ? saved.y : (e.isTrusted ? 0 : null);
+    if(y != null) requestAnimationFrame(() => { window.scrollTo(0, y); requestAnimationFrame(() => window.scrollTo(0, y)); });
   });
 
   // Header search: toggle the persistent red ✕ whenever the field holds text; the ✕ clears it.
@@ -6380,9 +6505,19 @@ function init(data){
     // discount to clear the floor. Rather than leave a toggle that visibly does nothing, asking
     // for Full back (directly, or via All) releases the floor. Order matters: clear it FIRST, so
     // setMinSale's own restore of Full can't fight the click being handled.
-    if((pc === "all" || pc === "full") && state.minSale != null) setMinSale(null);
+    if((pc === "all" || pc === "full") && state.minSale != null){
+      setMinSale(null);
+      // Full is back — that was the whole request. Falling through to the toggle below took it
+      // straight out again (setMinSale had just restored it), so the click released the floor
+      // and still left Full off.
+      if(pc === "full"){ state.priceClass.add("full"); syncPriceClassUI(); update(); return; }
+    }
     if(pc === "all"){
       state.priceClass = new Set(["full","sale","free"]);
+    } else if(state.priceClass.size === 3){
+      // From All, a type reads as unlit (see syncPriceClassUI), so clicking it picks it — only
+      // that kind — rather than switching it off, which is what the same click used to do.
+      state.priceClass = new Set([pc]);
     } else if(state.priceClass.has(pc)){
       if(state.priceClass.size > 1) state.priceClass.delete(pc);
       // last one lit: leave as-is (can't reach empty)
@@ -6478,14 +6613,20 @@ function init(data){
   $("#maxprice").addEventListener("input", priceHandler);
   // Length range — the same read-both-boxes shape as priceHandler, so a cleared box means
   // "no bound" rather than zero.
+  // A max of 0 hours is never a real question — no game has a Length of 0 — so it means "no
+  // bound" too. It used to be one slip away: ▼ on the empty max box ("∞") stepped to 0 and the
+  // list went blank. Unlike Price, where max $0 is a real filter (free games).
   const hoursHandler = () => {
-    const lo = $("#minhours").value.trim(), hi = $("#maxhours").value.trim();
+    const lo = $("#minhours").value.trim(), hi = parseFloat($("#maxhours").value);
     state.minHours = lo === "" ? null : Math.max(0, parseFloat(lo));
-    state.maxHours = hi === "" ? null : Math.max(0, parseFloat(hi));
+    state.maxHours = (isNaN(hi) || hi <= 0) ? null : hi;
     update();
   };
   $("#minhours").addEventListener("input", hoursHandler);
   $("#maxhours").addEventListener("input", hoursHandler);
+  // Tidy a typed 0 back to the empty "∞" once the edit is done, so the box shows what the filter
+  // is doing. Not on input: "0" is the first keystroke of "0.5".
+  $("#maxhours").addEventListener("change", e => { const v = parseFloat(e.target.value); if(!isNaN(v) && v <= 0) e.target.value = ""; });
   // `button[data-step]`, NOT `[data-step]`: the attribute is used for two unrelated things.
   // These are the price steppers, whose value names an input id — but every row thumbnail
   // <img> also carries data-step, as the cursor into its T6 fallback chain (stepThumb).
@@ -6497,9 +6638,13 @@ function init(data){
   // priceHandler would read the price boxes and write the price state.
   document.querySelectorAll("button[data-step]").forEach(btn => btn.addEventListener("click", () => {
     const inp = $("#"+btn.dataset.step);
+    const d = parseInt(btn.dataset.d,10);
     let v = parseFloat(inp.value || "0"); if(isNaN(v)) v = 0;
-    v = Math.max(0, v + parseInt(btn.dataset.d,10));
-    inp.value = v;
+    v = Math.max(0, v + d);
+    // Length max steps down to 1 and then back to empty ("∞"), never to 0 — and ▼ on an
+    // already-empty box stays empty (see hoursHandler).
+    if(btn.dataset.step === "maxhours" && d < 0) inp.value = (inp.value.trim() === "" || v < 1) ? "" : v;
+    else inp.value = v;
     (btn.dataset.step.endsWith("hours") ? hoursHandler : priceHandler)();
   }));
   // Preset shelves. Delegated, because renderPresets() replaces the row's innerHTML on every

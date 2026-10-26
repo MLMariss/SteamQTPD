@@ -161,9 +161,9 @@ control you move off its default lights up gold, so an open section shows at a g
 you've touched.
 
 - **Value** — **QTPD price basis** (Sale / Full) · **price type**
-  (All / Full / Sale / Free, independent toggles) · min & max price · **min sale %** (a −5 / +5
+  (All / Full / Sale / Free — from All, pick one to see only that kind, then add others back) · min & max price · **min sale %** (a −5 / +5
   stepper that drops shallow discounts; its resting value is read from the current results, not
-  hard-coded) · **length range in hours** (the twin of price range) · **QTPD range** (log-scale slider that fits the current results).
+  hard-coded) · **length range in hours** (the twin of price range; a max of 0 counts as no limit) · **QTPD range** (log-scale slider that fits the current results).
 - **Quality** — minimum rating (any / 60+ / 70+ / 80+ / 90+) · **Review period** (30-day /
   all-time — it drives both the rating floor and the score sort) · review trend (improving /
   stable / declining) · minimum reviews (0 / 10 / 100 / 1k / 5k+ bands) · updated-within

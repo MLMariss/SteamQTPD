@@ -401,7 +401,7 @@ means *ROADMAP.md*; every other `§N` means this file. That asymmetry is deliber
 
 Two other planning surfaces sit outside ROADMAP.md and are **not** duplicated here either:
 `docs/ONBOARDING_PLAN.md` (the 18 scored onboarding solutions and their build log) and
-`INESKA_IMPROVEMENTS.md` (an outside reviewer's cold-arrival findings, all 23 shipped).
+`INESKA_IMPROVEMENTS.md` (an outside reviewer's findings, all 35 shipped).
 The as-built record for anything that *has* shipped stays in this file — §16 is the
 changelog.
 
@@ -2060,10 +2060,17 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
 - **Tag counts and the "/ N games" total follow the toggle** (`computeFullCounts()` counts the
   toggle's catalogue and sets `state.scopeCount`), so the Released view's numbers don't jump when
   a search pulls upcoming rows in.
-- **Search suggestions are grouped.** Released matches (*Show just this game*, up to 5), then
-  *Coming soon* (up to 3, each with its date — "Dec 2026", Steam's own "Q4 2026", or TBA), then
-  *…or find games similar to* (released seeds only). With Upcoming selected the two title groups
-  swap. Within a match tier, upcoming titles order by launch date rather than review count.
+- **Search suggestions are grouped.** Released matches (*Show just this game*, up to 8 — 5 until
+  Oct 2026), then *Coming soon* (up to 3, each with its date — "Dec 2026", Steam's own "Q4 2026",
+  or TBA), then *…or find games similar to* (released seeds only). With Upcoming selected the two
+  title groups swap. Within a match tier, upcoming titles order by launch date rather than review
+  count. Titles that differ only in case or punctuation (same `simSugNorm` key) collapse to their
+  best-ranked game in every group: "fall" has five exact `FALL`/`.fall` titles, which used to
+  fill every slot, so Fallout never appeared (INESKA_IMPROVEMENTS.md §30).
+- **The list hangs outside the top bar.** `.barwrap` clips to its rounded corners on desktop,
+  which cut every suggestion past the bar's bottom edge, so "fall" showed two rows of eight. The
+  clip is lifted while any `.simsug` list is open (`.barwrap:has(.simsug:not([hidden]))`), and
+  the "Show filters" strip carries its own 13px corner curve so the bar still looks rounded.
 - **Badges.** "Upcoming" under the title in Table/Card and on the art's top-left in Grid (the
   discount badge holds the top-right); the Released cell's second line reads "in 12 days".
 - **1.0 launches (Oct 2026).** An Early Access game whose developer has announced its 1.0 date
@@ -2125,7 +2132,8 @@ cheap* · *Co-op picks* · *New and well-reviewed* · *Hidden gems* · *Under-th
 labelled **"Start with"**. Eight shelves in two tones: `popular` (the first six) and `niche`
 (the last two), styled apart because they answer opposite questions.
 
-- **A preset is a querystring and nothing else.** `applyPreset()` writes `p.query` to the URL
+- **A preset is a querystring and nothing else.** `applyPreset()` opens a history entry
+  (`pushStep()`, so Back returns to the filters the shelf replaced), writes `p.query` into it
   with `history.replaceState()` and then fires a synthetic `popstate`, which is the path the
   **back button** already uses: its handler resets every field to its default and re-reads the
   URL through `loadFromURL()`. Deliberately *not* a bespoke setter — a second way to set filter
@@ -2182,7 +2190,10 @@ state** — and a preset that is not real filter state cannot show the user what
 
 - **Length range (hours)** — `state.minHours` / `state.maxHours`, URL `hmin` / `hmax`. The twin
   of Price range, reading `hoursFor()` — the same Length the column shows. A game with no Length
-  is dropped once either bound is set. Leave a box blank for no bound.
+  is dropped once either bound is set. Leave a box blank for no bound. A max of **0** also
+  means no bound (no game has a Length of 0, and one ▼ on the empty box used to blank the list):
+  ▼ steps the max down to 1 and then back to empty, never to 0; a typed 0 tidies to empty on
+  `change`; `hmax=0` in a link is ignored (INESKA_IMPROVEMENTS.md §33). Price keeps 0 — max $0 is "free games".
 - **Released within** — `state.releasedWithin`, URL `rel`, values `any` / `1mo` / `3mo` / `6mo` /
   `1yr` / `1yr+`. The same shape as the existing *Updated within*, on `release_ts`. `1yr+` means
   released **more than** a year ago, so `1yr` and `1yr+` partition the catalogue exactly.
@@ -2207,7 +2218,9 @@ from the data, as the **shallowest discount currently in the results**, floored 
   **Free** is deliberately left alone — a free game is exempt from the floor and is kept or
   dropped by its own price-type toggle. The coupling runs both ways: clicking **Full** (or
   **All**) while a floor is set releases the floor, rather than leaving a toggle that visibly
-  does nothing.
+  does nothing — and a click on **Full** stops there with Full back on. (It used to fall through
+  to the ordinary toggle, which took Full straight off again after `setMinSale(null)` had
+  restored it.)
 
 **The table (12 columns).** In order: Game · Reviews · Trend · **Weighted** · Price / Sale ·
 Sale ends · Released · **Updated** · Tags · **Playtime** · **Length** · QTPD. (**Trend** sits directly
@@ -2313,6 +2326,21 @@ Tags track's own minimum), so the horizontal-overflow floor moves with it. Scope
 `:not(.layout-card)` throughout — the toggle is meaningless in Card and Grid, where there is no
 column grid to reclaim.
 
+**The art gives way before the title (Oct 2026).** `minmax(268px, 2.2fr)` leaves Game at its
+floor on every window from 1280px to ~1520px, because the fixed-ceiling columns take the free
+space before any `fr` track grows. 150px of art then left the title ~52px against `.gmeta`'s
+136px floor, and the cell's `overflow:hidden` cut names mid-letter with no ellipsis (INESKA_IMPROVEMENTS.md §29).
+In the table, `.thumb` is now `flex:0 4 auto; min-width:96px; aspect-ratio:150/57` and `.gmeta`
+is `flex:1 1 136px; min-width:0`. The art shrinks first, down to 96px; the title's two-line
+clamp ends in "…"; `overflow-wrap:anywhere` breaks a single over-long word.
+
+**Rounded corners without clipping.** `.tablecard` can't clip to its 14px radius:
+`overflow:hidden` makes it a scroll container and unsticks `thead`, and `overflow:clip` would
+cut off the sort menu that drops out below a short list. So the two square fills that reach the
+corners carry a 13px curve themselves: `thead` at the top (its opaque fill notched the
+top-left border) and the last row at the bottom (its hover fill poked past both corners;
+INESKA_IMPROVEMENTS.md §28, §31).
+
 **Three views, not two.** `VIEWS = ["table", "card", "grid"]`, chosen from the switcher in
 `.bar-tools` and persisted in `localStorage["qtpd.view"]`. **Table and Card are the same
 "detailed" view relabelled per device** — Table is desktop-only, Card is mobile-only, and
@@ -2320,7 +2348,21 @@ column grid to reclaim.
 dimmed). **Grid** is the third, device-independent view: a box-art grid of `gridCardHTML()`
 cards (Steam header art at `aspect-ratio:460/215` over a dark info panel with title + Steam
 rating on one line and QTPD below; tap to flip to a price/length/`Steam ↗` overlay). **Grid is
-the default on mobile**, Table on desktop; a saved choice always wins. Full as-built record,
+the default on mobile**, Table on desktop; a saved choice always wins.
+
+The flipped face (`.ginfo`) has to fit a card as narrow as ~154px (a two-column grid on a 360px
+phone) without growing, because an open card must stay exactly as tall as a closed one (§3.4 /
+INESKA_IMPROVEMENTS.md §12). Its rules, from INESKA_IMPROVEMENTS.md §24–27:
+
+- `Close` is a corner ✕ (`.gi-close`). Tapping anywhere on an opened card already closes it.
+- `Steam` / `Reviews` / `Similar` are icon-over-label tiles on a `repeat(3, minmax(0,1fr))`
+  grid, so the row is exactly the card's width.
+- `overflow-x:hidden`: a non-visible `overflow-y` turns `overflow-x` to `auto` too, and the
+  overflowing row used to scroll sideways behind a scrollbar nobody found.
+- `.ginfo > *{flex:none}`: the clamped title was the flex item that gave way — 0px tall on a
+  phone.
+- `.gcard` is a size container, so `@container` steps keyed to the **card's** width (<200px,
+  <164px) clamp the title to one line and tighten the tiles. Full as-built record,
 including the six refinement rounds, in **§3.4**.
 
 **Responsive / card layout (single-column spec sheet, 2026-07 redesign).** The table is for the
@@ -2364,8 +2406,11 @@ open/closed state persists in `localStorage["qtpd.sections"]` (§3.4 L1). Defaul
 **leftmost** (repo convention, §3.4 R3), and any control moved off its default lights up **gold**
 via `markChangedControls()`.
 
-- **Value** — **QTPD price basis** (Sale *(default)* / Full) · **Length range** · **price type** (All / Full / Sale / Free — an independent multi-toggle, URL `pc`; this
-  **replaced the old boolean on-sale-only filter**) · min & max price · **QTPD range**
+- **Value** — **QTPD price basis** (Sale *(default)* / Full) · **Length range** · **price type** (All / Full / Sale / Free, URL `pc`; this
+  **replaced the old boolean on-sale-only filter**. With every type included only **All** is
+  lit — four lit buttons read as nothing selected — and from All a click on a type picks *only*
+  that type; after that each click adds or removes one, and lighting all three returns to All.
+  INESKA_IMPROVEMENTS.md §34) · min & max price · **QTPD range**
   log-slider that fits current results.
 - **Quality** — min rating (any/60+/70+/80+/90+) · **Review period** (30-day *(default)* /
   All-time) · review-trend multi-toggle · min-reviews bands (0/10/100/1k/5k+, independent
@@ -2501,6 +2546,24 @@ saved in `localStorage`. `presets.py`'s `KNOWN_PARAMS` allowlist mirrors this ta
 `scheme` (no shelf sets a colour scheme) and `release` (shelves list released games only —
 presets.py measures them against `games.json` alone) and fails the build if a shelf names anything outside
 it.
+
+**History: which changes Back undoes (Oct 2026).** `syncURL()` only ever *replaces* the current
+history entry, so on its own the page gives Back nothing to return to — after a Find similar,
+Back left the site (INESKA_IMPROVEMENTS.md §25). A **jump** — `findSimilar()`, `applyPreset()`, `pickTitle()`
+(a title picked from the search list) — calls `pushStep()` first, which opens a new entry that
+`syncURL()` then writes the jump's URL into. Ordinary edits (typing, steppers, chips, sort) keep
+replacing, so Back never replays keystrokes. `pushStep()` stamps the entry being left with
+`{y, pages}` — scroll offset and `state.pagesShown` — and the `popstate` handler regrows the
+list to that many pages and scrolls back, so Back lands on the same card:
+
+- `history.scrollRestoration = "manual"`: the browser's own restore would apply the offset
+  before the list had regrown.
+- The restore scrolls **twice**, one frame apart. The first scroll past 24px collapses the
+  phone nav (`body.nav-scrolled`), moving the content up by the nav's height, and scroll
+  anchoring then held the wrong rows in view, ~100px off.
+- A trusted traversal with no record (Forward onto a jump) goes to the top. `applyPreset()`'s
+  synthetic `popstate` (`isTrusted` false) leaves the scroll alone, and every `popstate` without
+  a record resets paging to page one, as `update()` does for any other filter change.
 
 Two things are deliberately **not** serialized: the **hidden-games list** (session-only, see
 *Thumbnails & hiding*) and the three `localStorage` preferences — `qtpd.view`,
@@ -2653,7 +2716,10 @@ before; with the player docked above the grid, **scrolling is what the user does
 watching**, which put a rebuild of several hundred DOM subtrees next to a decoding `<video>` on
 every page bump. The next slice is now appended. The detailed view still re-renders: its rows
 are built by a closure inside `render()` that depends on per-render values (the QTPD bar scale,
-computed across the whole filtered set), and its rows carry no video.
+computed across the whole filtered set), and its rows carry no video. When nothing matches,
+`render()` returns early from its empty branch, so that branch hides `#loadmore` itself.
+Otherwise the previous list's "Showing 66 of 7511 — scroll for more…" stays on screen above
+"No games match" (INESKA_IMPROVEMENTS.md §35).
 
 **Thumbnails & hiding.** Header art with a hover-enlarge popover, sourced from the PICS
 `art` field (§9.5) and falling back to a content-verified chain of appid-derived URLs for
