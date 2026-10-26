@@ -5595,7 +5595,9 @@ const SUMMARY_EDITORS = {
   upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
   release:  {title:"Release", cur:() => state.release, opts:[["Released",'[data-release="released"]',"released"],["Upcoming",'[data-release="upcoming"]',"upcoming"],["All",'[data-release="all"]',"all"]]},
   rel:      {title:"Released within", cur:() => state.releasedWithin, opts:[["Any",'[data-rel="any"]',"any"],["1mo",'[data-rel="1mo"]',"1mo"],["3mo",'[data-rel="3mo"]',"3mo"],["6mo",'[data-rel="6mo"]',"6mo"],["1yr",'[data-rel="1yr"]',"1yr"],["1yr+",'[data-rel="1yr+"]',"1yr+"]]},
-  pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
+  // `size < 3`: mirrors the buttons — with every type included none of the three reads as picked,
+  // so a click in here means "only this one", exactly as it does on the real control it clicks.
+  pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.size < 3 && state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
   wishonly: {title:"Wishlist", toggleSel:"#wishOnly", isOn:() => state.wishOnly, opts:[["Wishlist only",null,"on"],["All games",null,"off"]]},
   trend:    {title:"Review trend (toggle)", multi:true, has:v => state.trendSet.has(v), opts:[["▲ up",'[data-trend="up"]',"up"],["≈ flat",'[data-trend="flat"]',"flat"],["▼ down",'[data-trend="down"]',"down"]]},
   rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0-99",'[data-rev="0"]',"0"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},

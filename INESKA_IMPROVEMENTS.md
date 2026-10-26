@@ -1270,6 +1270,9 @@ click handler (L6515), the `.seg` hover ring (L312).
   goes back to All.
 - Pressed segment buttons site-wide now answer hover with a ring, not a fill, so the fill
   still marks the selection.
+- The Showing line's Price type popover ticks options by the same rule (none ticked when all
+  three are included), because it clicks the same buttons: a ticked Free that meant "only
+  Free" when clicked would have read as "untick Free".
 
 Found while testing: clicking Full while a Min sale floor had switched it off released the
 floor and then toggled Full straight off again. It now brings Full back, which is what the
