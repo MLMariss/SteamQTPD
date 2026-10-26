@@ -4800,6 +4800,7 @@ function findSimilar(appid){
   if(!g) return;
   const keys = similarKeyTags(g);
   if(!keys.length) return;
+  pushStep();   // Back returns to the list this was clicked from (see pushStep)
   // The title search would otherwise narrow the list back down to the chosen game.
   state.q = ""; const qi = $("#q"); if(qi) qi.value = "";
   const box = $("#searchBox"); if(box) box.classList.remove("has-q");
@@ -4910,6 +4911,7 @@ function renderSimSug(){
 // Picking an exact title just puts that title in the search box, so the list narrows to it
 // through the ordinary title filter — no second code path, and the ✕ still clears it.
 function pickTitle(title){
+  pushStep();
   const qi = $("#q"); if(qi) qi.value = title;
   state.q = title;
   const box = $("#searchBox"); if(box) box.classList.toggle("has-q", !!title);
@@ -5789,6 +5791,7 @@ function applyPreset(id){
   const p = (PRESETS || []).find(x => x.id === id); if(!p) return;
   // Clicking the active shelf again clears it, so a preset is never a one-way door.
   const next = (activePresetId() === id) ? "" : p.query;
+  pushStep();   // a shelf is a jump: Back returns to the filters it replaced
   history.replaceState(null, "", next ? "?" + next : location.pathname);
   dispatchEvent(new PopStateEvent("popstate"));
   // Deliberately no scroll. Applying a shelf used to scrollIntoView() the table, which pushed
@@ -6138,6 +6141,21 @@ function setPtMetric(m){
 // only when manually moved (qRangeTouched), since it otherwise auto-fits the results.
 let _urlSuspended = false;     // guard so loadFromURL() doesn't trigger a write mid-restore
 
+// syncURL() only ever REPLACES the history entry, so on its own the page adds nothing for Back
+// to return to — after a Find similar, Back left the site. A "jump" replaces the whole question
+// being asked (Find similar, a preset shelf, a title picked from the search list), so it opens
+// a new entry first; syncURL() then writes the jump's URL into that entry. Everything else —
+// typing, steppers, chips, sort — keeps rewriting the current entry, or Back would replay every
+// keystroke. The entry being left remembers how far down the list was and how many pages were
+// loaded, and the popstate handler puts both back, so Back lands where the user left off.
+// Scroll restoration is taken over from the browser for that reason: on Back it would restore
+// the offset before the list had grown to that length.
+if("scrollRestoration" in history) history.scrollRestoration = "manual";
+function pushStep(){
+  history.replaceState({y: Math.round(window.scrollY), pages: state.pagesShown}, "", location.href);
+  history.pushState(null, "", location.href);
+}
+
 function syncURL(){
   if(_urlSuspended) return;
   const p = new URLSearchParams();
@@ -6344,7 +6362,7 @@ function init(data){
     for(const g of state.data.games) if(g.title && g._nt == null) g._nt = simSugNorm(g.title);
   });
 
-  window.addEventListener("popstate", () => {   // back/forward navigation
+  window.addEventListener("popstate", e => {   // back/forward navigation (and applyPreset's synthetic one)
     // reset to defaults, then re-read URL, then refresh everything
     setCo(""); hideCoSug();
     state.q=""; state.tagsInc.clear(); state.tagsExc.clear(); state.tagMode="and";
@@ -6363,7 +6381,19 @@ function init(data){
     syncPriceClassUI();
     computeSaleBounds(); syncMinSaleUI();
     syncReleaseUI(); computeFullCounts(); ensureUpcoming();
+    // A real Back/Forward onto an entry pushStep() left carries the list's length and scroll
+    // offset; anything else (a preset applied in place, an entry with no record) starts at
+    // page one, as any other change of filters does.
+    const saved = history.state;
+    state.pagesShown = (saved && saved.pages) || 1;
     recomputeDomain(); applyURLRange(); buildTagRail(); syncSortArrows(); syncPtHeader(); syncFlagsUI(); render();
+    // Scrolled twice: the first scroll past 24px collapses the phone nav (body.nav-scrolled),
+    // which moves everything below it up by the nav's height, and scroll anchoring keeps the
+    // wrong rows in view — Back landed ~100px off. The second scroll runs once the nav has
+    // settled. A real traversal with no record (Forward onto a jump) starts at the top, as the
+    // jump itself did; applyPreset's synthetic event (isTrusted false) leaves the scroll alone.
+    const y = saved && saved.y != null ? saved.y : (e.isTrusted ? 0 : null);
+    if(y != null) requestAnimationFrame(() => { window.scrollTo(0, y); requestAnimationFrame(() => window.scrollTo(0, y)); });
   });
 
   // Header search: toggle the persistent red ✕ whenever the field holds text; the ✕ clears it.
