@@ -1189,7 +1189,7 @@ layout ~80px wider. After: zero overflowing rows at 1280, 1290 and 1366px.
 - Titles that differ only in case or punctuation collapse to their best-ranked game, in both
   the title rows and the ≈ rows.
 - The title group shows up to eight rows (was five), and the list's max height grows to
-  `min(70vh, 440px)`.
+  `min(70vh, 560px)`, so on a laptop-height window all three groups show without scrolling the list.
 
 "fall" now lists FALL, Fallout 4, Fallout: New Vegas, Human Fall Flat, STAR WARS Jedi: Fallen
 Order, Fallout 76, WUCHANG: Fallen Feathers and Fallout Shelter. No row is covered.
