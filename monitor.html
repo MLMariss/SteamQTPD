@@ -6,7 +6,7 @@
 <title>Pipeline monitor: how fresh the Steam data is | QTPD</title>
 <!-- The pipeline monitor, opened from the data-age counter in the main page's top bar. It charts
      monitor.json, which monitor.py (workflow 4.5) appends to after every catalog scrape and every
-     2 hours; history before 2026-10-25 is backfilled from git at one point a day. noindex: an
+     price pass (~hourly); history before 2026-10-25 is backfilled from git at one point a day. noindex: an
      operations page with nothing a searcher is looking for — it stays crawlable and linked.
      Same tokens as index.html, so the pages read as one site. See ARCHITECTURE §11.7. -->
 <meta name="description" content="How fresh and complete QTPD's Steam data is over time: catalog size, every scrape run, when each data file was last refreshed, how old the per-game data is, and coverage." />
@@ -135,8 +135,8 @@
   <div class="crumbs"><a href="./">QTPD</a> › Pipeline monitor</div>
   <h1>Pipeline monitor</h1>
   <p class="lede">How fresh and how complete the Steam data behind QTPD is, over time. A snapshot is
-    recorded after every catalog scrape and every two hours; history before 25 Oct 2026 is rebuilt from
-    the repository at one point a day. Tap or hover <span aria-hidden="true">ⓘ</span> for what a number
+    recorded after every catalog scrape and every price pass (about hourly); history before 25 Oct 2026
+    is rebuilt from the repository at one point a day. Tap or hover <span aria-hidden="true">ⓘ</span> for what a number
     means. <span class="asof" id="asof"></span></p>
 
   <div class="filters" role="group" aria-label="Time range">
@@ -176,7 +176,9 @@
     <p class="sub">How long before each snapshot the file was last written: the line climbs while the file
       waits and drops when its job writes it again, so a line that keeps climbing is a job that stopped
       writing. The figure on each card is that age at the latest snapshot; <span aria-hidden="true">ⓘ</span>
-      says which job writes the file and how often.</p>
+      says which job writes the file, how often, and what range is normal. GitHub skips or delays many
+      scheduled runs on this repository, so a file sitting a few hours past its schedule is usually not a
+      fault; one that keeps climbing past its normal range is.</p>
     <div class="multi" id="c-files"></div>
     <details><summary>Table</summary><div class="tbl" id="t-files"></div></details>
   </section>
@@ -219,18 +221,18 @@ const LABEL = {
 // What each number means, for the ⓘ popovers. Cadences are the workflows' crons (FRESHNESS.md).
 const TIP = {
   files: {
-    games:"games.json — the catalog scraper (job 1). It runs every 6 hours for up to 5.5 hours and saves every ~10 minutes while it runs, so a normal age is minutes, up to about an hour between runs.",
-    prices:"prices.json — the price and sale sweep (job 2.1), every hour. Normal: under about an hour.",
-    recent:"recent.json — 30-day review scores (job 2.2), every 6 hours. Normal: under about 7 hours.",
-    playtime:"playtime.json — playtime medians (job 3.1), rebuilt after each playtime pass (job 2.3, every 3 hours; a pass can run for hours). Normal: under about 6 hours.",
-    ratings:"ratings.json — playtime-weighted ratings (job 3.2), rebuilt with playtime after each pass. Normal: under about 6 hours.",
-    hltb:"hltb.json — HowLongToBeat times (job 2.5), every 2 hours. Normal: under about 3 hours.",
-    tags:"tags.json — SteamSpy tags (job 2.6), every 2 hours, but it writes only while some games still lack tags, so a quiet stretch can be normal.",
-    trailers:"trailers.json — store trailers (job 2.8), daily at 05:13 UTC. Normal: under a day.",
-    length:"length.json — length estimates (job 3.4), rebuilt after each playtime pass. Normal: under about 6 hours.",
-    updates:"updates.json — update history (job 3.3), rebuilt after each update-events pass (job 2.4, every 6 hours). Normal: under about 7 hours.",
-    pics:"pics.json — Steam's own app metadata (job 2.7), daily at 03:20 UTC, plus catch-up passes for new games three times a day. Normal: under a day.",
-    upcoming:"upcoming.json — unreleased games (job 2.11), daily at 00:23 UTC. Normal: under a day.",
+    games:"games.json — the catalog scraper (job 1). Each run lasts up to 5.5 hours and saves every ~30 minutes. Normal: under an hour while a run is going; up to ~6 hours when GitHub skips a scheduled run.",
+    prices:"prices.json — the price and sale sweep (job 2.1), which saves as it goes and finishes a pass about every hour. Normal: under ~2 hours.",
+    recent:"recent.json — 30-day review scores (job 2.2), scheduled every 6 hours. Normal: up to ~12 hours.",
+    playtime:"playtime.json — playtime medians (job 3.1), rebuilt after each playtime pass (job 2.3, scheduled every 3 hours; a pass can run for hours). Normal: up to ~8 hours.",
+    ratings:"ratings.json — playtime-weighted ratings (job 3.2), rebuilt with playtime after each pass. Normal: up to ~8 hours.",
+    hltb:"hltb.json — HowLongToBeat times (job 2.5), scheduled every 2 hours. Normal: up to ~6 hours.",
+    tags:"tags.json — SteamSpy tags (job 2.6), scheduled every 2 hours, but it writes only while some games still lack tags. Normal: up to ~7 hours; longer can be normal once every game has tags.",
+    trailers:"trailers.json — store trailers (job 2.8), daily at 05:13 UTC. Normal: up to about a day.",
+    length:"length.json — length estimates (job 3.4), rebuilt after each playtime pass. Normal: up to ~8 hours.",
+    updates:"updates.json — update history (job 3.3), rebuilt after each update-events pass (job 2.4, scheduled every 6 hours). Normal: up to ~6 hours.",
+    pics:"pics.json — Steam's own app metadata (job 2.7), daily at 03:20 UTC plus catch-up passes for new games three times a day. Normal: up to ~7 hours.",
+    upcoming:"upcoming.json — unreleased games (job 2.11), daily at 00:23 UTC. Normal: up to about a day.",
   },
   rows: {
     games_young:"How long ago each game released in the past year last had its reviews (and the rest of its store record) fetched. These are re-checked on a ladder: every 6 hours in the first 3 days after release, widening to every 15 days by the first anniversary. Normal: a few days at most.",
@@ -608,7 +610,7 @@ function render(){
   if(lr) tile(tiles, "Last scrape run", fmtAge(now - lr[1]) + " ago",
               `+${fmtInt(lr[3])} new · ${fmtInt(lr[4])} refreshed${lr[9] ? "" : " · still running"}`, false,
               "When the catalog scraper last saved, counted from now, and what that run added (new games) and " +
-              "re-scraped (refreshed). It runs every 6 hours for up to 5.5 hours and saves every ~10 minutes, " +
+              "re-scraped (refreshed). Each run lasts up to 5.5 hours and saves every ~30 minutes, " +
               "so “still running” is normal.");
   // Re-checks: what the runs saved in the last 24 hours refreshed. A run is counted whole once it
   // saved inside the window, so this can run up to one run's worth over a strict 24 hours.

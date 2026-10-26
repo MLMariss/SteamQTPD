@@ -525,16 +525,20 @@ def trigger_deploy():
     sat on main for hours while the site showed pre-sale prices. A workflow_dispatch from
     GITHUB_TOKEN is one of the two events that token IS allowed to start a run with (needs
     `actions: write` and GH_TOKEN in prices.yml); pages.yml's concurrency group queues it
-    behind a deploy already in flight. Best effort — a failed dispatch leaves the cron."""
+    behind a deploy already in flight. Best effort — a failed dispatch leaves the cron.
+    The same dispatch takes the pipeline monitor's snapshot (monitor.yml, src=prices): its
+    2-hourly cron fired 3 times in 8 on 25-26 Oct 2026, and a pass is a steady ~hourly clock."""
     if not IN_ACTIONS:
         return
-    try:
-        r = subprocess.run(["gh", "workflow", "run", "pages.yml", "--ref", "main"],
-                           capture_output=True, text=True, timeout=60)
-        log("  deploy requested" if r.returncode == 0
-            else f"  deploy dispatch failed: {(r.stderr or r.stdout).strip()}")
-    except Exception as e:
-        log(f"  deploy dispatch failed: {e}")
+    for wf, extra, what in (("pages.yml", [], "deploy"),
+                            ("monitor.yml", ["-f", "src=prices"], "monitor snapshot")):
+        try:
+            r = subprocess.run(["gh", "workflow", "run", wf, "--ref", "main", *extra],
+                               capture_output=True, text=True, timeout=60)
+            log(f"  {what} requested" if r.returncode == 0
+                else f"  {what} dispatch failed: {(r.stderr or r.stdout).strip()}")
+        except Exception as e:
+            log(f"  {what} dispatch failed: {e}")
 
 
 def carry_sale(old, new, now):
