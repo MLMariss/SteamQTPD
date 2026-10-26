@@ -422,8 +422,14 @@ def main():
              owns="games.json", stamp=json_stamp("games.json"), ts_map=games_ts,
              cov=(scr_cov, b_scraper["fresh"], b_scraper["overdue"], b_scraper["never"],
                   b_scraper["lm_only"]),
-             window="age-tiered 0.25d→15d (≤365d old); older = `last_modified`-driven",
-             note="Only finder of new games. `skipped` = games past the last age tier, "
+             window=f"age-tiered 0.25d→15d (≤365d old); older: {CV.REVIEW_FLOOR_DAYS}d floor"
+                    if CV.REVIEW_FLOOR_DAYS > 0 else
+                    "age-tiered 0.25d→15d (≤365d old); older = `last_modified`-driven",
+             note="Only finder of new games. Games past the last age tier are re-scraped "
+                  "on Steam's `last_modified`, PICS review drift, and at least every "
+                  f"{CV.REVIEW_FLOOR_DAYS}d (the floor, behind all other work)."
+                  if CV.REVIEW_FLOOR_DAYS > 0 else
+                  "Only finder of new games. `skipped` = games past the last age tier, "
                   "refreshed on Steam's `last_modified` instead of a cooldown."),
         dict(key="2.1", kind="data", wf="prices.yml", label="Prices + sale dates", script="price_and_sale.py",
              owns="prices.json", stamp=json_stamp("prices.json"), ts_map=prices_ts,

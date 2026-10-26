@@ -307,6 +307,31 @@ for name, get in [("no reply / the old endpoint's HTML", lambda *a, **k: None),
     check(f"{name}: nothing added, nothing lost, NOT exhausted",
           added == 0 and held == {"1": {"pt": 5, "up": True, "ts": NOW}} and exhausted is False)
 
+print("\n== scraper: the REVIEW_FLOOR_DAYS floor under the review ladder ==")
+import scraper as S
+S.PICS_REV_DELTA = 0                       # keep the real pics.json out of it
+now = int(S.time.time())
+processed = {
+    "1": {"appid": 1, "release_ts": now - 800 * DAY, "scraped_at": now - 61 * DAY},  # old, past the floor
+    "2": {"appid": 2, "release_ts": now - 800 * DAY, "scraped_at": now - 59 * DAY},  # old, inside it
+    "3": {"appid": 3, "release_ts": now - 100 * DAY, "scraped_at": now - 8 * DAY},   # 90-180d tier (7d), due
+    "4": {"appid": 4, "release_ts": now - 800 * DAY, "scraped_at": now - 2 * DAY},   # old, store page moved
+    "5": {"appid": 5, "scraped_at": now - 90 * DAY},                                # no release date
+}
+master = {1: 0, 2: 0, 3: 0, 4: now, 5: 0}
+catalog = {"skipped": [], "pending": {}, "priority": [], "force_refresh": [], "recheck": {}}
+_, refresh = S.select_work(master, True, processed, catalog)
+check("an old game past the floor is queued", 1 in refresh)
+check("an old game inside the floor is not", 2 not in refresh)
+check("an undated game past the floor is queued", 5 in refresh)
+check("the floor queues behind the tiers and last_modified",
+      refresh.index(3) < refresh.index(1) and refresh.index(4) < refresh.index(1))
+check("within the floor, oldest-scraped first", refresh.index(5) < refresh.index(1))
+S.REVIEW_FLOOR_DAYS, keep = 0, S.REVIEW_FLOOR_DAYS
+_, refresh = S.select_work(master, True, processed, catalog)
+check("REVIEW_FLOOR_DAYS=0 turns it off", 1 not in refresh and 5 not in refresh and 3 in refresh)
+S.REVIEW_FLOOR_DAYS = keep
+
 print("\n" + ("ALL TESTS PASSED" if not fails
               else f"{len(fails)} FAILURE(S): " + "; ".join(fails)))
 sys.exit(1 if fails else 0)

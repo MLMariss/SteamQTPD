@@ -110,8 +110,10 @@ UPD_NOUPDATE_COOLDOWN_DAYS = 45
 # games.json / scraper.py (no last_modified API key -> fallback timer)
 SCRAPER_REFRESH_DAYS = 7
 # games.json / scraper.py age-tiered review refresh: (max_age_days, cooldown_days).
-# Games older than the last tier keep the last_modified-only rule.
+# Games older than the last tier (or undated) fall to REVIEW_FLOOR_DAYS: re-scraped at least
+# that often, behind every other trigger (Oct 2026; 0 = the old last_modified-only rule).
 REVIEW_TIERS = [(3, 0.25), (10, 0.5), (30, 1), (60, 2), (90, 3.5), (180, 7), (365, 15)]
+REVIEW_FLOOR_DAYS = 60
 # pics_refresh.py (single-window --stale-days gate; default from pics.yml)
 PICS_STALE_DAYS = 14
 # hltb_refresh.py (different shape: static windows + blank backoff)
@@ -464,9 +466,10 @@ def schedule_scraper(games):
     """games.json core. Two populations:
       * within REVIEW_TIERS (age since release <= the last tier): a real per-game
         cooldown that widens with age, so fresh/overdue are exact here.
-      * older than the last tier: refresh is driven by Steam's `last_modified`, which
-        we can't see locally, so those are reported separately as `lm_only` rather
-        than being scored against a cooldown they don't have.
+      * older than the last tier (or undated): scored against the REVIEW_FLOOR_DAYS
+        floor. Steam's `last_modified` and PICS drift can refresh them sooner, but the
+        floor is the promise. With the floor off they are reported separately as
+        `lm_only` rather than scored against a cooldown they don't have.
     """
     now = int(time.time())
     b = {"overdue": 0, "fresh": 0, "never": 0, "lm_only": 0}
@@ -483,6 +486,8 @@ def schedule_scraper(games):
                 if age_days <= max_age:
                     cooldown = cooldown_days * DAY
                     break
+        if cooldown is None and REVIEW_FLOOR_DAYS > 0:
+            cooldown = REVIEW_FLOOR_DAYS * DAY
         if cooldown is None:
             b["lm_only"] += 1
         elif (now - ts) >= cooldown:
@@ -808,9 +813,9 @@ def main():
              f"("
              + ", ".join(f"≤{d}d→{c}d" for d, c in REVIEW_TIERS)
              + f"), so fresh/overdue are exact for them. Older games refresh on Steam's "
-             f"`last_modified` (invisible locally) plus the PICS review-drift trigger, "
-             f"and are counted separately rather than scored against a cooldown they "
-             f"don't have.")
+             f"`last_modified` (invisible locally) and the PICS review-drift trigger, and "
+             f"at least every {REVIEW_FLOOR_DAYS}d (the floor, behind all other work), "
+             f"which is the window they are scored against here.")
     L.append(f"- **`hltb.json`** (`hltb_refresh.py`): fresh {sched_hltb['fresh']:,} · "
              f"overdue {sched_hltb['overdue']:,} · blank-frozen "
              f"{sched_hltb['blank_frozen']:,} · blank-active {sched_hltb['blank_active']:,}. "
