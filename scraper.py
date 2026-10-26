@@ -741,6 +741,33 @@ def strike_no_answer(aid, rec, recheck, skipped, now):
         rec["unknown"] = int(now)
 
 
+def is_shell(rec):
+    """True for a stored record whose game Steam now calls "coming soon" (the only place this
+    is asked) and that has no reviews: stored while unreleased, before the release gate.
+    Mark of the Ninja (214560) answers coming soon too but carries 15k reviews, so a real
+    game is never dropped by this."""
+    return rec is not None and not rec.get("review_count")
+
+
+def chain_next_run():
+    """Ask for the next catalog run now. GitHub drops or delays most crons on this repo, and
+    the four 6-hourly slots left the scraper idle ~9% of the time (2-2.6h gaps, 22-26 Oct
+    2026). A run that stopped on its time budget has work left, so it dispatches the next
+    one itself; the steam-scrape group queues it behind this one's last seconds. A run that
+    ran out of work does not, so an empty queue can never spin. Needs `actions: write` and
+    GH_TOKEN in scrape.yml; set the repository variable SCRAPE_CHAIN to 0 to stop chaining
+    (the cron carries on). Best effort: a failed dispatch leaves the cron."""
+    if not IN_ACTIONS or os.environ.get("SCRAPE_CHAIN", "0") != "1":
+        return
+    try:
+        r = subprocess.run(["gh", "workflow", "run", "scrape.yml", "--ref", "main"],
+                           capture_output=True, text=True, timeout=60)
+        log("  next run requested (chained)" if r.returncode == 0
+            else f"  chain dispatch failed: {(r.stderr or r.stdout).strip()}")
+    except Exception as e:
+        log(f"  chain dispatch failed: {e}")
+
+
 def parse_price(appid, d):
     """(is_free, price_initial, price_final, discount_pct) from an appdetails data block."""
     is_free = bool(d.get("is_free"))
@@ -1242,7 +1269,7 @@ def main():
                 f"lands inside the job's {job_timeout}-min timeout")
             budget = max(0, left)
     last_commit = last_tick = time.time()
-    n_new = n_ref = n_pend = 0
+    n_new = n_ref = n_pend = n_shell = 0
 
     # Reserve a guaranteed share of each run for forced re-scrapes (the null-update
     # drain). select_work already front-loads `forced` ahead of last_modified refreshes,
@@ -1326,6 +1353,25 @@ def main():
         if due:
             log(f"  mid-run review refresh: +{len(due)} newly-due young game(s) to front")
 
+    def inject_released():
+        """Mid-run pickup for launches. The queue is built once at the top of a 5.5h run, so
+        a game upcoming_refresh.py reported out an hour in, or a dated pending game whose
+        day arrived, waited for the next run — 17 games spent ~7h of their launch day in
+        neither upcoming.json nor games.json on 26 Oct 2026. Every commit resets the working
+        tree onto main's tip (gitsync.py), so the local upcoming.json is never more than one
+        commit old; whatever is newly out goes to the FRONT of the new-game queue. Idempotent:
+        `handled` and `queued` keep a game from being queued twice."""
+        now_ = int(time.time())
+        out = load_released()
+        due = sorted((a for a, ts in pending.items()
+                      if a not in handled and a not in queued
+                      and ((ts is not None and ts <= now_) or a in out)),
+                     reverse=(NEW_ORDER == "newest"))
+        for a in reversed(due):
+            new_q.appendleft(a); queued.add(a)
+        if due:
+            log(f"  mid-run release pickup: +{len(due)} newly released game(s) to front")
+
     def inject_new_seeds():
         """Mid-run pickup: re-read seeds.txt from origin/main and splice any newly-added
         priorities to the FRONT of the queue, so a web edit lands in THIS run instead of
@@ -1348,9 +1394,11 @@ def main():
             log(f"  mid-run seed pickup: +{len(added_new)} new, "
                 f"+{len(added_forced)} forced re-scrape queued to front")
 
+    out_of_time = False
     while work or forced_q or new_q:
         if budget - (time.time() - start) < TIME_BUFFER:
             log("Time budget reached; wrapping up.")
+            out_of_time = True
             break
         nxt = next_work()
         if nxt is None:
@@ -1376,6 +1424,13 @@ def main():
             recheck.pop(aid, None)          # it responded -> not a dead app after all
             processed.get(str(aid), {}).pop("unknown", None)
             n_pend += 1
+            if is_shell(processed.get(str(aid))):
+                # Stored while unreleased, before the release gate (cleanup_shells.py): it
+                # answers "coming soon" every time, so it was re-probed EVERY run (~330 of
+                # them, ~9 min a run) and never re-stamped. It lives in the pending room now,
+                # and upcoming.json carries its row; it is scraped as new once it is out.
+                del processed[str(aid)]
+                n_shell += 1
         elif res == "recheck":
             # appdetails success:false: retry across runs (region-lock / transient blip)
             # rather than dropping forever. Only an app we never stored is ever a hard skip.
@@ -1399,6 +1454,7 @@ def main():
                 last_commit = time.time()
             inject_new_seeds()              # pull any seeds.txt edit into this run (own fetch)
             requeue_due_young()             # ...and any young game that came due mid-run
+            inject_released()               # ...and any game that came out mid-run
             last_tick = time.time()
 
     catalog["skipped"] = sorted(skipped)
@@ -1410,7 +1466,10 @@ def main():
     save_games(processed); save_catalog(catalog)
     git_checkpoint(f"scrape: {len(processed)} games (+{n_new} new, {n_ref} refreshed, "
                    f"{n_pend} pending)")
-    log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending. "
+    if out_of_time:
+        chain_next_run()
+    log(f"\nDone. This run: {n_new} new, {n_ref} refreshed, {n_pend} held pending"
+        f"{f' ({n_shell} unreleased shell record(s) dropped from games.json)' if n_shell else ''}. "
         f"Stored {len(processed)}, skipped {len(skipped)}, waiting {len(pending)}, "
         f"rechecking {len(recheck)}, "
         f"{sum(1 for r in processed.values() if r.get('unknown'))} stored marked unknown.")

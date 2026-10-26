@@ -3,13 +3,16 @@ name: 1. Steam game catalog -> games.json
 on:
   workflow_dispatch:        # run manually from the Actions tab
   schedule:
-    # Every 6h on the clock (00:00 / 06:00 / 12:00 / 18:00 UTC). With RUN_MINUTES=330
-    # (5.5h) and cancel-in-progress:false, a new run queues right as the previous one
-    # ends, so the scraper covers ~22h/day — near-continuous backlog clearing.
+    # Every 6h on the clock (00:00 / 06:00 / 12:00 / 18:00 UTC) — now a BACKSTOP. GitHub
+    # delivers this cron hours late or not at all on this repo, which left the scraper idle
+    # 2-2.6h at a time (~9% of 22-26 Oct 2026). A run that ends on its time budget therefore
+    # dispatches the next one itself (scraper.py chain_next_run, SCRAPE_CHAIN below); the
+    # cron restarts the chain if a run fails or runs out of work.
     - cron: "0 0,6,12,18 * * *"
 
 permissions:
   contents: write           # the scraper commits games.json + catalog.json as it runs
+  actions: write            # chain_next_run dispatches the next run of this workflow
 
 concurrency:
   group: steam-scrape       # never overlap runs
@@ -64,6 +67,10 @@ jobs:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}   # optional; enables clean full-catalog + smart refresh
           RUN_MINUTES: "330"                            # 5.5h budget per run (near-continuous with 6h cron)
           JOB_TIMEOUT_MINUTES: "330"                    # = timeout-minutes; the job-clock cap reads it
+          GH_TOKEN: ${{ github.token }}                 # `gh workflow run scrape.yml` (chain_next_run)
+          # Chain runs back to back (scraper.py chain_next_run). Off switch with no code change:
+          # set the repository variable SCRAPE_CHAIN to 0 (Settings -> Secrets and variables).
+          SCRAPE_CHAIN: ${{ vars.SCRAPE_CHAIN || '1' }}
           # --- null-update backlog drain tuning (Jul 2026) ---
           # Aggressive while we close the ~48k null last_update_ts gap. REVERT after:
           # raise STOREFRONT_MIN_INTERVAL back toward ~1.4-1.5 for steady state, and

@@ -21,8 +21,15 @@ OWNERSHIP (one writer per file)
   scraper.py          -> catalog.json (the pending room itself), games.json
   THIS                -> upcoming.json
 The scraper reads `released` from here and scrapes those games straight away (they jump
-its queue, like any game whose date has passed); this job reads `pending` from catalog.json
-to know what to look up. Neither ever writes the other's file.
+its queue, like any game whose date has passed, and a run picks them up at its next commit
+rather than its next start); this job reads `pending` from catalog.json to know what to look
+up. Neither ever writes the other's file.
+
+A released game KEEPS its row here until the scraper has stored it (it leaves `pending`,
+and the next run drops the row). It used to be dropped the moment Steam said "out", so it
+was in neither file until the scraper's next run: 17 games spent ~7h of their launch day
+off the site on 26 Oct 2026, and 3109040, which GetItems calls out while appdetails still
+says coming soon, stayed off it. The page already prefers games.json's row when both exist.
 
 WHAT A ROW HOLDS
 ----------------
@@ -249,10 +256,8 @@ def main():
             aid = int(it.get("appid") or it.get("id"))
             answered += 1
             if is_released(it, now):
-                released.add(aid)
-                rows.pop(aid, None)           # out now: the scraper takes it from here
-            else:
-                rows[aid] = row_of(it, tag_names, now)
+                released.add(aid)             # out now: the scraper takes it from here,
+            rows[aid] = row_of(it, tag_names, now)   # and the row stays until it has
 
     swept_at = int(time.time()) if done_all else int(prev.get("swept_at") or 0)
     n = save_upcoming(rows, released, swept_at)

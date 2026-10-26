@@ -7388,11 +7388,12 @@ Promise.all([
   };
   data.games.forEach(game => {
     mergeGame(game, picsMap);
-    // games.json still holds ~330 "shells": games stored while unreleased, before the release
-    // gate (cleanup_shells.py), which the scraper re-files as pending without removing. No past
-    // release date and no reviews means not out yet, so they belong to the Upcoming view, not
-    // the released list they used to sit in. A row with reviews stays released whatever its date
-    // says (Mark of the Ninja has no release_ts but 15k reviews).
+    // "Shells": games stored while unreleased, before the release gate (cleanup_shells.py). The
+    // scraper drops one from games.json the next time Steam calls it coming soon (since Oct 2026;
+    // ~330 were left), so this is the safety net for any still in the file. No past release date
+    // and no reviews means not out yet, so they belong to the Upcoming view, not the released
+    // list. A row with reviews stays released whatever its date says (Mark of the Ninja has no
+    // release_ts but 15k reviews).
     if(!(game.release_ts && game.release_ts <= now) && !game.review_count) game.upcoming = true;
   });
   MERGE_GAME = mergeGame;
