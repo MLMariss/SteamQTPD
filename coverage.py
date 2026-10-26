@@ -232,8 +232,11 @@ def _iso_to_epoch(s):
         return None
 
 
-def read_pics_raw_shards():
+def read_pics_raw_shards(only=None):
     """pics_raw: {appid: _ts} (REAL per-game fetch stamp) + populated count + bounds.
+    `only` (a set of appid strings) restricts the map to those games: pics_raw also holds
+    every upcoming game (~61k), so counted against games.json it read 145.6% covered and
+    -61,090 missing (Oct 2026).
 
     Unlike playtime_raw (which has no per-game stamp and uses a review-ts proxy),
     pics_raw stores a genuine per-game `_ts` set at fetch time, so the refresh axis
@@ -253,7 +256,8 @@ def read_pics_raw_shards():
             newest = g if newest is None else max(newest, g)
             oldest = g if oldest is None else min(oldest, g)
         for aid, rec in apps.items():
-            fetched[str(aid)] = rec.get("_ts", 0)
+            if only is None or str(aid) in only:
+                fetched[str(aid)] = rec.get("_ts", 0)
     return fetched, populated, len(files), newest, oldest
 
 
@@ -296,8 +300,40 @@ PICS_SUBMETRICS = [
 ]
 
 
-def read_pics_summary():
-    """pics/: total summarized records + per-sub-metric fill counts + AI/deck splits."""
+def read_upcoming():
+    """The upcoming catalogue: pending appids (catalog.json, the scraper's waiting room), the
+    rows upcoming.json holds for them, and the `released` hand-off list."""
+    cat = load("catalog.json") or {}
+    doc = load("upcoming.json") or {}
+    rows = {str(r.get("appid")): r for r in (doc.get("games") or []) if isinstance(r, dict)}
+    return {"pending": {str(a) for a in (cat.get("pending") or {})}, "rows": rows,
+            "released": {str(a) for a in (doc.get("released") or [])},
+            "generated_at": doc.get("generated_at")}
+
+
+def read_trailer_ids():
+    """Appids with a trailer: trailers.json plus trailers_upcoming.json (trailers.py)."""
+    out = set()
+    for name in ("trailers.json", "trailers_upcoming.json"):
+        out |= set((load(name) or {}).get("trailers") or {})
+    return out
+
+
+def read_shot_ids():
+    """Appids with stored screenshots, across the shots/ shards (shots.py)."""
+    out = set()
+    d = HERE / "shots"
+    for f in sorted(d.glob("shard_*.json")) if d.is_dir() else []:
+        try:
+            out |= set((json.loads(f.read_text(encoding="utf-8")) or {}).get("shots") or {})
+        except ValueError:
+            continue
+    return out
+
+
+def read_pics_summary(only=None):
+    """pics/: total summarized records + per-sub-metric fill counts + AI/deck splits, over
+    the games in `only` (a set of appid strings) when given."""
     total = 0
     fills = {label: 0 for label, _, _ in PICS_SUBMETRICS}
     ai_pre = ai_live = 0
@@ -306,6 +342,8 @@ def read_pics_summary():
         for f in sorted(PICS_DIR.glob("*.json")):
             sh = json.loads(f.read_text(encoding="utf-8"))
             for aid, r in (sh.get("apps") or {}).items():
+                if only is not None and str(aid) not in only:
+                    continue
                 total += 1
                 for label, pred, _ in PICS_SUBMETRICS:
                     if pred(r):
@@ -595,13 +633,31 @@ def main():
     upd_scraped, upd_populated, upd_total_shards, upd_new_shard, upd_old_shard = read_upd_shards()
     upd_raw_cov = len(upd_scraped)
 
-    pics_fetched, pics_populated, pics_total_shards, pics_new_shard, pics_old_shard = read_pics_raw_shards()
+    base_ids = {str(g.get("appid")) for g in games}
+    pics_fetched, pics_populated, pics_total_shards, pics_new_shard, pics_old_shard = \
+        read_pics_raw_shards(only=base_ids)
     pics_raw_cov = len(pics_fetched)
-    pics_sum = read_pics_summary()
+    pics_sum = read_pics_summary(only=base_ids)
     pics_cov = pics_sum["total"]
+
+    # The store-media and GetItems layers (2.8-2.12). Trailers and screenshots cover the
+    # upcoming catalogue too, so the released share is counted here and the upcoming one in
+    # its own section below.
+    up = read_upcoming()
+    tr_ids = read_trailer_ids()
+    shot_ids = read_shot_ids()
+    demo_ids = set((load("demos.json") or {}).get("demos") or {})
+    ea_ids = set((load("ea_dates.json") or {}).get("games") or {})
+    trailer_cov = len(tr_ids & base_ids)
+    shots_cov = len(shot_ids & base_ids)
+    demo_cov = len(demo_ids & base_ids)
+    ea_cov = len(ea_ids & base_ids)
 
     def pct(n):
         return n / BASE * 100.0
+
+    def pct_of(n, d):
+        return n / d * 100.0 if d else 0.0
 
     rows = [
         ("Recent reviews",           "recent.json",   recent_cov, BASE - recent_cov),
@@ -620,6 +676,11 @@ def main():
         ("PICS metadata (raw)",      "pics_raw/",     pics_raw_cov, BASE - pics_raw_cov),
         ("PICS metadata (summ.)",    "pics/",         pics_cov,   BASE - pics_cov),
         ("HLTB (estimated)",         "hltb.json",     hltb_est,   None),
+        ("Store trailer",            "trailers.json", trailer_cov, BASE - trailer_cov),
+        ("Store screenshots",        "shots/",        shots_cov,  BASE - shots_cov),
+        # Incidence, not coverage: most games have no demo / no announced EA dates.
+        ("Has a demo",               "demos.json",    demo_cov,   None),
+        ("Early Access dates",       "ea_dates.json", ea_cov,     None),
     ]
     rows.sort(key=lambda r: r[2], reverse=True)
 
@@ -700,6 +761,29 @@ def main():
     L.append("Integrity: every storage file is effectively a clean subset of "
              "`games.json` (a handful of orphan keys can appear as timing artifacts "
              "between scraper commits).")
+    L.append("")
+
+    # ---- the upcoming catalogue ----
+    up_ids = set(up["rows"])
+    pend = up["pending"]
+    up_only = up_ids - base_ids
+    picsu = set((load("pics_upcoming.json") or {}).get("apps") or {})
+    L.append("### The upcoming catalogue (`upcoming.json`)")
+    L.append("")
+    L.append(f"Games announced but not out: the scraper's pending room (`catalog.json`) holds "
+             f"{len(pend):,}; `upcoming.json` has a row for {len(up_ids & pend):,} of them "
+             f"({pct_of(len(up_ids & pend), len(pend)):.1f}%), written {ts_utc(up['generated_at'])} UTC. "
+             f"{len(up['released']):,} are reported out and wait for the scraper; their rows stay "
+             f"until it has stored them. Shares below are of the {len(up_only):,} upcoming-only rows.")
+    L.append("")
+    L.append("| Layer | Storage file | Covered | % |")
+    L.append("|---|---|---:|---:|")
+    for label, store, ids in (("PICS metadata", "pics_upcoming.json", picsu),
+                              ("Store trailer", "trailers_upcoming.json", tr_ids),
+                              ("Store screenshots", "shots/", shot_ids),
+                              ("Has a demo", "demos.json", demo_ids)):
+        n = len(ids & up_only)
+        L.append(f"| {label} | `{store}` | {n:,} | {pct_of(n, len(up_only)):.1f}% |")
     L.append("")
     L.append("---")
     L.append("")

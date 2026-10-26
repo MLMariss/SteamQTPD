@@ -57,6 +57,10 @@ jobs:
             /updates.json
             /pics.json
             /upcoming.json
+            /demos.json
+            /shots_state.json
+            /shots/
+            /ea_dates.json
             /gitsync.py
 
       - uses: actions/setup-python@v6
