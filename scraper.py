@@ -40,7 +40,6 @@ per dollar. Null for free games and games with no HLTB data.
 
 import json
 import os
-import random
 import re
 import subprocess
 import sys
@@ -53,6 +52,8 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 # HLTB lookups moved to hltb_refresh.py (they were the per-game bottleneck).
 
@@ -86,7 +87,7 @@ TIME_BUFFER = 120               # stop scraping this long before the budget, to 
 # checkout, so GitHub cancelled every run before its final save: last_sync froze on 2026-10-02
 # and the coverage/presets jobs, which only follow a successful scrape, stopped running. The
 # budget is now also capped at what is left of the job, minus this reserve for the final save,
-# commit and push (rebase retries included).
+# commit and push (gitsync's retries included).
 FINAL_SAVE_RESERVE = 600
 NEW_ORDER = "newest"            # "newest" (high appid first) or "oldest"
 REFRESH_DAYS = 7                # fallback refresh age when no API key (no last_modified)
@@ -433,22 +434,13 @@ def seed_log(lines):
 
 
 def fetch_origin_seeds():
-    """Return origin/main's current seeds.txt content, so a mid-run web edit is picked
-    up without waiting for the next cron. Read-only: fetches the remote ref and reads
-    the blob via `git show` — never touches the working tree or index, so the scraper
-    still only ever *commits* games.json/catalog.json/seeds_log.txt (seeds.txt stays
-    human-only). Returns None outside Actions or on any git error (caller then skips)."""
-    if not IN_ACTIONS:
-        return None
-    try:
-        subprocess.run(["git", "fetch", "origin", "main"], check=False,
-                       capture_output=True)
-        r = subprocess.run(["git", "show", "origin/main:seeds.txt"],
-                           capture_output=True, text=True)
-        return r.stdout if r.returncode == 0 else None
-    except Exception as e:
-        log(f"  seed origin-fetch failed: {e}")
-        return None
+    """Return main's current seeds.txt content, so a mid-run web edit is picked up without
+    waiting for the next cron. Read-only: fetches main's tip (gitsync.read_main, depth 1 — a
+    plain fetch here pulled the whole history of any old-based PR merged mid-run) and reads
+    the blob via `git show` — never touches the working tree or index, so the scraper still
+    only ever *commits* games.json/catalog.json/seeds_log.txt (seeds.txt stays human-only).
+    Returns None outside Actions or on any git error (caller then skips)."""
+    return gitsync.read_main("seeds.txt")
 
 
 def reconcile_seeds(catalog, processed, seeds_text=None):
@@ -978,34 +970,12 @@ def save_catalog(c):
 
 
 def git_checkpoint(msg):
-    """Commit games.json + catalog.json and push, rebasing onto whatever the other jobs
-    (prices/hltb/tags/recent) have pushed in the meantime. With several Actions all
-    committing to main, a naked push gets rejected ('fetch first') whenever another job
-    pushed between our pull and our push — so we pull --rebase first and retry the
-    pull→push a few times in case another job pushes again mid-rebase. Each job owns
-    distinct files, so the rebase replays cleanly without conflicts."""
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "games.json", "catalog.json", "seeds_log.txt"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-            return                                    # nothing to commit
-        subprocess.run(["git", "commit", "-m", msg], check=False)
-        for attempt in range(1, 9):                   # retry against concurrent pushers
-            subprocess.run(["git", "fetch", "origin", "main"], check=False)
-            subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-            push = subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True)
-            if push.returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            log(f"  push rejected (attempt {attempt}/8), another job pushed; "
-                f"re-pulling and retrying")
-            time.sleep(2 * attempt + random.uniform(0, 2))
-        log(f"  push still failing after retries; progress kept locally, "
-            f"next checkpoint will carry it")
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit games.json + catalog.json + seeds_log.txt on top of whatever the other jobs have
+    pushed (gitsync.py: tip-only fetch, reset, re-apply our files, push, with retries). Each
+    job owns distinct files, so main's tree plus ours never loses anyone's work. A push that
+    still fails keeps the files in the working tree, so the next checkpoint carries them."""
+    if not gitsync.commit(["games.json", "catalog.json", "seeds_log.txt"], msg):
+        log("  progress kept locally; the next checkpoint will carry it")
 
 
 # --------------------------------------------------------------------------- #

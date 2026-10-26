@@ -55,12 +55,11 @@ jobs:
           # full history is enormous and none of it is used — the script only ever needs
           # the current tree plus the ability to push.
           #
-          # Safe because _robust_commit() does `git fetch origin main` +
-          # `git reset --hard FETCH_HEAD` + `git push origin HEAD:main`. There is no
-          # rebase and no history walk, and FETCH_HEAD is written by an explicit fetch in
-          # a shallow clone exactly as in a full one. Verified end to end against a real
-          # shallow clone: a concurrent commit from another shard's writer is picked up
-          # by FETCH_HEAD, its file survives the reset, and our commit pushes on top.
+          # Safe because every commit goes through gitsync.py: `git fetch --depth=1 origin
+          # main` + `git reset --hard FETCH_HEAD` + our files back + `git push origin
+          # HEAD:main`. There is no rebase and no history walk. The --depth=1 matters: a
+          # plain fetch into this clone downloaded the whole history of any old-based PR
+          # merged mid-run (test_gitsync.py covers both, against a real shallow clone).
           fetch-depth: 1
 
       - uses: actions/setup-python@v6
@@ -120,7 +119,7 @@ jobs:
       # After the raw shards are refreshed and committed above, recompute the small
       # frontend-facing files from the just-updated shards. Each summarizer reads the
       # shard dir directly, self-commits its ONE file (playtime.json / ratings.json)
-      # and rebases onto main — one-writer-per-file holds (raw job never writes those
+      # on top of main (gitsync.py) — one-writer-per-file holds (raw job never writes those
       # two files itself; only these steps do). This closes the raw-vs-summarized lag:
       # previously the summarizers had no cron and only ran by hand, so playtime.json /
       # ratings.json drifted behind the shards. `if: always()` so a soft-failing raw

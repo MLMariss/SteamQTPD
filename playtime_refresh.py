@@ -80,13 +80,13 @@ Do NOT co-schedule it with the other storefront jobs without re-tuning delays.
 
 import json
 import os
-import random
 import re
 import statistics
-import subprocess
 import sys
 import time
 from pathlib import Path
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 try:
     import requests
@@ -562,7 +562,6 @@ STEAM_DELAY = 1.5                 # storefront limit (~200/5min); at 1.5s this r
                                   # log lines spike after deploy, revert to 2.0.
 MAX_RETRIES = 4
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qhpp playtime-refresher; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 COOKIES = {"birthtime": "568022401", "mature_content": "1",
@@ -860,59 +859,17 @@ def ensure_sharding():
 
 
 def _robust_commit(msg, our_shards, drop_monolith=False):
-    """Robust single-writer push. `our_shards` are the shard filenames THIS run wrote —
-    only these are re-applied after we hard-reset to origin/main, so concurrent
-    other-bucket shards on main are never clobbered. Because only this job writes each
-    shard, the hard reset can never conflict or wedge a rebase (the old code used
-    `git rebase --autostash` with `check=False` and no `--abort`, which could stick the
-    repo mid-rebase and then fail every push SILENTLY — a green run that committed
-    nothing). Retries with backoff, logs the real error, and FAILS LOUD (non-zero exit)
-    if it still can't land, so a broken push is a visible RED run."""
-    if not IN_ACTIONS:
-        return
-    snaps = {name: (SHARD_DIR / name).read_bytes()
-             for name in our_shards if (SHARD_DIR / name).exists()}
-    last_err = ""
-    for attempt in range(1, 9):
-        try:
-            subprocess.run(["git", "fetch", "origin", "main"],
-                           check=True, capture_output=True, text=True)
-            # Reset to FETCH_HEAD, not origin/main. An explicit `git fetch origin main`
-            # ALWAYS writes FETCH_HEAD, in a shallow clone as well as a full one, whereas
-            # refs/remotes/origin/main is only updated if the remote's configured fetch
-            # refspec happens to map it — which actions/checkout does not guarantee at
-            # fetch-depth: 1. Same commit in the normal case, but it does not depend on
-            # how the checkout step configured the remote, so the shallow checkout below
-            # cannot silently break every push in this job.
-            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"],
-                           check=True, capture_output=True, text=True)   # latest remote tree
-            SHARD_DIR.mkdir(exist_ok=True)
-            for name, data in snaps.items():                              # re-apply only our shard(s)
-                (SHARD_DIR / name).write_bytes(data)
-            if drop_monolith:
-                subprocess.run(["git", "rm", "-f", "--ignore-unmatch", "playtime_raw.json"],
-                               check=False, capture_output=True, text=True)
-                RAW_FILE.unlink(missing_ok=True)
-            for name in snaps:
-                subprocess.run(["git", "add", f"playtime_raw/{name}"], check=True)
-            if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-                log("  (nothing new vs remote; skipping commit)")
-                return
-            subprocess.run(["git", "commit", "-m", msg],
-                           check=True, capture_output=True, text=True)
-            push = subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True)
-            if push.returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            last_err = (push.stderr or push.stdout or "").strip()
-            log(f"  push attempt {attempt}/8 rejected: {last_err[:180]}")
-        except subprocess.CalledProcessError as e:
-            last_err = ((e.stderr or "") + (e.stdout or "")).strip() or str(e)
-            log(f"  git attempt {attempt}/8 error: {last_err[:180]}")
-        time.sleep(2 * attempt + random.uniform(0, 2))
-    log(f"  ERROR: playtime raw commit failed after 8 attempts — {last_err[:200]}")
-    sys.exit(1)                                          # visible RED run, not a silent green one
+    """Single-writer push of exactly the shards THIS run wrote (gitsync.py): fetch main's tip,
+    reset onto it, put only our shard(s) back, push, retrying with backoff. Other buckets'
+    shards on main are never clobbered, and nothing walks history — the plain fetch this used
+    to do downloaded the whole history of any old-based PR merged mid-run. FAILS LOUD
+    (non-zero exit) if it still can't land, so a broken push is a visible RED run, never a
+    green one that committed nothing. With drop_monolith the legacy playtime_raw.json, already
+    deleted by the caller, is removed on main in the same commit."""
+    paths = [f"playtime_raw/{name}" for name in our_shards]
+    if drop_monolith:
+        paths.append("playtime_raw.json")
+    gitsync.commit(paths, msg, fail_loud=True)
 
 
 def git_commit_shard(bucket, msg):

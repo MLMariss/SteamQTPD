@@ -62,8 +62,6 @@ All reads here are read-only; each file is owned by its own scraper.
 """
 
 import json
-import os
-import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -76,6 +74,8 @@ from pathlib import Path
 # keeps one source of truth. playtime_refresh degrades gracefully without `requests`
 # (see its import block), so this stays a stdlib-only job.
 import playtime_refresh as PT
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 OUT_FILE = HERE / "COVERAGE.md"
@@ -123,7 +123,6 @@ HLTB_BLANK_EAGER_DAYS = 3
 HLTB_BLANK_BACKOFF_DAYS = 30
 HLTB_BLANK_FREEZE_DAYS = 180
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def log(*a):
@@ -992,27 +991,7 @@ def main():
 
 
 def git_commit():
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "COVERAGE.md"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m",
-                            "coverage: refresh COVERAGE.md"], check=False)
-            import random
-            for attempt in range(1, 6):
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log("  committed COVERAGE.md")
-                    return
-                time.sleep(2 * attempt + random.uniform(0, 2))
-            log("  ERROR: could not push COVERAGE.md after 5 attempts")
-        else:
-            log("  COVERAGE.md unchanged; nothing to commit.")
-    except Exception as e:
-        log(f"  git commit failed: {e}")
+    gitsync.commit(["COVERAGE.md"], "coverage: refresh COVERAGE.md")
 
 
 if __name__ == "__main__":

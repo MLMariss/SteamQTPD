@@ -10,8 +10,8 @@ Why it's its own script + its own file:
   * scraper.py owns games.json (catalog, price, all-time rating, tags, last_update_ts).
   * THIS writes a separate recent.json keyed by appid -> {recent_pct, recent_count,
     recent_scraped_at}. Two Actions writing the same file would collide on push; two
-    Actions writing *different* files never do (a git pull --rebase before push always
-    applies cleanly).
+    Actions writing *different* files never do (gitsync.py puts each job's own files on
+    main's tip, so nobody's work is lost).
 
 The recent score is a 30-day rolling window, so it drifts daily even with no new
 reviews. We can't keep all ~90k games perfectly fresh within the storefront rate
@@ -36,13 +36,13 @@ page, with no fragile HTML scraping.
 
 import json
 import os
-import random
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 # --------------------------------------------------------------------------- #
 # CONFIG
@@ -69,7 +69,6 @@ LOWVOL_PRIORITY_COUNT = 50       # below this many recent reviews -> de-prioriti
 STEAM_DELAY = 1.5                # storefront limit (~200/5min) — shared with scraper if co-running
 MAX_RETRIES = 4
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qhpp recent-refresher; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 COOKIES = {"birthtime": "568022401", "mature_content": "1",
@@ -200,24 +199,8 @@ def save_recent(recent):
 
 
 def git_checkpoint(msg):
-    """Commit recent.json only; rebase first so it never fights the main scraper's
-    games.json pushes (different files => always a clean replay)."""
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "recent.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit recent.json on top of the current main (gitsync.py: tip-only fetch, no rebase)."""
+    gitsync.commit(["recent.json"], msg)
 
 
 # --------------------------------------------------------------------------- #

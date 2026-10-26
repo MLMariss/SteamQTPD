@@ -39,9 +39,8 @@ jobs:
           # refuses to push from a non-main checkout, so a branch run can only ever be a
           # dry run.
           ref: ${{ github.ref_name }}
-          # This used to say real runs need depth 0 for the rebase-onto-main checkpoint. They
-          # don't: pics, pics-new, freshness and shard-health have rebased onto main from depth-1
-          # clones all along — `git fetch origin main` brings whatever the rebase needs.
+          # Real runs never needed depth 0: every commit goes through gitsync.py, which fetches
+          # main's tip only (--depth=1) and resets onto it, so no history is ever read.
           # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts"). Full history
           # (fetch-depth: 0) was 9.6 GB and ~30 min of every run, and nothing here reads history;
           # with a sparse list, checkout is also a partial clone, so nothing else is downloaded.
@@ -52,6 +51,7 @@ jobs:
             /games.json
             /shots/
             /shots_state.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

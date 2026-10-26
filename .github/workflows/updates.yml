@@ -44,6 +44,7 @@ jobs:
             /games.json
             /updates_raw/
             /updates.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:
@@ -64,8 +65,8 @@ jobs:
         run: python updates_refresh.py
 
       # After the raw shard is refreshed and committed above, recompute the small
-      # frontend-facing updates.json from ALL shards. Self-commits its one file and
-      # rebases onto main — one-writer-per-file holds (the raw job never writes
+      # frontend-facing updates.json from ALL shards. Self-commits its one file on top
+      # of main (gitsync.py) — one-writer-per-file holds (the raw job never writes
       # updates.json; only this step does). `if: always()` so a soft-failing raw pass
       # (e.g. a 403 storefront-budget wrap-up) still republishes the summary from
       # whatever shards exist on disk.

@@ -74,12 +74,13 @@ import glob
 import json
 import os
 import random
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"
@@ -121,7 +122,6 @@ COOLDOWN_DAYS = 7                # active games: re-check events weekly
 NOUPDATE_COOLDOWN_DAYS = 45      # quiet games: re-check rarely (their history barely changes)
 
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "").strip()  # not required (endpoint is keyless)
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "QTPD-updates/1.0 (+github.com/MLMariss/SteamQHPP)"})
@@ -333,46 +333,12 @@ def priority(rec, last_update_ts, review_count, now):
 # Git (single-writer hard-reset push — identical strategy to playtime_refresh.py)
 # --------------------------------------------------------------------------- #
 def _robust_commit_shards(msg, names):
-    """Robust single-writer push of exactly the given shard filenames. Hard-resets to
-    origin/main and re-applies only OUR shards, so concurrent other-bucket writers are
-    never clobbered and a rebase can never wedge. Fails LOUD (non-zero exit) if it can't
-    land, so a broken push is a visible RED run — never a silent green one. Shared by the
-    routine one-shard-per-run commit and reshard_all()'s all-NSHARDS commit."""
-    if not IN_ACTIONS:
-        log(f"  (local run — skipping git commit: {msg})")
-        return
-    snaps = {name: (SHARD_DIR / name).read_bytes()
-             for name in names if (SHARD_DIR / name).exists()}
-    last_err = ""
-    for attempt in range(1, 9):
-        try:
-            subprocess.run(["git", "fetch", "origin", "main"],
-                           check=True, capture_output=True, text=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"],
-                           check=True, capture_output=True, text=True)
-            SHARD_DIR.mkdir(exist_ok=True)
-            for name, data in snaps.items():                # re-apply only our shard(s)
-                (SHARD_DIR / name).write_bytes(data)
-            for name in snaps:
-                subprocess.run(["git", "add", f"updates_raw/{name}"], check=True)
-            if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-                log("  (nothing new vs remote; skipping commit)")
-                return
-            subprocess.run(["git", "commit", "-m", msg],
-                           check=True, capture_output=True, text=True)
-            push = subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True)
-            if push.returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            last_err = (push.stderr or push.stdout or "").strip()
-            log(f"  push attempt {attempt}/8 rejected: {last_err[:180]}")
-        except subprocess.CalledProcessError as e:
-            last_err = ((e.stderr or "") + (e.stdout or "")).strip() or str(e)
-            log(f"  git attempt {attempt}/8 error: {last_err[:180]}")
-        time.sleep(2 * attempt + random.uniform(0, 2))
-    log(f"  ERROR: updates shard commit failed after 8 attempts — {last_err[:200]}")
-    sys.exit(1)
+    """Single-writer push of exactly the given shard filenames (gitsync.py): fetch main's tip,
+    reset onto it, put only OUR shards back, push. Concurrent other-bucket writers are never
+    clobbered and nothing walks history. Fails LOUD (non-zero exit) if it can't land, so a
+    broken push is a visible RED run — never a silent green one. Shared by the routine
+    commits and reshard_all()'s all-NSHARDS commit."""
+    gitsync.commit([f"updates_raw/{name}" for name in names], msg, fail_loud=True)
 
 
 def git_commit_shard(bucket, msg):

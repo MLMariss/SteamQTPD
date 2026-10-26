@@ -57,6 +57,7 @@ jobs:
             /updates.json
             /pics.json
             /upcoming.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:
@@ -88,6 +89,7 @@ jobs:
           sparse-checkout: |
             /monitor.py
             /monitor.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

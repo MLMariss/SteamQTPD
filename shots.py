@@ -100,13 +100,13 @@ Reads games.json (read-only) for the appid list and review counts.
 
 import json
 import os
-import random
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"                    # read-only (owned by scraper.py)
@@ -174,7 +174,6 @@ CANDIDATE_HOSTS = [
 CANDIDATE_ROOTS = ["store_item_assets/steam/apps/", "steam/apps/", ""]
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qtpd screenshot indexer; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 SESSION = requests.Session()
@@ -535,38 +534,10 @@ def save_state(misses, swept_at):
         ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def _on_main():
-    """True when the checkout really is main.
-
-    Guard for the workflow's `ref: ${{ github.ref_name }}` checkout: a manual dispatch
-    from a fix branch must never be able to push that branch's code onto main via the
-    `HEAD:main` checkpoint below. A branch run is therefore always a dry run.
-    """
-    r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                       capture_output=True, text=True)
-    return r.returncode == 0 and r.stdout.strip() == "main"
-
-
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    if not _on_main():
-        log(f"  [dry run: not on main] would have committed: {msg}")
-        return
-    try:
-        subprocess.run(["git", "add", "shots", "shots_state.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit shots/ + shots_state.json on top of the current main (gitsync.py). A run
+    dispatched from a branch is a dry run: gitsync never pushes from a non-main checkout."""
+    gitsync.commit(["shots", "shots_state.json"], msg)
 
 
 # --------------------------------------------------------------------------- #

@@ -34,9 +34,10 @@ Usage:
 """
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 GAMES_FILE = HERE / "games.json"
@@ -105,25 +106,11 @@ def main():
     print(f"\nWROTE catalog.json — {len(merged)} appids queued for forced re-scrape.")
 
     if IN_ACTIONS:
-        try:
-            subprocess.run(["git", "add", "catalog.json"], check=True)
-            if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-                subprocess.run(
-                    ["git", "commit", "-m",
-                     f"queue null-update re-scrape: +{len(merged) - len(existing)} "
-                     f"(high {len(high)}, low +{len(low_new)}/{len(low_all)})"],
-                    check=True)
-                import random, time
-                for attempt in range(1, 9):
-                    subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                    subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                    if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                      capture_output=True, text=True).returncode == 0:
-                        print("  committed + pushed catalog.json")
-                        break
-                    time.sleep(2 * attempt + random.uniform(0, 2))
-        except subprocess.CalledProcessError as e:
-            print(f"  git step failed: {e}")
+        # gitsync.py: main's tip plus our catalog.json, no rebase (the workflow shares the
+        # scraper's concurrency group, so nothing else writes catalog.json meanwhile).
+        if not gitsync.commit(["catalog.json"],
+                              f"queue null-update re-scrape: +{len(merged) - len(existing)} "
+                              f"(high {len(high)}, low +{len(low_new)}/{len(low_all)})"):
             return 1
     else:
         print("  (local run — catalog.json written; commit/push it yourself)")

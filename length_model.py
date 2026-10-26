@@ -36,12 +36,12 @@ Pure local compute over files already in the repo — no network, no rate budget
 
 import json
 import math
-import os
 import statistics
-import subprocess
 import sys
 import time
 from pathlib import Path
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 PLAYTIME_FILE = HERE / "playtime.json"
@@ -88,7 +88,6 @@ BALANCE_TAGS = {"Idler"}
 TAG_LOOKUP = HERE / "lookups" / "tags.json"
 STEAMSPY_TAGS = HERE / "tags.json"
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def log(msg):
@@ -253,24 +252,7 @@ def write_json(path, obj):
 
 
 def git_commit(path, msg):
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", path.name], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-            return
-        subprocess.run(["git", "commit", "-m", msg], check=False)
-        import random
-        for attempt in range(1, 9):
-            subprocess.run(["git", "fetch", "origin", "main"], check=False)
-            subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-            if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                              capture_output=True, text=True).returncode == 0:
-                log(f"  committed {path.name}")
-                return
-            time.sleep(2 * attempt + random.uniform(0, 2))
-    except Exception as e:  # never fail the chained job over a push race
-        log(f"  git commit failed: {e}")
+    gitsync.commit([path.name], msg)        # never fails the chained job: False is logged
 
 
 def main(argv):

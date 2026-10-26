@@ -43,6 +43,7 @@ jobs:
             /hltb_match.py
             /games.json
             /hltb.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

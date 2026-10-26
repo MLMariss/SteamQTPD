@@ -31,14 +31,14 @@ matches by title, not appid).
 
 import json
 import os
-import random
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import hltb_estimate as HE      # shared fill logic (live median ratio + missing-value fill)
 import hltb_match as HM         # Phase A: title normalization + fallback query variants
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 try:
     from howlongtobeatpy import HowLongToBeat
@@ -137,7 +137,6 @@ IDLE_DRAIN_MAX = 4000                    # cap drained blanks per run (budget st
 IDLE_DRAIN_SKIP_FROZEN = True            # don't drain entries already at the freeze tier
 
 DAY_ = DAY  # alias kept for readability below
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def blank_window_days(attempts):
@@ -412,22 +411,8 @@ def save_hltb(hltb):
 
 
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "hltb.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for _attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * _attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit hltb.json on top of the current main (gitsync.py: tip-only fetch, no rebase)."""
+    gitsync.commit(["hltb.json"], msg)
 
 
 def store_entry(hltb, aid, res, ratios, now):

@@ -28,6 +28,7 @@ jobs:
             /catalog.json
             /upcoming.json
             /lookups/tags.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:

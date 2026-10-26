@@ -48,9 +48,10 @@ from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import gitsync                      # commits this job's own files to main (gitsync.py)
+
 HERE = Path(__file__).resolve().parent
 OUT_FILE = HERE / "monitor.json"
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 REPO = os.environ.get("GITHUB_REPOSITORY", "MLMariss/SteamQTPD")
 
 # Every file whose age is tracked, in the order of the file_age array.
@@ -369,28 +370,10 @@ def backfill():
 
 
 # --------------------------------------------------------------------------- #
-# Commit (same pattern as coverage.py: fetch, rebase over the other writers, push)
+# Commit (gitsync.py, like every writer: main's tip plus monitor.json, push)
 # --------------------------------------------------------------------------- #
 def git_commit(msg):
-    if not IN_ACTIONS:
-        return
-    try:
-        subprocess.run(["git", "add", "monitor.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode == 0:
-            log("  monitor.json unchanged; nothing to commit.")
-            return
-        subprocess.run(["git", "commit", "-m", msg], check=False)
-        for attempt in range(1, 6):
-            subprocess.run(["git", "fetch", "origin", "main"], check=False)
-            subprocess.run(["git", "rebase", "--autostash", "FETCH_HEAD"], check=False)
-            if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                              capture_output=True, text=True).returncode == 0:
-                log(f"  committed: {msg}")
-                return
-            time.sleep(2 * attempt + random.uniform(0, 2))
-        log("  ERROR: could not push monitor.json after 5 attempts")
-    except Exception as e:
-        log(f"  git commit failed: {e}")
+    gitsync.commit(["monitor.json"], msg)
 
 
 if __name__ == "__main__":

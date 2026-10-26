@@ -64,14 +64,14 @@ and pics_upcoming.json (pics_merge.py) read-only.
 
 import json
 import os
-import random
-import subprocess
 import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+
+import gitsync                      # commits this job's own files to main (gitsync.py)
 
 HERE = Path(__file__).resolve().parent
 PICS_FILE = HERE / "pics.json"                     # read-only (owned by pics_merge.py)
@@ -89,7 +89,6 @@ MAX_RETRIES = 4
 EA_TAG = 493                                # store tag "Early Access" (lookups/tags.json)
 SAME_DAY = 2 * 86400                        # dates this close are one day (time zones)
 
-IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HEADERS = {"User-Agent": "Mozilla/5.0 (steam-qtpd ea-dates indexer; github pages dataset builder)",
            "Accept-Language": "en-US,en;q=0.9"}
 SESSION = requests.Session()
@@ -210,34 +209,10 @@ def save(entries, state, catalogue, swept_at):
     return len(games)
 
 
-def _on_main():
-    """True when the checkout really is main — a run from another branch is a dry run,
-    so it can never push that branch's code onto main through the HEAD:main push below."""
-    r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                       capture_output=True, text=True)
-    return r.returncode == 0 and r.stdout.strip() == "main"
-
-
 def git_checkpoint(msg):
-    if not IN_ACTIONS:
-        return
-    if not _on_main():
-        log(f"  [dry run: not on main] would have committed: {msg}")
-        return
-    try:
-        subprocess.run(["git", "add", "ea_dates.json", "ea_dates_state.json"], check=False)
-        if subprocess.run(["git", "diff", "--staged", "--quiet"]).returncode != 0:
-            subprocess.run(["git", "commit", "-m", msg], check=False)
-            for attempt in range(1, 9):    # retry against other jobs pushing concurrently
-                subprocess.run(["git", "fetch", "origin", "main"], check=False)
-                subprocess.run(["git", "rebase", "--autostash", "origin/main"], check=False)
-                if subprocess.run(["git", "push", "origin", "HEAD:main"],
-                                  capture_output=True, text=True).returncode == 0:
-                    log(f"  committed: {msg}")
-                    break
-                time.sleep(2 * attempt + random.uniform(0, 2))
-    except Exception as e:
-        log(f"  git checkpoint failed: {e}")
+    """Commit ea_dates.json + ea_dates_state.json on top of the current main (gitsync.py). A
+    run dispatched from a branch is a dry run: gitsync never pushes from a non-main checkout."""
+    gitsync.commit(["ea_dates.json", "ea_dates_state.json"], msg)
 
 
 def day(ts):

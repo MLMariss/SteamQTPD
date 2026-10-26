@@ -30,8 +30,8 @@ jobs:
           ref: main
           # Shallow + sparse (ARCHITECTURE §4 "Checkouts"). Full history (fetch-depth: 0) was
           # 9.6 GB and took ~32 min of every run; nothing here reads history — the commit is
-          # fetch + rebase + push, and seeds come from `git show origin/main:seeds.txt`, both
-          # fine on a depth-1 clone. The sparse list is every file scraper.py reads or writes;
+          # gitsync.py (tip-only fetch + reset + push), and seeds come from `git show
+          # FETCH_HEAD:seeds.txt` after the same tip-only fetch, both fine on a depth-1 clone. The sparse list is every file scraper.py reads or writes;
           # with it set, checkout also makes a partial clone, so nothing else is downloaded.
           fetch-depth: 1
           sparse-checkout-cone-mode: false
@@ -45,6 +45,7 @@ jobs:
             /seeds.txt
             /seeds_log.txt
             /reviews_restore.json
+            /gitsync.py
 
       - uses: actions/setup-python@v6
         with:
