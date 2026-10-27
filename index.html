@@ -964,6 +964,15 @@
   .simsug button.on{outline:1px solid var(--blue); outline-offset:-1px}   /* ↑/↓ highlight */
   .simsug button i{font-style:normal; color:var(--blue); flex:none}
   .simsug button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* Foot of the list: the query syntax (SS_TIP). Head of it: a note for a date operator it can't read. */
+  .simsug .ss-tip{font-size:11px; color:var(--muted-2); padding:6px 8px 4px; margin-top:4px;
+        border-top:1px solid var(--line); line-height:1.6}
+  .simsug .ss-tip b{font-family:var(--mono); font-weight:400; color:var(--muted); white-space:nowrap}
+  .simsug .ss-tip.ss-bad{color:var(--muted); margin:0 0 4px; border-top:0; border-bottom:1px solid var(--line)}
+  .simsug .ss-tip.ss-bad b{color:var(--gold)}
+  .simsug .ss-tip.ss-bad + .ss-tip{margin-top:0; border-top:0}
+  .empty .fixq{font:inherit; color:var(--blue); background:none; border:none; padding:0; cursor:pointer}
+  .empty .fixq:hover{color:var(--gold); text-decoration:underline}
   .simlbl b{color:var(--title); font-weight:600}
   .gi-actions .gi-sim{background:#25407a; border-color:var(--blue); color:#fff; font-weight:600}
 
@@ -1869,7 +1878,7 @@ try{
         <button class="logo" id="logoToggle" type="button" title="Back to the start — clear every filter, the search box and the sort, and return to the top of the list." aria-label="Back to the start">Q<b>T</b>PD</button>
         <h1 class="tagline">quality time per dollar</h1>
       </div>
-      <label class="search" id="searchBox" title="Search — type any part of a game's title to filter the list live. Matches anywhere in the name, case-insensitive.">
+      <label class="search" id="searchBox" title="Search — game titles. Words match in any order, also inside longer words; case, accents and punctuation are ignored. &quot;a phrase&quot; = those whole words in order · =&quot;Title&quot; = exactly that title · -word = leave out · a OR b = either · year:2020, year:2015-2018, before:2010, after:2022 = release date (also before:2024-06, after:2024-03-15).">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
         <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
         <button class="field-x" id="qClear" type="button" title="Clear search" aria-label="Clear search">✕</button>
@@ -2492,14 +2501,17 @@ const ADULT_DEFAULT = "hide";
 // The Publisher / dev filter is the same case as Find similar: it lifts the floor (the point is
 // "all of this company's games", small ones included) but NOT the adult default — a company's
 // catalogue is a broad list the user did not name game by game.
-function searching(){ return !!(state.q && state.q.trim()) || similarActive() || coActive(); }
+// "A typed search" means the box names a title: qNamed(), at least one word or phrase that is not
+// excluded. A box holding only operators — year:2020, after:2022, -horror — names nothing, so it
+// is a broad list like Find similar and lifts none of these defaults.
+function searching(){ return qNamed() || similarActive() || coActive(); }
 function revFloorOn(){
   if(state.revBands.size === 0) return false;
   return !(searching() && sameSet(state.revBands, REV_DEFAULT));
 }
 function adultMode(){
   const af = state.flags.adultF;
-  return (af === "hide" && state.q && state.q.trim()) ? "any" : af;
+  return (af === "hide" && qNamed()) ? "any" : af;
 }
 // Release toggle: "released" | "upcoming" | "all". Games not out yet live in upcoming.json, a
 // second catalogue (upcoming_refresh.py) beside games.json; the landing view stays released-only,
@@ -2508,11 +2520,14 @@ function adultMode(){
 // suggestion landing on a row. Wishlist only lifts the released-only DEFAULT (every game on a
 // wishlist was named by the user, and most unreleased ones live there) but leaves an explicit
 // Upcoming in place. Find similar and the Publisher filter lift nothing: broad lists, the same
-// line the adult default draws.
+// line the adult default draws. A release-date operator lying wholly in the future (year:2027,
+// after:2026-12) lifts the Released default the way Wishlist does: no released game can pass it,
+// so the only reading that isn't an empty list is "upcoming games due then". A range that reaches
+// back into the past (year:2026, after:2022) leaves the toggle alone.
 const RELEASE_DEFAULT = "released";
 function releaseMode(){
-  if(state.q && state.q.trim()) return "all";
-  if(state.release === "released" && state.wishOnly) return "all";
+  if(qNamed()) return "all";
+  if(state.release === "released" && (state.wishOnly || curQ().future)) return "all";
   return state.release;
 }
 const state = { data:null, q:"", co:"", coSugIdx:-1, tagQuery:"", similarTo:null, similarTags:null, simSugIdx:-1, tagsInc:new Set(), tagsExc:new Set(), tagMode:"and", priceClass:new Set(["full","sale","free"]),
@@ -3131,14 +3146,24 @@ function passNonRange(x){
   if(state.hidden.has(x.appid)) return false;     // session-hidden by the user
   // Status unknown (unkBadge): only a typed search lists it — the user asked for that game by
   // name. Every surface they did not ask for leaves it out, Find similar and Publisher included.
-  if(x.unknown && !(state.q && state.q.trim())) return false;
+  if(x.unknown && !qNamed()) return false;
   // Release toggle, first: it is the cheapest test, and once upcoming.json is loaded it drops
   // ~57k rows before any other filter looks at them. Upcoming also keeps an Early Access game
   // whose 1.0 is announced (v1Soon); it is out, so Released keeps it too.
   const rm = releaseMode();
   const v1Up = rm === "upcoming" && !x.upcoming && v1Soon(x);
   if(rm === "released" ? x.upcoming : (rm === "upcoming" && !x.upcoming && !v1Up)) return false;
-  if(state.q){ if(!x.title.toLowerCase().includes(state.q.trim().toLowerCase())) return false; }
+  // The search box: the parsed query (parseQ) — words, "phrases", ="exact title", -exclusions,
+  // OR and release-date operators — not the raw text as a substring. One update() runs this
+  // filter over the catalogue several times with the same query, so the answer is kept on the
+  // game (_qk: the parse it answers for) rather than worked out again each pass.
+  if(state.q){
+    const Q = curQ();
+    if(Q.groups.length){
+      if(x._qk !== Q){ x._qk = Q; x._qr = qPass(x, Q); }
+      if(!x._qr) return false;
+    }
+  }
   if(coActive() && !coPass(x)) return false;
   // Price-class facets (multi-toggle, OR'd). Non-overlapping primitives:
   //   full = paid & not discounted, sale = paid & discounted, free = is_free.
@@ -3474,7 +3499,7 @@ function render(){
       ? "<b>Loading upcoming games…</b>"
       : (releaseMode() === "upcoming" && UP_STATUS === "error")
       ? "<b>Upcoming games couldn't be loaded.</b><br>Try again later, or switch Release back to Released."
-      : "<b>No games match these filters.</b><br>Loosen the QTPD range, clear tags, or reset.";
+      : typoMsg() || "<b>No games match these filters.</b><br>Loosen the QTPD range, clear tags, or reset.";
     renderMeta();
     return;
   }
@@ -4837,46 +4862,279 @@ function findSimilar(appid){
 // one: we can see exactly which titles we hold, so those come first and picking one narrows the
 // list to that game. Only below that does the second section throw the title away and switch on
 // that game's main tags instead.
-// Ranking is match quality first, review count as the tiebreak: an exact title wins, then any
-// match starting a word, then a match buried mid-word. Review count alone used to decide it,
-// which is why a game you were obviously typing could sit below an incidental match. The two
-// word-start cases — at the front of the title, or at the front of a later word — are one tier
-// on purpose: split them and "sims" puts Simson Tuningwerkstatt 3D (452 reviews) above The
-// Sims™ 4 (200,545), which is the whole complaint.
-// Matching runs on a normalised title: ™/®/© dropped and punctuation flattened to single
-// spaces. The plain title filter does not do this, so typing "the sims 4" or "half life" used
-// to find nothing at all; here it offers the real title, and picking it puts the real title —
-// ™ and all — into the box, where the ordinary filter does match it. Normalising 130k titles
-// per keystroke is not free, so each one is cached on its game as _nt.
+// The list and the table read the same parsed query (parseQ, below), so a row the list offers is
+// a row the table shows.
 const SIMSUG_JUMP = 8, SIMSUG_SIM = 3, SIMSUG_UP = 3;   // SIMSUG_UP: the trailing release group
-const simSugNorm = s => String(s).toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, "")
-                                 .replace(/[^a-z0-9]+/g, " ").trim();
-function simSugRank(g, q){
-  const t = g._nt != null ? g._nt : (g._nt = simSugNorm(g.title));
-  const i = t.indexOf(q);
-  if(i < 0) return -1;
-  if(t === q) return 0;
-  return (i === 0 || t[i - 1] === " ") ? 1 : 2;
+
+// ----- The search box's query language -----
+// The box reads a query the way a web search engine does, over game titles only. It used to be
+// one case-insensitive substring of the raw text, which cost twice: picking "Scape" from the
+// suggestions typed the bare word, and the bare word kept every Escape in the catalogue — hundreds
+// of rows for one game; and "half life" or "the sims 4" found nothing, because the real titles
+// say Half-Life and The Sims™ 4.
+//   words         every word, in any order: "sims 4" finds The Sims™ 4. A word still matches
+//                 inside longer words, as plain typing always has: "scape" finds Escape.
+//   "a phrase"    whole words, in that order: "scape" finds Side Scape and VR Scape, not Escape
+//                 or Scapeland; "dark souls" finds every Dark Souls game.
+//   ="Title"      the whole title and nothing else — what picking a suggestion writes.
+//   -word         leave out titles with that word (-"a phrase" works too).
+//   a OR b, a | b either one. OR binds tighter than the spaces around it, as on Google:
+//                 `dark souls OR ring` is dark AND (souls OR ring).
+//   year:2020  year:2015-2018  before:2010  after:2022
+//                 release date, read as plain English: after:2022 starts in 2023. A month or day
+//                 narrows it (before:2024-06, after:2024-03-15). An upcoming game goes by the day
+//                 it is due (dueOf), the day the Released sort uses.
+// Everything compares on simSugNorm() text: case, accents, ™/®/© and punctuation are ignored and
+// the letters of every script kept. An unclosed quote matches what has been typed so far as the
+// start of a word — `"dark sou` — so the list doesn't blank in the middle of a phrase. A date
+// operator that can't be read is ignored rather than guessed at, and the suggestion list says so.
+// Normalising 130k titles is not free, so each one is cached on its game as _nt.
+// NFD + stripping U+0300–036F folds Latin, Greek and Cyrillic accents ("pokemon" finds Pokémon);
+// NFC then puts back what that left decomposed — Japanese dakuten, Hangul — so those match as
+// typed. Combining marks count as letters: a Thai or Devanagari vowel sign must not split a word.
+const simSugNorm = s => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC")
+                                 .toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, "")
+                                 .replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim();
+const normTitle = g => g._nt != null ? g._nt : (g._nt = simSugNorm(g.title || ""));
+// Fill that cache in idle time after the boot load, a few thousand titles a slice, so the first
+// keystroke doesn't stall ~150ms normalising the whole catalogue at once.
+function warmTitles(i = 0){
+  const gs = state.data ? state.data.games : [], end = Math.min(i + 4000, gs.length);
+  for(; i < end; i++) normTitle(gs[i]);
+  if(i < gs.length) (window.requestIdleCallback || setTimeout)(() => warmTitles(i));
+}
+// [lo, hi) in unix seconds for one date operator, or null when its value can't be read.
+function qDateRange(op, v){
+  const day = (y, m, d) => Date.UTC(y, m, d) / 1000;
+  let m;
+  if(op === "year"){
+    if((m = /^(\d{4})$/.exec(v))) return [day(+m[1], 0, 1), day(+m[1] + 1, 0, 1)];
+    if((m = /^(\d{4})(?:-|\u2013|\.\.)(\d{4})$/.exec(v))){
+      const a = Math.min(+m[1], +m[2]), b = Math.max(+m[1], +m[2]);
+      return [day(a, 0, 1), day(b + 1, 0, 1)];
+    }
+    return null;
+  }
+  if(!(m = /^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/.exec(v))) return null;
+  const y = +m[1], mo = m[2] ? +m[2] - 1 : null, d = m[3] ? +m[3] : null;
+  if((mo != null && (mo < 0 || mo > 11)) || (d != null && (d < 1 || d > 31))) return null;
+  // The period the value names — a year, a month or a day — as its first second and the next one's.
+  const start = day(y, mo != null ? mo : 0, d != null ? d : 1);
+  const next = d != null ? day(y, mo, d + 1) : mo != null ? day(y, mo + 1, 1) : day(y + 1, 0, 1);
+  return op === "before" ? [-Infinity, start] : [next, Infinity];
+}
+// The query as AND-ed groups of OR-ed tokens. A token is {k, neg, at, end} plus, for a title
+// token (k: term | phrase | exact), its normalised text `s` and `open` (an unclosed quote); for a
+// date token, its [lo, hi). `at`/`end` locate it in the raw text, so "did you mean" can rewrite
+// one word in place.
+function parseQ(raw){
+  const s = String(raw || "").replace(/[\u201c\u201d\u201e\u2033]/g, '"');   // “smart” quotes count
+  const groups = [], toks = [], bad = [];
+  let orNext = false;
+  for(let i = 0; i < s.length;){
+    if(/\s/.test(s[i])){ i++; continue; }
+    if(s[i] === "|"){ orNext = groups.length > 0; i++; continue; }
+    const at = i;
+    // A lone "-" or "=" is just punctuation; glued to a word or a quote it is the operator.
+    let neg = false, exact = false;
+    if(s[i] === "-" && i + 1 < s.length && !/[\s|]/.test(s[i + 1])){ neg = true; i++; }
+    if(s[i] === "=" && i + 1 < s.length && !/[\s|]/.test(s[i + 1])){ exact = true; i++; }
+    let text, quoted = false, open = false;
+    if(s[i] === '"'){
+      quoted = true;
+      const j = s.indexOf('"', i + 1);
+      if(j < 0){ text = s.slice(i + 1); open = true; i = s.length; }
+      else { text = s.slice(i + 1, j); i = j + 1; }
+    } else {
+      let j = i;
+      while(j < s.length && !/[\s|"]/.test(s[j])) j++;
+      text = s.slice(i, j); i = j;
+    }
+    const src = s.slice(at, i);
+    if(src === "OR"){ orNext = groups.length > 0; continue; }    // upper case only, as on Google
+    let t;
+    const dm = !quoted && !exact && /^(year|before|after):(.*)$/i.exec(text);
+    if(dm){
+      const r = qDateRange(dm[1].toLowerCase(), dm[2]);
+      if(!r){ bad.push(src); continue; }
+      t = {k:"date", neg, lo:r[0], hi:r[1]};
+    } else {
+      const n = simSugNorm(text);
+      if(!n) continue;                     // nothing left once punctuation goes: "-", "™", ""
+      t = {k: exact ? "exact" : quoted ? "phrase" : "term", neg, s:n, open};
+    }
+    t.at = at; t.end = i;
+    toks.push(t);
+    if(orNext) groups[groups.length - 1].push(t); else groups.push([t]);
+    orNext = false;
+  }
+  // The title tokens that ASK for something (not excluded), per group — the ranking reads these.
+  const pos = groups.map(g => g.filter(t => t.k !== "date" && !t.neg)).filter(g => g.length);
+  return {
+    raw:s, groups, toks, bad, pos,
+    named: pos.length > 0,
+    whole: pos.map(g => g[0].s).join(" "),
+    // A group whose every alternative is a date wholly in the future: see releaseMode().
+    future: groups.some(g => g.every(t => t.k === "date" && !t.neg && t.lo >= NOW())),
+  };
+}
+let QP = null;                             // parseQ(state.q), re-parsed only when the text changes
+function curQ(){
+  if(!QP || QP.src !== state.q){ QP = parseQ(state.q); QP.src = state.q; }
+  return QP;
+}
+function qNamed(){ return !!(state.q && state.q.trim()) && curQ().named; }
+// Does `p` occur in normalised title `n` starting a word — and, with `whole`, ending one too?
+function wordAt(n, p, whole){
+  for(let i = n.indexOf(p); i >= 0; i = n.indexOf(p, i + 1)){
+    if((i === 0 || n[i - 1] === " ") && (!whole || i + p.length === n.length || n[i + p.length] === " ")) return true;
+  }
+  return false;
+}
+function qTokHit(g, t){
+  if(t.k === "date"){
+    const d = g.upcoming ? g.due_ts : g.release_ts;
+    return d != null && d >= t.lo && d < t.hi;
+  }
+  const n = normTitle(g);
+  if(t.k === "term") return n.includes(t.s);
+  if(t.k === "exact") return t.open ? n.startsWith(t.s) : n === t.s;
+  return wordAt(n, t.s, !t.open);
+}
+function qPass(g, Q){
+  const G = Q.groups;
+  for(let i = 0; i < G.length; i++){
+    const grp = G[i];
+    let ok = false;
+    for(let j = 0; j < grp.length; j++) if(qTokHit(g, grp[j]) !== grp[j].neg){ ok = true; break; }
+    if(!ok) return false;
+  }
+  return true;
+}
+// Ranking is match quality first, review count as the tiebreak: the whole title is exactly what
+// was typed, then every word asked for starts a word of the title, then a match buried mid-word.
+// Review count alone used to decide it, which is why a game you were obviously typing could sit
+// below an incidental match. The two word-start cases — at the front of the title, or at the
+// front of a later word — are one tier on purpose: split them and "sims" puts Simson
+// Tuningwerkstatt 3D (452 reviews) above The Sims™ 4 (200,545), which is the whole complaint.
+function simSugRank(g, Q){
+  const n = normTitle(g);
+  if(n === Q.whole || (Q.pos.length === 1 && Q.pos[0].some(t => n === t.s))) return 0;
+  return Q.pos.every(grp => grp.some(t => t.k === "term" ? wordAt(n, t.s, false) : qTokHit(g, t))) ? 1 : 2;
+}
+// The suggestion list deliberately ignores price, review and length filters — finding a title
+// you half-remember is the point, and a row that reveals we hold the game is useful even when
+// the current filters exclude it. The adult setting obeys adultMode() exactly as the table
+// does, so a picked title always lands on a row: a typed search lifts "hide", "only" holds.
+function sugAdultOk(g, af){
+  return !((af === "hide" && isAdult(g)) || (af === "only" && !isAdult(g)));
 }
 // One pass, pushing only the matches: the catalogue is ~130k games and this runs on every
 // keystroke, so mapping the whole thing to pairs before filtering it back down is the kind of
 // waste you feel while typing.
-function simSugHits(q){
-  const out = [];
-  // The suggestion list deliberately ignores price, review and length filters — finding a title
-  // you half-remember is the point, and a row that reveals we hold the game is useful even when
-  // the current filters exclude it. The adult setting obeys adultMode() exactly as the table
-  // does, so a picked title always lands on a row: a typed search lifts "hide", "only" holds.
-  const af = adultMode();
+function simSugHits(Q){
+  const out = [], af = adultMode();
   for(const g of state.data.games){
-    if(!g.title) continue;
-    if(af === "hide" && isAdult(g)) continue;
-    if(af === "only" && !isAdult(g)) continue;
-    const r = simSugRank(g, q);
-    if(r >= 0) out.push([g, r]);
+    if(!g.title || !sugAdultOk(g, af) || !qPass(g, Q)) continue;
+    out.push([g, simSugRank(g, Q)]);
   }
   out.sort((a, b) => a[1] - b[1] || simSugTie(a[0], b[0]));
   return out.map(x => x[0]);
+}
+
+// ----- "Did you mean" -----
+// When the words typed match no title at all, each word we don't hold is swapped for the closest
+// title word we do: edit distance 1 (2 for a word of five letters or more; a transposition
+// counts once), the most-reviewed word winning a tie, or two words run together split apart
+// ("halflife" → "half life"). A word that starts some title word is first left alone — it may
+// be half typed ("dakr sou" wants "dark sou", not "dark son"); only if that finds nothing does a
+// second pass correct every word we don't hold whole ("witchr" starts some rare title word, and
+// still means witcher). The correction is offered only if it finds something, and only ever as a
+// query the user clicks: nothing is silently rewritten.
+// The vocabulary leaves out adult games while the user's own Flags setting is the default
+// Exclude: a correction is a title word we put in front of someone who did not type it.
+let VOCAB = null;
+function qVocab(){
+  const hide = state.flags.adultF === "hide";
+  const key = state.data.games.length + (hide ? "h" : "a");
+  if(VOCAB && VOCAB.key === key) return VOCAB;
+  const w = new Map();
+  for(const g of state.data.games){
+    if(!g.title || (hide && isAdult(g))) continue;
+    const v = (g.review_count || 0) + 1;
+    for(const x of normTitle(g).split(" ")) if(x && !(w.get(x) >= v)) w.set(x, v);
+  }
+  const byLen = [];
+  for(const [x, v] of w) (byLen[x.length] || (byLen[x.length] = [])).push([x, v]);
+  return (VOCAB = {key, w, byLen, sorted:[...w.keys()].sort()});
+}
+function vocabHasPrefix(V, x){
+  let lo = 0, hi = V.sorted.length;
+  while(lo < hi){ const mid = (lo + hi) >> 1; if(V.sorted[mid] < x) lo = mid + 1; else hi = mid; }
+  return lo < V.sorted.length && V.sorted[lo].startsWith(x);
+}
+// Optimal-string-alignment distance, giving up (max + 1) once every cell of a row is past max.
+function editDist(a, b, max){
+  if(Math.abs(a.length - b.length) > max) return max + 1;
+  let pp = null, p = [];
+  for(let j = 0; j <= b.length; j++) p.push(j);
+  for(let i = 1; i <= a.length; i++){
+    const c = [i];
+    let low = i;
+    for(let j = 1; j <= b.length; j++){
+      let v = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if(pp && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, pp[j - 2] + 1);
+      c.push(v);
+      if(v < low) low = v;
+    }
+    if(low > max) return max + 1;
+    pp = p; p = c;
+  }
+  return p[b.length];
+}
+function qFixWord(x, V, guard){
+  if(x.length < 3 || /^\d+$/.test(x) || V.w.has(x) || (guard && vocabHasPrefix(V, x))) return x;
+  const max = x.length <= 4 ? 1 : 2;
+  let best = null, bd = max + 1, bw = 0;
+  for(let L = x.length - max; L <= x.length + max; L++){
+    for(const [y, v] of (V.byLen[L] || [])){
+      const d = editDist(x, y, Math.min(bd, max));
+      if(d <= max && (d < bd || (d === bd && v > bw))){ best = y; bd = d; bw = v; }
+    }
+  }
+  for(let k = 2; k <= x.length - 2; k++){
+    const a = x.slice(0, k), b = x.slice(k), va = V.w.get(a), vb = V.w.get(b);
+    if(va && vb && (bd > 1 || Math.min(va, vb) > bw)){ best = a + " " + b; bd = 1; bw = Math.min(va, vb); }
+  }
+  return best || x;
+}
+// null while the typed words match some title (whatever else is narrowing the list, spelling
+// isn't it); otherwise {fix}: the corrected query, or null when nothing close was found.
+let TYPO_KEY = null, TYPO = null;
+function qTypo(){
+  if(!state.data || !qNamed()) return null;
+  const Q = curQ();
+  const key = state.q + "\u0000" + state.data.games.length + state.flags.adultF;
+  if(TYPO_KEY === key) return TYPO;
+  TYPO_KEY = key; TYPO = null;
+  const af = adultMode();
+  const found = q => state.data.games.some(g => g.title && sugAdultOk(g, af) && qPass(g, {groups:q.pos}));
+  if(found(Q)) return null;
+  const V = qVocab();
+  const fixed = guard => {
+    let out = Q.raw;
+    for(let i = Q.toks.length - 1; i >= 0; i--){    // from the end, so earlier offsets still hold
+      const t = Q.toks[i];
+      if(t.k === "date" || t.neg) continue;
+      const body = t.s.split(" ").map(x => qFixWord(x, V, guard)).join(" ");
+      if(body === t.s) continue;
+      const rep = t.k === "term" ? body : (t.k === "exact" ? '="' : '"') + body + '"';
+      out = out.slice(0, t.at) + rep + out.slice(t.end);
+    }
+    return out !== Q.raw && found(parseQ(out)) ? out : null;
+  };
+  TYPO = {fix: fixed(true) || fixed(false)};
+  return TYPO;
 }
 // Within a match tier: released games by review count, upcoming ones (no reviews to go by) by
 // launch date, soonest first and undated last. Mixed pairs never matter — renderSimSug() splits
@@ -4889,12 +5147,29 @@ function hideSimSug(){
   const el = $("#simSug"); if(el){ el.hidden = true; el.innerHTML = ""; }
   state.simSugIdx = -1;
 }
+// The foot of every open list: the syntax, one line, so it is learnt where it is used.
+const SS_TIP = `<div class="ss-tip" title="Search syntax — words match in any order, inside longer words too; case, accents and punctuation are ignored.">`
+  + `<b>"phrase"</b> whole words · <b>-word</b> leave out · <b>a OR b</b> · <b>year:2020</b> · <b>year:2015-2018</b> · <b>before:2010</b> · <b>after:2022</b></div>`;
 function renderSimSug(){
   const el = $("#simSug"); if(!el || !state.data) return;
-  const q = simSugNorm(state.q || "");
-  if(q.length < 2){ hideSimSug(); return; }
-  const hits = simSugHits(q);
-  if(!hits.length){ hideSimSug(); return; }
+  const Q = curQ();
+  const show = html => { el.innerHTML = html; el.hidden = false; state.simSugIdx = -1; };
+  // A date operator this box can't read is ignored, not guessed at — say so, or "year:20" just
+  // looks like a filter that does nothing. It heads the list: at the foot of a long one it sat
+  // below the scroll, where the user typing the operator never saw it.
+  const note = Q.bad.length
+    ? `<div class="ss-tip ss-bad">${Q.bad.map(b => `<b>${esc(b)}</b>`).join(", ")} — not a date this box reads, so it is ignored. `
+      + `Try <b>year:2020</b>, <b>year:2015-2018</b>, <b>before:2010-06</b> or <b>after:2022-03-15</b>.</div>`
+    : "";
+  // Under two characters of title text there is nothing worth suggesting yet.
+  if(!Q.pos.some(g => g.some(t => t.s.length >= 2))){ if(note) show(note + SS_TIP); else hideSimSug(); return; }
+  let hits = simSugHits(Q), fix = null;
+  // No title has these words: offer the corrected query as a row, with the titles it finds.
+  if(!hits.length){
+    const ty = qTypo();
+    if(ty && ty.fix){ fix = ty.fix; hits = simSugHits(parseQ(fix)); }
+  }
+  if(!hits.length){ if(note) show(note + SS_TIP); else hideSimSug(); return; }
   // Released and upcoming matches are listed apart, so a title that isn't out yet can't pass
   // for one you can buy. The group the Release toggle points at comes first and gets the longer
   // list; the other trails with a short one. Upcoming rows only exist once upcoming.json has
@@ -4927,24 +5202,43 @@ function renderSimSug(){
     {head: "Coming soon", rows: upU.slice(0, upFirst ? SIMSUG_JUMP : SIMSUG_UP)},
   ].filter(x => x.rows.length);
   if(upFirst) groups.reverse();
-  let html = groups.map((x, n) => `<div class="ss-h${n ? " ss-alt" : ""}">${x.head}</div>` + x.rows.map(pickBtn).join("")).join("");
+  let html = fix
+    ? `<div class="ss-h">No title has those words — did you mean</div>`
+      + `<button type="button" data-fixq="${esc(fix)}" title="${esc("Search for " + fix + " instead")}"><i>↻</i><span>${esc(fix)}</span></button>`
+    : "";
+  html += groups.map((x, n) => `<div class="ss-h${n || fix ? " ss-alt" : ""}">${x.head}</div>` + x.rows.map(pickBtn).join("")).join("");
   if(sim.length) html += `<div class="ss-h ss-alt">…or find games similar to</div>`
     + sim.map(g =>
         `<button type="button" data-similar="${g.appid}" title="${esc("Find similar games — switches on this game’s main tags: " + similarKeyTags(g).join(", "))}"><i>≈</i><span>${esc(g.title)}</span></button>`).join("");
-  el.innerHTML = html;
-  el.hidden = false;
-  state.simSugIdx = -1;
+  show(note + html + SS_TIP);
 }
-// Picking an exact title just puts that title in the search box, so the list narrows to it
-// through the ordinary title filter — no second code path, and the ✕ still clears it.
+// Picking a title puts it in the search box as ="Title", the exact-title form, so the list
+// narrows to that game through the ordinary filter — no second code path, the ✕ still clears
+// it, and a shared link carries it. It used to type the bare title, which the box read as "any
+// title containing this": picking Scape listed every Escape. Titles that differ only in case or
+// punctuation still all match (the suggestions collapse them into one row, so they must). A
+// double quote inside the title is dropped: it can't sit inside the quotes, and the match
+// ignores punctuation anyway.
 function pickTitle(title){
   pushStep();
-  const qi = $("#q"); if(qi) qi.value = title;
-  state.q = title;
-  const box = $("#searchBox"); if(box) box.classList.toggle("has-q", !!title);
+  const v = `="${String(title).replace(/["\u201c\u201d\u201e]/g, "").trim()}"`;
+  const qi = $("#q"); if(qi) qi.value = v;
+  state.q = v;
+  const box = $("#searchBox"); if(box) box.classList.add("has-q");
   hideSimSug();
   update();
   window.scrollTo({top:0, behavior:"smooth"});
+}
+// "Did you mean": the corrected query replaces what was typed, as if typed — an edit, not a jump,
+// so Back doesn't stop on the misspelling. From the list, focus is still in the box, so the list
+// re-opens on the titles the correction finds; from the empty-list message it stays shut.
+function applyFixQ(v){
+  const qi = $("#q"); if(qi) qi.value = v;
+  state.q = v;
+  const box = $("#searchBox"); if(box) box.classList.toggle("has-q", !!v);
+  hideSimSug();
+  update();
+  if(qi && document.activeElement === qi) renderSimSug();
 }
 // ↑/↓ move the highlight; Enter takes the highlighted row. Enter with nothing highlighted
 // only dismisses the list — typing a search and hitting Enter must never be hijacked into
@@ -4965,7 +5259,9 @@ function simSugEnter(){
   const b = [...el.querySelectorAll("button")][state.simSugIdx];
   hideSimSug();
   if(!b) return true;                      // nothing highlighted: Enter just dismisses the list
-  if(b.dataset.pick != null) pickTitle(b.dataset.pick); else findSimilar(b.dataset.similar);
+  if(b.dataset.pick != null) pickTitle(b.dataset.pick);
+  else if(b.dataset.fixq != null) applyFixQ(b.dataset.fixq);
+  else findSimilar(b.dataset.similar);
   return true;
 }
 
@@ -5515,11 +5811,24 @@ const SORT_TIPS = {
 };
 const REV_LBLS = {0:"0-99", 2:"100", 3:"1k", 4:"5k+"};
 
+// The empty list when the search words themselves match no title — not a filter question, so
+// "loosen the QTPD range" would send the user the wrong way. Offers the "did you mean"
+// correction (qTypo) when there is one. Nothing while upcoming.json is still loading: the
+// title may be in it.
+// The query as quoted text: typed words in “quotes”, a query with quotes of its own as it is.
+const qLabel = () => /["\u201c\u201d]/.test(state.q) ? state.q.trim() : `“${state.q.trim()}”`;
+function typoMsg(){
+  const ty = qTypo();
+  if(!ty || (UP_STATUS === "loading" && releaseMode() !== "released")) return "";
+  return `<b>No title matches ${esc(qLabel())}.</b><br>`
+    + (ty.fix ? `Did you mean <button type="button" class="fixq" data-fixq="${esc(ty.fix)}">${esc(ty.fix)}</button>?`
+              : "Check the spelling, or try fewer words.");
+}
 function renderSummary(){
   const host = $("#filterSummary"); if(!host) return;
   const parts = [];
   const chip = (key, text) => `<button class="sumf" data-sumf="${key}">${esc(text)}</button>`;
-  if(state.q) parts.push(chip("q", `“${state.q}”`));
+  if(state.q) parts.push(chip("q", qLabel()));
   if(state.co.trim()) parts.push(chip("co", `by “${state.co.trim()}”${CO_STATUS === "loading" ? " (loading…)" : CO_STATUS === "error" ? " (unavailable)" : ""}`));
   if(state.qBasis === "before") parts.push(chip("basis", "full-price QTPD"));
   // Name the period on the chip — a bare "rating ≥ 70%" hid which score was being tested.
@@ -6846,6 +7155,8 @@ function init(data){
     if(sim){ e.preventDefault(); e.stopPropagation(); findSimilar(sim.dataset.similar); return; }
     const pick = e.target.closest("[data-pick]");
     if(pick){ e.preventDefault(); e.stopPropagation(); pickTitle(pick.dataset.pick); return; }
+    const fixq = e.target.closest("[data-fixq]");
+    if(fixq){ e.preventDefault(); e.stopPropagation(); applyFixQ(fixq.dataset.fixq); return; }
     const more = e.target.closest("[data-more]");
     if(more){ e.preventDefault(); more.closest(".taggroup").classList.toggle("expanded"); return; }
     const t = e.target.closest("[data-tag]");
@@ -7162,6 +7473,7 @@ function ensureUpcoming(){
       if(old && !old.upcoming) continue;
       const g = Object.assign(old || {}, r, {upcoming:true, store_adult:!!r.adult});
       delete g.adult;
+      delete g._nt; delete g._qk;         // title-search caches: the fresher row may retitle a shell
       if(!g.url) g.url = `https://store.steampowered.com/app/${g.appid}`;
       MERGE_GAME(g, picsUp);
       if(!old) state.data.games.push(g);
@@ -7402,6 +7714,7 @@ Promise.all([
   MERGE_GAME = mergeGame;
   init(data);
   bootDone();
+  warmTitles();
 });
 
 /* ── Custom tooltip engine ─────────────────────────────────────────────────────────────────────
