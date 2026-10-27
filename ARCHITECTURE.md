@@ -2122,9 +2122,56 @@ with the Flags → *Adult content* control on **Exclude**, using the same lock a
 idle-farmed adult titles a QTPD for the first time and one opened the default ranking at #1.
 *Any* is one click away and `adult=any` in a link opts back in; a link with no `adult=` now means
 Exclude. **A typed search is exempt** (`adultMode()`): someone searching for a title has asked for
-something specific, so while the search box is non-blank *Exclude* is lifted for the table and the
-title suggestions alike — if the user looks for the thing, we show the thing. *Only* still applies.
-Added the same day, after a title search for a flagged game came back empty and read as data loss.
+something specific, so while the search box names a title (`qNamed()`, below) *Exclude* is lifted
+for the table and the title suggestions alike — if the user looks for the thing, we show the
+thing. *Only* still applies. Added the same day, after a title search for a flagged game came back
+empty and read as data loss.
+
+**Title search query language (Oct 2026).** The box used to be one case-insensitive substring of
+the raw text. Two complaints from the owner: picking *Scape* from the suggestions typed the bare
+word, and the bare word kept every *Escape* — 1,515 rows for one game; and there was no way to ask
+for a word on its own, or for anything a search engine's box takes. Now `parseQ()` reads it into
+AND-ed groups of OR-ed tokens, and `passNonRange()` and the suggestions both test `qPass()`:
+
+| Typed | Means |
+|---|---|
+| `sims 4` | every word, any order, each also inside longer words (`scape` still finds Escape) |
+| `"dark souls"` | those whole words, in order — `"scape"` finds Side Scape, not Escape or Scapeland |
+| `="Scape"` | the whole title, exactly. **Picking a suggestion writes this** (`pickTitle()`) |
+| `-word`, `-"a phrase"` | leave out |
+| `a OR b`, `a \| b` | either; binds tighter than spaces, as on Google |
+| `year:2020`, `year:2015-2018` | released in that year / those years |
+| `before:2010`, `after:2022` | plain English: after:2022 starts in 2023; `before:2024-06`, `after:2024-03-15` narrow it |
+
+- **Matching is on `simSugNorm()` text**, cached per game as `_nt` (filled in idle slices after boot
+  by `warmTitles()`): case, Latin/Greek/Cyrillic accents, ™/®/© and punctuation ignored, every
+  script's letters kept. So `half life` finds Half-Life and `the sims 4` The Sims™ 4 — the old
+  filter found neither — and CJK titles, which the old suggestion normaliser flattened to nothing,
+  now get suggestions. Titles differing only in punctuation are one `="…"` match, which is why the
+  suggestions collapse them into one row (above).
+- **A date** is `release_ts`, or `due_ts` for an upcoming game (the Released sort's day). An
+  operator that can't be read (`year:20`) filters nothing, and the suggestion list says so at its
+  top. An unclosed quote matches as typed so far (`"dark sou`), so the list doesn't blank mid-phrase.
+- **What lifts the defaults.** `qNamed()` — at least one title word or phrase that isn't excluded —
+  is what "a typed search" means for the adult default, the Min reviews default, the Released
+  toggle and *Unknown status* rows. A box holding only operators (`year:2020`, `-horror`) names no
+  game; it is a broad list, and lifts none of them. One exception, on the Released toggle only: a
+  group made wholly of dates in the future (`year:2027`, `after:2026-12`) lifts the Released
+  *default*, as Wishlist does — no released game can pass it.
+- **"Did you mean"** (`qTypo()`): when the words match no title at all, each word we don't hold is
+  replaced by the nearest title word (edit distance 1, or 2 from five letters; the most-reviewed
+  word on a tie; or split in two: halflife → half life). A word that starts some title word is
+  left alone on the first pass (it may be half typed); a second pass corrects it if the first
+  found nothing (witchr starts a rare word, still means witcher). Offered only if the correction
+  finds something, as a row heading the suggestions and a link in the empty list — never applied
+  silently. Its vocabulary leaves out adult games while Flags → Adult is the default *Exclude*.
+- **Discoverability**: a one-line syntax hint at the foot of every open suggestion list
+  (`SS_TIP`), and the box's tooltip. No new URL parameter: everything lives in `q`.
+- **Speed**: a game's answer is cached against the parse (`_qk`/`_qr`), since one `update()` runs
+  the filter over the catalogue several times. Measured on the full 195k-row catalogue (Released +
+  Upcoming): an update with a query in the box takes ~95–165 ms, against ~130–185 ms for the old
+  substring filter. "Did you mean" runs only when the words match nothing: ~0.25 s the first time
+  (it builds its word list then, not at boot), ~30–50 ms after.
 
 **Release toggle (Oct 2026): Released / Upcoming / All, default Released.** A `.seg` in the
 always-visible control row beside Wishlist and Publisher — it decides which catalogue every other
@@ -2174,7 +2221,8 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
 - **Tag counts and the "/ N games" total follow the toggle** (`computeFullCounts()` counts the
   toggle's catalogue and sets `state.scopeCount`), so the Released view's numbers don't jump when
   a search pulls upcoming rows in.
-- **Search suggestions are grouped.** Released matches (*Show just this game*, up to 8 — 5 until
+- **Search suggestions are grouped.** Picking a row writes `="Title"` into the box (the title
+  search's exact form, above). Released matches (*Show just this game*, up to 8 — 5 until
   Oct 2026), then *Coming soon* (up to 3, each with its date — "Dec 2026", Steam's own "Q4 2026",
   or TBA), then *…or find games similar to* (released seeds only). With Upcoming selected the two
   title groups swap. Within a match tier, upcoming titles order by launch date rather than review
@@ -2561,7 +2609,7 @@ were merged into one 0-99 band, off by default — 10 reviews say about as littl
 surviving bands keep their URL indices (`rev=0,2,3,4`), so shelf links (`rev=4`, `rev=2,3`) and
 old shared links are unchanged; an old link's `1` (10-99) is read as `0`. The default moved from
 10+ to 100+, which takes ~52k games with 10-99 reviews out of the landing view.
-**Any search lifts that default** (`revFloorOn()`, `searching()`): a typed title search or an
+**Any search lifts that default** (`revFloorOn()`, `searching()`): a typed title search (`qNamed()`) or an
 active Find similar ignores the review bands while they are still at the default, so a
 61-review game looked up by name is shown. Bands the user changed are respected. (Find similar
 lifts only this, not the adult default — its result list is not something the user named.) Carrying the period into the
