@@ -604,7 +604,7 @@ each single-writes its `.md`):
 | `freshness.yml`     | `freshness.py`    | `FRESHNESS.md`| `0 7 * * *` (daily, the morning oversight pass)  | `freshness-md`    |
 | `presets.yml`       | `presets.py`      | `presets.json`| `workflow_run` after **scrape** succeeds (~4×/day) | `presets-json`    |
 | `monitor.yml`       | `monitor.py`      | `monitor.json`| `workflow_run` after **every** scrape + dispatched by the price job after **every** pass (~hourly) + `17 */2 * * *` backstop; manual `backfill` | `monitor-json` |
-| `stats.yml`         | `stats.py`        | `stats.json` + `sales_state.json` | dispatched by the price job after **every** pass (~hourly) + `43 */3 * * *` backstop; `backfill` dispatched by itself on a gap, or by hand | `stats-json` |
+| `stats.yml`         | `stats.py`        | `stats.json` + `stats_weeks.json` + `sales_state.json` | dispatched by the price job after **every** pass (~hourly) + `43 */3 * * *` backstop; `backfill` dispatched by itself on a gap, or by hand | `stats-json` |
 
 `coverage.py` recomputes every coverage figure from the live files + shards and self-commits
 `COVERAGE.md`. It reports **two axes** (full design in §11.5): **Axis 1 — total coverage**
@@ -716,18 +716,27 @@ rebuilt from commit messages have `start: null` and no review counts. Written on
 from `m0` to the current month, so the page sums months into quarters and years: `m` (named
 arrays: releases, releases without the adult flag, PICS-covered, AI / AI-live, Deck 1-3,
 controller, VR, demo, EA launches / still in EA, rated, rating sum, Length count, priced, price
-sum in cents, free), histograms as one array per bin (`priceb` by `price_ub`, `revb` by
+sum in cents, free, and `rw` / `price_rw`: reviews of paid games and their price × reviews in
+cents, for the review-weighted mean), histograms as one array per bin (`priceb` by `price_ub`, `revb` by
 `rev_edges`, `lenb` by `len_edges`, `lab` by Steam's nine review `labels`), `tags` / `genres`
 (`names` + one array each, over games without the adult flag), `daily` (releases per UTC day
 from `d0`), `top` (`{month: [[appid, title, reviews, pct, left_ea], ...]}`, ten per month, adult
 games never), `ea_out` (`{month: [days in EA, ...]}` by 1.0 month), `sale` (`{month: {n, l, lp,
-e:{day: count}, c:{day: count}, ep}}`: games watched from launch, launch discounts and their %
-sum, first sales after launch week and censored games by day since release, first-sale % sum),
+e:{day: count}, c:{day: count}, ep, lh, fh}}`: games watched from launch, launch discounts and
+their % sum, first sales after launch week and censored games by day since release, first-sale %
+sum, and how deep the launch discount and the first sale went, binned by `disc_edges`: 10-19%,
+20-29% ... 80-89%, 90%),
 `sale_days` (`[day, priced, on sale, % sum]` per UTC day) and `now` (in EA now and its age bins,
-announced 1.0 dates). **`sales_state.json`** (~420 KB, not served) — its memory: `games`
+announced 1.0 dates). **`stats_weeks.json`** (~890 KB raw, ~290 KB gzipped, served; fetched only
+when the page's Week is picked) — the same per-bucket fields (`m`, `lab`, `revb`, `lenb`,
+`priceb`, `tags`, `genres`, `top`, `ea_out`, `sale`) **per release week**, Monday to Sunday UTC,
+from week `w0` (week *w* runs from UTC day 7*w* − 3, a Monday) for `weeks` weeks; weeks don't nest
+in months, hence a file of its own. It starts in the first year with 50 releases (2006), where the
+page's timeline starts, and carries none of the catalog-wide extras (`daily`, `sale_days`, `now`).
+**`sales_state.json`** (~420 KB, not served) — its memory: `games`
 `{appid: [first priced day, last seen day, start, last on sale, deepest %, ...]}` for games
 watched since release, up to their first sale after the launch week; `days` as above;
-`last_day`. Both written only by `stats.py` (§11.8). `pics.json` gained a `generated_at` (Oct
+`last_day`. All three written only by `stats.py` (§11.8). `pics.json` gained a `generated_at` (Oct
 2026) so its age can be read like every other file's.
 
 **`upcoming.json`** — `{ generated_at, count, swept_at, "released": [appid, ...], "games":
@@ -3151,19 +3160,34 @@ from the **game counter** in the main page's top bar (`renderMeta()`, `.meta-cou
 "29551 / 133591 games" figures), a plain link styled like the text around it, exactly as the
 data-age counter opens the monitor. `noindex`, unlisted: reached from the site, not from search.
 
-**What it shows**, for a month, quarter or year picked on a timeline (a column click, ‹ ›, the
-arrow keys, or a year × month heatmap cell), against the period before or the same one a year
-earlier, every chart and tile following the pick: releases per day and per weekday; the most
+**What it shows**, for a week, month, quarter or year picked on a timeline (a column click, ‹ ›,
+the arrow keys, or a year × month heatmap cell, which picks the period holding that month at the
+grouping in use — in Week view the week of the 1st), against the period before, the same one a
+year earlier, any other period at that grouping (**vs other…**: a list with its own ‹ ›, or a
+shift-click on the timeline; it stays put while the selection moves), or nothing (**No compare**:
+every compared bar, tick, line, change and legend goes), every chart and tile following the pick: releases per day and per weekday; the most
 common tags and genres with what rose and fell; price ranges and the median / mean price over
 time; Early Access launches, how long the games that left it in the period had spent in it, and
 how many are in it now; how soon a new release first goes on sale and how much of the store is
 on sale each day; AI disclosure, Steam Deck, controller and VR shares over time; reviews per
 game, the Steam rating mix, Length, the period's biggest releases; and demos. A period still in
 progress is marked *so far*, and release counts compare per day so it compares fairly. The URL
-hash holds the pick (`#2026-09`, `#2026-Q3`, `#2026`, `&vs=yoy`), so a view can be linked.
+hash holds the pick (`#2026-W43`, `#2026-09`, `#2026-Q3`, `#2026`, then `&vs=yoy`, `&vs=none` or
+`&vs=<a period key>`), so a view can be linked. With no hash the page opens on the **last complete
+year** against the one before. Switching grouping keeps the same stretch in view: a coarser one
+takes the period holding it, a finer one its latest complete part (2025 → its last full week).
 
-**Grouped by release month, measured today.** `stats.py` aggregates per release month, so a
-quarter or a year is a sum; every median the page shows is read off a per-month histogram (price
+**Numbers beside every share.** Every percentage the page shows carries the game count behind it
+— in the tooltips (`20.8% · 623`), the tiles (`1,389 of 2,993`), the AI & hardware card headers,
+the tag and genre rows (which have a header row naming the periods and a **Change** column in
+points) and the tables. Categorical bars carry their share as a whole percent above the bar when
+every label fits (`columnChart`'s `valueLabel`; a narrow screen drops them rather than piling them
+up), and the rating mix writes its share on each segment wide enough. A change is coloured by its
+**direction only** — green up, red down, beside its ▲ ▼ — never by whether it is good, which
+depends on who is reading. The page carries the QTPD wordmark, linking back to the game list.
+
+**Grouped by release month (and week), measured today.** `stats.py` aggregates per release month,
+so a quarter or a year is a sum, and separately per release week into `stats_weeks.json`; every median the page shows is read off a per-month histogram (price
 points, Length hours) or list (EA durations), so it holds at any grouping. Prices, tags, reviews
 and Deck ratings are what the catalog says now — Steam keeps no launch prices for us to read —
 and the page says so where it matters. A game that left Early Access is dated by its 1.0 launch,
@@ -3193,6 +3217,27 @@ the games that sold first. First readings (Jul-Aug 2026 releases): ~75% launch w
 ~20% off; the first sale after launch comes at a median 48-69 days, almost never before day 30.
 `sale_days` adds one catalog-wide row a day (games priced, on sale, % sum), the last check of the
 UTC day, for the "how much of Steam is on sale" line.
+**Why nothing happens before day 30.** Steamworks allows no discount in a game's first 30 days
+except the launch discount (set up before release, up to 40% off, in the first week), and then 30
+days between discounts; the page shades days 0-30 on the curve and says so. The section opens with
+a summary row — games watched, launch discount (share, count, average % off), median day of the
+first sale after launch (or "> N days" while fewer than half have had one), and how deep that sale
+went — then the curve, whose tooltip gives the games behind a point (how many had their first sale
+by that day, and how many reached it without one; the share is not their ratio, since a young game
+that sold early counts in the first and can't yet in the second), and a **discount-depth** chart:
+launch discounts against first sales after launch, by `disc_edges` bin. A period before late June
+2026 has no sale history, and the section says so in one line instead of empty tiles.
+
+**Typical price over time.** Median with the **middle half** shaded around it (25th to 75th
+percentile, read off the same price-point bins as the median), the **mean** (faint), its
+**trailing-year average** (12 months, 4 quarters, 52 weeks; 3 years in Year view), and the
+**review-weighted mean** (each paid game counted once per Steam review: closer to what players buy
+than to what is listed). One big release swings a single week or month, so that line is drawn
+over the year up to each point (per period in Year view); it runs well above the others — about
+$30 against a ~$6 median in 2026, up from ~$10 in 2010 — and the tables keep each period's own. Each
+legend entry switches its line on and off, and a definition list under the chart says what each
+one is. Three hues only (blue, orange, aqua): a line chart needs every pair to pass, and a fourth
+(violet) fails against blue for protan vision, so the average is the mean's orange drawn thicker.
 
 **When.** Workflow 4.6, dispatched by the price job after every pass (`trigger_deploy()`, next
 to Pages and the monitor), with a 3-hourly backstop cron. Each run records the working tree's
@@ -3206,10 +3251,13 @@ which fills the gap; that is also how the gap between this page's PR and its mer
 
 **Rules.** One writer (`stats.py`, concurrency group `stats-json`); stdlib only;
 `test_stats.py` covers the classifiers, the episode recorder (watching, launch discount, first
-sale, freezing, out-of-order checks), the backfill's daily sampling, and the aggregates — that no
-ranking or list lets an adult-flagged game through. Colours: the selected period is `--s1`, the
+sale, freezing, out-of-order checks), the backfill's daily sampling, and the monthly and weekly
+aggregates (week numbering, where the weekly file starts, discount depth, the review-weighted sums)
+— that no ranking or list, by month or by week, lets an adult-flagged game through. Colours: the selected period is `--s1`, the
 compared one a gray (`#b3bacb`) that clears the normal-vision and colour-blind separation checks
-against it on `--panel`; the rating scale is a diverging pair of validated ordinal arms.
+against it on `--panel`; the rating scale is a diverging pair of validated ordinal arms; `--s3`
+(aqua `#199e70`) is the price trend's third line; `--up` / `--down` (`#4cc38a` / `#ff7b7b`) are
+text, 7.3:1 and 6.4:1 on `--panel`.
 
 ---
 
@@ -3504,6 +3552,17 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Steam by the numbers, second pass (27 Oct 2026).** Week granularity (`stats_weeks.json`, a
+  second output of `stats.py`, fetched only when Week is picked); compare with any period or with
+  nothing; the page opens on the last complete year; the QTPD wordmark at the top; the intro and
+  section notes run full width. Every share now carries its game count, categorical bars carry
+  their rounded share, changes are coloured by direction (green up, red down), the tag and genre
+  rows gained a header and a change column, the delta lines are larger. Price trend: the middle
+  half, a trailing-year average and the review-weighted mean (new `rw` / `price_rw` fields), with
+  definitions. Sales: a summary row, Steam's 30-day lock shaded and explained, honest counts in the
+  curve's tooltip, and a discount-depth chart (new `lh` / `fh` bins). The heatmap picks the period
+  holding a month at the grouping in use instead of switching to Month. Details in §11.8.
 
 - **Steam by the numbers (Oct 2026).** A new page, `stats.html`, opened from the game counter in
   the top bar: releases, tags and genres, price ranges, Early Access length, how soon new games

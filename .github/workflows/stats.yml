@@ -1,7 +1,7 @@
 name: 4.6 Industry stats -> stats.json
 
 # Steam by the numbers (stats.html, opened from the game counter on the main page): every release
-# aggregated by month, plus the sale history new releases need for "days to first sale", kept in
+# aggregated by month (stats.json) and by week (stats_weeks.json), plus the sale history new releases need for "days to first sale", kept in
 # sales_state.json. See stats.py and ARCHITECTURE §11.8.
 on:
   schedule:
@@ -14,7 +14,7 @@ on:
         default: false
 
 permissions:
-  contents: write             # commits stats.json + sales_state.json
+  contents: write             # commits stats.json + stats_weeks.json + sales_state.json
   actions: write              # the live run dispatches the backfill when the sale history has a gap
 
 concurrency:
@@ -30,13 +30,14 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: main
-          # Shallow + sparse (ARCHITECTURE §4 "Checkouts"): every file stats.py reads, and the two
+          # Shallow + sparse (ARCHITECTURE §4 "Checkouts"): every file stats.py reads, and the three
           # it writes. Sparse also makes this a partial clone, so nothing else downloads.
           fetch-depth: 1
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /stats.py
             /stats.json
+            /stats_weeks.json
             /sales_state.json
             /games.json
             /prices.json
@@ -78,6 +79,7 @@ jobs:
           sparse-checkout: |
             /stats.py
             /stats.json
+            /stats_weeks.json
             /sales_state.json
             /games.json
             /prices.json

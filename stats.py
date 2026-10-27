@@ -5,12 +5,15 @@ stats.py — Steam by the numbers, for stats.html
 The rest of the pipeline answers "what is this game worth"; this answers "what is Steam doing":
 how many games come out, what kind, at what price, how long Early Access lasts, how soon a new
 game first goes on sale, how much of it discloses AI content. stats.html (opened from the game
-counter in the main page's top bar) charts it by month, quarter or year and compares a period
-with the one before it or the same one a year earlier.
+counter in the main page's top bar) charts it by week, month, quarter or year and compares a
+period with the one before it, the same one a year earlier, or any other.
 
-Everything is aggregated here, by RELEASE MONTH (UTC), so the page never downloads the 67 MB
-catalog: a quarter or a year is the sum of its months, and every median the page shows is read
-off a histogram or a list kept per month, so it stays exact (or exact to a bin) at any grouping.
+Everything is aggregated here, by RELEASE MONTH (UTC) into stats.json and by RELEASE WEEK
+(Monday to Sunday, UTC) into stats_weeks.json, so the page never downloads the 67 MB catalog: a
+quarter or a year is the sum of its months, and every median the page shows is read off a
+histogram or a list kept per bucket, so it stays exact (or exact to a bin) at any grouping. Weeks
+don't nest in months, hence the second file; the page fetches it only when Week is picked, and it
+starts in the first year with WEEKS_FROM_MIN releases (the page's timeline starts there too).
 What each figure counts is the catalog as it is NOW: a game's current list price, tags, review
 count and Deck rating, grouped by when it came out. Steam keeps no launch prices for us to read.
 
@@ -43,7 +46,8 @@ Modes
                                price commit when there is no state — through the latest commit.
                                Needs a full-history checkout (commits only).
 
-One writer per file: only this script writes stats.json and sales_state.json (workflow 4.6).
+One writer per file: only this script writes stats.json, stats_weeks.json and sales_state.json
+(workflow 4.6).
 Stdlib only.
 """
 
@@ -63,6 +67,7 @@ import gitsync                      # commits this job's own files to main (gits
 
 HERE = Path(__file__).resolve().parent
 OUT_FILE = HERE / "stats.json"
+WEEKS_FILE = HERE / "stats_weeks.json"
 STATE_FILE = HERE / "sales_state.json"
 REPO = os.environ.get("GITHUB_REPOSITORY", "MLMariss/SteamQTPD")
 IN_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
@@ -74,7 +79,8 @@ ADULT_TAGS = {"Nudity", "Sexual Content", "Mature", "NSFW", "Hentai"}
 # so the genre ranking leaves them out — all four alike, and no game is dropped for carrying one.
 GENRE_SKIP = {71, 72, 73, 74}
 TOP_TAGS = 100                   # tags kept per month; the page ranks within these
-TOP_GAMES = 10                   # biggest releases kept per month (enough for any period's top 10)
+TOP_GAMES = 10                   # biggest releases kept per bucket (enough for any period's top 10)
+WEEKS_FROM_MIN = 50              # = START_MIN in stats.html: weeks start in the first year this busy
 
 # Histogram edges. A value v falls in bin i where i = the number of edges <= v (bisect_right).
 REV_EDGES = [1, 10, 50, 100, 500, 1000, 5000, 10000, 50000]       # review counts: 10 bins
@@ -84,6 +90,9 @@ LEN_EDGES = [1, 2, 3, 5, 8, 12, 20, 35, 60, 100]                     # Length ho
 PRICE_UB = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15, 17, 18, 20, 25, 30, 35, 40, 45, 50, 60, 70,
             80, 100]                                                  # + one bin above $100
 EA_AGE_EDGES = [365, 730, 1095, 1826]                                 # in EA now: <1y,1-2,2-3,3-5,5+
+# Discount depth, for the launch discount and the first sale after it: 10-19% (Steam's floor is
+# 10%), 20-29% ... 80-89%, 90% (its ceiling). 9 bins.
+DISC_EDGES = [20, 30, 40, 50, 60, 70, 80, 90]
 # Steam's review summary, as the store words it, for games with 10+ reviews.
 LABELS = ["Overwhelmingly Positive", "Very Positive", "Positive", "Mostly Positive", "Mixed",
           "Mostly Negative", "Negative", "Very Negative", "Overwhelmingly Negative"]
@@ -150,6 +159,15 @@ def month_of(ts):
 
 def month_name(m):
     return f"{m // 12:04d}-{m % 12 + 1:02d}"
+
+
+def week_of(ts):
+    """Weeks since the Monday 1969-12-29, UTC: week w runs from day 7w - 3 (a Monday) to 7w + 3.
+    1970-01-01 was a Thursday, so a day d falls in week (d + 3) // 7."""
+    return (ts // DAY + 3) // 7
+
+
+UNITS = {"m": month_of, "w": week_of}
 
 
 # --------------------------------------------------------------------------- #
@@ -245,25 +263,38 @@ def record(state, prices, releases, exclude, day):
 # --------------------------------------------------------------------------- #
 # stats.json
 # --------------------------------------------------------------------------- #
-def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_rank=TOP_TAGS):
-    """The stats.json document. Inputs are the parsed maps: games (games.json `games` list),
-    pics (`apps`), tags (`tags`), prices (`prices`), ea_dates (`games`), length (`length`),
-    demos (`demos`), and the sales state."""
-    cur = month_of(now)
+def first_busy_year(rel):
+    """The first year with WEEKS_FROM_MIN releases, as stats.html picks where its timeline starts."""
+    per = {}
+    for t in rel.values():
+        y = datetime.fromtimestamp(t, timezone.utc).year
+        per[y] = per.get(y, 0) + 1
+    return min((y for y, c in per.items() if c >= WEEKS_FROM_MIN), default=min(per))
+
+
+def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_rank=TOP_TAGS, unit="m"):
+    """The stats.json document (unit "m": per release month) or the stats_weeks.json one (unit
+    "w": per release week, from the first busy year on, without the catalog-wide extras). Inputs
+    are the parsed maps: games (games.json `games` list), pics (`apps`), tags (`tags`), prices
+    (`prices`), ea_dates (`games`), length (`length`), demos (`demos`), and the sales state."""
+    of = UNITS[unit]
+    cur = of(now)
     rel = {}
     for g in games:
         t = _int(g.get("release_ts"))
-        if t and t > 0 and month_of(t) <= cur:
+        if t and t > 0 and of(t) <= cur:
             rel[g["appid"]] = t
     if not rel:
         return None
-    m0 = min(month_of(t) for t in rel.values())
+    m0 = min(of(t) for t in rel.values())
+    if unit == "w":
+        m0 = max(m0, week_of(int(datetime(first_busy_year(rel), 1, 1, tzinfo=timezone.utc).timestamp())))
     n = cur - m0 + 1
     d0 = min(rel.values()) // DAY
     zeros = lambda: [0] * n
     A = {k: zeros() for k in ("rel", "rel_c", "pics", "ai", "ai_live", "deck3", "deck2", "deck1",
                               "ctrl_full", "ctrl_part", "vr", "demo", "ea_in", "ea_now", "rated",
-                              "rating_sum", "len_n", "priced", "price_sum", "free")}
+                              "rating_sum", "len_n", "priced", "price_sum", "free", "rw", "price_rw")}
     lab = [zeros() for _ in LABELS]
     revb = [zeros() for _ in range(len(REV_EDGES) + 1)]
     lenb = [zeros() for _ in range(len(LEN_EDGES) + 1)]
@@ -280,7 +311,9 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         t = rel.get(a)
         if t is None:
             continue
-        m = month_of(t) - m0
+        m = of(t) - m0
+        if m < 0:                                       # before the weekly file starts
+            continue
         p = pics.get(str(a))
         tg = tags.get(str(a)) or g.get("tags") or []
         adult = is_adult(p, tg)
@@ -298,6 +331,11 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
             A["priced"][m] += 1
             A["price_sum"][m] += round(price * 100)
             priceb[price_bin(price)][m] += 1
+            # Review-weighted: each paid game counts once per Steam review it has, so the mean
+            # leans to what players actually bought rather than to what was listed.
+            rcw = _int(g.get("review_count")) or 0
+            A["rw"][m] += rcw
+            A["price_rw"][m] += round(price * 100) * rcw
 
         if p:
             A["pics"][m] += 1
@@ -352,9 +390,9 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
     # in the month it left; its EA start is known only where Steam or this job kept it (§7).
     for a, v in ea_left.items():
         s, e = _int(v["s"]), _int(v["v"])
-        if not s or not e or e <= s or month_of(e) > cur:
+        if not s or not e or e <= s or of(e) > cur:
             continue
-        ms, me = month_of(s) - m0, month_of(e) - m0
+        ms, me = of(s) - m0, of(e) - m0
         if 0 <= ms < n:
             A["ea_in"][ms] += 1
         if 0 <= me < n:
@@ -379,8 +417,9 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         if (HERE / "lookups" / "genres.json").exists() else {}
     genre_ids, genre_m = ranked({g: c for g, c in genre_c.items() if str(g) in genre_names}, 30)
 
-    # Sale timing per release month: watched games, launch discounts, and the first sale after
-    # launch week as an event (days after release) or, not yet, censored at the last check.
+    # Sale timing per release bucket: watched games, launch discounts, and the first sale after
+    # launch week as an event (days after release) or, not yet, censored at the last check. lh and
+    # fh hold how deep the launch discount and that first sale went (DISC_EDGES bins).
     sale = {}
     for k, rec in state["games"].items():
         a = _int(k)
@@ -388,23 +427,43 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         if t is None or a in ea_left:
             continue
         rday = t // DAY
-        m = month_of(t) - m0
-        s = sale.setdefault(m, {"n": 0, "l": 0, "lp": 0, "e": {}, "c": {}, "ep": 0})
+        m = of(t) - m0
+        if m < 0:
+            continue
+        s = sale.setdefault(m, {"n": 0, "l": 0, "lp": 0, "e": {}, "c": {}, "ep": 0,
+                                "lh": [0] * (len(DISC_EDGES) + 1), "fh": [0] * (len(DISC_EDGES) + 1)})
         s["n"] += 1
         eps = [rec[i:i + 3] for i in range(2, len(rec), 3)]
         launch = [e for e in eps if e[0] < rday + LAUNCH_DAYS]
         if launch:
             s["l"] += 1
-            s["lp"] += max(e[2] for e in launch)
+            deep = max(e[2] for e in launch)
+            s["lp"] += deep
+            s["lh"][bisect_right(DISC_EDGES, deep)] += 1
         first = first_after_launch(rec, rday)
         if first:
             d = str(max(0, first[0] - rday))
             s["e"][d] = s["e"].get(d, 0) + 1
             s["ep"] += first[1]
+            s["fh"][bisect_right(DISC_EDGES, first[1])] += 1
         else:
             d = str(max(0, rec[1] - rday))
             s["c"][d] = s["c"].get(d, 0) + 1
 
+    if unit == "w":
+        return {
+            "_format": "stats_weeks_v1",
+            "_note": "Written by stats.py (workflow 4.6); charted by stats.html when Week is picked. "
+                     "Per-week arrays start at week w0 and run to the current week; week w runs from "
+                     "UTC day 7w-3 (a Monday) to 7w+3. Same fields as stats.json's per-month ones.",
+            "generated_at": now, "w0": m0, "weeks": n,
+            "m": A, "lab": lab, "revb": revb, "lenb": lenb, "priceb": priceb,
+            "tags": {"names": tag_names, "m": tag_m},
+            "genres": {"names": [genre_names[str(g)] for g in genre_ids], "m": genre_m},
+            "top": {str(m): v for m, v in sorted(top.items())},
+            "ea_out": {str(m): sorted(v) for m, v in sorted(ea_out.items())},
+            "sale": {str(m): v for m, v in sorted(sale.items())},
+        }
     ea_planned = sum(1 for v in ea_dates.values() if isinstance(v, dict) and v.get("ea")
                      and _int(v.get("v")) and v["v"] > now)
     sale_days = sorted([int(d), *row] for d, row in state["days"].items())
@@ -420,6 +479,7 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         "rev_edges": REV_EDGES, "revb": revb,
         "len_edges": LEN_EDGES, "lenb": lenb,
         "price_ub": PRICE_UB, "priceb": priceb,
+        "disc_edges": DISC_EDGES,
         "daily": daily,
         "tags": {"names": tag_names, "m": tag_m},
         "genres": {"names": [genre_names[str(g)] for g in genre_ids], "m": genre_m},
@@ -457,18 +517,20 @@ def inputs():
 
 
 def write_stats(now, games, state):
-    doc = build(now, games,
-                (read_local("pics") or {}).get("apps") or {},
-                (read_local("tags") or {}).get("tags") or {},
-                (read_local("prices") or {}).get("prices") or {},
-                (read_local("ea_dates") or {}).get("games") or {},
-                (read_local("length") or {}).get("length") or {},
-                (read_local("demos") or {}).get("demos") or {},
-                state)
+    """Write stats.json and stats_weeks.json; the monthly document, or None."""
+    src = ((read_local("pics") or {}).get("apps") or {},
+           (read_local("tags") or {}).get("tags") or {},
+           (read_local("prices") or {}).get("prices") or {},
+           (read_local("ea_dates") or {}).get("games") or {},
+           (read_local("length") or {}).get("length") or {},
+           (read_local("demos") or {}).get("demos") or {})
+    doc = build(now, games, *src, state)
     if doc is None:
         log("games.json missing or empty; stats.json not written")
         return None
+    weeks = build(now, games, *src, state, unit="w")
     OUT_FILE.write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False) + "\n", encoding="utf-8")
+    WEEKS_FILE.write_text(json.dumps(weeks, separators=(",", ":"), ensure_ascii=False) + "\n", encoding="utf-8")
     return doc
 
 
@@ -509,7 +571,7 @@ def live():
         return 1
     log(f"stats: {doc['games']} games over {doc['months']} months; {len(state['games'])} games "
         f"watched for sales, {len(state['days'])} sale days")
-    gitsync.commit(["stats.json", "sales_state.json"],
+    gitsync.commit(["stats.json", "stats_weeks.json", "sales_state.json"],
                    f"stats: {doc['games']} games, {len(state['games'])} watched for sales")
     return 0
 
@@ -587,7 +649,7 @@ def backfill():
     doc = write_stats(now, games, state)
     if doc is None:
         return 1
-    gitsync.commit(["stats.json", "sales_state.json"],
+    gitsync.commit(["stats.json", "stats_weeks.json", "sales_state.json"],
                    f"stats: backfill {seen} days of prices from git ({len(state['games'])} watched for sales)")
     return 0
 
