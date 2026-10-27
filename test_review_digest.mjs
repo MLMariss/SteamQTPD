@@ -85,7 +85,7 @@ const topical = [
 const old = Array.from({ length: 60 }, (_, i) => mk(i + 200, { ts: 1756000000 - (300 + i * 3) * 86400 }));
 const page1 = [...special, ...topical, ...Array.from({ length: 60 }, (_, i) => mk(i + 20)), ...old];
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await chromium.launch();
 const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", e => errors.push("PAGEERROR: " + e.message));
@@ -417,7 +417,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // dead-end: it has to name the likely cause and offer the URL as an editable field, so a
 // wrong subdomain is a five-second fix in the page rather than a code change and redeploy.
 {
-  const b2 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b2 = await chromium.launch();
   const p2 = await b2.newPage();
   const errs2 = [];
   p2.on("pageerror", e => errs2.push(e.message));
@@ -446,7 +446,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // at once: narrowing, the per-day rate, and both span warnings.
 {
   const busy = Array.from({ length: 300 }, (_, i) => mk(i + 500));   // default ts: an hour apart
-  const b3 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b3 = await chromium.launch();
   const p3 = await b3.newPage();
   const errs3 = [];
   p3.on("pageerror", e => errs3.push(e.message));
@@ -498,7 +498,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // size selector is nothing but that loop plus four places that quote the number, all of
 // which must move together or the card promises 500 while the dialog fetches 1000.
 {
-  const b4 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b4 = await chromium.launch();
   const p4 = await b4.newPage();
   const errs4 = [];
   p4.on("pageerror", e => errs4.push(e.message));
@@ -579,7 +579,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // pick that quietly ships the advanced prompt, which looks fine until the model returns a
 // twelve-row issue table nobody asked for.
 {
-  const b5 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b5 = await chromium.launch();
   const p5 = await b5.newPage();
   const errs5 = [];
   p5.on("pageerror", e => errs5.push(e.message));
@@ -658,7 +658,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 //      gets analysed half-read. The result panel has to say so — and has to say it about
 //      GEMINI, since Claude and ChatGPT turn the same paste into an attachment (§22.2).
 {
-  const b6 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b6 = await chromium.launch();
   const p6 = await b6.newPage();
   const errs6 = [];
   p6.on("pageerror", e => errs6.push(e.message));
@@ -756,7 +756,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // Unit-style against the real page's functions. Driving every tier through the UI would mean
 // three more multi-page fixtures to assert what these two decide between them.
 {
-  const b7 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b7 = await chromium.launch();
   const p7 = await b7.newPage();
   await p7.goto("http://127.0.0.1:8099/index.html", { waitUntil: "networkidle" });
   const r = await p7.evaluate(() => ({
@@ -806,7 +806,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // also carries one 14-character Japanese review: whitespace word-splitting scores that as a
 // single word and would delete it, so it is the check that the CJK path is not just theory.
 {
-  const b8 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b8 = await chromium.launch();
   const p8 = await b8.newPage();
   const errs8 = [];
   p8.on("pageerror", e => errs8.push(e.message));
@@ -1196,7 +1196,7 @@ errors.slice(0, 5).forEach(e => console.log("     " + e));
 // rather than inferred from a count: at reach 2, review numbers 1-100 and 201-300 and 401-500
 // are in and 101-200 must be nowhere.
 {
-  const b9 = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const b9 = await chromium.launch();
   const p9 = await b9.newPage();
   const errs9 = [];
   p9.on("pageerror", e => errs9.push(e.message));
