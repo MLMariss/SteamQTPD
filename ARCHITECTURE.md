@@ -733,6 +733,8 @@ when the page's Week is picked) — the same per-bucket fields (`m`, `lab`, `rev
 from week `w0` (week *w* runs from UTC day 7*w* − 3, a Monday) for `weeks` weeks; weeks don't nest
 in months, hence a file of its own. It starts in the first year with 50 releases (2006), where the
 page's timeline starts, and carries none of the catalog-wide extras (`daily`, `sale_days`, `now`).
+Until it exists (a fresh deploy before workflow 4.6 has run once), Week stays put and a note beside
+the period buttons says the weekly figures aren't published yet.
 **`sales_state.json`** (~420 KB, not served) — its memory: `games`
 `{appid: [first priced day, last seen day, start, last on sale, deepest %, ...]}` for games
 watched since release, up to their first sale after the launch week; `days` as above;

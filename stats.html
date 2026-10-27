@@ -84,6 +84,8 @@
   .plabel{font-size:1.05rem; font-weight:600; color:var(--title); min-width:9.5em; text-align:center}
   .plabel small{display:block; font-family:var(--mono); font-size:11.5px; font-weight:400; color:var(--muted-2)}
   .pbar .vs{font-size:13px; color:var(--muted)}
+  /* Said beside the buttons, where the click was: Week can't open until stats_weeks.json exists. */
+  .gnote{font-size:12.5px; color:var(--gold); max-width:22em; line-height:1.3}
   .seg button[aria-busy="true"]{cursor:progress; opacity:.6}
   /* Custom compare: any period at the current grouping, fixed while the selected one moves. */
   .cmpsel{appearance:none; background:var(--panel-2); color:var(--title); border:1px solid var(--line); border-radius:8px;
@@ -102,6 +104,7 @@
     .step{padding:6px 9px}
     .plabel{min-width:5.6em; font-size:1rem}
     .cmpsel{font-size:12px; padding:6px 24px 6px 8px; max-width:11em}
+    .gnote{flex-basis:100%; max-width:none}
   }
   button:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
 
@@ -251,6 +254,7 @@
         <button data-g="w"><span class="l">Week</span><span class="s">Wk</span></button><button data-g="m"><span class="l">Month</span><span class="s">Mo</span></button><button data-g="q"><span class="l">Quarter</span><span class="s">Qtr</span></button><button data-g="y"><span class="l">Year</span><span class="s">Yr</span></button>
       </div>
     </div>
+    <span class="gnote" id="gnote" role="status" hidden></span>
     <div class="grp">
       <button class="step" id="prev" aria-label="Previous period">‹</button>
       <div class="plabel" id="plabel" aria-live="polite"></div>
@@ -1508,7 +1512,12 @@ function loadWeeks(){
 }
 async function setGran(g){
   if(G === g) return;
-  if(g === "w"){ try { await loadWeeks(); } catch(e){ const a = $("#asof"), msg = " Weekly figures aren't available yet; they appear after the next stats update."; if(!a.textContent.includes(msg)) a.textContent += msg; return; } }
+  const note = $("#gnote");
+  if(g === "w"){
+    try { await loadWeeks(); }
+    catch(e){ note.textContent = "Weekly figures aren't published yet. They appear after the next stats update; try again later."; note.hidden = false; return; }
+  }
+  note.hidden = true;
   G = g; rebuild(); render();
 }
 // The default view: the last complete year, against the year before.
