@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression tests for stats.py (Steam by the numbers): the classifiers, the sale-episode
 recorder behind "days to first sale", the daily sampling of the git backfill, and the monthly
-aggregates — above all that nothing which ranks or names games lets an adult game through.
+and weekly aggregates — above all that nothing which ranks or names games lets an adult game through.
 Pure logic only: inputs are built in memory, no network, no git."""
 from datetime import datetime, timezone
 
@@ -126,6 +126,36 @@ check("a game that left Early Access is not counted in sale timing", str(mi(2026
 check("reception bins and labels", doc["lab"][0][mi(2026, 7)] == 1 and A["rated"][mi(2026, 7)] == 2)
 check("daily releases land on their day", doc["daily"][day(2026, 7, 3) - doc["d0"]] == 1)
 check("sale days are carried as rows", doc["sale_days"] == [[day(2026, 9, 14), 100, 10, 300]])
+check("discount depth: launch 10% in the 10-19% bin, first sale 30% in the 30-39% bin",
+      sj["lh"][0] == 1 and sum(sj["lh"]) == 1 and sj["fh"][St.DISC_EDGES.index(30) + 1] == 1 and sum(sj["fh"]) == 1)
+check("review-weighted price: each paid game weighted by its reviews",
+      A["rw"][mi(2026, 7)] == 900 + 5000 and A["price_rw"][mi(2026, 7)] == 2499 * 900 + 999 * 5000
+      and A["rw"][mi(2026, 8)] == 40)
+
+print("\n== build: weekly aggregates ==")
+check("weeks start on Monday: 1970-01-01 (a Thursday) is in week 0, Monday 1970-01-05 in week 1",
+      St.week_of(0) == 0 and St.week_of(ts(1970, 1, 4)) == 0 and St.week_of(ts(1970, 1, 5)) == 1)
+check("week w starts on day 7w - 3, a Monday",
+      all(datetime.fromtimestamp((7 * St.week_of(ts(2026, 7, d)) - 3) * D, timezone.utc).weekday() == 0 for d in range(1, 15)))
+busy0 = [{"appid": 1000, "release_ts": ts(2003, 5, 1)}] + \
+        [{"appid": 1001 + i, "release_ts": ts(2009, 2, 1) + i * D} for i in range(St.WEEKS_FROM_MIN)]
+wk = St.build(NOW, games, pics, tags, {"1": {"price_initial": 24.99}}, ea, {"1": [6.5, 30]}, {"1": 11}, state, unit="w")
+wi = lambda y, m, d: St.week_of(ts(y, m, d)) - wk["w0"]
+W = wk["m"]
+check("weekly file runs from the first release's week (no year here is busy) to now",
+      wk["w0"] == St.week_of(ts(2015, 3, 2)) and wk["weeks"] == St.week_of(NOW) - wk["w0"] + 1)
+wk2 = St.build(NOW, games + busy0, {}, {}, {}, {}, {}, {}, St.empty_state(), unit="w")
+check("...and from the first busy year's first week when an earlier year is quiet",
+      wk2["w0"] == St.week_of(ts(2009, 1, 1)) and sum(wk2["m"]["rel"]) == St.WEEKS_FROM_MIN + 5)
+check("each release lands in its own week", W["rel"][wi(2026, 7, 3)] == 1 and W["rel"][wi(2026, 7, 9)] == 1
+      and sum(W["rel"]) == 5)
+check("weekly rankings skip the adult-flagged game too",
+      "Sexual Content" not in wk["tags"]["names"] and [r for rows in wk["top"].values() for r in rows if r[0] == 2] == [])
+check("weekly sale timing keyed by release week", wk["sale"][str(wi(2026, 7, 3))]["e"] == {"40": 1})
+check("the weekly file carries no catalog-wide extras", "daily" not in wk and "sale_days" not in wk and "now" not in wk)
+busy = [{"appid": 100 + i, "release_ts": ts(2010, 1, 1) + i * D} for i in range(St.WEEKS_FROM_MIN)]
+check("first busy year: the first with WEEKS_FROM_MIN releases",
+      St.first_busy_year({g["appid"]: g["release_ts"] for g in games + busy}) == 2010)
 
 print(f"\n{'ALL PASS' if not fails else f'{len(fails)} FAILED'}")
 raise SystemExit(1 if fails else 0)
