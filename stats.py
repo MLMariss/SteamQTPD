@@ -29,7 +29,9 @@ SALE TIMING. prices.json holds only the current discount, so this job keeps the 
 in sales_state.json (not served): for each game it has watched since its release, the day it was
 first priced, the last day it was seen, and every sale episode [start day, last day seen on
 sale, deepest %] up to and including its first sale after the launch week. Plus one row per UTC
-day for the whole catalog: games priced, games on sale, the sum of their discounts. A game is
+day for the whole catalog: games priced, games on sale, the sum of their discounts — then the same
+three for each review-count group (SALE_GROUP_EDGES), so the page can tell the long tail's
+discounts from the hits'. A game is
 watched only if its first price check came within TRACK_SLACK days of its release, so "days to
 first sale" is never measured from a sale we might have missed. Games that left Early Access are
 left out: their release date is the 1.0 date, and they were on sale long before it.
@@ -44,7 +46,10 @@ Modes
                                commit of each UTC day, streamed from raw.githubusercontent.com,
                                never stored), from the state's last day — or from the first
                                price commit when there is no state — through the latest commit.
-                               Needs a full-history checkout (commits only).
+                               Day rows written before the review groups existed are rebuilt
+                               too: the replay starts at the first of them, recording only the
+                               day row until it reaches the state's last day. Needs a
+                               full-history checkout (commits only).
 
 One writer per file: only this script writes stats.json, stats_weeks.json and sales_state.json
 (workflow 4.6).
@@ -93,6 +98,11 @@ EA_AGE_EDGES = [365, 730, 1095, 1826]                                 # in EA no
 # Discount depth, for the launch discount and the first sale after it: 10-19% (Steam's floor is
 # 10%), 20-29% ... 80-89%, 90% (its ceiling). 9 bins.
 DISC_EDGES = [20, 30, 40, 50, 60, 70, 80, 90]
+# Review-count groups for the daily "how much of Steam is discounted" row: under 50, 50-999,
+# 1,000+ (today's count). They part the long tail, which skips most sales, from the games people
+# play, which join nearly all of them (Oct 2026: 48% / 77% / 89% discounted in a store-wide sale).
+SALE_GROUP_EDGES = [50, 1000]
+DAY_ROW = 3 * (len(SALE_GROUP_EDGES) + 2)        # catalog + one triple per group
 # Steam's review summary, as the store words it, for games with 10+ reviews.
 LABELS = ["Overwhelmingly Positive", "Very Positive", "Positive", "Mostly Positive", "Mixed",
           "Mostly Negative", "Negative", "Very Negative", "Overwhelmingly Negative"]
@@ -194,7 +204,8 @@ def save_state(state):
            "_note": "Written by stats.py (workflow 4.6); not served. games: {appid: [first priced "
                     "day, last seen day, then per sale: start day, last day seen on sale, deepest "
                     "%]} for games watched since release, up to their first sale after launch week. "
-                    "days: {day: [priced, on sale, sum of discount %]}. Days are UTC days since 1970.",
+                    "days: {day: [priced, on sale, sum of discount %, then the same three per "
+                    "review group: under 50, 50-999, 1000+ reviews]}. Days are UTC days since 1970.",
            "generated_at": int(time.time()), "last_day": state["last_day"],
            "games": state["games"], "days": state["days"]}
     STATE_FILE.write_text(json.dumps(out, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
@@ -235,29 +246,47 @@ def observe(state, appid, day, pct, rday):
     rec[1] = day
 
 
-def record(state, prices, releases, exclude, day):
-    """Fold one prices.json (its `prices` map) into the state: every watched or watchable game's
-    check, timed by its own scraped_at, and the catalog-wide row for UTC day `day`."""
-    priced = on_sale = pct_sum = 0
+def day_row(prices, reviews):
+    """One day's catalog row from a prices.json `prices` map: [priced, on sale, sum of %], then
+    the same three for each review group (SALE_GROUP_EDGES, by `reviews` {appid: count}); None
+    when nothing is priced."""
+    row = [0] * DAY_ROW
     for k, v in prices.items():
-        if not isinstance(v, dict):
+        if not isinstance(v, dict) or (v.get("price_initial") or 0) <= 0:
             continue
         pct = _int(v.get("discount_pct")) or 0
-        if (v.get("price_initial") or 0) > 0:
-            priced += 1
+        for i in (0, 3 + 3 * bisect_right(SALE_GROUP_EDGES, reviews.get(_int(k)) or 0)):
+            row[i] += 1
             if pct > 0:
-                on_sale += 1
-                pct_sum += pct
-        a = _int(k)
-        rday = releases.get(a)
-        ts = _int(v.get("scraped_at"))
-        if rday is None or a in exclude or not ts:
-            continue
-        observe(state, str(a), ts // DAY, pct, rday)
-    if priced:
-        state["days"][str(day)] = [priced, on_sale, pct_sum]
-    if state["last_day"] is None or day > state["last_day"]:
-        state["last_day"] = day
+                row[i + 1] += 1
+                row[i + 2] += pct
+    return row if row[0] else None
+
+
+def stale_days(state):
+    """Days whose row predates the review groups (three numbers), oldest first."""
+    return sorted(int(d) for d, row in state["days"].items() if len(row) < DAY_ROW)
+
+
+def record(state, prices, releases, exclude, reviews, day, games=True):
+    """Fold one prices.json (its `prices` map) into the state: every watched or watchable game's
+    check, timed by its own scraped_at, and the catalog-wide row for UTC day `day`. With
+    games=False only the day row is written (the backfill rebuilding rows behind the state)."""
+    if games:
+        for k, v in prices.items():
+            if not isinstance(v, dict):
+                continue
+            a = _int(k)
+            rday = releases.get(a)
+            ts = _int(v.get("scraped_at"))
+            if rday is None or a in exclude or not ts:
+                continue
+            observe(state, str(a), ts // DAY, _int(v.get("discount_pct")) or 0, rday)
+        if state["last_day"] is None or day > state["last_day"]:
+            state["last_day"] = day
+    row = day_row(prices, reviews)
+    if row:
+        state["days"][str(day)] = row
 
 
 # --------------------------------------------------------------------------- #
@@ -299,6 +328,7 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
     revb = [zeros() for _ in range(len(REV_EDGES) + 1)]
     lenb = [zeros() for _ in range(len(LEN_EDGES) + 1)]
     priceb = [zeros() for _ in range(len(PRICE_UB) + 2)]
+    pricerev = [zeros() for _ in range(len(PRICE_UB) + 2)]     # Steam reviews per price bin
     daily = [0] * (now // DAY - d0 + 1)
     tag_c, genre_c = {}, {}
     top = {}
@@ -324,16 +354,19 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
 
         pr = prices.get(str(a)) or {}
         price = pr.get("price_initial") if pr.get("price_initial") is not None else g.get("price_initial")
+        rcw = _int(g.get("review_count")) or 0
         if g.get("is_free"):
             A["free"][m] += 1
             priceb[0][m] += 1
+            pricerev[0][m] += rcw
         elif price and price > 0:
             A["priced"][m] += 1
             A["price_sum"][m] += round(price * 100)
             priceb[price_bin(price)][m] += 1
-            # Review-weighted: each paid game counts once per Steam review it has, so the mean
-            # leans to what players actually bought rather than to what was listed.
-            rcw = _int(g.get("review_count")) or 0
+            # Reviews stand in for sales: where the players went, by price, next to where the
+            # releases went. Review-weighted: each paid game counts once per Steam review it has,
+            # so the mean leans to what players actually bought rather than to what was listed.
+            pricerev[price_bin(price)][m] += rcw
             A["rw"][m] += rcw
             A["price_rw"][m] += round(price * 100) * rcw
 
@@ -457,7 +490,7 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
                      "Per-week arrays start at week w0 and run to the current week; week w runs from "
                      "UTC day 7w-3 (a Monday) to 7w+3. Same fields as stats.json's per-month ones.",
             "generated_at": now, "w0": m0, "weeks": n,
-            "m": A, "lab": lab, "revb": revb, "lenb": lenb, "priceb": priceb,
+            "m": A, "lab": lab, "revb": revb, "lenb": lenb, "priceb": priceb, "priceb_rev": pricerev,
             "tags": {"names": tag_names, "m": tag_m},
             "genres": {"names": [genre_names[str(g)] for g in genre_ids], "m": genre_m},
             "top": {str(m): v for m, v in sorted(top.items())},
@@ -478,7 +511,8 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         "labels": LABELS, "lab": lab,
         "rev_edges": REV_EDGES, "revb": revb,
         "len_edges": LEN_EDGES, "lenb": lenb,
-        "price_ub": PRICE_UB, "priceb": priceb,
+        "price_ub": PRICE_UB, "priceb": priceb, "priceb_rev": pricerev,
+        "sale_group_edges": SALE_GROUP_EDGES,
         "disc_edges": DISC_EDGES,
         "daily": daily,
         "tags": {"names": tag_names, "m": tag_m},
@@ -508,12 +542,14 @@ def read_local(name):
 
 
 def inputs():
-    """(games list, releases {appid: release day}, exclude set) from the working tree."""
+    """(games list, releases {appid: release day}, exclude set, reviews {appid: count}) from the
+    working tree."""
     games = (read_local("games") or {}).get("games") or []
     releases = {g["appid"]: _int(g.get("release_ts")) // DAY for g in games if _int(g.get("release_ts"))}
     ea = (read_local("ea_dates") or {}).get("games") or {}
     exclude = {_int(a) for a, v in ea.items() if isinstance(v, dict) and v.get("s")}
-    return games, releases, exclude
+    reviews = {g["appid"]: _int(g.get("review_count")) or 0 for g in games}
+    return games, releases, exclude, reviews
 
 
 def write_stats(now, games, state):
@@ -552,7 +588,7 @@ def dispatch_backfill():
 def live():
     now = int(time.time())
     today = now // DAY
-    games, releases, exclude = inputs()
+    games, releases, exclude, reviews = inputs()
     if not games:
         log("games.json missing or unreadable; nothing written")
         return 1
@@ -564,8 +600,12 @@ def live():
         dispatch_backfill()
     else:
         prices = (read_local("prices") or {}).get("prices") or {}
-        record(state, prices, releases, exclude, today)
+        record(state, prices, releases, exclude, reviews, today)
         save_state(state)
+        stale = stale_days(state)
+        if stale:
+            log(f"{len(stale)} day rows predate the review groups; the backfill rebuilds them from git")
+            dispatch_backfill()
     doc = write_stats(now, games, state)
     if doc is None:
         return 1
@@ -624,21 +664,26 @@ def backfill():
         log(f"only {len(commits)} commits visible; the backfill needs a full-history checkout")
         return 1
     now = int(time.time())
-    games, releases, exclude = inputs()
+    games, releases, exclude, reviews = inputs()
     if not games:
         log("games.json missing or unreadable; nothing written")
         return 1
     state = load_state()
     first = commits[0][1] // DAY
     start = state["last_day"] if state["last_day"] is not None else first
-    points = daily_points(commits, start, now // DAY)
+    # Rows from before the review groups are rebuilt: replay from the first of them, writing only
+    # the day row until the state's last day (the games' episodes are already recorded).
+    stale = stale_days(state)
+    begin = min(start, stale[0]) if stale else start
+    points = daily_points(commits, begin, now // DAY)
     log(f"{len(commits)} commits; replaying {len(points)} days of prices.json from "
-        f"{datetime.fromtimestamp(start * DAY, timezone.utc).date()}")
+        f"{datetime.fromtimestamp(begin * DAY, timezone.utc).date()}"
+        + (f" ({len(stale)} day rows rebuilt with review groups)" if stale else ""))
     started, seen = time.time(), 0
     for n, (day, sha) in enumerate(points, 1):
         doc = fetch_at(sha, "prices")
         if doc and doc.get("prices"):
-            record(state, doc["prices"], releases, exclude, day)
+            record(state, doc["prices"], releases, exclude, reviews, day, games=day >= start)
             seen += 1
         log(f"  {datetime.fromtimestamp(day * DAY, timezone.utc).date()} {sha[:7]}: "
             f"{len((doc or {}).get('prices') or {})} priced, {len(state['games'])} watched  "

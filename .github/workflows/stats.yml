@@ -60,7 +60,7 @@ jobs:
 
       - name: Record prices, rebuild stats
         env:
-          GH_TOKEN: ${{ github.token }}   # `gh workflow run stats.yml -f backfill=true` on a gap
+          GH_TOKEN: ${{ github.token }}   # `gh workflow run stats.yml -f backfill=true` on a gap or stale day rows
         run: python stats.py
 
   backfill:

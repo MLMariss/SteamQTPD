@@ -62,11 +62,25 @@ s = St.empty_state()
 prices = {"7": {"price_initial": 10, "discount_pct": 25, "scraped_at": ts(2026, 7, 2)},
           "8": {"price_initial": 5, "discount_pct": 0, "scraped_at": ts(2026, 7, 2)},
           "9": {"price_initial": 5, "discount_pct": 50, "scraped_at": ts(2026, 7, 2)},
-          "10": {"price_initial": 0, "discount_pct": 0, "scraped_at": ts(2026, 7, 2)}}
-St.record(s, prices, {7: R, 8: R, 9: R}, {9}, day(2026, 7, 2))
-check("day row: priced, on sale, sum of %", s["days"][str(day(2026, 7, 2))] == [3, 2, 75])
+          "10": {"price_initial": 0, "discount_pct": 0, "scraped_at": ts(2026, 7, 2)},
+          "11": {"price_initial": 60, "discount_pct": 40, "scraped_at": ts(2026, 7, 2)}}
+reviews = {7: 900, 8: 49, 9: 50, 11: 1000}
+St.record(s, prices, {7: R, 8: R, 9: R}, {9}, reviews, day(2026, 7, 2))
+row = s["days"][str(day(2026, 7, 2))]
+check("day row: priced, on sale, sum of % for the catalog", row[:3] == [4, 3, 115])
+check("...then per review group: under 50, 50-999, 1,000+ (edges inclusive above)",
+      row[3:] == [1, 0, 0, 2, 2, 75, 1, 1, 40] and len(row) == St.DAY_ROW)
 check("excluded (left Early Access) and unknown games are not watched", set(s["games"]) == {"7", "8"})
 check("last_day advances", s["last_day"] == day(2026, 7, 2))
+games_before = {k: list(v) for k, v in s["games"].items()}
+s["days"][str(day(2026, 6, 30))] = [9, 1, 10]
+check("rows from before the review groups are stale", St.stale_days(s) == [day(2026, 6, 30)])
+St.record(s, {"7": {"price_initial": 10, "discount_pct": 90, "scraped_at": ts(2026, 6, 30)}},
+          {7: R}, set(), reviews, day(2026, 6, 30), games=False)
+check("a day-row-only replay rebuilds the row and leaves games and last_day alone",
+      s["days"][str(day(2026, 6, 30))] == [1, 1, 90, 0, 0, 0, 1, 1, 90, 0, 0, 0]
+      and s["games"] == games_before and s["last_day"] == day(2026, 7, 2) and St.stale_days(s) == [])
+check("nothing priced: no row", St.day_row({"10": {"price_initial": 0}}, {}) is None)
 
 print("\n== backfill sampling ==")
 commits = [("a", ts(2026, 7, 1) + 3600), ("b", ts(2026, 7, 1) + 80000), ("c", ts(2026, 7, 3) + 10)]
@@ -113,6 +127,9 @@ check("a game that left Early Access is marked 1.0 in the list", [r[4] for r in 
 check("prices.json's list price wins over games.json's",
       doc["priceb"][St.price_bin(24.99)][mi(2026, 7)] == 1 and A["price_sum"][mi(2026, 7)] == 2499 + 999)
 check("free games land in bin 0", doc["priceb"][0][mi(2026, 8)] == 1 and A["free"][mi(2026, 8)] == 1)
+check("reviews per price bin: each game's reviews in its price bin, free games too",
+      doc["priceb_rev"][St.price_bin(24.99)][mi(2026, 7)] == 900 and doc["priceb_rev"][St.price_bin(9.99)][mi(2026, 7)] == 5000
+      and doc["priceb_rev"][0][mi(2026, 8)] == 3 and doc["sale_group_edges"] == St.SALE_GROUP_EDGES)
 check("AI, Deck, controller, VR counted over PICS-covered games",
       A["pics"][mi(2026, 7)] == 2 and A["ai"][mi(2026, 7)] == 2 and A["ai_live"][mi(2026, 7)] == 1
       and A["deck3"][mi(2026, 7)] == 1 and A["ctrl_full"][mi(2026, 7)] == 1 and A["vr"][mi(2026, 7)] == 1)
@@ -152,6 +169,7 @@ check("each release lands in its own week", W["rel"][wi(2026, 7, 3)] == 1 and W[
 check("weekly rankings skip the adult-flagged game too",
       "Sexual Content" not in wk["tags"]["names"] and [r for rows in wk["top"].values() for r in rows if r[0] == 2] == [])
 check("weekly sale timing keyed by release week", wk["sale"][str(wi(2026, 7, 3))]["e"] == {"40": 1})
+check("weekly reviews per price bin", wk["priceb_rev"][St.price_bin(24.99)][wi(2026, 7, 3)] == 900)
 check("the weekly file carries no catalog-wide extras", "daily" not in wk and "sale_days" not in wk and "now" not in wk)
 busy = [{"appid": 100 + i, "release_ts": ts(2010, 1, 1) + i * D} for i in range(St.WEEKS_FROM_MIN)]
 check("first busy year: the first with WEEKS_FROM_MIN releases",

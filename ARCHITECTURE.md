@@ -717,7 +717,8 @@ from `m0` to the current month, so the page sums months into quarters and years:
 arrays: releases, releases without the adult flag, PICS-covered, AI / AI-live, Deck 1-3,
 controller, VR, demo, EA launches / still in EA, rated, rating sum, Length count, priced, price
 sum in cents, free, and `rw` / `price_rw`: reviews of paid games and their price × reviews in
-cents, for the review-weighted mean), histograms as one array per bin (`priceb` by `price_ub`, `revb` by
+cents, for the review-weighted mean), histograms as one array per bin (`priceb` by `price_ub` and
+`priceb_rev`, the Steam reviews of the games in each of those bins, free ones too; `revb` by
 `rev_edges`, `lenb` by `len_edges`, `lab` by Steam's nine review `labels`), `tags` / `genres`
 (`names` + one array each, over games without the adult flag), `daily` (releases per UTC day
 from `d0`), `top` (`{month: [[appid, title, reviews, pct, left_ea], ...]}`, ten per month, adult
@@ -726,10 +727,11 @@ e:{day: count}, c:{day: count}, ep, lh, fh}}`: games watched from launch, launch
 their % sum, first sales after launch week and censored games by day since release, first-sale %
 sum, and how deep the launch discount and the first sale went, binned by `disc_edges`: 10-19%,
 20-29% ... 80-89%, 90%),
-`sale_days` (`[day, priced, on sale, % sum]` per UTC day) and `now` (in EA now and its age bins,
+`sale_days` (`[day, priced, on sale, % sum]` per UTC day, then the same three for each review
+group of `sale_group_edges`: under 50, 50-999, 1,000+ reviews today) and `now` (in EA now and its age bins,
 announced 1.0 dates). **`stats_weeks.json`** (~890 KB raw, ~290 KB gzipped, served; fetched only
 when the page's Week is picked) — the same per-bucket fields (`m`, `lab`, `revb`, `lenb`,
-`priceb`, `tags`, `genres`, `top`, `ea_out`, `sale`) **per release week**, Monday to Sunday UTC,
+`priceb`, `priceb_rev`, `tags`, `genres`, `top`, `ea_out`, `sale`) **per release week**, Monday to Sunday UTC,
 from week `w0` (week *w* runs from UTC day 7*w* − 3, a Monday) for `weeks` weeks; weeks don't nest
 in months, hence a file of its own. It starts in the first year with 50 releases (2006), where the
 page's timeline starts, and carries none of the catalog-wide extras (`daily`, `sale_days`, `now`).
@@ -3218,7 +3220,14 @@ not yet discounted counts as "not yet, as of its last check", so the median isn'
 the games that sold first. First readings (Jul-Aug 2026 releases): ~75% launch with a discount,
 ~20% off; the first sale after launch comes at a median 48-69 days, almost never before day 30.
 `sale_days` adds one catalog-wide row a day (games priced, on sale, % sum), the last check of the
-UTC day, for the "how much of Steam is on sale" line.
+UTC day, then the same three per **review group** (`SALE_GROUP_EDGES`: under 50, 50-999, 1,000+
+reviews, by today's count), for the "how much of Steam is discounted" lines. The groups part the
+long tail from the games people play: in the store-wide sale of 3 Oct 2026, 48% / 77% / 89% of
+them were discounted (12% / 18% / 20% on an ordinary day), and the 1,000+ group went deeper (59%
+off against 51%). Splitting by price instead parts them barely (54% / 72% / 61% for under $10 /
+$10-29.99 / $30+). Rows from before the groups (Oct 2026) have three numbers; the backfill
+rebuilds them from git (`stale_days()`: it replays from the first such row, writing only the day
+row until the state's last day), and the live run dispatches it while any remain.
 **Why nothing happens before day 30.** Steamworks allows no discount in a game's first 30 days
 except the launch discount (set up before release, up to 40% off, in the first week), and then 30
 days between discounts; the page shades days 0-30 on the curve and says so. The section opens with
