@@ -728,7 +728,7 @@ their % sum, first sales after launch week and censored games by day since relea
 sum, and how deep the launch discount and the first sale went, binned by `disc_edges`: 10-19%,
 20-29% ... 80-89%, 90%),
 `sale_days` (`[day, priced, on sale, % sum]` per UTC day, then the same three for each review
-group of `sale_group_edges`: under 50, 50-999, 1,000+ reviews today) and `now` (in EA now and its age bins,
+group of `sale_group_edges`: 0-99, 100-4,999, 5,000+ reviews today) and `now` (in EA now and its age bins,
 announced 1.0 dates). **`stats_weeks.json`** (~890 KB raw, ~290 KB gzipped, served; fetched only
 when the page's Week is picked) — the same per-bucket fields (`m`, `lab`, `revb`, `lenb`,
 `priceb`, `priceb_rev`, `tags`, `genres`, `top`, `ea_out`, `sale`) **per release week**, Monday to Sunday UTC,
@@ -3226,14 +3226,19 @@ not yet discounted counts as "not yet, as of its last check", so the median isn'
 the games that sold first. First readings (Jul-Aug 2026 releases): ~75% launch with a discount,
 ~20% off; the first sale after launch comes at a median 48-69 days, almost never before day 30.
 `sale_days` adds one catalog-wide row a day (games priced, on sale, % sum), the last check of the
-UTC day, then the same three per **review group** (`SALE_GROUP_EDGES`: under 50, 50-999, 1,000+
-reviews, by today's count), for the "how much of Steam is discounted" lines. The groups part the
-long tail from the games people play: in the store-wide sale of 3 Oct 2026, 48% / 77% / 89% of
-them were discounted (12% / 18% / 20% on an ordinary day), and the 1,000+ group went deeper (59%
-off against 51%). Splitting by price instead parts them barely (54% / 72% / 61% for under $10 /
-$10-29.99 / $30+). Rows from before the groups (Oct 2026) have three numbers; the backfill
-rebuilds them from git (`stale_days()`: it replays from the first such row, writing only the day
-row until the state's last day), and the live run dispatches it while any remain.
+UTC day, then the same three per **review group** (`SALE_GROUP_EDGES`: 0-99, 100-4,999, 5,000+
+reviews, by today's count — the main page's Min reviews bands with 100-999 and 1k-4,999 merged, so
+the chart keeps to three lines), one line each on the "how much of Steam is discounted" chart; the
+all-games share sits in its subtitle, tooltip head and table. The groups part the long tail from
+the games people play: in the store-wide sale of 3 Oct 2026, 50% / 82% / 90% of them were
+discounted (10% / 19% / 20% on an ordinary day), and the 5,000+ group went deeper (62% off against
+52%). Splitting by price instead parts them barely (54% / 72% / 61% for under $10 / $10-29.99 /
+$30+). The state records the edges its rows were split at (`groups`); when they differ from
+`SALE_GROUP_EDGES` (the first groups were 50 / 1,000; rows from before any have three numbers)
+`stale_days()` returns every day, the live run dispatches the backfill, and the backfill replays
+them all from git (day rows only behind the state's last day) and then records the new edges.
+Until it has, `stats.json` carries the catalog numbers only, so no row is shown under the wrong
+labels; a day git can't give back keeps its catalog numbers only.
 **Why nothing happens before day 30.** Steamworks allows no discount in a game's first 30 days
 except the launch discount (set up before release, up to 40% off, in the first week), and then 30
 days between discounts; the page shades days 0-30 on the curve and labels it, and draws the launch

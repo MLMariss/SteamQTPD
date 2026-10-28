@@ -46,7 +46,7 @@ Modes
                                commit of each UTC day, streamed from raw.githubusercontent.com,
                                never stored), from the state's last day — or from the first
                                price commit when there is no state — through the latest commit.
-                               Day rows written before the review groups existed are rebuilt
+                               Day rows grouped by other review edges (or by none) are rebuilt
                                too: the replay starts at the first of them, recording only the
                                day row until it reaches the state's last day. Needs a
                                full-history checkout (commits only).
@@ -98,10 +98,13 @@ EA_AGE_EDGES = [365, 730, 1095, 1826]                                 # in EA no
 # Discount depth, for the launch discount and the first sale after it: 10-19% (Steam's floor is
 # 10%), 20-29% ... 80-89%, 90% (its ceiling). 9 bins.
 DISC_EDGES = [20, 30, 40, 50, 60, 70, 80, 90]
-# Review-count groups for the daily "how much of Steam is discounted" row: under 50, 50-999,
-# 1,000+ (today's count). They part the long tail, which skips most sales, from the games people
-# play, which join nearly all of them (Oct 2026: 48% / 77% / 89% discounted in a store-wide sale).
-SALE_GROUP_EDGES = [50, 1000]
+# Review-count groups for the daily "how much of Steam is discounted" row: 0-99, 100-4,999, 5,000+
+# (today's count), the main page's Min reviews bands with 100-999 and 1k-4,999 merged so the chart
+# keeps to three lines. They part the long tail, which skips most sales, from the games people
+# play, which join nearly all of them (3 Oct 2026, a store-wide sale: 50% / 82% / 90% discounted).
+# The state records the edges its rows were built with ("groups"); changing them here rebuilds
+# every row from git (stale_days), and until then the page gets the catalog numbers only.
+SALE_GROUP_EDGES = [100, 5000]
 DAY_ROW = 3 * (len(SALE_GROUP_EDGES) + 2)        # catalog + one triple per group
 # Steam's review summary, as the store words it, for games with 10+ reviews.
 LABELS = ["Overwhelmingly Positive", "Very Positive", "Positive", "Mostly Positive", "Mixed",
@@ -184,7 +187,7 @@ UNITS = {"m": month_of, "w": week_of}
 # Sale episodes (sales_state.json)
 # --------------------------------------------------------------------------- #
 def empty_state():
-    return {"games": {}, "days": {}, "last_day": None}
+    return {"games": {}, "days": {}, "last_day": None, "groups": list(SALE_GROUP_EDGES)}
 
 
 def load_state():
@@ -192,7 +195,8 @@ def load_state():
         d = json.loads(STATE_FILE.read_text(encoding="utf-8"))
         if d.get("_format") == "sales_state_v1":
             return {"games": d.get("games") or {}, "days": d.get("days") or {},
-                    "last_day": d.get("last_day")}
+                    "last_day": d.get("last_day"),
+                    "groups": d.get("groups") if d.get("days") else list(SALE_GROUP_EDGES)}
         log("sales_state.json has another format; starting it again")
     except (OSError, ValueError):
         pass
@@ -205,8 +209,8 @@ def save_state(state):
                     "day, last seen day, then per sale: start day, last day seen on sale, deepest "
                     "%]} for games watched since release, up to their first sale after launch week. "
                     "days: {day: [priced, on sale, sum of discount %, then the same three per "
-                    "review group: under 50, 50-999, 1000+ reviews]}. Days are UTC days since 1970.",
-           "generated_at": int(time.time()), "last_day": state["last_day"],
+                    "review group, split at the review counts in groups]}. Days are UTC days since 1970.",
+           "generated_at": int(time.time()), "last_day": state["last_day"], "groups": state.get("groups"),
            "games": state["games"], "days": state["days"]}
     STATE_FILE.write_text(json.dumps(out, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
 
@@ -264,8 +268,9 @@ def day_row(prices, reviews):
 
 
 def stale_days(state):
-    """Days whose row predates the review groups (three numbers), oldest first."""
-    return sorted(int(d) for d, row in state["days"].items() if len(row) < DAY_ROW)
+    """Every day, oldest first, when the rows were grouped by other review edges than
+    SALE_GROUP_EDGES (or by none); else nothing."""
+    return [] if state.get("groups") == SALE_GROUP_EDGES else sorted(int(d) for d in state["days"])
 
 
 def record(state, prices, releases, exclude, reviews, day, games=True):
@@ -499,7 +504,10 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         }
     ea_planned = sum(1 for v in ea_dates.values() if isinstance(v, dict) and v.get("ea")
                      and _int(v.get("v")) and v["v"] > now)
-    sale_days = sorted([int(d), *row] for d, row in state["days"].items())
+    # Groups built on other edges are not published under the current ones: catalog numbers only
+    # until the backfill has rebuilt them.
+    grouped = state.get("groups") == SALE_GROUP_EDGES
+    sale_days = sorted([int(d), *(row if grouped else row[:3])] for d, row in state["days"].items())
     return {
         "_format": "stats_v1",
         "_note": "Written by stats.py (workflow 4.6); charted by stats.html. Per-month arrays start "
@@ -604,7 +612,7 @@ def live():
         save_state(state)
         stale = stale_days(state)
         if stale:
-            log(f"{len(stale)} day rows predate the review groups; the backfill rebuilds them from git")
+            log(f"{len(stale)} day rows are grouped by other review edges; the backfill rebuilds them from git")
             dispatch_backfill()
     doc = write_stats(now, games, state)
     if doc is None:
@@ -671,7 +679,7 @@ def backfill():
     state = load_state()
     first = commits[0][1] // DAY
     start = state["last_day"] if state["last_day"] is not None else first
-    # Rows from before the review groups are rebuilt: replay from the first of them, writing only
+    # Rows grouped by other review edges are rebuilt: replay from the first of them, writing only
     # the day row until the state's last day (the games' episodes are already recorded).
     stale = stale_days(state)
     begin = min(start, stale[0]) if stale else start
@@ -679,17 +687,27 @@ def backfill():
     log(f"{len(commits)} commits; replaying {len(points)} days of prices.json from "
         f"{datetime.fromtimestamp(begin * DAY, timezone.utc).date()}"
         + (f" ({len(stale)} day rows rebuilt with review groups)" if stale else ""))
-    started, seen = time.time(), 0
+    started, seen, rebuilt = time.time(), 0, set()
     for n, (day, sha) in enumerate(points, 1):
         doc = fetch_at(sha, "prices")
         if doc and doc.get("prices"):
             record(state, doc["prices"], releases, exclude, reviews, day, games=day >= start)
             seen += 1
+            rebuilt.add(day)
         log(f"  {datetime.fromtimestamp(day * DAY, timezone.utc).date()} {sha[:7]}: "
             f"{len((doc or {}).get('prices') or {})} priced, {len(state['games'])} watched  "
             f"[{n}/{len(points)}, {time.time() - started:.0f}s]")
         if n % 15 == 0:
             save_state(state)                      # a timeout keeps what was replayed
+    if stale:
+        # Every row has been replayed: the groups are current. A day git couldn't give back keeps
+        # its catalog numbers only, rather than groups split at the old edges.
+        lost = [d for d in stale if d not in rebuilt]
+        for d in lost:
+            state["days"][str(d)] = state["days"][str(d)][:3]
+        state["groups"] = list(SALE_GROUP_EDGES)
+        log(f"review groups rebuilt for {len(stale) - len(lost)} days"
+            + (f"; {len(lost)} kept catalog numbers only" if lost else ""))
     save_state(state)
     doc = write_stats(now, games, state)
     if doc is None:

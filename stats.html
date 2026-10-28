@@ -725,7 +725,7 @@ function lineChart(host, {series, areas, x0, x1, height, yMax, yFmt, axisFmt, xF
     svgEl("text", {x:ml - 6, y:y(v) + 4, "text-anchor":"end"}, ax).textContent = axisFmt(v);
   }
   const xt = xTicks ? xTicks(pw) : [];
-  xt.forEach(([v, text], i) => svgEl("text", {x:x(v), y:H - 6, "text-anchor": i === 0 && x(v) < ml + 20 ? "start" : "middle"}, ax).textContent = text);
+  xt.forEach(([v, text], i) => svgEl("text", {x:x(v), y:H - 6, "text-anchor": i === 0 && x(v) < ml + 20 ? "start" : x(v) > W - mr - 20 ? "end" : "middle"}, ax).textContent = text);
   for(const s of series){
     let d = "", pen = false, prevY = null;
     for(const [t, v] of s.pts){
@@ -1370,13 +1370,14 @@ function renderSales(A, B, p, q){
     label:"Share of launch discounts and of first discounts after launch by how much they took off", valueLabel:pctLabel,
     xLabel:(c, i) => cdp.clientWidth < 520 ? ["10", "20", "30", "40", "50", "60", "70", "80", "90"][i] + (i ? "" : "%") : c.label});
 
-  // How much of Steam is discounted: every day since the price check covered the catalog, for all
-  // priced games and for each review group (rows from before the groups carry only the first).
+  // How much of Steam is discounted: every day since the price check covered the catalog, one line
+  // per review group (the main page's Min reviews bands, three of them); the all-games share is in
+  // the subtitle, the tooltip head and the table. Rows without groups draw the all-games line alone.
   const days = S.sale_days, maxP = Math.max(...days.map(d => d[1]));
   const full = days.filter(d => d[1] >= 0.8 * maxP);
   const last = days[days.length - 1];
-  const ge = S.sale_group_edges || [50, 1000];
-  const GROUPS = [{name:`Under ${fmtInt(ge[0])} reviews`, color:C.s2}, {name:`${fmtInt(ge[0])}–${fmtInt(ge[1] - 1)} reviews`, color:"var(--s3)"},
+  const ge = S.sale_group_edges || [100, 5000];
+  const GROUPS = [{name:`0–${fmtInt(ge[0] - 1)} reviews`, color:C.s2}, {name:`${fmtInt(ge[0])}–${fmtInt(ge[1] - 1)} reviews`, color:"var(--s3)"},
                   {name:`${fmtInt(ge[1])}+ reviews`, color:C.sel}].map((g, k) => ({...g, k:4 + 3 * k}));   // row: day, then triples
   const grouped = full.some(d => d.length > 4);
   const share = (d, k) => d.length > k + 1 && d[k] ? d[k + 1] / d[k] : null;
@@ -1385,20 +1386,20 @@ function renderSales(A, B, p, q){
   const ic = $("#i-cal"); ic.textContent = "";
   ic.appendChild(info(`The last price check of each UTC day, over games with a US price. ${grouped ? "Groups go by each game's Steam reviews today. " : ""}`
     + `Days before the hourly check reached most of the catalog (${full.length < days.length ? `before ${fmtDayTs(full[0][0])}` : "none"}) are left out.`));
-  const all = {name:"All games", color:C.cmp, k:0, op:grouped ? 0.7 : null, width:grouped ? 1.5 : 2};
-  const lines = grouped ? [...GROUPS, all] : [all];
+  const lines = grouped ? GROUPS : [{name:"All games", color:C.sel, k:0}];
   const lg = $("#lg-cal"); lg.textContent = "";
   for(const L of lines){ const e = el("span"), i = el("i", "line"); i.style.background = L.color; e.append(i, L.name); lg.appendChild(e); }
   const cc = $("#c-cal");
   if(full.length < 2) empty(cc, "Not enough days recorded yet.");
-  else lineChart(cc, {series:lines.map(L => ({name:L.name, color:L.color, op:L.op, width:L.width, k:L.k,
+  else lineChart(cc, {series:lines.map(L => ({name:L.name, color:L.color, k:L.k,
       pts:full.map(d => [d[0], L.k ? share(d, L.k) : d[2] / d[1]])})),
     x0:full[0][0], x1:full[full.length - 1][0], height:fitH(cc, 0.24, 160, 240),
     yFmt:(v, sr, t) => { const d = full.find(d => d[0] === t), k = sr.k || 1;
       return d ? `${fmtPct(v)} · ${fmtInt(d[k + 1])} of ${fmtInt(d[k])} · ${avgOff(d, k)}% off avg` : fmtPct(v); },
     axisFmt:v => Math.round(v * 100) + "%", xFmt:fmtDayLong,
+    tipHead:t => { const d = full.find(d => d[0] === t); return d && grouped ? `${fmtDayLong(t)} · all games ${fmtPct(d[2] / d[1])}, ${avgOff(d, 1)}% off avg` : fmtDayLong(t); },
     xTicks:pw => { const n = Math.max(2, Math.floor(pw / 70)), st = Math.max(1, Math.ceil((full.length - 1) / n)), out = []; for(let i = 0; i < full.length; i += st) out.push([full[i][0], fmtDayTs(full[i][0])]); return out; },
-    label:"Share of priced games discounted, per day" + (grouped ? ", for all games and by review count" : "")});
+    label:"Share of priced games discounted, per day" + (grouped ? ", by review count" : "")});
   const kmRow = (r, d) => r && r.km ? (r.km[d] != null ? fmtPct(r.km[d], 0) : "—") : "—";
   const dep = (r, k, i) => { const t = r.sale[k].reduce((a, b) => a + b, 0); return t ? `${fmtPct(r.sale[k][i] / t, 0)} (${fmtInt(r.sale[k][i])})` : "—"; };
   const dayCell = d => `${fmtPct(d[2] / d[1])} (${fmtInt(d[2])})` + (d.length > 4 ? " · " + GROUPS.map(g => `${g.name.replace(" reviews", "")}: ${fmtPct(share(d, g.k), 0)}`).join(" · ") : "");
