@@ -3170,10 +3170,12 @@ grouping in use — in Week view the week of the 1st), against the period before
 year earlier, any other period at that grouping (**vs other…**: a list with its own ‹ ›, or a
 shift-click on the timeline; it stays put while the selection moves), or nothing (**No compare**:
 every compared bar, tick, line, change and legend goes), every chart and tile following the pick: releases per day and per weekday; the most
-common tags and genres with what rose and fell; price ranges and the median / mean price over
-time; Early Access launches, how long the games that left it in the period had spent in it, and
-how many are in it now; how soon a new release first goes on sale and how much of the store is
-on sale each day; AI disclosure, Steam Deck, controller and VR shares over time; reviews per
+common tags and genres with what rose and fell; price ranges (nine, the top end split at Steam's
+$59.99 and $69.99 price points, as a share of releases or — a switch — of the Steam reviews those
+releases got, reviews standing in for sales) and the median / mean price over time; Early Access
+launches and 1.0 exits as shares of releases, how long the games that left it in the period had
+spent in it, and how many are in it now; how soon a new release first gets a discount and how much
+of the store is discounted each day, overall and by review count; AI disclosure, Steam Deck, controller and VR shares over time; reviews per
 game, the Steam rating mix, Length, the period's biggest releases; and demos. A period still in
 progress is marked *so far*, and release counts compare per day so it compares fairly. The URL
 hash holds the pick (`#2026-W43`, `#2026-09`, `#2026-Q3`, `#2026`, then `&vs=yoy`, `&vs=none` or
@@ -3186,7 +3188,11 @@ takes the period holding it, a finer one its latest complete part (2025 → its 
 the tag and genre rows (which have a header row naming the periods and a **Change** column in
 points) and the tables. Categorical bars carry their share as a whole percent above the bar when
 every label fits (`columnChart`'s `valueLabel`; a narrow screen drops them rather than piling them
-up), and the rating mix writes its share on each segment wide enough. A change is coloured by its
+up; one decimal under 1%, and a pair whose two labels won't sit side by side stacks them over the
+pair), and the rating mix writes its share on each segment wide enough. **Numbers are content**
+(Oct 2026): every figure is set in IBM Plex Sans with tabular digits — 14px in the main text
+colour for values, 12px at least for axes and headers — and nothing on the page is under 12px;
+monospace is kept for small chrome (the period bar, "Table", the footer). A change is coloured by its
 **direction only** — green up, red down, beside its ▲ ▼ — never by whether it is good, which
 depends on who is reading. The page carries the QTPD wordmark, linking back to the game list.
 
@@ -3230,7 +3236,11 @@ rebuilds them from git (`stale_days()`: it replays from the first such row, writ
 row until the state's last day), and the live run dispatches it while any remain.
 **Why nothing happens before day 30.** Steamworks allows no discount in a game's first 30 days
 except the launch discount (set up before release, up to 40% off, in the first week), and then 30
-days between discounts; the page shades days 0-30 on the curve and says so. The section opens with
+days between discounts; the page shades days 0-30 on the curve and labels it, and draws the launch
+week as a column at the share that launched with a discount (the compared period's beside it), so
+both halves read on one chart: ~75% launch discounted, then the curve climbs from day 30. The
+section says **discount**, never "sale", so it isn't read as sales figures; each chart carries one
+line under its heading and keeps the detail in its ⓘ. The section opens with
 a summary row — games watched, launch discount (share, count, average % off), median day of the
 first sale after launch (or "> N days" while fewer than half have had one), and how deep that sale
 went — then the curve, whose tooltip gives the games behind a point (how many had their first sale
