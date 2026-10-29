@@ -64,22 +64,25 @@ prices = {"7": {"price_initial": 10, "discount_pct": 25, "scraped_at": ts(2026, 
           "9": {"price_initial": 5, "discount_pct": 50, "scraped_at": ts(2026, 7, 2)},
           "10": {"price_initial": 0, "discount_pct": 0, "scraped_at": ts(2026, 7, 2)},
           "11": {"price_initial": 60, "discount_pct": 40, "scraped_at": ts(2026, 7, 2)}}
-reviews = {7: 900, 8: 49, 9: 50, 11: 1000}
+reviews = {7: 900, 8: 99, 9: 100, 11: 5000}
 St.record(s, prices, {7: R, 8: R, 9: R}, {9}, reviews, day(2026, 7, 2))
 row = s["days"][str(day(2026, 7, 2))]
 check("day row: priced, on sale, sum of % for the catalog", row[:3] == [4, 3, 115])
-check("...then per review group: under 50, 50-999, 1,000+ (edges inclusive above)",
+check("...then per review group: 0-99, 100-4,999, 5,000+ (edges inclusive above)",
       row[3:] == [1, 0, 0, 2, 2, 75, 1, 1, 40] and len(row) == St.DAY_ROW)
 check("excluded (left Early Access) and unknown games are not watched", set(s["games"]) == {"7", "8"})
 check("last_day advances", s["last_day"] == day(2026, 7, 2))
 games_before = {k: list(v) for k, v in s["games"].items()}
+check("a fresh state's rows are grouped by the current edges: nothing stale", St.stale_days(s) == [])
 s["days"][str(day(2026, 6, 30))] = [9, 1, 10]
-check("rows from before the review groups are stale", St.stale_days(s) == [day(2026, 6, 30)])
+s["groups"] = [50, 1000]
+check("rows grouped by other edges (or none) are all stale, oldest first",
+      St.stale_days(s) == [day(2026, 6, 30), day(2026, 7, 2)])
 St.record(s, {"7": {"price_initial": 10, "discount_pct": 90, "scraped_at": ts(2026, 6, 30)}},
           {7: R}, set(), reviews, day(2026, 6, 30), games=False)
 check("a day-row-only replay rebuilds the row and leaves games and last_day alone",
       s["days"][str(day(2026, 6, 30))] == [1, 1, 90, 0, 0, 0, 1, 1, 90, 0, 0, 0]
-      and s["games"] == games_before and s["last_day"] == day(2026, 7, 2) and St.stale_days(s) == [])
+      and s["games"] == games_before and s["last_day"] == day(2026, 7, 2))
 check("nothing priced: no row", St.day_row({"10": {"price_initial": 0}}, {}) is None)
 
 print("\n== backfill sampling ==")
@@ -143,6 +146,11 @@ check("a game that left Early Access is not counted in sale timing", str(mi(2026
 check("reception bins and labels", doc["lab"][0][mi(2026, 7)] == 1 and A["rated"][mi(2026, 7)] == 2)
 check("daily releases land on their day", doc["daily"][day(2026, 7, 3) - doc["d0"]] == 1)
 check("sale days are carried as rows", doc["sale_days"] == [[day(2026, 9, 14), 100, 10, 300]])
+old_groups = dict(state, days={str(day(2026, 9, 14)): [100, 10, 300, 1, 2, 3, 4, 5, 6, 7, 8, 9]}, groups=[50, 1000])
+check("groups built on other edges are not published: catalog numbers only until rebuilt",
+      St.build(NOW, games, pics, tags, {}, ea, {}, {}, old_groups)["sale_days"] == [[day(2026, 9, 14), 100, 10, 300]])
+cur_groups = dict(old_groups, groups=list(St.SALE_GROUP_EDGES))
+check("...and in full once they match", St.build(NOW, games, pics, tags, {}, ea, {}, {}, cur_groups)["sale_days"][0][4:] == list(range(1, 10)))
 check("discount depth: launch 10% in the 10-19% bin, first sale 30% in the 30-39% bin",
       sj["lh"][0] == 1 and sum(sj["lh"]) == 1 and sj["fh"][St.DISC_EDGES.index(30) + 1] == 1 and sum(sj["fh"]) == 1)
 check("review-weighted price: each paid game weighted by its reviews",
