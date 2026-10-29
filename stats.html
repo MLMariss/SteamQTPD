@@ -1672,5 +1672,7 @@ fetch("stats.json", {cache:"no-store"})
   })
   .catch(e => { $("#asof").textContent = `Couldn't load the statistics (${e.message}).`; console.error(e); });
 </script>
+<!-- Cloudflare Web Analytics: cookieless visitor counts. Dashboard: Cloudflare → Web Analytics → mlmariss.github.io. -->
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8f2146dcb70f42b58123a927453e1a04"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
