@@ -175,7 +175,11 @@ def read_notices(payload, appid):
 
 
 AC_SECTION = re.compile(r'class="([^"]*\banticheat_section\b[^"]*)"', re.I)
-AC_NAME = re.compile(r'class="[^"]*\banticheat_name\b[^"]*"[^>]*>(.*?)</', re.I | re.S)
+# The name is the element's OWN text, up to its first child tag: Steam nests the uninstall note
+# inside it (`<div class="anticheat_name">BattlEye<span class="anticheat_uninstalls"> - Requires
+# manual removal after game uninstall</span></div>`, probe Q5, 2026-11-02), and that note is not
+# part of the name.
+AC_NAME = re.compile(r'class="[^"]*\banticheat_name\b[^"]*"[^>]*>([^<]*)', re.I)
 AC_UNINSTALL = re.compile(r'class="[^"]*\banticheat_uninstalls\b')
 # A store page we can trust to be the GAME's page, not an age gate, error or region page.
 PAGE_OK = re.compile(r'class="[^"]*\bgame_area_purchase\b|id="game_area_purchase"|'
