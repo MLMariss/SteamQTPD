@@ -606,7 +606,7 @@ each single-writes its `.md`):
 | `shard-health.yml`  | `shard_health.py` | `SHARDS.md`   | `35 6 * * *` (daily)                             | `shards-md`       |
 | `coverage.yml`      | `coverage.py`     | `COVERAGE.md` | `workflow_run` after **scrape** succeeds (~4×/day) | `coverage-md`     |
 | `freshness.yml`     | `freshness.py`    | `FRESHNESS.md`| `0 7 * * *` (daily, the morning oversight pass)  | `freshness-md`    |
-| `presets.yml`       | `presets.py`      | `presets.json`| `workflow_run` after **scrape** succeeds (~4×/day) | `presets-json`    |
+| `presets.yml`       | `presets.py`      | `presets.json`| `workflow_run` after **scrape** succeeds (~4×/day); **push of `presets.py` to main** (then dispatches `pages.yml`) | `presets-json`    |
 | `monitor.yml`       | `monitor.py`      | `monitor.json`| `workflow_run` after **every** scrape + dispatched by the price job after **every** pass (~hourly) + `17 */2 * * *` backstop; manual `backfill` | `monitor-json` |
 | `stats.yml`         | `stats.py`        | `stats.json` + `stats_weeks.json` + `sales_state.json` | dispatched by the price job after **every** pass (~hourly) + `43 */3 * * *` backstop; `backfill` dispatched by itself on a gap, or by hand | `stats-json` |
 
@@ -2444,12 +2444,15 @@ opposite questions. The row wraps to two lines below ~2000px wide.
   mmorpg,massively+multiplayer,free+to+play`. Their Length is enormous — the people who
   recommend an MMO or an idler have played it for hundreds of hours (it was the same under HLTB:
   EVE Online's "main" was 1,777 h) — so divided by a small price they top every value ranking. Excluded from the
-  **length shelves**, and from the two **Flags shelves** below, which sort by QTPD over a broad
+  **length shelves**, and (idlers only, for *No AI*) from the two **Flags shelves** below, which sort by QTPD over a broad
   band where an idler opens the list (Cookie Clicker did, on the first cut of *No AI*). They are
   legitimate results everywhere else.
 - **The Flags shelves (2026-11-02).** *No AI, no strings* goes **first** (owner's call): no AI
-  disclosure (`ai=hide`) and `noflags=ea,eula,fse,iap` — finished, no publisher EULA, no
-  family-share block, no in-app purchases — at 80%+ / 5k+. On its own `ai=hide` moved only 55
+  disclosure (`ai=hide`) and `noflags=ea,eula,fse,iap,drm,acct` — finished, no publisher EULA,
+  no family-share block, no in-app purchases, no 3rd-party DRM or account notice — at 80%+ / 5k+.
+  Its `exc=` is its own shorter list (`NO_IDLE`: idlers and free-to-play): the owner let MMOs
+  back onto it from the live page, the same day `drm` / `acct` were added. `presets.py` reads
+  `exc=` straight off each query, so a shelf with its own list is measured as the page runs it. On its own `ai=hide` moved only 55
   of 2,442 popular games, so the bundle is what makes it a shelf; the EULA rule alone drops
   about a third of popular games, much of AAA, and that was chosen knowingly. The label says
   "No AI" while the data says "no AI *disclosed*" — Valve's disclosure is developer-written and
@@ -3681,6 +3684,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **No AI shelf tightened; shelf changes publish themselves (2 Nov 2026).** *No AI, no strings*
+  also excludes 3rd-party DRM and 3rd-party accounts, and lets MMOs back in (owner, from the live
+  page). `presets.yml` now also runs on a push of `presets.py` to main and dispatches the Pages
+  deploy: the first version of the shelf sat unseen for hours after merge, waiting for a scrape
+  to finish and trigger the shelf job. §11 *Preset shelves*.
 
 - **Store notices: 3rd-party DRM, 3rd-party account, kernel anti-cheat (2 Nov 2026).** New
   daily job `notices.py` (2.13) → `notices.json`, three new Flags with summary chips, and
