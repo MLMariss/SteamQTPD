@@ -505,16 +505,17 @@ pipeline hierarchy:
 | `0.3` | Manual diagnostic: where Steam says a game has a demo (also runs when the probe changes on a `claude/**` branch) | `demo-probe.yml` |
 | `0.4` | Manual diagnostic: can the batched `GetItems` lookup replace per-game storefront calls (same branch trigger) | `batch-probe.yml` |
 | `0.5` | Manual diagnostic: an Early Access game's EA start and planned 1.0 date (same branch trigger) | `ea-dates-probe.yml` |
+| `0.6` | Manual diagnostic: where Steam states Denuvo-style DRM, a required 3rd-party account and kernel anti-cheat (same branch trigger) | `notices-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
 | `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4), monitor (4.5), stats (4.6) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**31 workflow files, 30 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **21 of the 31 are cron-scheduled** (monitor
+**32 workflow files, 31 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **21 of the 32 are cron-scheduled** (monitor
 4.5 also fires on `workflow_run`; monitor 4.5 and stats 4.6 are also dispatched by the price job); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
-ea-dates-probe 0.5, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
+ea-dates-probe 0.5, notices-probe 0.6, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml`,
 `presets.yml` and `monitor.yml` match the scrape workflow's **exact `name:` string**, so renaming
 `scrape.yml` silently breaks all three (see the callout below).
@@ -1894,10 +1895,10 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
   Cyberpunk) exactly like the old `ADULT_TAGS` heuristic did; code 5 is a
   container marker. Replaces `ADULT_TAGS`, which is now a pre-PICS fallback only.
   New blur UX: blur → "18+?" confirm tap → reveal + open store link (table + card).
-- **"Flags" cluster** (own collapsible filter-section). Seven *presence* flags all
+- **"Flags" cluster** (own collapsible filter-section). Nine *presence* flags all
   share ONE toggle schema — **Any / Exclude / Only** (`state.flags[k]` =
-  `"any"|"hide"|"only"`): Early Access · Demo · AI disclosure · Adult content · VR-only
-  · Family-share block · Custom EULA. **Demo** (2026-10-21) is the one that isn't PICS: it reads
+  `"any"|"hide"|"only"`): Early Access · Demo · AI disclosure · In-app purchases · Always online
+  · Adult content · VR-only · Family-share block · Custom EULA. **Demo** (2026-10-21) is the one that isn't PICS: it reads
   `demos.json` (§7) and has its own `HAS_DEMOS` guard, so a missing file leaves it inert rather
   than reading every game as "no demo". Two *graded* controls keep bespoke buttons
   because they pick among values rather than the presence of one flag:
@@ -1914,18 +1915,32 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
     positive exclusion signal *only*: absence does not prove shareability (PUBG,
     Destiny 2 restrict at the account layer with no flag). So Exclude means "no
     known block", and the tooltip says exactly that.
-  - **URL (as built — the two lists don't cover all seven).** `flags=` lists the
-    `only` keys and `noflags=` the `hide` keys, but only for the **five** tokens in
-    the `TRI` table: `ea`, `eula`, `fse`, `vr`, `demo`. Each list sets only the keys it
+  - **In-app purchases and Always online (2026-11-02)** need no new data. *In-app purchases*
+    is Valve's feature category 35 (`cats`), which the developer ticks themselves — 3,417
+    games. *Always online* is the Deck test's `requires_internet_for_singleplayer`, already
+    summarized as `deck.online_solo` — 879 of the ~36k Deck-tested games. Like the
+    family-share block it is labelled for the REQUIREMENT and never inverted into an
+    "Offline" control: only Deck-tested games carry the result, so Exclude means "no known
+    online requirement", and the tooltip says so.
+  - **URL (as built — the two lists don't cover all nine).** `flags=` lists the
+    `only` keys and `noflags=` the `hide` keys, but only for the **seven** tokens in
+    the `TRI` table, written in this order: `ea`, `eula`, `fse`, `vr`, `demo`, `iap`, `online`.
+    The order matters to `presets.py`, which fails the job if a shelf lists tokens out of it. Each list sets only the keys it
     names, so the two never clobber each other, and `flags=` keeps its
     pre-tri-state meaning — old shared links still resolve. The remaining two
     presence flags get **their own params** — **`ai=hide|only`** and
     **`adult=hide|only`** — as do the two graded controls, **`ctrl=full|partial`**
     and **`deck=verified|playable|unsupported`**. All seven are still one *UI*
     schema; only the serialization splits.
-  - Flags is the widest cluster in the bar (9 groups / ~26 buttons), so it alone
-    trims 5px of horizontal button padding (3px until Demo joined) to hold ONE row at
-    1920px; it wraps to two at 1680px, which is fine.
+  - **Flags have summary chips (2026-11-02).** The "Showing …" line had none, which was
+    harmless while only the panel could set a flag. A shelf can now (*No AI, no strings*), and
+    a shelf must show every control it moved, so each flag off its default gets a chip
+    ("no AI", "no in-app purchases", "Deck verified" …) whose popover drives the real panel
+    buttons. One table, `FLAG_SUM`, feeds both the chip text and the popover options.
+  - Flags is the widest cluster in the bar (11 groups / ~32 buttons), so it alone
+    trims 5px of horizontal button padding (3px until Demo joined). It held ONE row at
+    1920px until In-app purchases and Always online joined; it now wraps to two there (the
+    last two fields drop down), which is fine — it already did at 1680px.
 - **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
   staleness / review bombing).
 - **Publisher / dev filter (2026-10-02):** dev/publisher now reach the browser through
@@ -2302,10 +2317,11 @@ range slider all read, so the swap is consistent everywhere. Any other price-typ
 uses the normal price-based score.
 
 **Preset shelves (`#presetBar` / `presets.json`, Sep 2026).** A row of one-click chips above the
-results — *Best deals under $10* · *Half off or better* · *Long games, highly rated* · *Short and
-cheap* · *Co-op picks* · *New and well-reviewed* · *Hidden gems* · *Under-the-radar indie* —
-labelled **"Start with"**. Eight shelves in two tones: `popular` (the first six) and `niche`
-(the last two), styled apart because they answer opposite questions.
+results — *No AI, no strings* · *Best deals under $10* · *Half off or better* · *Long games,
+highly rated* · *Short and cheap* · *Co-op picks* · *New and well-reviewed* · *Try before you
+buy* · *Hidden gems* · *Under-the-radar indie* — labelled **"Start with"**. Ten shelves in two
+tones: `popular` (the first eight) and `niche` (the last two), styled apart because they answer
+opposite questions. The row wraps to two lines below ~2000px wide.
 
 - **A preset is a querystring and nothing else.** `applyPreset()` opens a history entry
   (`pushStep()`, so Back returns to the filters the shelf replaced), writes `p.query` into it
@@ -2357,8 +2373,21 @@ labelled **"Start with"**. Eight shelves in two tones: `popular` (the first six)
 - **Length shelves exclude games with no ending** via `exc=idle,incremental,clicker,idler,
   mmorpg,massively+multiplayer,free+to+play`. Their Length is enormous — the people who
   recommend an MMO or an idler have played it for hundreds of hours (it was the same under HLTB:
-  EVE Online's "main" was 1,777 h) — so divided by a small price they top every value ranking. Excluded from **length shelves
-  only** — they are legitimate results everywhere else.
+  EVE Online's "main" was 1,777 h) — so divided by a small price they top every value ranking. Excluded from the
+  **length shelves**, and from the two **Flags shelves** below, which sort by QTPD over a broad
+  band where an idler opens the list (Cookie Clicker did, on the first cut of *No AI*). They are
+  legitimate results everywhere else.
+- **The Flags shelves (2026-11-02).** *No AI, no strings* goes **first** (owner's call): no AI
+  disclosure (`ai=hide`) and `noflags=ea,eula,fse,iap` — finished, no publisher EULA, no
+  family-share block, no in-app purchases — at 80%+ / 5k+. On its own `ai=hide` moved only 55
+  of 2,442 popular games, so the bundle is what makes it a shelf; the EULA rule alone drops
+  about a third of popular games, much of AAA, and that was chosen knowingly. The label says
+  "No AI" while the data says "no AI *disclosed*" — Valve's disclosure is developer-written and
+  required only since Jan 2024 — so the chip's tooltip (its blurb) says exactly that. *Try
+  before you buy* is `flags=demo` at 80%+ / 1k+: a free demo is something the store lists but
+  cannot filter the catalogue by, and at the popular 5k floor the shelf is a few hundred famous
+  games. `presets.py` reads `ai`, `flags` and `noflags` straight off each shelf's query rather
+  than restating them as dict fields, so the query stays the only description of a shelf.
 
 **Two filters were built because three shelves could not otherwise be expressed as real filter
 state** — and a preset that is not real filter state cannot show the user what it changed:
@@ -2591,8 +2620,9 @@ via `markChangedControls()`.
   All-time) · review-trend multi-toggle · min-reviews bands (0/10/100/1k/5k+, independent
   toggles, gaps allowed) · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **Playtime sort**
   (▲ *(default)* / ▼).
-- **Flags** — the PICS cluster (§9.6): six tri-state Any/Exclude/Only presence flags (Early
-  Access · AI disclosure · Adult content · VR-only · Family-share block · Custom EULA) plus
+- **Flags** — the PICS cluster (§9.6): tri-state Any/Exclude/Only presence flags (Early
+  Access · Demo · AI disclosure · In-app purchases · Always online · Adult content · VR-only ·
+  Family-share block · Custom EULA) plus
   two graded controls (Controller, Steam Deck). Folded by default; no-ops behind the `HAS_PICS`
   guard when `pics.json` is empty. **Adult content defaults to Exclude** (`ADULT_DEFAULT`, Sep
   2026 — see *QTPD computation* above); the other flags default to Any.
@@ -3179,8 +3209,9 @@ of the store is discounted each day, overall and by review count; AI disclosure,
 game, the Steam rating mix, Length, the period's biggest releases; and demos. A period still in
 progress is marked *so far*, and release counts compare per day so it compares fairly. The URL
 hash holds the pick (`#2026-W43`, `#2026-09`, `#2026-Q3`, `#2026`, then `&vs=yoy`, `&vs=none` or
-`&vs=<a period key>`), so a view can be linked. With no hash the page opens on the **last complete
-year** against the one before. Switching grouping keeps the same stretch in view: a coarser one
+`&vs=<a period key>`), so a view can be linked. With no hash the page opens on the **current
+year, so far** against the one before (it opened on the last complete year until 2 Nov 2026,
+which in November meant a year that was already over). Switching grouping keeps the same stretch in view: a coarser one
 takes the period holding it, a finer one its latest complete part (2025 → its last full week).
 
 **Numbers beside every share.** Every percentage the page shows carries the game count behind it
@@ -3579,9 +3610,17 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Gamer filters (2 Nov 2026).** Two new Flags — *In-app purchases* (Valve category 35) and
+  *Always online* (the Deck test's online-for-single-player result) — from data already in
+  `pics.json`; flag chips on the summary line; two shelves, *No AI, no strings* (first in the
+  row) and *Try before you buy* (§11, *Preset shelves*). `notices_probe.py` (0.6, manual, also
+  on push to `claude/**`) asks Steam where it states Denuvo-style DRM, a required 3rd-party
+  account and kernel anti-cheat, none of which we hold yet, before a filter is built on them.
+  `stats.html` now opens on the current year so far, not the last complete one.
+
 - **Steam by the numbers, second pass (27 Oct 2026).** Week granularity (`stats_weeks.json`, a
   second output of `stats.py`, fetched only when Week is picked); compare with any period or with
-  nothing; the page opens on the last complete year; the QTPD wordmark at the top; the intro and
+  nothing; the page opens on the last complete year (the current year since 2 Nov 2026); the QTPD wordmark at the top; the intro and
   section notes run full width. Every share now carries its game count, categorical bars carry
   their rounded share, changes are coloured by direction (green up, red down), the tag and genre
   rows gained a header and a change column, the delta lines are larger. Price trend: the middle

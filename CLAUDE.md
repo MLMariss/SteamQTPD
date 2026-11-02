@@ -68,8 +68,8 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   `adult=hide` on its own. That second lock was removed deliberately (2026-09-16, at the
   owner's instruction): "Nudity" and "Mature" sit on plenty of games whose adult content is
   incidental, and excluding the tag by name threw out the game rather than the scene. Dropping
-  it returned ~1,100 games to the shelves (seven at the time; there are **eight** now — *Half
-  off or better* was added the same day). Do not re-add it without being asked.
+  it returned ~1,100 games to the shelves (seven at the time; there are **ten** now — *Half
+  off or better* was added the same day, *No AI, no strings* and *Try before you buy* on 2026-11-02). Do not re-add it without being asked.
   **Known residuals**, to be stated rather than implied away: a PICS-covered game whose adult
   flag is unset but whose tags say otherwise now passes; so does a game whose only adult signal
   is its title — no flag, no tag, innocuous SteamSpy tags. Neither is identifiable from the data

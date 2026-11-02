@@ -81,8 +81,11 @@ ADULT_TAGS = {"Nudity", "Sexual Content", "Mature", "NSFW", "Hentai"}
 # the page does not produce.
 NO_ENDING = ["idle", "incremental", "clicker", "idler", "mmorpg", "massively multiplayer",
              "free to play"]
-# Only the length shelves carry an exc= list, and it names the no-ending tags alone — adult
-# content is handled by `adult=hide`, not by tag name (see the HOUSE RULE above).
+# The length shelves carry an exc= list, and so do the two Flags shelves (No AI, no strings; Try
+# before you buy): they sort by QTPD over a broad band, where an idler with a 900-hour Length at
+# $5 opens the list (Cookie Clicker did, on the first cut of No AI). The list names the
+# no-ending tags alone — adult content is handled by `adult=hide`, not by tag name (see the
+# HOUSE RULE above).
 NO_ENDING_Q = "exc=" + ",".join(t.replace(" ", "+") for t in NO_ENDING)
 
 # Canonicalisation, mirroring CANON_GROUPS in index.html.
@@ -109,6 +112,28 @@ REL_WINDOW = {"1mo": 30, "3mo": 90, "6mo": 180, "1yr": 365}
 # score only 5.9% of games have, so a preset would mean something different for those games
 # than for the rest — and this script could not reproduce the frontend's answer exactly.
 PRESETS = [
+    # FIRST in the row (owner, 2026-11-02): the question players ask most now is "is this made
+    # with generative AI", and the answer composes with the other things they no longer want to
+    # put up with. Every condition is a Flags control, so the summary line names each one:
+    #   ai=hide        — no AI disclosure (Valve's, developer-written, required since Jan 2024: a
+    #                    game shipped before then that used AI has nothing to disclose — stated
+    #                    in the blurb rather than implied away);
+    #   noflags=ea     — finished, not Early Access;
+    #           eula   — no publisher licence on top of Steam's (drops ~1/3 of popular games,
+    #                    much of AAA — the owner chose that, knowing it);
+    #           fse    — no family-share block;
+    #           iap    — no in-app purchases (Valve's category 35, self-declared).
+    # The noflags tokens must stay in syncURL()'s TRI order (ea, eula, fse, vr, demo, iap,
+    # online) or the chip stops reading as active once the page rewrites the URL.
+    # Measured 2026-11-02: 1,215 games; opens on Gothic II, Wall World, Dead Age. On its own,
+    # ai=hide moved only 55 of 2,442 popular games — the bundle is what makes it a shelf.
+    dict(id="noai", label="No AI, no strings", tone="popular",
+         blurb="No generative AI disclosed, no Early Access, no extra EULA, no family-share block, "
+               "no in-app purchases — and 80%+ positive. AI is the developer's own disclosure, "
+               "which Steam has required since 2024.",
+         q="ai=hide&noflags=ea,eula,fse,iap&minscore=80&rev=4&ratesrc=all&adult=hide&"
+           + NO_ENDING_Q + "&sort=qtpd&dir=-1",
+         rev=(5000, None), minscore=80, no_ending=False),
     dict(id="deals", label="Best deals under $10", tone="popular",
          blurb="Discounted right now, under $10, and actually good.",
          q="pc=sale&pmax=10&minscore=70&rev=4&ratesrc=all&adult=hide&sort=qtpd&dir=-1",
@@ -140,6 +165,13 @@ PRESETS = [
          blurb="Released in the last year and already well liked.",
          q="rel=1yr&minscore=80&rev=4&ratesrc=all&adult=hide&sort=release_ts&dir=-1",
          rev=(5000, None), minscore=80, rel="1yr"),
+    # A free demo is something the Steam store lists but cannot filter the catalogue by. 1k+ rather
+    # than the popular 5k floor: demos are an indie habit, and at 5k the shelf is a few hundred
+    # famous games. Measured 2026-11-02 with the no-ending exclusion: see presets.json.
+    dict(id="demo", label="Try before you buy", tone="popular",
+         blurb="Has a free demo on Steam, 80%+ positive, 1,000+ reviews — play it first.",
+         q="flags=demo&minscore=80&rev=3,4&ratesrc=all&adult=hide&" + NO_ENDING_Q + "&sort=qtpd&dir=-1",
+         rev=(1000, None), minscore=80, no_ending=False),
     dict(id="gems", label="Hidden gems", tone="niche",
          blurb="80%+ positive, but under 5,000 reviews — the ones that got missed.",
          q="minscore=80&rev=2,3&ratesrc=all&adult=hide&" + NO_ENDING_Q + "&sort=qtpd&dir=-1",
@@ -156,6 +188,9 @@ KNOWN_PARAMS = {"q", "inc", "exc", "tagmode", "pc", "basis", "pmin", "pmax",
                 "minsale", "qmin", "qmax", "hmin", "hmax", "minscore", "rev", "trend", "upd",
                 "rel", "ratesrc", "pt", "flags", "noflags", "ai", "adult", "ctrl", "deck",
                 "sort", "dir", "per", "wishonly"}
+
+# The tri-state Flags tokens, in the order index.html's syncURL() writes them (its TRI list).
+FLAG_TOKENS = ["ea", "eula", "fse", "vr", "demo", "iap", "online"]
 
 # A shelf below this many results is not worth a click; above the warn line it is so broad it
 # is barely a filter. Both are reported, never auto-corrected.
@@ -179,6 +214,12 @@ def build():
         pics = load("pics.json", "apps")
     except (OSError, KeyError):
         pics = {}
+    # demos.json is its own layer with its own guard on the page (HAS_DEMOS): without it, Flags
+    # -> Demo is inert rather than emptying the list. Mirrored by `demos is None` below.
+    try:
+        demos = load("demos.json", "demos") or None
+    except (OSError, KeyError):
+        demos = None
     # The frontend does NOT filter on SteamSpy tags where PICS has any: index.html's merge sets
     # game.tags from SteamSpy provisionally, then OVERWRITES it with the decoded PICS tag names
     # whenever PICS carries some ("Valve-ranked and more reliable on the long tail"). PICS covers
@@ -219,6 +260,13 @@ def build():
             hours=(ln[0] if ln else None),
             # PICS-covered -> its flag decides, alone. Uncovered -> the raw tag fallback.
             adult=(bool(pi.get("adult")) if pi else bool(ADULT_TAGS & set(raw_tags))),
+            # The Flags cluster, as index.html's PICS merge derives each one. A game PICS has not
+            # covered reads every flag as absent — the page does the same (undefined -> falsy).
+            ai=pi.get("ai") or 0,
+            flag=dict(ea=bool(pi.get("ea")), eula=bool(pi.get("eula")), fse=bool(pi.get("fse")),
+                      vr=bool(pi.get("vr_only")), iap=35 in (pi.get("cats") or []),
+                      online=bool((pi.get("deck") or {}).get("online_solo")),
+                      demo=bool(demos and demos.get(a))),
             no_end=bool(set(NO_ENDING) & tg),
             tags=tg,
         ))
@@ -228,7 +276,7 @@ def build():
             return None
         return r["hours"] * (r["rating"] / 100.0) / r["price"]
 
-    def matches(r, p):
+    def matches(r, p, parsed):
         lo, hi = p["rev"]
         if r["reviews"] < lo or (hi is not None and r["reviews"] >= hi):
             return False
@@ -239,6 +287,17 @@ def build():
             return False
         if p.get("no_ending") is False and r["no_end"]:
             return False
+        # Flags, read straight off the query rather than restated as dict fields: the query is
+        # what the page runs, so a second description of it is a second thing to drift.
+        # Mirrors passNonRange(): `ai` tests disclosure > 0; flags= requires, noflags= forbids.
+        # Demo is skipped when demos.json is missing, as the page's HAS_DEMOS guard skips it.
+        ai = (parsed.get("ai") or [""])[0]
+        if (ai == "hide" and r["ai"] > 0) or (ai == "only" and not r["ai"] > 0):
+            return False
+        for param, want in (("flags", True), ("noflags", False)):
+            for tok in (parsed.get(param) or [""])[0].split(","):
+                if tok and not (tok == "demo" and demos is None) and r["flag"][tok] != want:
+                    return False
         if p.get("tag") and p["tag"] not in r["tags"]:
             return False
         # `pc=sale` is one of three non-overlapping price classes on the page: a game is free,
@@ -280,8 +339,14 @@ def build():
         # quietly putting adult content on the landing page.
         if parsed.get("adult") != ["hide"]:
             raise SystemExit(f"preset {p['id']}: every shelf must set adult=hide")
+        # flags=/noflags= tokens: only ones loadFromURL() reads, listed in syncURL()'s order, or
+        # the chip would silently stop lighting up as active after the page rewrites the URL.
+        for param in ("flags", "noflags"):
+            toks = [t for t in (parsed.get(param) or [""])[0].split(",") if t]
+            if any(t not in FLAG_TOKENS for t in toks) or toks != sorted(toks, key=FLAG_TOKENS.index):
+                raise SystemExit(f"preset {p['id']}: {param}= must use {FLAG_TOKENS}, in that order")
 
-        sel = [r for r in rows if matches(r, p)]
+        sel = [r for r in rows if matches(r, p, parsed)]
         scored = sorted((r for r in sel if qtpd(r) is not None), key=qtpd, reverse=True)
         # The `sample` below is the shelf's OPENING ROWS, so it has to be ordered the way the
         # chip's own querystring orders them — not always by qtpd. This used to special-case
