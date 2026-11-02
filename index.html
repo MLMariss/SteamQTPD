@@ -2107,7 +2107,7 @@ try{
       </div>
 
       <div class="filter-section" data-section="flags">
-        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, a playable demo, AI content, in-app purchases, always-online, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
+        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, a playable demo, AI content, in-app purchases, always-online, 3rd-party DRM and accounts, kernel anti-cheat, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
         <div class="section-body"><div class="ctl-row">
         <!-- Presence flags all share ONE toggle schema — Any / Exclude / Only — so the row stays
              narrow and the pattern is learned once. That only works if the LABEL names the thing
@@ -2157,6 +2157,32 @@ try{
             <button data-flag="online" data-val="any"  aria-pressed="true">Any</button>
             <button data-flag="online" data-val="hide" aria-pressed="false">Exclude</button>
             <button data-flag="online" data-val="only" aria-pressed="false">Only</button>
+          </div>
+        </div>
+        <!-- 3rd-party DRM and 3rd-party account (Nov 2026): the two notices a store page shows above
+             the buy button, read by notices.py into notices.json. Own layer, own guard (HAS_NOTICES). -->
+        <div class="field" title="3rd-party DRM — the store page says the game 'Incorporates 3rd-party DRM': usually Denuvo, or a publisher's online activation. Checked daily, most-reviewed games first, and every flagged game again each week, so a game that drops Denuvo leaves this list within about a week. Exclude means 'no DRM notice found': games not checked yet count as none.">
+          <label>3rd-party DRM</label>
+          <div class="seg" role="group" aria-label="3rd-party DRM">
+            <button data-flag="drm" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="drm" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="drm" data-val="only" aria-pressed="false">Only</button>
+          </div>
+        </div>
+        <div class="field" title="3rd-party account — the store page says the game 'Requires 3rd-Party Account': EA, Ubisoft, PlayStation Network, Rockstar and the like, even where it can be linked to Steam. Checked the same way as 3rd-party DRM; games not checked yet count as none.">
+          <label>3rd-party account</label>
+          <div class="seg" role="group" aria-label="3rd-party account">
+            <button data-flag="acct" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="acct" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="acct" data-val="only" aria-pressed="false">Only</button>
+          </div>
+        </div>
+        <div class="field" title="Kernel anti-cheat — the store page says the game 'Uses Kernel Level Anti-Cheat' (Easy Anti-Cheat, BattlEye, ACE …), software that runs with full access to your PC. Developers disclose this themselves, and only multiplayer and co-op games are checked, so Exclude means 'none stated': a game that runs one without saying so still passes. Re-checked weekly once found.">
+          <label>Kernel anti-cheat</label>
+          <div class="seg" role="group" aria-label="Kernel anti-cheat">
+            <button data-flag="kac" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="kac" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="kac" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
         <div class="field" title="Controller support — from Valve's flags, not the store blurb. Full = built for a gamepad end to end. Partial+ also includes games only partly playable on one (menus may still need a mouse).">
@@ -2578,12 +2604,12 @@ const state = { data:null, q:"", co:"", coSugIdx:-1, tagQuery:"", similarTo:null
                 wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", ptMetric:"up", fullCounts:{},
                 view:"table", tagLinger:new Map(),   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
                 // PICS "Flags" cluster. Each key is independent; "any" = no filter.
-                //   ea/eula/fse/vrOnly/demo/iap/online : "any" | "hide" (flag absent) | "only" (flag present)
+                //   ea/eula/fse/vrOnly/demo/iap/online/drm/acct/kac : "any" | "hide" (flag absent) | "only" (flag present)
                 //   ai       : "any" | "hide" (exclude disclosed) | "only" (require disclosed)
                 //   ctrl     : "any" | "full" | "partial"
                 //   deck     : "any" | "verified" | "playable" (verified+playable) | "unsupported"
                 //   adultF   : "any" | "hide" (exclude adult) | "only". Defaults to ADULT_DEFAULT.
-                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT } };
+                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", drm:"any", acct:"any", kac:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT } };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -3250,6 +3276,19 @@ function passNonRange(x){
   if(window.HAS_DEMOS){
     const m = state.flags.demo;
     if((m === "only" && !x.demo) || (m === "hide" && x.demo)) return false;
+  }
+  // 3rd-party DRM / account (notices.json — its own layer and guard, like Demo). Inert until the
+  // sweep has checked anything, or Only would empty the list.
+  if(window.HAS_NOTICES){
+    const F = state.flags;
+    if((F.drm  === "only" && !x.drm)  || (F.drm  === "hide" && x.drm))  return false;
+    if((F.acct === "only" && !x.acct) || (F.acct === "hide" && x.acct)) return false;
+  }
+  // Kernel anti-cheat: the store-page half of the same layer, with its own guard (HAS_AC = the
+  // sweep has page-checked anything), since it fills on a different set of games.
+  if(window.HAS_AC){
+    const m = state.flags.kac;
+    if((m === "only" && !x.kac) || (m === "hide" && x.kac)) return false;
   }
   // --- PICS "Flags" cluster (all independent; ONLY applied when PICS data is loaded).
   // Without pics.json the pics_* fields are undefined, so an active flag would wrongly
@@ -5747,6 +5786,7 @@ function sectionActiveCounts(){
     flags: (() => { const F = state.flags; let n = 0;
       if(F.ea !== "any") n++; if(F.eula !== "any") n++; if(F.fse !== "any") n++; if(F.vrOnly !== "any") n++;
       if(F.demo !== "any") n++; if(F.iap !== "any") n++; if(F.online !== "any") n++;
+      if(F.drm !== "any") n++; if(F.acct !== "any") n++; if(F.kac !== "any") n++;
       if(F.ai !== "any") n++; if(F.ctrl !== "any") n++; if(F.deck !== "any") n++; if(F.adultF !== ADULT_DEFAULT) n++;
       return n; })(),
   };
@@ -5792,6 +5832,9 @@ function markChangedControls(){
     setGroup('[data-flag="demo"]',   F.demo   !== "any");
     setGroup('[data-flag="iap"]',    F.iap    !== "any");
     setGroup('[data-flag="online"]', F.online !== "any");
+    setGroup('[data-flag="drm"]',    F.drm    !== "any");
+    setGroup('[data-flag="acct"]',   F.acct   !== "any");
+    setGroup('[data-flag="kac"]',    F.kac    !== "any");
     setGroup('[data-flag="fse"]',    F.fse    !== "any");
     setGroup('[data-flag="eula"]',   F.eula   !== "any");
   }
@@ -5857,6 +5900,9 @@ const FLAG_SUM = [
   {key:"demo",   title:"Demo",                           opts:FLAG_TRI, text:{hide:"no demo", only:"has a demo"}},
   {key:"iap",    title:"In-app purchases",               opts:FLAG_TRI, text:{hide:"no in-app purchases", only:"in-app purchases"}},
   {key:"online", title:"Always online",                  opts:FLAG_TRI, text:{hide:"not always online", only:"always online"}},
+  {key:"drm",    title:"3rd-party DRM",                  opts:FLAG_TRI, text:{hide:"no 3rd-party DRM", only:"3rd-party DRM"}},
+  {key:"acct",   title:"3rd-party account",              opts:FLAG_TRI, text:{hide:"no 3rd-party account", only:"3rd-party account"}},
+  {key:"kac",    title:"Kernel anti-cheat",              opts:FLAG_TRI, text:{hide:"no kernel anti-cheat", only:"kernel anti-cheat"}},
   {key:"eula",   title:"Custom EULA",                    opts:FLAG_TRI, text:{hide:"no custom EULA", only:"custom EULA"}},
   {key:"fse",    title:"Family-share block",             opts:FLAG_TRI, text:{hide:"no family-share block", only:"family-share block"}},
   {key:"vrOnly", title:"VR-only",                        opts:FLAG_TRI, text:{hide:"no VR-only", only:"VR-only"}},
@@ -6503,7 +6549,7 @@ function syncFlagsUI(){
   const tri = (key, val) => document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
     o.setAttribute("aria-pressed", o.dataset.val === val));
   tri("ea", F.ea); tri("vrOnly", F.vrOnly); tri("fse", F.fse); tri("eula", F.eula); tri("demo", F.demo);
-  tri("iap", F.iap); tri("online", F.online);
+  tri("iap", F.iap); tri("online", F.online); tri("drm", F.drm); tri("acct", F.acct); tri("kac", F.kac);
 }
 function setBasis(b){
   state.qBasis = b;
@@ -6581,7 +6627,7 @@ function syncURL(){
   { const F = state.flags;
     // Order matters to presets.py: a shelf's flags=/noflags= list must name its tokens in THIS
     // order, or the shelf's chip would stop reading as active the moment syncURL() rewrote it.
-    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"], ["demo","demo"], ["iap","iap"], ["online","online"]];
+    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"], ["demo","demo"], ["iap","iap"], ["online","online"], ["drm","drm"], ["acct","acct"], ["kac","kac"]];
     const on  = TRI.filter(([k]) => F[k] === "only").map(([,tok]) => tok);
     const off = TRI.filter(([k]) => F[k] === "hide").map(([,tok]) => tok);
     if(on.length)  p.set("flags", on.join(","));
@@ -6665,7 +6711,7 @@ function loadFromURL(){
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
   // Each list only sets the keys it names, so `flags` and `noflags` don't clobber each other.
-  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly", demo:"demo", iap:"iap", online:"online" };
+  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly", demo:"demo", iap:"iap", online:"online", drm:"drm", acct:"acct", kac:"kac" };
     const readTri = (param, mode) => setIf(param, v => v.split(",").filter(Boolean)
       .forEach(tok => { if(TOK[tok]) state.flags[TOK[tok]] = mode; }));
     readTri("flags", "only");
@@ -6770,7 +6816,7 @@ function init(data){
     state.release=RELEASE_DEFAULT; state.preUpSort=null;
     state.minSale=null; state.minSaleForcedFull=false;
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.ptMetric="up"; state.qRangeTouched=false;
-    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", drm:"any", acct:"any", kac:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     ratingScheme = RATING_SCHEME_DEFAULT;
     loadFromURL();
     syncSchemeUI();
@@ -6960,7 +7006,7 @@ function init(data){
   segGroup("ctrl", "ctrl");
   segGroup("deck", "deck");
   segGroup("adult", "adultF");
-  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula / demo / iap / online.
+  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula / demo / iap / online / drm / acct / kac.
   document.querySelectorAll("[data-flag]").forEach(b =>
     b.addEventListener("click", () => {
       const key = b.dataset.flag, val = b.dataset.val;
@@ -7092,7 +7138,7 @@ function init(data){
     document.querySelectorAll("[data-ptmetric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ptmetric==="up")); syncPtHeader();
     syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
-    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", drm:"any", acct:"any", kac:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     syncFlagsUI();
     state.sortKey="qtpd"; state.sortDir=-1; syncSortArrows();   // the default sort, the one the page loads with
     state.openCards.clear();                                    // nothing was flipped open at the start either
@@ -7475,7 +7521,7 @@ function reconcilePriceFlags(game){
 // shows while that file is still outstanding. Same fetch/parse/null-on-failure contract as before.
 const BOOT_NAMES = {"games.json":"game catalog","prices.json":"prices","length.json":"lengths",
   "tags.json":"tags","recent.json":"recent reviews","playtime.json":"playtime","ratings.json":"ratings",
-  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves","demos.json":"demos","ea_dates.json":"Early Access dates"};
+  "updates.json":"update history","pics.json":"store details","trailers.json":"trailers","presets.json":"shelves","demos.json":"demos","ea_dates.json":"Early Access dates","notices.json":"store notices"};
 const bootPending = new Set(); let bootDoneN = 0;
 function bootTick(){
   const total = bootDoneN + bootPending.size, fill = document.getElementById("bootFill"), msg = document.getElementById("bootMsg");
@@ -7566,7 +7612,10 @@ Promise.all([
   // Early Access dates (ea_dates.py): announced 1.0 dates of games in EA, and the EA start of
   // games that left it. Small (~2k rows). Additive: absent, no game gains a 1.0 date.
   loadLayer("ea_dates.json"),
-]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj, dj, eaj]) => {
+  // Store notices (notices.py): {appid: {d: DRM, a: account, k: kernel / c: other anti-cheat}}, games WITH one only
+  // (a few thousand rows). Additive: absent or still empty, the two flags stay inert.
+  loadLayer("notices.json"),
+]).then(([g, pj, lj, tj, rj, ptj, ratj, uj, picsj, tagLk, genreLk, catLk, trlj, presetj, dj, eaj, ntj]) => {
   PRESETS = (presetj && Array.isArray(presetj.presets)) ? presetj.presets : null;
   const data = (g && g.games && g.games.length) ? g : SAMPLE;
   const priceMap  = (pj && pj.prices) ? pj.prices : null;
@@ -7603,6 +7652,11 @@ Promise.all([
   window.HAS_PICS = !!(picsMap && Object.keys(picsMap).length);
   const demosMap = (dj && dj.demos) ? dj.demos : null;
   window.HAS_DEMOS = !!(demosMap && Object.keys(demosMap).length);   // guards Flags → Demo
+  // Guard on how many games the sweep has CHECKED, not on how many carry a notice: a sweep that
+  // has checked thousands and found few is still a real answer for Exclude.
+  const noticesMap = (ntj && ntj.games) ? ntj.games : null;
+  window.HAS_NOTICES = !!(ntj && ntj.checked > 0);
+  window.HAS_AC      = !!(ntj && ntj.pages > 0);
   const eaDatesMap = (eaj && eaj.games) ? eaj.games : null;
   // v2 payload: {appid: [filename, ...]} — a flat, best-codec-first list per game.
   // Trailers stay in their own lookup rather than being merged onto each game object:
@@ -7747,6 +7801,11 @@ Promise.all([
       game.upd_c365 = sum("365d");
     }
     if(demosMap && demosMap[key]) game.demo = demosMap[key];   // the demo's appid (Flags → Demo)
+    if(noticesMap && noticesMap[key]){                           // store notices (Flags → 3rd-party …)
+      game.drm  = noticesMap[key].d || null;
+      game.acct = noticesMap[key].a || null;
+      game.kac  = noticesMap[key].k || null;     // kernel anti-cheat name ("yes" when unnamed)
+    }
     // ea_dates.json: {ea:1, v, p} for a game in EA with an announced 1.0 (date, precision 1-4);
     // {s, v} for one that left EA (its EA start and its 1.0 — release_ts catches up on rescrape).
     if(eaDatesMap && eaDatesMap[key]){

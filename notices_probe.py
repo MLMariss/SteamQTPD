@@ -29,6 +29,12 @@ The questions:
          "anti-cheat" / "kernel" / "DRM" / "account" mention are dumped, tags stripped, so the
          markup to read is visible in the run log.
 
+  Q5  The raw markup, and what notices.py reads from it (added 2026-11-02)
+      -> Q3's snippets are tag-stripped, so notices.py's anti-cheat parser was written from them
+         and test fixtures modelled on them. Q5 dumps each `anticheat_section` and `DRM_notice`
+         block AS HTML, and runs notices.read_anticheat() on every page Q3 fetched, so the
+         parser is checked against Steam's real markup before anything ships on it.
+
   Q4  How common is each notice?
       -> A seeded random sample of released games through appdetails. Decides whether a filter
          would list anything with Only, and how long a backfill sweep would take.
@@ -251,6 +257,9 @@ def q2(ids):
         SUMMARY.append(f"- `{p}` — {len(ex)} items, e.g. {ex[0][0]}: {ex[0][1]}")
 
 
+RAW_PAGES = {}     # appid -> page HTML, kept from Q3 for Q5
+
+
 def q3(ids):
     hr("Q3  store page: where anti-cheat, Denuvo and 3rd-party accounts are stated")
     pages = {}
@@ -258,6 +267,7 @@ def q3(ids):
         status, text = get(STORE_PAGE.format(appid=a), want_json=False)
         time.sleep(DELAY)
         text = text or ""
+        RAW_PAGES[a] = text
         snips, classes = [], set()
         for m in PAGE_HIT.finditer(text):
             lo, hi = max(0, m.start() - 220), min(len(text), m.end() + 220)
@@ -276,6 +286,35 @@ def q3(ids):
                        + (f"; classes `{'`, `'.join(sorted(classes))}`" if classes else "")
                        + (f"<br>… {snips[0]}" if snips else ""))
     save("q3_store_pages.json", pages)
+
+
+BLOCK = re.compile(r'class="[^"]*\b(anticheat_section|DRM_notice)\b[^"]*"', re.I)
+
+
+def q5():
+    hr("Q5  raw notice markup, and what notices.py's parser reads from each page")
+    try:
+        import notices as N
+    except Exception as e:                      # the probe stays useful without the job
+        N = None
+        log(f"  notices.py not importable ({e}); dumping markup only")
+    SUMMARY.append("| appid | expected | notices.read_anticheat() |\n|---|---|---|")
+    dump = {}
+    for a, page in RAW_PAGES.items():
+        blocks, seen = [], 0
+        for m in BLOCK.finditer(page):
+            raw = re.sub(r"\s+", " ", page[max(0, m.start() - 60): m.start() + 900])
+            blocks.append(raw)
+            seen += 1
+            if seen >= 4:
+                break
+        parsed = N.read_anticheat(page) if N else None
+        dump[a] = {"blocks": blocks, "parsed": parsed}
+        log(f"  {a:>8}  {KNOWN.get(a, '')[:44]:44}  parser: {parsed}")
+        for b in blocks[:3]:
+            log(f"            RAW {b[:600]}")
+        SUMMARY.append(f"| {a} | {KNOWN.get(a, '')} | `{parsed}` |")
+    save("q5_raw_blocks.json", dump)
 
 
 def q4():
@@ -315,6 +354,7 @@ def main():
     q1(ids)
     q2(ids)
     q3(ids)
+    q5()
     q4()
     out = os.environ.get("GITHUB_STEP_SUMMARY")
     if out:

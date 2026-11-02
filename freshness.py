@@ -409,6 +409,9 @@ def main():
     up_cov = (len(up_ts), len(up_ts) - up_over, up_over, len(up["pending"] - set(up_ts)), 0)
     demos_doc = CV.load("demos.json") or {}
     ea_doc = CV.load("ea_dates.json") or {}
+    notices_doc = CV.load("notices.json") or {}
+    notices_ts = {int(a): int(t) for a, t in
+                  ((CV.load("notices_state.json") or {}).get("checked") or {}).items()}
 
     # Two different floors: playtime scrapes from 5 reviews (where a sentiment-split
     # median first becomes guaranteed), updates keeps its own 10. One shared lambda
@@ -553,6 +556,15 @@ def main():
              window="every Early Access game every run; no per-game stamp",
              note=f"{len(ea_doc.get('games') or {}):,} games with an announced 1.0 date or a "
                   f"remembered EA start."),
+        dict(key="2.13", kind="data", wf="notices.yml", label="Store notices (DRM / account / anti-cheat)",
+             script="notices.py", owns="notices.json", stamp=json_stamp("notices.json"),
+             ts_map=notices_ts, cov=None,
+             window="ranked daily sweep: notices re-checked weekly, PICS-changed games next, "
+                    "then the backfill; 60d / 180d backstop",
+             note=f"{notices_doc.get('count', 0):,} games state 3rd-party DRM, a 3rd-party "
+                  f"account or anti-cheat; {notices_doc.get('checked', 0):,} app-checked and "
+                  f"{notices_doc.get('pages', 0):,} store pages read so far. Table 3 ages are when "
+                  f"appdetails last answered for each game."),
         dict(key="3.1", kind="derived", wf="playtime-raw.yml", label="Playtime medians (chained)",
              script="playtime_summarize.py", owns="playtime.json",
              stamp=json_stamp("playtime.json"), ts_map={}, cov=None, derived="2.3",

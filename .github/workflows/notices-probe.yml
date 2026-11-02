@@ -18,6 +18,7 @@ on:
     branches: ["claude/**"]
     paths:
       - notices_probe.py
+      - notices.py
       - .github/workflows/notices-probe.yml
 
 # READ-ONLY, like demo-probe.yml: commits nothing. Findings go to the run log and the job
@@ -39,6 +40,8 @@ jobs:
           sparse-checkout-cone-mode: false   # only what the probe reads (ARCHITECTURE §4 "Checkouts")
           sparse-checkout: |
             /notices_probe.py
+            /notices.py
+            /gitsync.py
             /games.json
 
       - uses: actions/setup-python@v6

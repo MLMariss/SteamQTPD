@@ -72,6 +72,8 @@ three weeks (§4 "Checkouts", §6 step 4).
    │ upcoming_refresh.py ─────► upcoming.json            │
    │ ea_dates.py ─────────────► ea_dates.json            │
    │                            + ea_dates_state.json    │
+   │ notices.py ──────────────► notices.json             │
+   │                            + notices_state.json     │
    │ trailers.py ─────────────► trailers.json            │        ┌──────────────────┐
    │                            + trailers_state.json    │        │ Cloudflare Worker │
    │ shots.py ────────────────► shots/shard_NN.json      │reviews │   qtpd-reviews    │
@@ -88,15 +90,15 @@ There are **two** Workers, and only the second one's source is in this repo: the
 proxy (§12) and `qtpd-reviews`, the Review Digest's `appreviews` passthrough (§17, source in
 `worker/`).
 
-The frontend fetches **16 files at load**: the eight data layers above (`games`, `prices`,
+The frontend fetches **17 files at load**: the eight data layers above (`games`, `prices`,
 `length`, `tags`, `recent`, `playtime`, `ratings`, `updates`), the merged `pics.json`,
-`trailers.json` (§2.1), `presets.json` (§11, the preset shelves), `demos.json` and
-`ea_dates.json` (§7, both small), and the three static decode maps in `lookups/` (`tags.json`,
+`trailers.json` (§2.1), `presets.json` (§11, the preset shelves), `demos.json`,
+`ea_dates.json` and `notices.json` (§7, all small), and the three static decode maps in `lookups/` (`tags.json`,
 `genres.json`, `categories.json`, §9.6). `upcoming.json` and `pics_upcoming.json` are fetched on
 first use of the Release toggle (§11). `shots/` (§2.2) is
 the one layer fetched **lazily** — one shard per hovered game, never at load; `review_prompt*.md`
 (§17) is fetched lazily too, only when the digest modal first opens. `catalog.json`,
-`trailers_state.json`, `shots_state.json`, `ea_dates_state.json`, `pics_state.json`, the `*_raw/` shard sets, `pics/`, and the three
+`trailers_state.json`, `shots_state.json`, `ea_dates_state.json`, `pics_state.json`, `notices_state.json`, the `*_raw/` shard sets, `pics/`, and the three
 generated `.md` files are never served to the browser. Nor, since Sep 2026, is `hltb.json`
 (37 MB): HowLongToBeat is calibration input for `length_model.py` (§9.7) and nothing else —
 the page shows one review-based **Length** instead of HLTB's Main / +Extras / 100%.
@@ -508,13 +510,13 @@ pipeline hierarchy:
 | `0.5` | Manual diagnostic: an Early Access game's EA start and planned 1.0 date (same branch trigger) | `ea-dates-probe.yml` |
 | `0.6` | Manual diagnostic: where Steam states Denuvo-style DRM, a required 3rd-party account and kernel anti-cheat (same branch trigger) | `notices-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
-| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12) |
+| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12), notices (2.13) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4), monitor (4.5), stats (4.6) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**32 workflow files, 31 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **21 of the 32 are cron-scheduled** (monitor
+**33 workflow files, 32 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **22 of the 33 are cron-scheduled** (monitor
 4.5 also fires on `workflow_run`; monitor 4.5 and stats 4.6 are also dispatched by the price job); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 ea-dates-probe 0.5, notices-probe 0.6, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml`,
@@ -787,9 +789,22 @@ so a game that leaves EA without Steam keeping the date (`original_steam_release
 them) still gets one. Pruned to the catalogue on save.
 
 **`pics_state.json`** (Nov 2026) — `{ _format: "pics_state_v1", change_number, carry: [appid, ...],
-updated_at }`, not served. `pics_refresh.py --changes`'s memory: the PICS change number the last
-run synced through, and the changed games it did not reach (fetched first next time). Written
-only when it changes, by `pics.yml` and `pics-new.yml`, which share the `steam-pics` group. §9.6.
+recent: {"<appid>": ts}, updated_at }`, not served. `pics_refresh.py --changes`'s memory: the
+PICS change number the last run synced through, and the changed games it did not reach (fetched
+first next time). `recent` is for OTHER jobs: every catalogue game the feed named in the last
+`RECENT_DAYS` (4), stamped when it was named — `notices.py` re-checks those first. Written only
+when it changes, by `pics.yml` and `pics-new.yml`, which share the `steam-pics` group. §9.6.
+
+**`notices.json`** (Nov 2026) — `{ _format: "notices_v1", generated_at, checked, pages, count,
+games: { "<appid>": { d, a, k, c } } }`, served, part of the boot load. Written by `notices.py`
+(2.13): `d` the store's "Incorporates 3rd-party DRM" text, `a` its "Requires 3rd-Party Account"
+text (both from appdetails), `k` / `c` the name of a kernel / other anti-cheat the store page
+states (`"yes"` when unnamed). Each key only when stated; only games with at least one are
+listed. `checked` / `pages` count the games each kind of check has answered for, and are the
+page's guards (`HAS_NOTICES`, `HAS_AC`): until a kind has checked anything its flags are inert.
+
+**`notices_state.json`** — `{ _format: "notices_state_v1", checked: {"<appid>": ts}, pages:
+{"<appid>": ts} }`, not served. When appdetails / the store page last answered for each game.
 
 **`pics_upcoming.json`** — same shape as `pics.json` (§9.6): the PICS records of the games
 listed in `upcoming.json`, which `pics_merge.py` moves out of `pics.json` so the default page
@@ -1208,6 +1223,24 @@ found:
   the 1st of any month (first real run), so it is read as the quarter containing that month —
   consistent, but not proven. From a branch — dispatched, or pushed to `claude/**` when the job
   changes — it is a dry run.
+- **`notices.py` → `notices.json` + `notices_state.json`** (workflow 2.13, daily 13:19 UTC,
+  Nov 2026). The three store notices players asked to filter on, verified by
+  `notices_probe.py` (workflow 0.6) on 2026-11-02: appdetails' `drm_notice` ("Denuvo
+  Anti-Tampering", publisher activation …) and `ext_user_account_notice` ("EA Account",
+  "PlayStation Network …"), and — in no API, only on the store page — the `anticheat_section`
+  block ("Uses Kernel Level Anti-Cheat" + `anticheat_name`; non-kernel blocks carry
+  `anticheat_nonkernel_notice`). Batched `GetItems` carries none of them, so this is one
+  storefront call per check, 1.5 s apart, ~7,000 a run. Pages are asked only for games that
+  could plausibly carry anti-cheat: any multiplayer / co-op category, games already carrying an
+  anti-cheat entry, and 1,000+-review games the PICS change feed flagged. One ranked list across
+  both kinds of check: games carrying a notice re-checked **weekly** (so "dropped Denuvo" lands
+  within a week even with no other change), then games `pics_state.json`'s `recent` says
+  changed since their last check (the fast path: removing Denuvo ships a build, and a build
+  changes PICS), then the never-checked backfill biggest first, then a 60-day (1,000+ reviews) /
+  180-day backstop. The notices are concentrated on big games (DRM 0, account 2 in a random 100),
+  so the backfill reaches the ones that matter on day one. Only answered checks change anything,
+  and a notice the store stops stating is removed and listed in the job summary. From a branch it
+  is an 8-minute dry run whose summary shows what it found. `test_notices.py`.
 
 ---
 
@@ -1923,10 +1956,11 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
   Cyberpunk) exactly like the old `ADULT_TAGS` heuristic did; code 5 is a
   container marker. Replaces `ADULT_TAGS`, which is now a pre-PICS fallback only.
   New blur UX: blur → "18+?" confirm tap → reveal + open store link (table + card).
-- **"Flags" cluster** (own collapsible filter-section). Nine *presence* flags all
+- **"Flags" cluster** (own collapsible filter-section). Twelve *presence* flags all
   share ONE toggle schema — **Any / Exclude / Only** (`state.flags[k]` =
   `"any"|"hide"|"only"`): Early Access · Demo · AI disclosure · In-app purchases · Always online
-  · Adult content · VR-only · Family-share block · Custom EULA. **Demo** (2026-10-21) is the one that isn't PICS: it reads
+  · 3rd-party DRM · 3rd-party account · Kernel anti-cheat · Adult content · VR-only ·
+  Family-share block · Custom EULA. **Demo** (2026-10-21) is the one that isn't PICS: it reads
   `demos.json` (§7) and has its own `HAS_DEMOS` guard, so a missing file leaves it inert rather
   than reading every game as "no demo". Two *graded* controls keep bespoke buttons
   because they pick among values rather than the presence of one flag:
@@ -1950,25 +1984,33 @@ Full record in `PICS_METADATA_PIPELINE.md §11`. Data flows from one slim merged
     family-share block it is labelled for the REQUIREMENT and never inverted into an
     "Offline" control: only Deck-tested games carry the result, so Exclude means "no known
     online requirement", and the tooltip says so.
-  - **URL (as built — the two lists don't cover all nine).** `flags=` lists the
-    `only` keys and `noflags=` the `hide` keys, but only for the **seven** tokens in
-    the `TRI` table, written in this order: `ea`, `eula`, `fse`, `vr`, `demo`, `iap`, `online`.
+  - **3rd-party DRM, 3rd-party account, Kernel anti-cheat (2026-11-02)** read `notices.json`
+    (`notices.py`, §7), their own layer with their own guards: `HAS_NOTICES` for the first two
+    (appdetails checks), `HAS_AC` for anti-cheat (store-page checks, which fill on a different,
+    multiplayer-only set). All three are stated by the developer, and the sweep fills
+    most-reviewed first, so Exclude means "no notice found" and each tooltip says so. Anti-cheat
+    is the weakest: disclosure is optional (ELDEN RING, which runs Easy Anti-Cheat, states none)
+    and single-player games are not checked.
+  - **URL (as built — the two lists don't cover all twelve).** `flags=` lists the
+    `only` keys and `noflags=` the `hide` keys, but only for the **ten** tokens in
+    the `TRI` table, written in this order: `ea`, `eula`, `fse`, `vr`, `demo`, `iap`, `online`,
+    `drm`, `acct`, `kac`.
     The order matters to `presets.py`, which fails the job if a shelf lists tokens out of it. Each list sets only the keys it
     names, so the two never clobber each other, and `flags=` keeps its
     pre-tri-state meaning — old shared links still resolve. The remaining two
     presence flags get **their own params** — **`ai=hide|only`** and
     **`adult=hide|only`** — as do the two graded controls, **`ctrl=full|partial`**
-    and **`deck=verified|playable|unsupported`**. All seven are still one *UI*
+    and **`deck=verified|playable|unsupported`**. All twelve are still one *UI*
     schema; only the serialization splits.
   - **Flags have summary chips (2026-11-02).** The "Showing …" line had none, which was
     harmless while only the panel could set a flag. A shelf can now (*No AI, no strings*), and
     a shelf must show every control it moved, so each flag off its default gets a chip
     ("no AI", "no in-app purchases", "Deck verified" …) whose popover drives the real panel
     buttons. One table, `FLAG_SUM`, feeds both the chip text and the popover options.
-  - Flags is the widest cluster in the bar (11 groups / ~32 buttons), so it alone
+  - Flags is the widest cluster in the bar (14 groups / ~41 buttons), so it alone
     trims 5px of horizontal button padding (3px until Demo joined). It held ONE row at
-    1920px until In-app purchases and Always online joined; it now wraps to two there (the
-    last two fields drop down), which is fine — it already did at 1680px.
+    1920px until In-app purchases and Always online joined; it now takes two rows there,
+    which is fine — it already wrapped at 1680px.
 - **Rating → games.json primary, PICS `rev` validator** (>5-pt divergence flags
   staleness / review bombing).
 - **Publisher / dev filter (2026-10-02):** dev/publisher now reach the browser through
@@ -2649,7 +2691,8 @@ via `markChangedControls()`.
   toggles, gaps allowed) · updated-within (any/1mo/3mo/6mo/1yr/1yr+) · **Playtime sort**
   (▲ *(default)* / ▼).
 - **Flags** — the PICS cluster (§9.6): tri-state Any/Exclude/Only presence flags (Early
-  Access · Demo · AI disclosure · In-app purchases · Always online · Adult content · VR-only ·
+  Access · Demo · AI disclosure · In-app purchases · Always online · 3rd-party DRM · 3rd-party
+  account · Kernel anti-cheat · Adult content · VR-only ·
   Family-share block · Custom EULA) plus
   two graded controls (Controller, Steam Deck). Folded by default; no-ops behind the `HAS_PICS`
   guard when `pics.json` is empty. **Adult content defaults to Exclude** (`ADULT_DEFAULT`, Sep
@@ -3014,6 +3057,7 @@ something."
 | header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | change-driven (`--changes`, daily + 3× catch-up) over a flat `--stale-days` (14) backstop; **no review floor** |
 | demo appid (Flags → Demo) | `demos.json` | `demos.py` | `swept_at` (file-level; `cursor` while a pass is mid-way) | daily full sweep, upcoming first; only answered games change |
 | planned 1.0 date + precision (Upcoming view, 1.0 badge); EA start (date tip) | `ea_dates.json` (+ `ea_dates_state.json`, not served) | `ea_dates.py` | `swept_at` (file-level) | daily sweep of EA, seen-in-EA and EA-tagged games; only answered games change |
+| 3rd-party DRM / account, kernel / other anti-cheat (Flags) | `notices.json` (+ `notices_state.json`, not served) | `notices.py` | `checked` / `pages` (in `notices_state.json`) | ranked daily sweep: notices weekly, PICS-changed next, backfill biggest first, 60d / 180d backstop |
 | upcoming games: title, date, preorder price, tags, store adult flag; `released` list | `upcoming.json` | `upcoming_refresh.py` (batched `GetItems`) | `scraped_at`, `swept_at` | daily full sweep (~1,150 batched calls); pruned to `pending` each run |
 | upcoming games' PICS (tags, art, Deck, adult …) | `pics_upcoming.json` ← `pics/` | `pics_merge.py` (split by `upcoming.json`) | `_ts` (in `pics_raw/`) | same as `pics.json` |
 | tag-name / genre / category decode maps | `lookups/*.json` | `pics_lookups.py`, `build_category_map.py` | **none** | committed static, refreshed manually |
@@ -3637,6 +3681,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Store notices: 3rd-party DRM, 3rd-party account, kernel anti-cheat (2 Nov 2026).** New
+  daily job `notices.py` (2.13) → `notices.json`, three new Flags with summary chips, and
+  `pics_state.json` now lists recently changed games (`recent`) so the job re-checks those first.
+  Sources verified by `notices_probe.py`, which also gained Q5: the raw anti-cheat markup and
+  what the job's parser reads from it. §7, §9.6.
 
 - **Change-driven PICS refresh (2 Nov 2026).** `pics_refresh.py --changes pics_state.json` asks
   PICS's change feed which apps changed since the last run and fetches those whatever their age,

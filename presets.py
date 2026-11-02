@@ -190,7 +190,7 @@ KNOWN_PARAMS = {"q", "inc", "exc", "tagmode", "pc", "basis", "pmin", "pmax",
                 "sort", "dir", "per", "wishonly"}
 
 # The tri-state Flags tokens, in the order index.html's syncURL() writes them (its TRI list).
-FLAG_TOKENS = ["ea", "eula", "fse", "vr", "demo", "iap", "online"]
+FLAG_TOKENS = ["ea", "eula", "fse", "vr", "demo", "iap", "online", "drm", "acct", "kac"]
 
 # A shelf below this many results is not worth a click; above the warn line it is so broad it
 # is barely a filter. Both are reported, never auto-corrected.
@@ -220,6 +220,15 @@ def build():
         demos = load("demos.json", "demos") or None
     except (OSError, KeyError):
         demos = None
+    # notices.json (notices.py): the page's HAS_NOTICES guard is "the sweep has checked
+    # anything", not "something was found" — mirrored by `notices is None` below.
+    try:
+        with open("notices.json", encoding="utf-8") as fh:
+            _nd = json.load(fh)
+        notices = (_nd.get("games") or {}) if (_nd.get("checked") or 0) > 0 else None
+        ac = (_nd.get("games") or {}) if (_nd.get("pages") or 0) > 0 else None   # HAS_AC
+    except (OSError, ValueError):
+        notices = ac = None
     # The frontend does NOT filter on SteamSpy tags where PICS has any: index.html's merge sets
     # game.tags from SteamSpy provisionally, then OVERWRITES it with the decoded PICS tag names
     # whenever PICS carries some ("Valve-ranked and more reliable on the long tail"). PICS covers
@@ -266,7 +275,10 @@ def build():
             flag=dict(ea=bool(pi.get("ea")), eula=bool(pi.get("eula")), fse=bool(pi.get("fse")),
                       vr=bool(pi.get("vr_only")), iap=35 in (pi.get("cats") or []),
                       online=bool((pi.get("deck") or {}).get("online_solo")),
-                      demo=bool(demos and demos.get(a))),
+                      demo=bool(demos and demos.get(a)),
+                      drm=bool(notices and (notices.get(a) or {}).get("d")),
+                      acct=bool(notices and (notices.get(a) or {}).get("a")),
+                      kac=bool(ac and (ac.get(a) or {}).get("k"))),
             no_end=bool(set(NO_ENDING) & tg),
             tags=tg,
         ))
@@ -296,7 +308,9 @@ def build():
             return False
         for param, want in (("flags", True), ("noflags", False)):
             for tok in (parsed.get(param) or [""])[0].split(","):
-                if tok and not (tok == "demo" and demos is None) and r["flag"][tok] != want:
+                inert = ((tok == "demo" and demos is None) or (tok in ("drm", "acct") and notices is None)
+                         or (tok == "kac" and ac is None))
+                if tok and not inert and r["flag"][tok] != want:
                     return False
         if p.get("tag") and p["tag"] not in r["tags"]:
             return False
