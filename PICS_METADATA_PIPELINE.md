@@ -525,6 +525,10 @@ the summarized view and counted by `coverage.py`:
   **Resolved: age cycle.** `pics_refresh.py` takes `--stale-days` and compares it
   against each game's `_ts`; `pics.yml` passes **14** (the script's own default is
   `0` = refetch everything). The `store_asset_mtime`-delta variant was not built.
+  **Since Nov 2026 the window is the backstop, not the trigger:** `--changes` reads PICS's own
+  change feed (`ClientPICSChangesSinceRequest`, state in `pics_state.json`) and fetches every
+  game Steam reports changed whatever its age, so a changed flag lands within ~6 h
+  (ARCHITECTURE.md §9.6, *Change-driven refresh*).
 - Whether to surface Deck `tests[]` detail beyond the top-level `category`.
   Still deferred — `tests` is dropped at ingest (§4.1), so surfacing it needs a
   re-sweep, not just a summarizer change.

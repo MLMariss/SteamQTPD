@@ -65,6 +65,7 @@ three weeks (§4 "Checkouts", §6 step 4).
    │ updates_refresh.py ──────► updates_raw/NN.json      │        ┌──────────────────┐
    │        └─ updates_summarize.py ──► updates.json     │        │ Cloudflare Worker │
    │ pics_refresh.py ─────────► pics_raw/shard_NN.json   │wishlist│  (steamid/vanity  │
+   │                            + pics_state.json        │        │                   │
    │        ├─ pics_summarize.py ─────► pics/shard_NN    │◄──────►│   → wishlist)     │
    │        └─ pics_merge.py ─────────► pics.json        │        └──────────────────┘
    │ demos.py ────────────────► demos.json               │
@@ -95,7 +96,7 @@ The frontend fetches **16 files at load**: the eight data layers above (`games`,
 first use of the Release toggle (§11). `shots/` (§2.2) is
 the one layer fetched **lazily** — one shard per hovered game, never at load; `review_prompt*.md`
 (§17) is fetched lazily too, only when the digest modal first opens. `catalog.json`,
-`trailers_state.json`, `shots_state.json`, `ea_dates_state.json`, the `*_raw/` shard sets, `pics/`, and the three
+`trailers_state.json`, `shots_state.json`, `ea_dates_state.json`, `pics_state.json`, the `*_raw/` shard sets, `pics/`, and the three
 generated `.md` files are never served to the browser. Nor, since Sep 2026, is `hltb.json`
 (37 MB): HowLongToBeat is calibration input for `length_model.py` (§9.7) and nothing else —
 the page shows one review-based **Length** instead of HLTB's Main / +Extras / 100%.
@@ -543,7 +544,7 @@ shelves*).
 | `price_and_sale.py`     | `prices.json`       | hourly passes    | Fast-changing layer: price, discount, sale end. **Dispatches `pages.yml` after every pass** — the Pages cron alone left the 2026-10-01 sale unpublished for hours. |
 | `recent_refresh.py`     | `recent.json`       | rolling          | 30-day review score; offset cron for freshness. |
 | `playtime_refresh.py`   | `playtime_raw/NN.json` | overnight     | Per-review playtime, sharded (**up to 24 buckets/run, oldest-scraped first** — a staleness sweep that cycles all 64 shards in ~8 h, §9); commits every 30 min + per shard. |
-| `pics_refresh.py`     | `pics_raw/` (64 shards)  | daily, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`, `--stale-days` incremental drain, checkpoint-commits every 15 min. |
+| `pics_refresh.py`     | `pics_raw/` (64 shards) + `pics_state.json` | daily full + 3× catch-up, time-budgeted | Anonymous Steam CM (PICS) session, NOT storefront HTTP; separate rate surface. Reads appids from `games.json`; fetches never-seen games, then every game PICS's change feed reports changed (`--changes`), then the `--stale-days` backstop. Checkpoint-flushes every 15 min. |
 | `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
 | `trailers.py`         | `trailers.json`, `trailers_upcoming.json` | daily `13 5 * * *` | Batched `GetItems`; new games (released and upcoming) next run, misses after 30d, every hit re-checked every 60d (§2.1). + `trailers_state.json`. |
 | `shots.py`            | `shots/shard_NN.json` | daily `47 5 * * *` | Batched `GetItems`; same queue rules as trailers (§2.2). + `shots_state.json`. |
@@ -784,6 +785,11 @@ how long it still counts (§11 "Release toggle"). Part of the boot load (~2k row
 not served. `ea_dates.py`'s memory: every EA start it has seen while the game was in Early Access,
 so a game that leaves EA without Steam keeping the date (`original_steam_release_date` — ~30% of
 them) still gets one. Pruned to the catalogue on save.
+
+**`pics_state.json`** (Nov 2026) — `{ _format: "pics_state_v1", change_number, carry: [appid, ...],
+updated_at }`, not served. `pics_refresh.py --changes`'s memory: the PICS change number the last
+run synced through, and the changed games it did not reach (fetched first next time). Written
+only when it changes, by `pics.yml` and `pics-new.yml`, which share the `steam-pics` group. §9.6.
 
 **`pics_upcoming.json`** — same shape as `pics.json` (§9.6): the PICS records of the games
 listed in `upcoming.json`, which `pics_merge.py` moves out of `pics.json` so the default page
@@ -1819,6 +1825,28 @@ the `common` block, trims junk + nested-trims `steam_deck_compatibility` at inge
 incremental refresh via `--stale-days` (the script's own default is **0** = refetch
 everything; `pics.yml` passes **14**, overridable per dispatch). Time-budgeted with
 periodic checkpoint flush (playtime pattern).
+
+**Change-driven refresh (`--changes`, Nov 2026).** The 14-day window alone meant a game that
+added an AI disclosure, a custom EULA or in-app purchases, or got a new Deck rating, showed it up
+to two weeks late. PICS keeps a change feed: `ClientPICSChangesSinceRequest` returns every app
+whose info changed since a given change number. Both PICS jobs now pass
+`--changes pics_state.json`: one call at the start of a run lists what changed since the number
+saved last time, and those games are fetched **whatever their age** — after never-seen games,
+before the 14-day backstop, which stays for anything the feed cannot vouch for. So a store-side
+change reaches the page within ~6 h (the next `pics-new.yml` pass) rather than ≤14 days.
+- The feed covers all app info, builds included, so a game that only shipped a patch is fetched
+  again too — the price of the signal, at 150 games per call.
+- `force_full_update` / `force_full_app_update` (Steam can't list changes from that far back),
+  or no saved number yet: the run takes Steam's current number and does the backstop alone.
+  Nothing is lost; the next run is change-driven again.
+- A changed game the run did not reach (time budget, failed chunk) is **carried** in the state
+  file and fetched first next time, so advancing the number never drops a change. A feed call
+  that fails does not advance it at all.
+- Bootstrap fallback: with no number from the feed and none saved, the highest per-app
+  `_change_number` among the games the run fetched is taken as the starting point.
+- `test_pics_changes.py` drives `main()` against a fake CM session through each of these paths;
+  the feed's real answers are only seen on a runner (the CM servers are unreachable from a dev
+  sandbox), so the first runs' logs (`changes: N apps changed since …`) are the check.
 
 **Layer 2 — `pics/shard_NN.json` (summarized view).** `pics_summarize.py` projects each
 game to a lean, index-friendly record (format `pics_v2`) storing **IDs, not names**
@@ -2983,7 +3011,7 @@ something."
 | median playtime ↑/↓ + n | `playtime.json` ← `playtime_raw/` | `playtime_refresh.py` → `playtime_summarize.py` | **none per-game** (proxy: newest review `ts`) | two-track: active 7d / dormant 30d; floor 10 reviews |
 | weighted rating (steam/raw/capped + n) | `ratings.json` ← `playtime_raw/` | `ratings_summarize.py` | inherits `playtime_raw/` | derived on every raw pass |
 | cadence badge `upd_c90` / `upd_c365`, `last_update_ts` backfill | `updates.json` ← `updates_raw/` | `updates_refresh.py` → `updates_summarize.py` | `scraped_at` (in `updates_raw/`) | two-track: active 7d / dormant 45d; floor 10 reviews |
-| header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | single flat window: `--stale-days` (14), daily cron; **no review floor** |
+| header art, PICS tags, Deck/controller, EA / adult / VR-only flags, AI disclosure, EULA, family-share, Metacritic | `pics.json` ← `pics/` ← `pics_raw/` | `pics_refresh.py` → `pics_summarize.py` → `pics_merge.py` | `_ts` (in `pics_raw/`) | change-driven (`--changes`, daily + 3× catch-up) over a flat `--stale-days` (14) backstop; **no review floor** |
 | demo appid (Flags → Demo) | `demos.json` | `demos.py` | `swept_at` (file-level; `cursor` while a pass is mid-way) | daily full sweep, upcoming first; only answered games change |
 | planned 1.0 date + precision (Upcoming view, 1.0 badge); EA start (date tip) | `ea_dates.json` (+ `ea_dates_state.json`, not served) | `ea_dates.py` | `swept_at` (file-level) | daily sweep of EA, seen-in-EA and EA-tagged games; only answered games change |
 | upcoming games: title, date, preorder price, tags, store adult flag; `released` list | `upcoming.json` | `upcoming_refresh.py` (batched `GetItems`) | `scraped_at`, `swept_at` | daily full sweep (~1,150 batched calls); pruned to `pending` each run |
@@ -3609,6 +3637,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Change-driven PICS refresh (2 Nov 2026).** `pics_refresh.py --changes pics_state.json` asks
+  PICS's change feed which apps changed since the last run and fetches those whatever their age,
+  in both the daily job and the 3× catch-up, ahead of the 14-day backstop. A changed AI
+  disclosure, EULA, in-app-purchase flag or Deck rating now lands within ~6 h instead of up to
+  14 days. New state file `pics_state.json`; `test_pics_changes.py`. §9.6.
 
 - **Gamer filters (2 Nov 2026).** Two new Flags — *In-app purchases* (Valve category 35) and
   *Always online* (the Deck test's online-for-single-player result) — from data already in

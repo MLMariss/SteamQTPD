@@ -45,6 +45,7 @@ jobs:
             /pics/
             /pics.json
             /pics_upcoming.json
+            /pics_state.json
             /companies.json
             /gitsync.py
 
@@ -57,6 +58,10 @@ jobs:
           pip install steam gevent gevent-eventemitter "protobuf<3.21"
 
       # -------- Stage 1: fetch raw PICS common blocks (Layer 1) --------
+      # --changes (Nov 2026): ask Steam's PICS change feed which apps changed since the last
+      # run and fetch those whatever their age, before the 14-day backstop. The number we
+      # synced through lives in pics_state.json, written only by pics_refresh.py (this job and
+      # pics-new.yml share the steam-pics group, so it has one writer at a time).
       - name: Refresh PICS raw
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
@@ -66,6 +71,7 @@ jobs:
             --catalog upcoming.json \
             --out pics_raw \
             --stale-days "${{ github.event.inputs.stale_days || '14' }}" \
+            --changes pics_state.json \
             --run-minutes "${{ github.event.inputs.run_minutes || '240' }}" \
             --checkpoint-min 15
 
@@ -92,9 +98,9 @@ jobs:
       # longer rebases: a plain fetch + rebase in this shallow clone downloaded the whole history
       # of any old-based PR merged mid-run and hung there (gitsync.py, ARCHITECTURE §4).
       # Nothing to commit -> exit 0; can't land after 8 attempts -> red run.
-      - name: Commit pics_raw + pics + pics.json + pics_upcoming.json + companies.json
+      - name: Commit pics_raw + pics + pics.json + pics_upcoming.json + companies.json + pics_state.json
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           python gitsync.py -m "Refresh PICS metadata ($(date -u +'%Y-%m-%d %H:%M') UTC)" \
-            pics_raw pics pics.json pics_upcoming.json companies.json
+            pics_raw pics pics.json pics_upcoming.json companies.json pics_state.json

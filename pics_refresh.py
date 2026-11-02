@@ -32,6 +32,28 @@ Usage:
   python pics_refresh.py --appids ids.txt --out ./data/pics_raw --chunk 150
   python pics_refresh.py --appids ids.txt --stale-days 30   # incremental: skip
                                                             # games fetched < N days ago
+  python pics_refresh.py --catalog games.json --stale-days 14 --changes pics_state.json
+                                    # change-driven: also fetch every game Steam says changed
+
+Change-driven refresh (--changes, Nov 2026)
+-------------------------------------------
+Without it, a stored game is re-fetched only once its copy is --stale-days old, so a game that
+added an AI disclosure, gained a custom EULA or got a new Steam Deck rating showed it up to 14
+days late. PICS keeps a change feed: every app's info carries a change number, and
+ClientPICSChangesSinceRequest returns every app changed since a given number. --changes keeps
+the last number we synced through in a small state file, asks for everything changed since,
+and fetches those games whatever their age — after never-seen games, before the stale
+backstop. One call per run; the backstop stays, for anything the feed cannot vouch for.
+
+  * The feed covers ALL app info, builds included, so a game that only pushed a patch is
+    fetched again too. That is the price of the signal: every game that changed that day, at
+    150 per call.
+  * When Steam cannot answer from that far back (`force_full_update` /
+    `force_full_app_update`, or no number stored yet) the run takes the new number and falls
+    back to the backstop alone: nothing is lost, and the next run is change-driven again.
+  * A changed game the run did not reach (time budget, a failed chunk) is CARRIED in the
+    state file and fetched first next time, so advancing the number can never drop a change.
+  * If the feed call itself fails, the number is not advanced.
 """
 
 import argparse
@@ -97,6 +119,67 @@ def nested_trim(rec: dict) -> dict:
     return rec
 
 SCHEMA = "pics_raw_v2"  # v2: dropped `languages`, nested-trimmed steam_deck_compatibility
+
+
+STATE_FORMAT = "pics_state_v1"
+
+
+def load_state(path: str) -> dict:
+    """The change-feed state: {change_number, carry}. Missing or unreadable -> a fresh start
+    (change_number 0, which makes the first run learn the current number and use the backstop)."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+        return {"change_number": int(doc.get("change_number") or 0),
+                "carry": [int(a) for a in (doc.get("carry") or [])]}
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {"change_number": 0, "carry": []}
+
+
+def save_state(path: str, state: dict) -> bool:
+    """Write the state atomically, and only when it differs from what is on disk, so a run
+    that learned nothing new makes no commit of its own. Returns True if written."""
+    doc = {"_format": STATE_FORMAT, "change_number": int(state["change_number"]),
+           "carry": sorted(set(int(a) for a in state["carry"]))}
+    old = load_state(path)
+    if os.path.exists(path) and old["change_number"] == doc["change_number"] \
+            and sorted(set(old["carry"])) == doc["carry"]:
+        return False
+    doc["updated_at"] = int(time.time())
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f, separators=(",", ":"))
+        f.write("\n")
+    os.replace(tmp, path)
+    return True
+
+
+def read_changes(resp):
+    """(current_change_number, changed appids or None) from a ChangesSince response body.
+    None for the set means Steam could not list changes from that far back (or there was no
+    starting number): the caller falls back to the stale backstop for this run."""
+    if resp is None:
+        return None, None
+    current = int(getattr(resp, "current_change_number", 0) or 0)
+    if not current:
+        return None, None
+    if getattr(resp, "force_full_update", False) or getattr(resp, "force_full_app_update", False):
+        return current, None
+    return current, {int(c.appid) for c in getattr(resp, "app_changes", [])}
+
+
+def plan_worklist(catalog_ids, known, fresh, changed, only_new):
+    """Split the catalog into the three groups a run fetches, in this order:
+      unseen  — never fetched: the only games the page cannot draw at all (no `art`);
+      changed — stored, and Steam says their info changed: fetched WHATEVER their age;
+      stale   — the backstop: stored, unchanged, and older than --stale-days (`fresh` holds
+                the ones that are not). Dropped entirely by --only-new.
+    Catalog order is kept within each group, and each appid appears once."""
+    unseen = [a for a in catalog_ids if a not in known]
+    chg = [a for a in catalog_ids if a in known and a in changed]
+    stale = [] if only_new else [a for a in catalog_ids
+                                 if a in known and a not in changed and a not in fresh]
+    return unseen, chg, stale
 
 
 def shard_of(appid: int) -> int:
@@ -252,78 +335,44 @@ def main():
     ap.add_argument("--checkpoint-min", type=float, default=10,
                     help="write shards to disk every N minutes during a budgeted run")
     ap.add_argument("--timeout", type=int, default=60, help="per-call PICS timeout (s)")
+    ap.add_argument("--changes", metavar="STATE",
+                    help="change-driven refresh: fetch every game Steam's PICS change feed "
+                         "reports changed since the number saved in STATE (a JSON file), "
+                         "whatever its age, then save the new number (see the docstring)")
     args = ap.parse_args()
 
     # protobuf shim (spec §8) — set before importing steam if not already set
     os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
     from steam.client import SteamClient  # noqa: E402
 
-    worklist = load_appids(args)
-    if not worklist:
+    catalog_ids = load_appids(args)
+    if not catalog_ids:
         print("no appids to fetch (use --appids, --catalog and/or --top)", file=sys.stderr)
         sys.exit(2)
-    print(f"worklist: {len(worklist)} appids")
+    print(f"catalog: {len(catalog_ids)} appids")
 
     os.makedirs(args.out, exist_ok=True)
 
-    # --- incremental skip: preload existing shard data, drop fresh games ---
+    # --- what the archive already holds, and how old each copy is ---
     now = time.time()
     existing_by_shard = {}
     known = set()          # every appid the archive already holds, at any age
-    if args.stale_days > 0:
-        cutoff = now - args.stale_days * 86400
-        skip = set()
-        for shard in range(SHARD_COUNT):
-            existing_by_shard[shard] = read_existing_shard(args.out, shard)
-            for aid_str, rec in existing_by_shard[shard].items():
-                known.add(int(aid_str))
-                if rec.get("_ts", 0) >= cutoff:
-                    skip.add(int(aid_str))
-        before = len(worklist)
-        worklist = [a for a in worklist if a not in skip]
-        print(f"  incremental: skipped {before - len(worklist)} fresh games "
-              f"(< {args.stale_days}d), {len(worklist)} to fetch")
-    else:
-        for shard in range(SHARD_COUNT):
-            existing_by_shard[shard] = read_existing_shard(args.out, shard)
-            known.update(int(a) for a in existing_by_shard[shard])
+    fresh = set()          # ...and the ones younger than --stale-days (the backstop skips them)
+    cutoff = now - args.stale_days * 86400 if args.stale_days > 0 else None
+    for shard in range(SHARD_COUNT):
+        existing_by_shard[shard] = read_existing_shard(args.out, shard)
+        for aid_str, rec in existing_by_shard[shard].items():
+            aid = int(aid_str)
+            known.add(aid)
+            if cutoff is not None and rec.get("_ts", 0) >= cutoff:
+                fresh.add(aid)
 
-    # --- --only-new: the catch-up pass --------------------------------------
-    # The full refresh runs once a day, so a game listed just after it can wait ~24h for
-    # its store art — and until that row exists the frontend has NOTHING to draw (see the
-    # priority note below). This mode drops every appid the archive already holds, which
-    # leaves a few hundred at most: a ~1 minute run that can be scheduled several times a
-    # day without re-fetching the other 128k. It is purely additive to the daily run and
-    # shares its concurrency group, so the one-writer-per-shard invariant still holds.
-    if args.only_new:
-        before = len(worklist)
-        worklist = [a for a in worklist if a not in known]
-        print(f"  only-new: {before - len(worklist)} already in archive, "
-              f"{len(worklist)} never-seen to fetch")
-
-    # --- never-fetched games go FIRST ---------------------------------------
-    # The worklist arrives in catalog order, which is appid-ascending, so a game the
-    # archive has never seen sits at the very END of it — new appids are the highest
-    # ones there are. That is precisely backwards under a time budget: the games with
-    # NO row at all are the only ones the frontend cannot render (no `art` means no
-    # store-header path, and the appid-derived legacy URLs 404 for every app on Steam's
-    # store_item_assets scheme, so the thumbnail comes out blank), whereas a game with
-    # a row a fortnight old still draws correctly while it waits its turn.
-    #
-    # So partition, stably: unseen appids first, everything else after in the order it
-    # already had. A run that stops on --run-minutes now drops only re-refreshes.
-    if known:
-        unseen = [a for a in worklist if a not in known]
-        if unseen:
-            seen_again = [a for a in worklist if a in known]
-            worklist = unseen + seen_again
-            print(f"  priority: {len(unseen)} never-fetched games moved to the front")
-
-    if not worklist:
+    # Without --changes the plan is known before any Steam call, so an empty one ends here
+    # rather than logging in for nothing (pics-new.yml's usual case: no new listings).
+    if not args.changes and not any(plan_worklist(catalog_ids, known, fresh, set(), args.only_new)):
         print("nothing stale to fetch; done.")
         return
 
-    # --- fetch phase (time-budgeted, checkpoint-flushing) ---
     client = SteamClient()
     client.anonymous_login()
     if not client.logged_on:
@@ -331,12 +380,79 @@ def main():
         sys.exit(1)
     print("logged in anonymously")
 
+    # --- change feed (--changes): which stored games changed since the last run ---
+    # One call. Anything it cannot vouch for is left to the stale backstop, and a failed call
+    # never advances the saved number (see the docstring).
+    state = load_state(args.changes) if args.changes else None
+    changed, next_cn = set(), None
+    if state is not None:
+        resp = None
+        for attempt in (1, 2):
+            try:
+                with gevent.Timeout(args.timeout + 5):
+                    resp = client.get_changes_since(state["change_number"],
+                                                    app_changes=True, package_changes=False)
+                if resp is not None:
+                    break
+                print(f"  changes: no reply (attempt {attempt})", file=sys.stderr)
+            except gevent.Timeout:
+                print(f"  changes: timed out (attempt {attempt})", file=sys.stderr)
+            except Exception as e:
+                print(f"  changes: error {e} (attempt {attempt})", file=sys.stderr)
+            if attempt == 1 and not ensure_logged_on(client):
+                break
+        next_cn, feed = read_changes(resp)
+        if next_cn is None:
+            print(f"  changes: no answer from Steam; keeping change number "
+                  f"{state['change_number']} for the next run")
+        elif feed is None:
+            print(f"  changes: Steam can't list changes since {state['change_number']} "
+                  f"(first run, or too long ago); now at {next_cn}, backstop only this run")
+        else:
+            print(f"  changes: {len(feed)} apps changed since {state['change_number']} "
+                  f"(now {next_cn})")
+            changed |= feed
+        if state["carry"]:
+            print(f"  changes: {len(state['carry'])} carried over from the last run")
+            changed |= set(state["carry"])
+
+    # --- the worklist: never-seen, then changed, then the stale backstop ---
+    # Never-seen goes first because those games have NO row, and the frontend cannot draw a
+    # game without one (`art` is the only path to a modern app's capsule); a game with a row a
+    # fortnight old still draws while it waits. Catalog order is appid-ascending, which puts
+    # new appids last, so this has to be an explicit partition. Changed games come next: they
+    # are what the feed is for. A run that stops on --run-minutes drops only backstop work.
+    unseen, chg, stale = plan_worklist(catalog_ids, known, fresh, changed, args.only_new)
+    worklist = unseen + chg + stale
+    up_to_date = len(known & set(catalog_ids)) - len(chg) - len(stale)
+    print(f"  plan: {len(unseen)} never-fetched, {len(chg)} changed, {len(stale)} stale backstop"
+          + (f" (>= {args.stale_days:g}d)" if cutoff is not None else "")
+          + (" [--only-new: no backstop]" if args.only_new else "")
+          + f"; {up_to_date} skipped as up to date")
+
+    def finish_state(answered, max_seen):
+        """Save the feed state: the new number when the feed answered (else the old one), and
+        every changed game this run did not reach, so advancing the number never drops one.
+        Bootstrap only: if there is no number at all yet and the feed gave none, start from the
+        highest change number among the apps this run fetched, so the next run can ask."""
+        if state is None:
+            return
+        carry = [a for a in chg if a not in answered]
+        cn = next_cn if next_cn is not None else state["change_number"]
+        if not cn and max_seen:
+            cn = max_seen
+            print(f"  changes: no number from the feed; starting from {cn}, the newest seen")
+        if save_state(args.changes, {"change_number": cn, "carry": carry}):
+            print(f"  changes: saved change number {cn}, {len(carry)} carried to the next run")
+
     start = time.time()
     budget = args.run_minutes * 60 if args.run_minutes > 0 else None
     checkpoint = args.checkpoint_min * 60
     last_flush = start
 
     fetched_total = 0
+    answered = set()   # appids whose chunk came back (fetched, or answered without a block)
+    max_seen = 0       # highest per-app change number fetched (bootstraps --changes)
     pending = {}  # appid -> rec, not yet flushed to shards
     total = len(worklist)
 
@@ -387,8 +503,11 @@ def main():
             continue
         apps = resp.get("apps", {})
         ts = int(time.time())
+        answered.update(chunk)
         for appid in chunk:
             app = apps.get(appid)
+            if app:
+                max_seen = max(max_seen, int(app.get("_change_number") or 0))
             if app and "common" in app:
                 rec = nested_trim(trim_common(app["common"]))
                 rec["_ts"] = ts
@@ -413,6 +532,9 @@ def main():
         n = flush(pending)
         print(f"final flush: {len(pending)} games to {n} shards")
     print(f"got {fetched_total} common blocks{' (partial run)' if stopped_early else ''}")
+    # Saved only now, after the shards are on disk: a run that dies before this point leaves
+    # the old number in place, so the next run asks for the same changes again.
+    finish_state(answered, max_seen)
 
     # tiny run summary
     ai = sum(
