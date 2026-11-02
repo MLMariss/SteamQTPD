@@ -11,8 +11,9 @@ name: 2.7b PICS catch-up (new games only)
 # This job closes that window. `--only-new` drops every appid the archive already
 # holds, which leaves at most a few hundred freshly-listed games — about a minute of
 # CM traffic — so it can run several times a day without touching the other 128k.
-# It is purely additive: it never re-fetches, never expires anything, and the daily
-# full refresh remains the thing that keeps existing rows current.
+# It is purely additive: it never expires anything. Since Nov 2026 it also re-fetches the
+# stored games Steam's PICS change feed reports changed (--changes), so a store-side change
+# reaches the page within ~6h; the daily full refresh stays the backstop for everything else.
 
 on:
   workflow_dispatch:
@@ -55,6 +56,7 @@ jobs:
             /pics/
             /pics.json
             /pics_upcoming.json
+            /pics_state.json
             /companies.json
             /gitsync.py
 
@@ -69,6 +71,10 @@ jobs:
       # --stale-days 0 with --only-new: no expiry window to evaluate, the "have we
       # seen this appid at all" test is the whole filter. --run-minutes caps a
       # pathological run (a huge batch of new listings) rather than the normal case.
+      # --changes (Nov 2026): also fetch every stored game Steam's change feed reports
+      # changed since the last PICS run, so a new AI disclosure, EULA or Deck rating lands
+      # within ~6h instead of waiting for the daily run. Whatever the 20 minutes do not reach
+      # is carried in pics_state.json to the next run (pics_refresh.py docstring).
       - name: Fetch PICS for never-seen appids
         env:
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
@@ -79,6 +85,7 @@ jobs:
             --out pics_raw \
             --only-new \
             --stale-days 0 \
+            --changes pics_state.json \
             --run-minutes 20 \
             --checkpoint-min 10
 
@@ -92,9 +99,9 @@ jobs:
       # continuously and this commit carries pics.json (~40 MB), so a lost race would discard
       # exactly the new games this job exists to fetch. When there is nothing new, summarize/merge
       # reproduce the same bytes and gitsync finds nothing to commit.
-      - name: Commit pics_raw + pics + pics.json + companies.json
+      - name: Commit pics_raw + pics + pics.json + companies.json + pics_state.json
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           python gitsync.py -m "PICS catch-up: new games ($(date -u +'%Y-%m-%d %H:%M') UTC)" \
-            pics_raw pics pics.json pics_upcoming.json companies.json
+            pics_raw pics pics.json pics_upcoming.json companies.json pics_state.json

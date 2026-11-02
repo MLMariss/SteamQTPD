@@ -1,0 +1,62 @@
+name: 2.13 Store notices (DRM / account / anti-cheat) -> notices.json
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab (from a branch: a dry run, see notices.py)
+  schedule:
+    - cron: "19 13 * * *"   # daily, after pics-new's 09:50 pass has refreshed pics_state.json's `recent`
+  # Also a DRY run when the job itself changes on a claude/ working branch, so its first real
+  # answers are in that branch's checks before anything merges (workflow_dispatch only sees main's
+  # workflows). Off main it never commits — gitsync refuses a non-main checkout.
+  push:
+    branches: ["claude/**"]
+    paths:
+      - notices.py
+      - .github/workflows/notices.yml
+
+permissions:
+  contents: write           # commits notices.json + notices_state.json (on main only)
+
+concurrency:
+  group: steam-notices      # never overlap runs
+  cancel-in-progress: false
+
+jobs:
+  notices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200     # RUN_MINUTES=180 + headroom
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts").
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /notices.py
+            /games.json
+            /pics.json
+            /pics_state.json
+            /notices.json
+            /notices_state.json
+            /gitsync.py
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (script commits its files itself, on main only)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # One storefront call per check (appdetails for DRM/account, the store page for anti-cheat
+      # on multiplayer games) on the ~200-per-5-min budget, 1.5s apart: ~7,000 checks in 180
+      # minutes. A branch dry run gets 8 minutes — ~300 checks on the biggest games, which is
+      # where the notices are, and its job summary lists what it found.
+      - name: Sweep store notices
+        env:
+          RUN_MINUTES: ${{ github.ref_name == 'main' && '180' || '8' }}
+        run: python notices.py
