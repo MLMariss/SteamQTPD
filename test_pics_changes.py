@@ -150,8 +150,11 @@ tmp = tempfile.mkdtemp()
 sp = os.path.join(tmp, "s.json")
 check("save_state writes a new file", P.save_state(sp, {"change_number": 5, "carry": [3, 3]}))
 check("save_state: same content -> no write (no empty commits)", not P.save_state(sp, {"change_number": 5, "carry": [3]}))
-check("load_state round trip, carry deduped", P.load_state(sp) == {"change_number": 5, "carry": [3]})
-check("load_state: missing file -> fresh start", P.load_state(os.path.join(tmp, "nope.json")) == {"change_number": 0, "carry": []})
+check("load_state round trip, carry deduped", P.load_state(sp) == {"change_number": 5, "carry": [3], "recent": {}})
+check("load_state: missing file -> fresh start", P.load_state(os.path.join(tmp, "nope.json")) == {"change_number": 0, "carry": [], "recent": {}})
+r = P.merge_recent({1: int(NOW - 10 * DAY), 2: int(NOW - DAY)}, {3}, NOW)
+check("merge_recent: stamps new, keeps recent, drops older than RECENT_DAYS",
+      set(r) == {2, 3} and r[3] == int(NOW), r)
 shutil.rmtree(tmp)
 
 print("\n== bootstrap: no state yet, Steam says force_full ==")
@@ -168,6 +171,8 @@ check("asked since the saved number", log["since"] == [1000], log["since"])
 check("changed game 20 fetched though only 2 days old; nothing else due",
       log["fetched"] == [20], log["fetched"])
 check("state advanced, nothing carried", state(d)["change_number"] == 1010 and state(d)["carry"] == [], state(d))
+check("recent lists the changed catalogue game, not the stranger 777",
+      list(state(d)["recent"]) == ["20"], state(d).get("recent"))
 with open(os.path.join(out, f"shard_{P.shard_of(20):02d}.json")) as f:
     rec = json.load(f)["apps"]["20"]
 check("game 20's row was rewritten", rec.get("name") == "App 20" and rec["_ts"] >= int(NOW), rec)
@@ -178,6 +183,7 @@ check("state at 1020 with 10 carried", state(d) ["change_number"] == 1020 and st
 log = run(d, out, "--changes", sp, feed=Resp(1030, apps=[]))
 check("next run fetches the carried game with an empty feed", log["fetched"] == [10], log["fetched"])
 check("carry cleared once fetched", state(d)["carry"] == [] and state(d)["change_number"] == 1030, state(d))
+check("a carried game is not re-stamped in recent", state(d)["recent"]["10"] <= state(d)["recent"]["20"] + 5, state(d)["recent"])
 
 print("\n== the feed does not answer: number NOT advanced ==")
 log = run(d, out, "--changes", sp, feed=None)

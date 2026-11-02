@@ -122,28 +122,44 @@ SCHEMA = "pics_raw_v2"  # v2: dropped `languages`, nested-trimmed steam_deck_com
 
 
 STATE_FORMAT = "pics_state_v1"
+# How long a game stays in the state file's `recent` list after the feed reported it changed.
+# The list is for OTHER jobs (notices.py): a daily reader needs one day, the rest is slack for a
+# missed run. Bounded so the file cannot grow with the catalogue.
+RECENT_DAYS = 4
 
 
 def load_state(path: str) -> dict:
-    """The change-feed state: {change_number, carry}. Missing or unreadable -> a fresh start
-    (change_number 0, which makes the first run learn the current number and use the backstop)."""
+    """The change-feed state: {change_number, carry, recent}. Missing or unreadable -> a fresh
+    start (change_number 0, which makes the first run learn the current number and use the
+    backstop). `recent` is {appid: unix ts} — catalogue games the feed reported changed in the
+    last RECENT_DAYS, kept for other jobs to read; this script never acts on it."""
     try:
         with open(path, "r", encoding="utf-8") as f:
             doc = json.load(f)
         return {"change_number": int(doc.get("change_number") or 0),
-                "carry": [int(a) for a in (doc.get("carry") or [])]}
+                "carry": [int(a) for a in (doc.get("carry") or [])],
+                "recent": {int(a): int(t) for a, t in (doc.get("recent") or {}).items()}}
     except (OSError, ValueError, TypeError, AttributeError):
-        return {"change_number": 0, "carry": []}
+        return {"change_number": 0, "carry": [], "recent": {}}
+
+
+def merge_recent(recent: dict, changed, now: float) -> dict:
+    """Stamp `changed` with `now` and drop anything older than RECENT_DAYS."""
+    out = {a: t for a, t in recent.items() if t >= now - RECENT_DAYS * 86400}
+    out.update({int(a): int(now) for a in changed})
+    return out
 
 
 def save_state(path: str, state: dict) -> bool:
     """Write the state atomically, and only when it differs from what is on disk, so a run
     that learned nothing new makes no commit of its own. Returns True if written."""
     doc = {"_format": STATE_FORMAT, "change_number": int(state["change_number"]),
-           "carry": sorted(set(int(a) for a in state["carry"]))}
+           "carry": sorted(set(int(a) for a in state["carry"])),
+           "recent": {str(a): int(t) for a, t in sorted((state.get("recent") or {}).items())}}
     old = load_state(path)
     if os.path.exists(path) and old["change_number"] == doc["change_number"] \
-            and sorted(set(old["carry"])) == doc["carry"]:
+            and sorted(set(old["carry"])) == doc["carry"] \
+            and {str(a): t for a, t in sorted(old["recent"].items())} == doc["recent"]:
         return False
     doc["updated_at"] = int(time.time())
     tmp = path + ".tmp"
@@ -384,7 +400,7 @@ def main():
     # One call. Anything it cannot vouch for is left to the stale backstop, and a failed call
     # never advances the saved number (see the docstring).
     state = load_state(args.changes) if args.changes else None
-    changed, next_cn = set(), None
+    changed, next_cn, listed = set(), None, set()   # listed: what the feed itself named this run
     if state is not None:
         resp = None
         for attempt in (1, 2):
@@ -412,6 +428,7 @@ def main():
             print(f"  changes: {len(feed)} apps changed since {state['change_number']} "
                   f"(now {next_cn})")
             changed |= feed
+            listed = feed
         if state["carry"]:
             print(f"  changes: {len(state['carry'])} carried over from the last run")
             changed |= set(state["carry"])
@@ -442,7 +459,11 @@ def main():
         if not cn and max_seen:
             cn = max_seen
             print(f"  changes: no number from the feed; starting from {cn}, the newest seen")
-        if save_state(args.changes, {"change_number": cn, "carry": carry}):
+        # `recent` stamps every catalogue game the feed NAMED this run — reached or not (the
+        # reader cares that Steam changed it, not whether this job re-fetched it), but not the
+        # carried ones: their change was stamped by the run that first heard of it.
+        recent = merge_recent(state["recent"], listed & set(catalog_ids), time.time())
+        if save_state(args.changes, {"change_number": cn, "carry": carry, "recent": recent}):
             print(f"  changes: saved change number {cn}, {len(carry)} carried to the next run")
 
     start = time.time()
