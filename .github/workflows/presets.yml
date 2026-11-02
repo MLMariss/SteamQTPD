@@ -10,9 +10,19 @@ on:
     # firing (that has happened before; see coverage.yml's note).
     workflows: ["1. Steam game catalog -> games.json"]
     types: [completed]
+  # A SHELF CHANGE lands on main as a change to presets.py, and until this job runs the page keeps
+  # serving the old presets.json — new code, old shelf list. On 2026-11-02 that hid the new
+  # "No AI, no strings" shelf for hours after its PR merged, because the scrape that would have
+  # triggered this job had not finished. So a change to the definitions runs it straight away.
+  push:
+    branches: [main]
+    paths:
+      - presets.py
+      - .github/workflows/presets.yml
 
 permissions:
   contents: write             # commits presets.json
+  actions: write              # dispatches pages.yml after a shelf change (see the last step)
 
 concurrency:
   group: presets-json         # one-writer-per-file (presets.json); never overlaps itself
@@ -66,3 +76,13 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           python gitsync.py -m "presets: refresh shelf counts" presets.json
+
+      # After a SHELF CHANGE (push or a manual run), publish now rather than on pages.yml's 30-min
+      # cron, which this repo's crons drop and delay (see trigger_deploy() in price_and_sale.py).
+      # A commit made with GITHUB_TOKEN starts no push-triggered run, but a workflow_dispatch from
+      # it does. The post-scrape runs only refresh counts, so they ride the normal republish.
+      - name: Publish the new shelves
+        if: github.event_name != 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

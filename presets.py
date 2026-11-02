@@ -87,6 +87,11 @@ NO_ENDING = ["idle", "incremental", "clicker", "idler", "mmorpg", "massively mul
 # no-ending tags alone — adult content is handled by `adult=hide`, not by tag name (see the
 # HOUSE RULE above).
 NO_ENDING_Q = "exc=" + ",".join(t.replace(" ", "+") for t in NO_ENDING)
+# The No AI shelf's own list (owner, 2026-11-02): MMOs stay ON that shelf, so it excludes the
+# idlers and free-to-play only. Its in-app-purchase and EULA conditions already keep most
+# live-service MMOs out; the ones that pass are games the owner wants shown.
+NO_IDLE = ["idle", "incremental", "clicker", "idler", "free to play"]
+NO_IDLE_Q = "exc=" + ",".join(t.replace(" ", "+") for t in NO_IDLE)
 
 # Canonicalisation, mirroring CANON_GROUPS in index.html.
 CANON = {}
@@ -122,18 +127,23 @@ PRESETS = [
     #           eula   — no publisher licence on top of Steam's (drops ~1/3 of popular games,
     #                    much of AAA — the owner chose that, knowing it);
     #           fse    — no family-share block;
-    #           iap    — no in-app purchases (Valve's category 35, self-declared).
+    #           iap    — no in-app purchases (Valve's category 35, self-declared);
+    #           drm    — no 3rd-party DRM notice (Denuvo, publisher activation; notices.json);
+    #           acct   — no 3rd-party account notice (EA, Ubisoft, PSN …; notices.json).
+    #   exc=           — idlers and free-to-play only (NO_IDLE): MMOs stay on this shelf.
+    # drm/acct were added and MMOs let back in by the owner the same day, from the live page.
+    # Until notices.py has checked anything, drm/acct are inert here as on the page.
     # The noflags tokens must stay in syncURL()'s TRI order (ea, eula, fse, vr, demo, iap,
-    # online) or the chip stops reading as active once the page rewrites the URL.
-    # Measured 2026-11-02: 1,215 games; opens on Gothic II, Wall World, Dead Age. On its own,
-    # ai=hide moved only 55 of 2,442 popular games — the bundle is what makes it a shelf.
+    # online, drm, acct, kac) or the chip stops reading as active once the page rewrites the URL.
+    # Measured 2026-11-02 (before drm/acct): 1,215 games; opens on Gothic II, Wall World, Dead
+    # Age. On its own, ai=hide moved only 55 of 2,442 popular games — the bundle is the shelf.
     dict(id="noai", label="No AI, no strings", tone="popular",
          blurb="No generative AI disclosed, no Early Access, no extra EULA, no family-share block, "
-               "no in-app purchases — and 80%+ positive. AI is the developer's own disclosure, "
-               "which Steam has required since 2024.",
-         q="ai=hide&noflags=ea,eula,fse,iap&minscore=80&rev=4&ratesrc=all&adult=hide&"
-           + NO_ENDING_Q + "&sort=qtpd&dir=-1",
-         rev=(5000, None), minscore=80, no_ending=False),
+               "no in-app purchases, no 3rd-party DRM or account — and 80%+ positive. AI, DRM and "
+               "account notices are the developer's own; Steam has required the AI one since 2024.",
+         q="ai=hide&noflags=ea,eula,fse,iap,drm,acct&minscore=80&rev=4&ratesrc=all&adult=hide&"
+           + NO_IDLE_Q + "&sort=qtpd&dir=-1",
+         rev=(5000, None), minscore=80),
     dict(id="deals", label="Best deals under $10", tone="popular",
          blurb="Discounted right now, under $10, and actually good.",
          q="pc=sale&pmax=10&minscore=70&rev=4&ratesrc=all&adult=hide&sort=qtpd&dir=-1",
@@ -279,7 +289,7 @@ def build():
                       drm=bool(notices and (notices.get(a) or {}).get("d")),
                       acct=bool(notices and (notices.get(a) or {}).get("a")),
                       kac=bool(ac and (ac.get(a) or {}).get("k"))),
-            no_end=bool(set(NO_ENDING) & tg),
+            no_end=bool(set(NO_ENDING) & tg),   # kept for the report; matches() reads exc=
             tags=tg,
         ))
 
@@ -297,7 +307,11 @@ def build():
         # Mirrors `adult=hide`, and that is the whole adult test — see the HOUSE RULE above.
         if r["adult"]:
             return False
-        if p.get("no_ending") is False and r["no_end"]:
+        # exc= straight off the query, as the page reads it (canonicalised, lowercased, "+" -> space
+        # by parse_qs), so a shelf with its own list — No AI's NO_IDLE — is measured as it runs.
+        exc = {CANON.get(t.strip().lower(), t.strip().lower())
+               for t in (parsed.get("exc") or [""])[0].split(",") if t.strip()}
+        if exc & r["tags"]:
             return False
         # Flags, read straight off the query rather than restated as dict fields: the query is
         # what the page runs, so a second description of it is a second thing to drift.
