@@ -2844,6 +2844,27 @@ list to that many pages and scrolls back, so Back lands on the same card:
   synthetic `popstate` (`isTrusted` false) leaves the scroll alone, and every `popstate` without
   a record resets paging to page one, as `update()` does for any other filter change.
 
+**Scroll-up reveal (desktop, Nov 2026).** On a wide screen the top bar scrolls away and only
+`thead` sticks, so reaching search or the filters from deep in the list meant scrolling all the
+way back up (owner: "not good UX"). Now any deliberate scroll **up** — `HR_UP` = 10 px of travel,
+so trackpad wobble does not flicker it — slides the **compact** bar back in at the top and `thead`
+docks under it (`top: var(--nav-h)`, kept exact by the ResizeObserver on `#topbar`); scrolling
+down (`HR_DOWN` = 10 px) slides it away. Phones (`body.narrow`) keep their own always-sticky nav.
+- States are body classes, built so nothing the reader sees ever jumps: `hr-armed` once the bar
+  is fully out of view (it turns sticky but stays translated above the viewport), `hr-ready` two
+  frames later (so only the slide animates, not the arming), `hr-shown` while slid in. It
+  disarms only where sticky and in-flow positions coincide — at the very top when shown, or
+  scrolled back into its own space when hidden.
+- An open filter panel is **folded** before the bar arms or hides (owner's choice: a reveal
+  brings back the compact bar, not a 500px panel over the list). Folding shortens the page above
+  the reader, so the list is put back where it was, measured on `.wrap.body` — a no-op wherever
+  the browser's own scroll anchoring already did it. Reopened while stuck, the panel scrolls
+  inside the viewport (`max-height: calc(100vh - 150px)`) instead of running off its bottom.
+- It never slides away from someone using it: focus in the bar (typing in search), an open
+  suggestion list or an open popover.
+- **`/`** anywhere (not while typing, not with a modifier, not over the review digest) reveals
+  the bar and puts the cursor in search. The **↑ top** button stays: it still jumps to row 1.
+
 Two things are deliberately **not** serialized: the **hidden-games list** (session-only, see
 *Thumbnails & hiding*) and the three `localStorage` preferences — `qtpd.view`,
 `qtpd.sections`, `qtpd.tagsCollapsed` — which are per-device chrome, not the query a link is
@@ -3684,6 +3705,11 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Scroll-up reveal (2 Nov 2026).** On desktop, scrolling up anywhere in the list brings the
+  compact top bar back with the column headers docked under it; scrolling down hides it. An
+  open filter panel folds first without moving the list; `/` reveals the bar and focuses search.
+  Phones unchanged. §11 *Scroll-up reveal*.
 
 - **No AI shelf tightened; shelf changes publish themselves (2 Nov 2026).** *No AI, no strings*
   also excludes 3rd-party DRM and 3rd-party accounts, and lets MMOs back in (owner, from the live

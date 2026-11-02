@@ -97,6 +97,28 @@
 
   /* ---- header (scrolls away; table header takes over as sticky, see thead below) ---- */
   .topbar{position:relative; z-index:40; padding-top:10px; background:var(--bg)}
+  /* Scroll-up reveal (desktop, Nov 2026). The bar scrolls away with the page and only thead sticks,
+     so reaching search or the filters from row 400 meant scrolling all the way back up. Now any
+     deliberate scroll UP (HR_UP px) slides the compact bar back in and thead docks under it;
+     scrolling down slides it away again. The states never move anything the reader can see:
+       hr-armed  set once the bar has scrolled fully out of view: sticky, but translated above the
+                 viewport, so arming is invisible;
+       hr-ready  added a frame later, so the slide animates and the arming does not;
+       hr-shown  slid in; thead's sticky `top` follows --nav-h (a ResizeObserver keeps it exact).
+     It disarms only where the sticky and in-flow positions coincide (the very top, or hidden and
+     scrolled back into its own space), so it never pops. Phones keep their own always-sticky
+     compact nav (body.narrow), untouched. An open filter panel is folded before the bar arms or
+     hides, so a reveal always brings back the compact bar; reopened while stuck, the panel
+     scrolls inside the viewport instead of running off its bottom. */
+  body.hr-armed:not(.narrow) .topbar{position:sticky; top:0; transform:translateY(-100%)}
+  body.hr-armed.hr-ready:not(.narrow) .topbar{transition:transform .2s ease}
+  body.hr-armed.hr-shown:not(.narrow) .topbar{transform:none; box-shadow:0 10px 24px #000a}
+  body.hr-armed.hr-ready:not(.narrow) thead{transition:top .2s ease}
+  body.hr-armed.hr-shown:not(.narrow) thead{top:var(--nav-h,0px)}
+  body.hr-armed:not(.narrow) .topbar:not(.compact) .bar-filters{max-height:calc(100vh - 150px); overflow-y:auto}
+  @media (prefers-reduced-motion:reduce){
+    body.hr-armed .topbar, body.hr-armed thead{transition:none !important}
+  }
   .barwrap{background:linear-gradient(180deg,#1a2336,#161e2f); border:1px solid var(--line); border-radius:14px; overflow:hidden}
   /* The suggestion lists (title search, publisher/developer) hang below their input, and this
      clip cut every row past the bar's bottom edge: "fall" showed two of its eight rows, which
@@ -1880,7 +1902,8 @@ try{
       </div>
       <label class="search" id="searchBox" title="Search — game titles. Words match in any order, also inside longer words; case, accents and punctuation are ignored. &quot;a phrase&quot; = those whole words in order · =&quot;Title&quot; = exactly that title · -word = leave out · a OR b = either · year:2020, year:2015-2018, before:2010, after:2022 = release date (also before:2024-06, after:2024-03-15).">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
-        <input id="q" type="search" placeholder="Search a game title…" autocomplete="off" />
+        <input id="q" type="search" placeholder="Search a game title…" autocomplete="off"
+               title="Search a game title. Press / anywhere on the page to jump here." />
         <button class="field-x" id="qClear" type="button" title="Clear search" aria-label="Clear search">✕</button>
         <div class="simsug" id="simSug" hidden></div>
       </label>
@@ -7466,6 +7489,76 @@ function init(data){
   $("#toTop").addEventListener("click", () => {
     const smooth = !matchMedia("(prefers-reduced-motion:reduce)").matches;
     window.scrollTo({top:0, behavior: smooth ? "smooth" : "auto"});
+  });
+  initScrollReveal();
+}
+
+// ── Scroll-up reveal (desktop) — the states and why they never jump: see the hr-* CSS block. ──
+// HR_UP / HR_DOWN: px of travel in ONE direction before the bar moves (owner, 2026-11-02: "~10px").
+// Small enough that any deliberate scroll up brings it back, large enough that trackpad wobble
+// while reading does not make it flicker.
+const HR_UP = 10, HR_DOWN = 10;
+let hrArmed = false, hrShown = false;
+function hrSet(armed, shown){
+  const b = document.body;
+  if(armed !== hrArmed){
+    hrArmed = armed;
+    b.classList.toggle("hr-armed", armed);
+    // Two frames: the first paints the armed (hidden) position with no transition, the second
+    // turns transitions on — so arming is never animated, only the slide in and out.
+    if(armed) requestAnimationFrame(() => requestAnimationFrame(() => { if(hrArmed) b.classList.add("hr-ready"); }));
+    else b.classList.remove("hr-ready");
+  }
+  if(!armed) shown = false;
+  if(shown !== hrShown){ hrShown = shown; b.classList.toggle("hr-shown", shown); }
+}
+function initScrollReveal(){
+  const tb = $("#topbar"), body = document.body;
+  let lastY = window.scrollY, up = 0, down = 0;
+  // Never slide the bar away from someone using it: typing in search, an open suggestion list,
+  // an open popover (summary editor, sort, CSV).
+  const busy = () => tb.contains(document.activeElement)
+    || $("#popHost").classList.contains("on")
+    || !!tb.querySelector(".simsug:not([hidden])");
+  // The panel is folded before the bar arms or hides (owner: a reveal brings back the compact bar).
+  // Folding shortens the page ABOVE the reader, so the list is put back exactly where it was —
+  // measured on the first thing below the bar, which also makes it a no-op wherever the browser's
+  // own scroll anchoring already did the same.
+  const foldPanel = () => {
+    if(tb.classList.contains("compact")) return;
+    const ref = document.querySelector(".wrap.body"), before = ref.getBoundingClientRect().top;
+    setFiltersCompact(true);
+    const shift = ref.getBoundingClientRect().top - before;
+    if(shift) window.scrollBy(0, shift);
+    lastY = window.scrollY; up = down = 0;          // our own scroll is not the reader's
+  };
+  const onScroll = () => {
+    const y = window.scrollY, dy = y - lastY; lastY = y;
+    if(body.classList.contains("narrow")){ if(hrArmed) hrSet(false, false); return; }
+    if(dy > 0){ down += dy; up = 0; } else if(dy < 0){ up -= dy; down = 0; }
+    const H = tb.offsetHeight;                      // layout height: the transform does not change it
+    if(!hrArmed){
+      if(y > H){ foldPanel(); hrSet(true, false); up = down = 0; }
+      return;
+    }
+    // Disarm only where sticky and in-flow positions coincide, so the bar never jumps.
+    if(hrShown ? y <= 0 : y <= tb.offsetHeight){ hrSet(false, false); return; }
+    if(!hrShown && up >= HR_UP) hrSet(true, true);
+    else if(hrShown && down >= HR_DOWN && !busy()){ foldPanel(); hrSet(true, false); }
+  };
+  window.addEventListener("scroll", onScroll, {passive:true});
+  window.addEventListener("resize", onScroll, {passive:true});
+  onScroll();
+  // "/" from anywhere: bring the bar back and put the cursor in search (GitHub / YouTube habit).
+  // Not while typing somewhere, not with a modifier, not over the review-digest modal.
+  document.addEventListener("keydown", e => {
+    if(e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if(typeof rdState !== "undefined" && rdState.open) return;
+    e.preventDefault();
+    if(hrArmed) hrSet(true, true);
+    const q = $("#q"); q.focus({preventScroll:true}); q.select();
   });
 }
 
