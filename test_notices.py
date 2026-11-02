@@ -71,13 +71,20 @@ HD2 = (HEAD + '<div class="DRM_notice"><div>Requires 3rd-Party Account: PlayStat
 RIVALS = (HEAD + '<div class="anticheat_section anticheat_nonkernel_notice"><div>Uses Anti-Cheat Software</div>'
           '<div class="anticheat_name">NetEase Game Security</div></div><div class="DRM_notice">Requires '
           'agreement to a 3rd-party EULA. Kernel drivers are mentioned here, not in the block.</div>')
-FINALS = (HEAD + '<div class="anticheat_section DRM_notice"><div>Uses Kernel Level Anti-Cheat</div>'
-          '<div class="anticheat_name">Denuvo</div><div class="anticheat_uninstalls"> - Requires manual '
-          'removal after game uninstall</div></div>')
+# Real markup (probe Q5, 2026-11-02): the uninstall note is a span INSIDE anticheat_name.
+FINALS = (HEAD + '<div class="anticheat_section DRM_notice" > <div>Uses Kernel Level Anti-Cheat</div> '
+          '<div class="anticheat_name">Denuvo<span class="anticheat_uninstalls"> - Requires manual '
+          'removal after game uninstall</span></div> </div>')
+COD = (HEAD + '<div class="anticheat_section DRM_notice" > <div>Uses Kernel Level Anti-Cheat</div> '
+       '<div class="anticheat_name">RICOCHET Anti-Cheat<span class="anticheat_uninstalls"></span></div> '
+       '<div class="anticheat_name">Boot Protection<span class="anticheat_uninstalls"> - Requires both '
+       'Secure Boot &amp; TPM 2.0</span></div> </div>')
 check("HELLDIVERS 2: kernel, Easy Anti-Cheat", N.read_anticheat(HD2) == ("ok", {"k": "Easy Anti-Cheat"}), N.read_anticheat(HD2))
 check("Marvel Rivals: non-kernel, name kept; a later block's 'Kernel' is not read",
       N.read_anticheat(RIVALS) == ("ok", {"c": "NetEase Game Security"}), N.read_anticheat(RIVALS))
 check("THE FINALS: kernel, name without the uninstall note", N.read_anticheat(FINALS) == ("ok", {"k": "Denuvo"}), N.read_anticheat(FINALS))
+check("Call of Duty: two names, both notes dropped",
+      N.read_anticheat(COD) == ("ok", {"k": "RICOCHET Anti-Cheat, Boot Protection"}), N.read_anticheat(COD))
 check("a block with no readable name -> 'yes'",
       N.read_anticheat(HEAD + '<div class="anticheat_section DRM_notice">Uses Kernel Level Anti-Cheat</div>') == ("ok", {"k": "yes"}))
 check("Stardew-like page: no block -> ok, nothing", N.read_anticheat(HEAD + "<p>Farm.</p>") == ("ok", {}))
