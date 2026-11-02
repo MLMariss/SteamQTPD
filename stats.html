@@ -1609,10 +1609,15 @@ async function setGran(g){
   note.hidden = true;
   G = g; rebuild(); render();
 }
-// The default view: the last complete year, against the year before.
+// The default view: the CURRENT year (so far), against the year before. Owner, 2026-11-02: the
+// page used to open on the last complete year, which on Nov 2 meant 2025 — a year that is over.
+// The year in progress is what a visitor asks about; release counts compare per day, so a
+// partial year against a full one is a fair comparison (TIP.rel). periodAt(TODAY) rather than
+// "the last period", so a timeline that ever ran past today could not open on a future year.
 function defaultView(){
   G = "y"; VS = "prev"; CMPD = null; PER = buildPeriods(G);
-  SEL = Math.max(0, PER.length - (PER[PER.length - 1].partial ? 2 : 1));
+  const k = periodAt(TODAY);
+  SEL = k >= 0 ? k : PER.length - 1;
 }
 // "#2025", "#2026-Q3", "#2026-09", "#2026-W43", then "&vs=yoy" / "&vs=none" / "&vs=<a period key>".
 async function fromHash(){

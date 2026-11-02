@@ -2107,7 +2107,7 @@ try{
       </div>
 
       <div class="filter-section" data-section="flags">
-        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, a playable demo, AI content, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
+        <button class="section-head" type="button" aria-expanded="false" title="Flags — include or exclude games by Steam attributes: Early Access, a playable demo, AI content, in-app purchases, always-online, controller and Steam Deck support, adult content, VR-only, family-share block, and custom EULA. Most are Any / Exclude / Only. Click to fold or unfold."><span class="sec-caret">▸</span><span class="sec-title">Flags</span><span class="sec-count" data-count="flags"></span></button>
         <div class="section-body"><div class="ctl-row">
         <!-- Presence flags all share ONE toggle schema — Any / Exclude / Only — so the row stays
              narrow and the pattern is learned once. That only works if the LABEL names the thing
@@ -2138,6 +2138,25 @@ try{
             <button data-ai="any"  aria-pressed="true">Any</button>
             <button data-ai="hide" aria-pressed="false">Exclude</button>
             <button data-ai="only" aria-pressed="false">Only</button>
+          </div>
+        </div>
+        <!-- In-app purchases and Always online (Nov 2026): two things players ask about that the
+             Steam store has no filter for. Both are read from data PICS already delivers — the
+             IAP feature category and the Deck test's online-for-single-player result. -->
+        <div class="field" title="In-app purchases — the developer ticked Steam's 'In-App Purchases' feature: the game sells items, currency, boosts or passes inside the game. It is self-declared, so a game that sells extras without ticking it reads as none. Paid DLC on the store page doesn't count.">
+          <label>In-app purchases</label>
+          <div class="seg" role="group" aria-label="In-app purchases">
+            <button data-flag="iap" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="iap" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="iap" data-val="only" aria-pressed="false">Only</button>
+          </div>
+        </div>
+        <div class="field" title="Always online — Valve's Steam Deck test found the game needs an internet connection even to play single-player. Only games Valve has tested for Deck carry the result (about 36,000), so Exclude means 'no known online requirement', not 'definitely plays offline'.">
+          <label>Always online</label>
+          <div class="seg" role="group" aria-label="Always online">
+            <button data-flag="online" data-val="any"  aria-pressed="true">Any</button>
+            <button data-flag="online" data-val="hide" aria-pressed="false">Exclude</button>
+            <button data-flag="online" data-val="only" aria-pressed="false">Only</button>
           </div>
         </div>
         <div class="field" title="Controller support — from Valve's flags, not the store blurb. Full = built for a gamepad end to end. Partial+ also includes games only partly playable on one (menus may still need a mouse).">
@@ -2559,12 +2578,12 @@ const state = { data:null, q:"", co:"", coSugIdx:-1, tagQuery:"", similarTo:null
                 wishlist:null, wishOnly:false, sortKey:"qtpd", sortDir:-1, ratingSource:"recent", ptMetric:"up", fullCounts:{},
                 view:"table", tagLinger:new Map(),   // tagLinger: tag -> clearedAt (ms) for chips fading out after a cycle-to-neutral
                 // PICS "Flags" cluster. Each key is independent; "any" = no filter.
-                //   ea/eula/fse/vrOnly/demo : "any" | "hide" (flag absent) | "only" (flag present)
+                //   ea/eula/fse/vrOnly/demo/iap/online : "any" | "hide" (flag absent) | "only" (flag present)
                 //   ai       : "any" | "hide" (exclude disclosed) | "only" (require disclosed)
                 //   ctrl     : "any" | "full" | "partial"
                 //   deck     : "any" | "verified" | "playable" (verified+playable) | "unsupported"
                 //   adultF   : "any" | "hide" (exclude adult) | "only". Defaults to ADULT_DEFAULT.
-                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT } };
+                flags:{ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT } };
 
 // ----- helpers -----
 const $ = s => document.querySelector(s);
@@ -3243,6 +3262,8 @@ function passNonRange(x){
     if(triFail(F.eula, x.pics_eula)) return false;
     if(triFail(F.fse, x.pics_fse)) return false;
     if(triFail(F.vrOnly, x.pics_vr_only)) return false;
+    if(triFail(F.iap, x.pics_iap)) return false;
+    if(triFail(F.online, x.pics_online)) return false;
     if(F.ai === "hide" && (x.pics_ai||0) > 0) return false;
     if(F.ai === "only" && !((x.pics_ai||0) > 0)) return false;
     if(F.ctrl === "full"    && x.pics_controller !== "full") return false;
@@ -5725,7 +5746,7 @@ function sectionActiveCounts(){
     tags: state.tagsInc.size + state.tagsExc.size,
     flags: (() => { const F = state.flags; let n = 0;
       if(F.ea !== "any") n++; if(F.eula !== "any") n++; if(F.fse !== "any") n++; if(F.vrOnly !== "any") n++;
-      if(F.demo !== "any") n++;
+      if(F.demo !== "any") n++; if(F.iap !== "any") n++; if(F.online !== "any") n++;
       if(F.ai !== "any") n++; if(F.ctrl !== "any") n++; if(F.deck !== "any") n++; if(F.adultF !== ADULT_DEFAULT) n++;
       return n; })(),
   };
@@ -5769,6 +5790,8 @@ function markChangedControls(){
     setGroup('[data-flag="ea"]',     F.ea     !== "any");
     setGroup('[data-flag="vrOnly"]', F.vrOnly !== "any");
     setGroup('[data-flag="demo"]',   F.demo   !== "any");
+    setGroup('[data-flag="iap"]',    F.iap    !== "any");
+    setGroup('[data-flag="online"]', F.online !== "any");
     setGroup('[data-flag="fse"]',    F.fse    !== "any");
     setGroup('[data-flag="eula"]',   F.eula   !== "any");
   }
@@ -5824,6 +5847,27 @@ function typoMsg(){
     + (ty.fix ? `Did you mean <button type="button" class="fixq" data-fixq="${esc(ty.fix)}">${esc(ty.fix)}</button>?`
               : "Check the spelling, or try fewer words.");
 }
+// The Flags cluster as the summary line names it: chip text per non-default value, and the
+// options its popover offers. `sel` finds the real panel button for a value, so the popover
+// drives the panel exactly as every other summary editor does.
+const FLAG_TRI = [["Any","any"],["Exclude","hide"],["Only","only"]];
+const FLAG_SUM = [
+  {key:"ai",     title:"AI disclosure",      seg:"ai",   opts:FLAG_TRI, text:{hide:"no AI", only:"AI disclosed"}},
+  {key:"ea",     title:"Early Access",                   opts:FLAG_TRI, text:{hide:"no Early Access", only:"Early Access"}},
+  {key:"demo",   title:"Demo",                           opts:FLAG_TRI, text:{hide:"no demo", only:"has a demo"}},
+  {key:"iap",    title:"In-app purchases",               opts:FLAG_TRI, text:{hide:"no in-app purchases", only:"in-app purchases"}},
+  {key:"online", title:"Always online",                  opts:FLAG_TRI, text:{hide:"not always online", only:"always online"}},
+  {key:"eula",   title:"Custom EULA",                    opts:FLAG_TRI, text:{hide:"no custom EULA", only:"custom EULA"}},
+  {key:"fse",    title:"Family-share block",             opts:FLAG_TRI, text:{hide:"no family-share block", only:"family-share block"}},
+  {key:"vrOnly", title:"VR-only",                        opts:FLAG_TRI, text:{hide:"no VR-only", only:"VR-only"}},
+  {key:"ctrl",   title:"Controller",         seg:"ctrl", opts:[["Any","any"],["Full","full"],["Partial+","partial"]],
+                 text:{full:"full controller", partial:"controller partial+"}},
+  {key:"deck",   title:"Steam Deck",         seg:"deck", opts:[["Any","any"],["Verified","verified"],["Playable+","playable"],["Unsupported","unsupported"]],
+                 text:{verified:"Deck verified", playable:"Deck playable+", unsupported:"Deck unsupported"}},
+  {key:"adultF", title:"Adult content",      seg:"adult", def:ADULT_DEFAULT, opts:[["Exclude","hide"],["Any","any"],["Only","only"]],
+                 text:{hide:"no adult", any:"adult included", only:"adult only"}},
+].map(f => ({def:"any", ...f,
+  sel: v => f.seg ? `[data-${f.seg}="${v}"]` : `[data-flag="${f.key}"][data-val="${v}"]`}));
 function renderSummary(){
   const host = $("#filterSummary"); if(!host) return;
   const parts = [];
@@ -5850,6 +5894,10 @@ function renderSummary(){
     (state.release === "upcoming" ? "upcoming only" : "released + upcoming")
     + (UP_STATUS === "loading" ? " (loading…)" : UP_STATUS === "error" ? " (unavailable)" : "")));
   if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
+  // Flags: one chip per flag moved off its default. They had none, which was harmless while only
+  // the panel could set a flag — but a shelf can now (No AI, no strings), and a shelf must show
+  // every control it moved. Each chip opens the same choice the Flags panel offers.
+  for(const f of FLAG_SUM){ const v = state.flags[f.key]; if(v !== f.def && f.text[v]) parts.push(chip("flag_" + f.key, f.text[v])); }
 
   // Tags close the line as their OWN inline cycle-chips (not a "+2 −1" count) — the same
   // interacted-tag chips as the collapsed Tags header, so each can be re-cycled in place and
@@ -5913,6 +5961,9 @@ const SUMMARY_EDITORS = {
   rev:      {title:"Min reviews (toggle bands)", multi:true, has:v => state.revBands.has(+v), opts:[["0-99",'[data-rev="0"]',"0"],["100",'[data-rev="2"]',"2"],["1k",'[data-rev="3"]',"3"],["5k+",'[data-rev="4"]',"4"]]},
   tagmode:  {title:"Required tags match", cur:() => state.tagMode, opts:[["ALL",'[data-tagmode="and"]',"and"],["ANY",'[data-tagmode="or"]',"or"]]},
 };
+// flag_<key>: one editor per Flags control, built from FLAG_SUM so chip and popover can't disagree.
+FLAG_SUM.forEach(f => { SUMMARY_EDITORS["flag_" + f.key] = {title:f.title, cur:() => state.flags[f.key],
+  opts:f.opts.map(([lbl, v]) => [lbl, f.sel(v), v])}; });
 function openSummaryEditor(anchor, key){
   const EXPAND = {q:["value","#q"], price:["value","#minprice"], hours:["value","#minhours"], minsale:["value","#sale-up"], qrange:["value","#qmin"], tags:["tags",null]};
   if(key === "co"){ setFiltersCompact(false); const el = $("#co"); el.focus(); el.scrollIntoView({block:"nearest"}); return; }
@@ -6452,6 +6503,7 @@ function syncFlagsUI(){
   const tri = (key, val) => document.querySelectorAll(`[data-flag="${key}"]`).forEach(o =>
     o.setAttribute("aria-pressed", o.dataset.val === val));
   tri("ea", F.ea); tri("vrOnly", F.vrOnly); tri("fse", F.fse); tri("eula", F.eula); tri("demo", F.demo);
+  tri("iap", F.iap); tri("online", F.online);
 }
 function setBasis(b){
   state.qBasis = b;
@@ -6527,7 +6579,9 @@ function syncURL(){
   // The tri-state presence flags split across two lists: `flags` = require present (the
   // pre-tri-state meaning, so old shared links keep working), `noflags` = require absent.
   { const F = state.flags;
-    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"], ["demo","demo"]];
+    // Order matters to presets.py: a shelf's flags=/noflags= list must name its tokens in THIS
+    // order, or the shelf's chip would stop reading as active the moment syncURL() rewrote it.
+    const TRI = [["ea","ea"], ["eula","eula"], ["fse","fse"], ["vrOnly","vr"], ["demo","demo"], ["iap","iap"], ["online","online"]];
     const on  = TRI.filter(([k]) => F[k] === "only").map(([,tok]) => tok);
     const off = TRI.filter(([k]) => F[k] === "hide").map(([,tok]) => tok);
     if(on.length)  p.set("flags", on.join(","));
@@ -6611,7 +6665,7 @@ function loadFromURL(){
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
   // Each list only sets the keys it names, so `flags` and `noflags` don't clobber each other.
-  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly", demo:"demo" };
+  { const TOK = { ea:"ea", eula:"eula", fse:"fse", vr:"vrOnly", demo:"demo", iap:"iap", online:"online" };
     const readTri = (param, mode) => setIf(param, v => v.split(",").filter(Boolean)
       .forEach(tok => { if(TOK[tok]) state.flags[TOK[tok]] = mode; }));
     readTri("flags", "only");
@@ -6716,7 +6770,7 @@ function init(data){
     state.release=RELEASE_DEFAULT; state.preUpSort=null;
     state.minSale=null; state.minSaleForcedFull=false;
     state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.ptMetric="up"; state.qRangeTouched=false;
-    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     ratingScheme = RATING_SCHEME_DEFAULT;
     loadFromURL();
     syncSchemeUI();
@@ -6906,7 +6960,7 @@ function init(data){
   segGroup("ctrl", "ctrl");
   segGroup("deck", "deck");
   segGroup("adult", "adultF");
-  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula / demo.
+  // Tri-state presence groups (data-flag/data-val="any"|"hide"|"only"): ea / vrOnly / fse / eula / demo / iap / online.
   document.querySelectorAll("[data-flag]").forEach(b =>
     b.addEventListener("click", () => {
       const key = b.dataset.flag, val = b.dataset.val;
@@ -7038,7 +7092,7 @@ function init(data){
     document.querySelectorAll("[data-ptmetric]").forEach(o => o.setAttribute("aria-pressed", o.dataset.ptmetric==="up")); syncPtHeader();
     syncRevButtons();
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
-    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
+    state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     syncFlagsUI();
     state.sortKey="qtpd"; state.sortDir=-1; syncSortArrows();   // the default sort, the one the page loads with
     state.openCards.clear();                                    // nothing was flipped open at the start either
@@ -7639,6 +7693,12 @@ Promise.all([
       game.pics_ai      = p.ai || 0;      // 0 none / 1 pre-gen / 2 live-gen
       game.pics_fse     = !!p.fse;        // family-share excluded
       game.pics_eula    = !!p.eula;       // has custom EULA
+      // In-app purchases: Valve's feature category 35, which the developer ticks themselves.
+      game.pics_iap     = Array.isArray(p.cats) && p.cats.includes(35);
+      // Always online: the Steam Deck test's "requires internet for single-player" result
+      // (pics_summarize.py -> deck.online_solo). Only Deck-TESTED games carry it (~36k), so its
+      // absence means "no known requirement", never "plays offline" — the tooltip says so.
+      game.pics_online  = !!(p.deck && p.deck.online_solo);
       game.pics_controller = p.controller || null;   // "full" | "partial"
       if(p.deck && typeof p.deck === "object"){
         game.deck_cat = (p.deck.cat != null) ? p.deck.cat : null;  // 1 Unsup /2 Play /3 Verified
