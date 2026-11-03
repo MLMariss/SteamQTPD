@@ -2043,6 +2043,25 @@ section (it's a global action), so its dead space folds the whole bar via the
 `.collapse-handle`. A `getSelection()` guard prevents folding at the end of a
 text drag.
 
+**Filter tiles and one control height (3 Nov 2026).** Two complaints about the open
+panel, both from the owner's annotated screenshot:
+- *Labels on different lines.* Controls were 30px (QTPD range), 35px (segmented
+  buttons), 38px (number boxes) and 39px (Min sale) tall, and `.ctl-row` aligned
+  their bottoms, so the Value row's labels sat at four different heights. Every
+  filter control is now `--ctl-h` (38px) tall and filter rows align tops: one label
+  line, one control line, per row. `.numinput` takes it as a `min-height`, because
+  the phone layout's bigger stepper buttons must be allowed to grow it.
+- *Filters run together.* A label, its buttons and the next filter's label stood in
+  one grey run, 12px apart. Each `.field` in an open section is now a **tile**
+  (faint fill, 1px edge, 11px radius, 10px gutters). The fold-safe 6px margin survives as a
+  **transparent 6px border**: still part of the tile for hit-testing (6 + 6 covers
+  the 10px gutter, so a near-miss can't fold), the fill clipped to the padding box,
+  the visible edge an inset shadow, and `margin:-6px` cancelling it in layout.
+  Cost: ~20px per row of filters (74px over the three sections at 1920px), and at
+  1366–1600px Flags wraps to three rows instead of two. Options considered and
+  mocked: vertical dividers, stronger labels with wider gaps, a hover spotlight;
+  the owner picked tiles.
+
 ---
 
 ## 9.7 Length model (`length_model.py` → `length.json`, `length_coefs.json`)
@@ -2308,8 +2327,8 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
   a vague date sorts the same way (`v1Due()`).
 - **Filters that cannot apply to an unreleased game skip it rather than drop it.** The default
   Min reviews floor (100+) would empty the view, so it never applies to upcoming rows; bands the
-  user picked still do. *Released within* drops upcoming rows, since a future date would
-  otherwise read as "recent". Rows have no reviews, playtime or length, so no QTPD: they sink
+  user picked still do. The *Released* filter drops upcoming rows, since a future date would
+  otherwise read as "recent" (and a future year as a picked one). Rows have no reviews, playtime or length, so no QTPD: they sink
   under any QTPD sort in All.
 - **Adult.** The landing default (*Exclude*) applies unchanged — Upcoming is a broad list the user
   did not name. `isAdult()` gained one input: `store_adult`, the store's own descriptors (3/4)
@@ -2351,8 +2370,8 @@ existing link and shelf is unchanged). What a row is, and the rules around it:
   has been playable since Feb 2021. Until the scraper refreshes a game that just left EA, its date
   is still the EA start, so the tip names the 1.0 from `ea_dates.json` instead ("in Early Access
   from 2025-JUL-10; full (1.0) release 2026-OCT-22" — Every Day We Fight the day after). The date
-  itself, its sort and *Released within* are unchanged: they still mean what Steam's release date
-  means.
+  itself, its sort and the *Released* filter are unchanged: they still mean what Steam's release
+  date means.
 
 **Status unknown (Oct 2026).** A stored game Steam's store stopped answering for. Valkyrie Girl
 (4671710) was the case: stored in June as an upcoming shell, its store page then gave no game
@@ -2471,11 +2490,25 @@ state** — and a preset that is not real filter state cannot show the user what
   means no bound (no game has a Length of 0, and one ▼ on the empty box used to blank the list):
   ▼ steps the max down to 1 and then back to empty, never to 0; a typed 0 tidies to empty on
   `change`; `hmax=0` in a link is ignored (INESKA_IMPROVEMENTS.md §33). Price keeps 0 — max $0 is "free games".
-- **Released within** — `state.releasedWithin`, URL `rel`, values `any` / `1mo` / `3mo` / `6mo` /
-  `1yr` / `1yr+`. The same shape as the existing *Updated within*, on `release_ts`. `1yr+` means
-  released **more than** a year ago, so `1yr` and `1yr+` partition the catalogue exactly.
-  Previously "what came out recently" could only be reached by *sorting*, which is a different
-  question.
+- **Released** (was *Released within*) — `state.releasedWithin`, URL `rel`. Two kinds of value:
+  - a **rolling window** on `release_ts`: `1mo` (30 days) and `1yr` (365 days), the two buttons.
+    `3mo`, `6mo` and `1yr+` (released **more than** a year ago) were buttons until 3 Nov 2026 and
+    are still honoured in links, so old shares keep their meaning; they just light no button.
+    *New and well-reviewed* (`presets.py`) uses `rel=1yr`.
+  - a **span of calendar years**, picked in a year grid: `2023`, `2019-2024`, or `..2010` for
+    "2010 and earlier". Years are the UTC year of `release_ts` (`relYear`, cached as `_ry`):
+    `release_ts` is the date at 00:00 UTC, so a local-time year would push every 1 January release
+    into the previous year west of Greenwich. Any other `rel` value in a link is dropped, not
+    filtered on.
+
+  Why years (owner, 2026-11-03): players who buy a couple of games a year ask for "something
+  from 2019" or "the 2015–2018 era", which no rolling window can express. The field kept its
+  width: `Any · 1mo · 1yr · Year ▾`. *Year ▾* opens the grid in the shared popover host
+  (`buildRelPopover`, so the filter bar's scroll box can't clip it): the newest 20 years one cell
+  each, 7 × 3, the last cell **Older** = every year before them. One click picks that year and
+  applies it at once; a second click while the grid is open makes the range and closes it; click
+  outside or Esc keeps the single year. The button then reads the pick (`2019–2024 ▾`, `≤2006 ▾`)
+  in gold. The summary chip (`released 2019–2024`) opens the same grid with the two windows on top.
 
 **Min sale % floor (`state.minSale`, Sep 2026).** A stepper — `−5%` · readout · `+5%` — that
 drops shallow discounts out of the table. It is not a preset list: the resting value is read
@@ -2602,6 +2635,35 @@ more room before truncating. The table's `min-width` drops **1324 → 1218px** t
 Tags track's own minimum), so the horizontal-overflow floor moves with it. Scoped
 `:not(.layout-card)` throughout — the toggle is meaningless in Card and Grid, where there is no
 column grid to reclaim.
+
+**Tag match — the Tags header sorts too (3 Nov 2026).** The tag filter only asks whether a game
+*has* a tag, so a search for RPG could be topped by a game whose last tag was RPG. Steam lists a
+game's tags most-voted first (PICS rank order; SteamSpy's where PICS has none), and that position
+is the only measure we hold of how much a tag describes a game. Sort key `tagmatch`, label
+*Tag match*:
+- **Three bands, then QTPD** (owner's pick over a pure position sort, a QTPD × position blend and
+  a "tag in top N" filter): every required tag in the game's top 5, within its top 10, or
+  further down. In ALL mode a game is banded by its lowest-placed required tag; in ANY mode by
+  its highest. With more required tags than a band holds the band widens (`tagTierCuts`:
+  `max(5, k)`, `max(10, k + 5)`). Inside a band the order is QTPD, high first. A pure position
+  sort was rejected because any game with RPG at #1, however weak, would outrank an excellent one
+  with RPG at #2. Positions come from `tagPos()` (canonical tag → index, cached per tag list).
+- **A line opens each band** (`tierBreakHTML`): a `tr.tierrow` in the table and card list, a
+  full-width `.tierhead` in the grid ("RPG is one of the game's top 5 tags · 4,068 games"), so
+  QTPD visibly restarting at a band edge reads as a new group, not as a sorting slip. Find similar
+  gets its own wording ("Closest — all 3 main tags in the game's top 5"). `growPage` adds the
+  line where a band starts inside an appended grid page.
+- **It switches itself on.** The first required tag on an untouched list (QTPD, high first)
+  switches the sort to Tag match; Find similar always does, ranking by likeness being its whole
+  point. A sort the user picked stays theirs. When the last required tag goes, `update()` puts
+  back the sort that was there before (`state.preTagSort`). URLs carry it as `sort=tagmatch`;
+  shelves are untouched, since they set their own sort and a URL never triggers the switch.
+- **The header holds two controls now.** The *Tags* label is the sort button (`data-sort=
+  "tagmatch"`); the `><` toggle and the empty space beside it still fold the column, as the whole
+  header did before. Folded, the sort button is hidden, so the strip carries the sort arrow
+  itself (`th.tagsth[data-tm]::after`). Tag match is also in the mobile sort select, the grid
+  sort bar and the summary sort popover; with no tag required, every one of them says why
+  instead of switching (`tagMatchBlocked`).
 
 **The art gives way before the title (Oct 2026).** `minmax(268px, 2.2fr)` leaves Game at its
 floor on every window from 1280px to ~1520px, because the fixed-ceiling columns take the free
@@ -2818,7 +2880,7 @@ with HLTB in Sep 2026 — read and ignored, never written):
 | Wishlist | `wishonly` |
 | Release | `release` (`upcoming` / `all`; absent = Released) |
 
-`hmin` / `hmax` (Length range) and `rel` (Released within) arrived with the preset shelves —
+`hmin` / `hmax` (Length range) and `rel` (Released, then called Released within) arrived with the preset shelves —
 three shelves could not be expressed without them. `scheme` carries the review-score colour
 scheme; it is a *display* preference rather than a filter, and a link's scheme beats the one
 saved in `localStorage`. `presets.py`'s `KNOWN_PARAMS` allowlist mirrors this table minus
@@ -3705,6 +3767,16 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Filter panel tiles, a year picker, Tag match (3 Nov 2026).** From the owner's annotated
+  screenshot. Every filter control is one height (38px) and rows align tops, so labels share a
+  line. Each filter is a tile so groups read apart. *Released within* became *Released*:
+  `Any · 1mo · 1yr · Year ▾`, where the year grid picks one year or a range (`rel=2019-2024`,
+  `rel=..2010`); old `3mo` / `6mo` / `1yr+` links still work. A new sort, **Tag match**, bands
+  games by how high your required tags sit in each game's own tag list (top 5 / top 10 / further),
+  QTPD inside each band, with a line opening each band. It switches on with the first tag and
+  for Find similar, and the Tags header now both sorts and folds. §11 *Fold zones*, *Released*,
+  *Tag match*.
 
 - **Scroll-up reveal (2 Nov 2026).** On desktop, scrolling up anywhere in the list brings the
   compact top bar back with the column headers docked under it; scrolling down hides it. An

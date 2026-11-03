@@ -614,7 +614,15 @@
      indicator spills out of the 34px collapsed track and paints over the next column. */
   thead th.tagsth{cursor:pointer; gap:6px; overflow:hidden}
   thead th.tagsth:hover{color:var(--text)}
-  .tagstoggle{font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none; line-height:1}
+  /* The toggle is a <button> of its own since the "Tags" label became the Tag match sort. */
+  .tagstoggle{appearance:none; background:none; border:0; padding:2px 3px; cursor:pointer;
+        font-family:var(--mono); font-size:12px; color:var(--muted-2); flex:none; line-height:1}
+  .tagstoggle:focus-visible{outline:2px solid var(--blue); outline-offset:1px; border-radius:4px}
+  /* Folded, the Tags sort button (and the arrow inside it) is hidden, so while Tag match is the
+     sort the strip carries the arrow itself, where every sorted header puts it. */
+  body.tags-collapsed:not(.layout-card) thead th.tagsth[data-tm]::after{content:attr(data-tm);
+        position:absolute; left:0; right:0; bottom:1px; text-align:center; font-size:10px; line-height:1;
+        color:var(--gold); pointer-events:none}
   thead th.tagsth:hover .tagstoggle{color:var(--text)}
   /* Collapsed: the strip is narrow, so without a visible container the bare "<>" reads as a
      stray glyph rather than a control. Give it a bordered pill plus rules down both sides of
@@ -697,6 +705,14 @@
   tbody tr:last-child{border-bottom:0}
   tbody tr:nth-child(even){background:rgba(127,160,230,.035)}   /* subtle zebra; translucent so the card gradient still shows through */
   tbody tr:hover{background:#1b2640}                            /* declared after zebra so hover always wins */
+  /* Tag match band headers (tierBreakHTML): a slim full-width line where a band starts, so the
+     QTPD order restarting at the band edge reads as a new group, not as a sorting slip. */
+  tbody tr.tierrow, tbody tr.tierrow:hover{display:block; background:#10182a}
+  tbody tr.tierrow td{display:flex; flex-direction:row; align-items:baseline; justify-content:flex-start;
+        gap:12px; padding:9px 14px 8px}
+  .tier-lbl{font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--gold)}
+  .tier-n{font-family:var(--mono); font-size:11px; color:var(--muted-2); white-space:nowrap}
+  .tierhead{grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 12px; padding:6px 2px 0}
   /* The card's corners are rounded, but nothing inside it is clipped to them: overflow:hidden on
      .tablecard would make it a scroll container and unstick the header, and overflow:clip would
      cut off the sort menu that drops out below a short list. So the two square backgrounds that
@@ -1125,6 +1141,37 @@
   .section-body{padding:2px 0 14px}
   .filter-section.open > .section-body{padding-top:14px}
   .filter-section:not(.open) .section-body{display:none}
+  /* One control height for every filter. The controls used to be 30px (QTPD range), 35px
+     (segmented buttons), 38px (number boxes) and 39px (Min sale) tall, and .ctl-row aligns its
+     items' BOTTOMS — so each label above them sat on its own line, four different heights in
+     the Value row alone. Every control is now --ctl-h tall and filter rows align TOPS, so the
+     labels share one line and the controls another. min-height, not height, on .numinput:
+     the phone layout gives its steppers a bigger tap target that has to be allowed to grow. */
+  :root{--ctl-h:38px}
+  .filter-section .ctl-row{align-items:flex-start}
+  .filter-section .field .seg{height:var(--ctl-h); box-sizing:border-box}
+  .filter-section .field .seg button{padding-top:0; padding-bottom:0}
+  .filter-section .field .seg.salestep .saleval{padding-top:0; padding-bottom:0}
+  .filter-section .field .numinput{min-height:var(--ctl-h); box-sizing:border-box}
+  .filter-section .field .numinput input{padding-top:0; padding-bottom:0}
+  .filter-section .rangewrap{height:var(--ctl-h); margin-top:0}
+  .filter-section .rangetrack{top:calc(var(--ctl-h) / 2 - 2px)}
+  .filter-section .rangewrap input[type=range]{height:var(--ctl-h)}
+  /* Filter tiles. Each filter's label and buttons used to stand loose on the panel, 12px from
+     the next filter's and in the same grey, so the eye could not tell where one filter ended
+     and the next began ("3RD-PARTY DRM Any Exclude Only 3RD-PARTY ACCOUNT Any …" read as one
+     run). Every .field is now a card. The 6px fold-safe margin from the rule above survives as
+     a TRANSPARENT border: still part of the tile for hit-testing, so a near-miss in the 10px
+     gutter lands on a tile rather than on the fold target (6 + 6 > 10); the fill is clipped
+     inside it and the visible edge is an inset shadow. The -6px margin cancels it in layout,
+     exactly as the padding version did. Scoped to open sections: that is where the fold-safe
+     rule lives, and a folded section shows no fields. */
+  .filter-section.open > .section-body .ctl-row{gap:10px}
+  .filter-section.open > .section-body .field{
+    padding:7px 10px 10px; margin:-6px; border:6px solid transparent; border-radius:17px;
+    background:#141b2b padding-box; box-shadow:inset 0 0 0 1px var(--line)}
+  .filter-section.open > .section-body .field > label:not(.changed){color:var(--muted)}
+  .filter-section.open > .section-body .field[title]:hover > label{color:var(--text)}
   /* Narrow viewports: stack header above controls again (side-by-side needs width). */
   @media (max-width:720px){
     .filter-section.open{display:block}
@@ -1195,6 +1242,19 @@
   .pop-opt:hover{color:var(--text); border-color:var(--muted-2)}
   .pop-opt.on{background:var(--gold-soft); border-color:var(--gold-deep); color:var(--gold)}
   .pop-actions{display:flex; gap:8px; margin-top:11px}
+  /* Release-year grid (buildRelPopover): 7 columns × 3 rows = the 20 newest years plus Older.
+     A picked span is gold-soft, its two ends solid gold — gold being the page's "changed from
+     default" colour, the same as the button that opened it. */
+  .popover.relpop{max-width:none; width:min(352px, calc(100vw - 16px)); box-sizing:border-box}
+  .relpop .rp-win{margin-bottom:11px}
+  .relpop .rp-h{font-family:var(--mono); font-size:11px; color:var(--muted-2); margin:0 1px 8px}
+  .relpop .rp-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:4px}
+  .relpop .yc{appearance:none; border:0; border-radius:6px; background:var(--panel); color:var(--muted);
+        font-family:var(--mono); font-size:12px; padding:8px 0; cursor:pointer; min-width:0}
+  .relpop .yc:hover{background:#2b3858; color:var(--text)}
+  .relpop .yc:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+  .relpop .yc.in{background:var(--gold-soft); color:var(--gold)}
+  .relpop .yc.end{background:var(--gold); color:#1a1206; font-weight:600}
   .pop-go{flex:1; background:var(--gold-soft); border:1px solid var(--gold-deep); color:var(--gold);
         font-family:var(--mono); font-size:13px; padding:8px; border-radius:8px; cursor:pointer}
   .pop-go:hover{filter:brightness(1.12)}
@@ -1701,6 +1761,9 @@
   /* #1: group separator lines chunk the tall card into scannable blocks —
      price · ratings · length/playtime · dates · tags — so ratings read apart from length. */
   body.layout-card tbody td{padding:5px 0}
+  body.layout-card tbody tr.tierrow{padding:10px 15px 9px; background:#10182a}
+  body.layout-card tbody tr.tierrow td{padding:0; flex-wrap:wrap; row-gap:2px}
+  body.layout-card tbody tr.tierrow td::before{content:none}
   /* Selectors carry the cells' own .num/.center class so they out-specify the base
      `body.layout-card tbody td.num{border:0}` reset (which would otherwise cancel the divider). */
   body.layout-card tbody td[data-label="Reviews"],
@@ -1923,6 +1986,7 @@ try{
           <option value="updated">Updated</option>
           <option value="playtime">Playtime</option>
           <option value="length">Length</option>
+          <option value="tagmatch">Tag match</option>
         </select>
         <button id="msortdir" type="button" title="Toggle sort direction" aria-label="Toggle sort direction">▼</button>
       </div>
@@ -2104,19 +2168,20 @@ try{
             <button data-upd="1yr+" title="No update in over a year — effectively abandoned.">1yr+</button>
           </div>
         </div>
-        <!-- Released within. Updated-within existed; released-within did not, so "what came out
-             recently" could only be reached by SORTING on Released, which is a different
-             question ("newest first" still lists everything). Same six-button shape as Updated
-             within directly above, reading release_ts instead of last_update_ts. -->
-        <div class="field" title="Released within — show only games released inside this window. 1yr+ means released more than a year ago, i.e. everything except the last year's releases.">
-          <label>Released within</label>
-          <div class="seg" role="group" aria-label="Released within">
-            <button data-rel="any"  aria-pressed="true" title="Any — no release-date limit.">Any</button>
-            <button data-rel="1mo" title="Released in the last month.">1mo</button>
-            <button data-rel="3mo" title="Released in the last 3 months.">3mo</button>
-            <button data-rel="6mo" title="Released in the last 6 months.">6mo</button>
-            <button data-rel="1yr" title="Released in the last year.">1yr</button>
-            <button data-rel="1yr+" title="Released more than a year ago — excludes the last year's releases.">1yr+</button>
+        <!-- Released. Started as "Released within" (Any/1mo/3mo/6mo/1yr/1yr+), a copy of Updated
+             within. Rolling windows answer "what is new", but someone who buys two games a year
+             asks for a year or an era ("2019", "2015–2018"), which no window could express. The
+             two windows people use stay as buttons; the last button opens a year grid in the
+             shared popover (buildRelPopover): one click picks a year, a second makes a range.
+             Same width as before, so the Quality row keeps its shape. -->
+        <div class="field" id="relField" title="Released — 1mo and 1yr keep games released in the last 30 days or 12 months. Year ▾ picks calendar years instead: click one year for just that year, then a second year for everything in between. Older covers every year before the grid.">
+          <label>Released</label>
+          <div class="seg" role="group" aria-label="Released">
+            <button data-rel="any" aria-pressed="true" title="Any — no release-date limit.">Any</button>
+            <button data-rel="1mo" aria-pressed="false" title="Released in the last 30 days.">1mo</button>
+            <button data-rel="1yr" aria-pressed="false" title="Released in the last 12 months.">1yr</button>
+            <button data-rel="years" id="relYearsBtn" type="button" aria-pressed="false" aria-haspopup="dialog" aria-expanded="false"
+                    title="Pick calendar years — one year, or a range from one year to another.">Year ▾</button>
           </div>
         </div>
         <div class="field" title="Playtime sort — which median the Playtime column sorts by when clicked: recommenders' hours (▲) or non-recommenders' (▼). This is a selection only; it reorders nothing until you click the column.">
@@ -2433,7 +2498,7 @@ try{
             <th class="sortable center" data-sort="discount_end" title="Sale ends — time left on the current discount. Sorts soonest-ending first.">Sale ends</th>
             <th class="sortable center" data-sort="release_ts" title="Released — the Steam release date. Hover a row's value for the exact day.">Released</th>
             <th class="sortable center" data-sort="updated" title="Updated — how recently the game was last patched, and how often. Top line: time since the last update. Badge: updates in the last 90 days (hover it for the 365-day count). Sorts most-recently-updated first.">Updated</th>
-            <th class="tagsth" id="tagsTh" title="Collapse the Tags column to give the space to Game — bigger art and full titles."><span class="tagslabel">Tags</span><span class="tagstoggle" id="tagsToggle">&gt;&lt;</span></th>
+            <th class="tagsth th-split" id="tagsTh"><button class="splitsort sortable tagslabel" data-sort="tagmatch" title="Tag match — sort so games that carry your required tags HIGH in their own Steam tag list come first (Steam lists a game's tags most-voted first): all of them in the game's top 5, then its top 10, then further down, each group in QTPD order. Picking a tag switches this on by itself; click another column to leave it.">Tags</button><button class="tagstoggle" id="tagsToggle" type="button" title="Collapse the Tags column to give the space to Game — bigger art and full titles.">&gt;&lt;</button></th>
             <th class="sortable num pad" data-sort="playtime" title="Playtime — median hours Steam reviewers actually PLAYED, split by review. Length is built from the ▲ side of this column — calibrated per genre into hours to play through — so this column is the raw evidence behind it. Green ▲ = players who recommended it; red ▼ = players who did not. Long hours on a ▼ is a real signal: someone knows the game well and still says skip. Hover a value for mean, sample size, and spread. Click to sort; pick which side sorts with the Playtime-sort toggle in the filters.">Playtime · <span class="ptup" id="pthUp">▲</span>/<span class="ptdown" id="pthDown">▼</span></th>
             <th class="sortable num pad" data-sort="length" title="Length — estimated hours to play the game through: the story plus some side content. Built from how long Steam reviewers who RECOMMEND the game played it (the ▲ in Playtime), calibrated per genre against HowLongToBeat and refit weekly. This is the length QTPD divides the price by. Games with fewer than 20 recommending reviews lean partly on the typical length for their genre; under 3, there is no Length. Idle games (Idler tag), and any game whose figure would pass 1,000 h, are balanced against the players who did not recommend them and capped at 1,000 h — those values are underlined in blue, and the hover shows the raw figure. Hover a value for the review count behind it.">Length</th>
             <th class="sortable num pad" data-sort="qtpd" title="QTPD — Quality Time Per Dollar, the headline metric. Higher means more game-hours of value per dollar.">QTPD <span class="arrow" id="qarrow">▼</span></th>
@@ -2603,7 +2668,7 @@ const state = { data:null, q:"", co:"", coSugIdx:-1, tagQuery:"", similarTo:null
                 minHours:null, maxHours:null, releasedWithin:"any",
                 // Release toggle — see releaseMode(). preUpSort holds the [key, dir] that picking
                 // Upcoming replaced with soonest-first, so leaving Upcoming can put it back.
-                release:RELEASE_DEFAULT, preUpSort:null,
+                release:RELEASE_DEFAULT, preUpSort:null, preTagSort:null,
                 // Min sale %: null = no floor (the resting position). Any number is a multiple of 5
                 // and means "only discounts at least this deep". saleFloor/saleCeil are the
                 // shallowest/deepest discount in the results the OTHER filters produce, floored to
@@ -3207,6 +3272,46 @@ function updCad(g){
   return "";
 }
 
+// ----- Released: a rolling window, or a span of calendar years -----
+// state.releasedWithin is "any", a rolling window ("1mo", "1yr" — the two buttons; "3mo", "6mo"
+// and "1yr+" are still honoured so links from before the year picker keep their meaning), or a
+// span of calendar years picked in the year grid: "2023", "2019-2024", or "..2010" for "2010 and
+// earlier" (the grid's Older cell). Players who buy a couple of games a year think in years —
+// "something from 2019", "the 2015–2018 era" — which no rolling window could express.
+const REL_WINDOWS = {"1mo":30, "3mo":90, "6mo":180, "1yr":365};
+const REL_GRID_YEARS = 20;   // year cells in the picker; everything older shares one Older cell
+function relCurYear(){ return new Date(NOW() * 1000).getUTCFullYear(); }
+function relOlderYear(){ return relCurYear() - REL_GRID_YEARS; }   // the Older cell means "this or earlier"
+let _relParsed = {v:null, yrs:null};
+// [lo, hi] for a year span (lo is -Infinity for "..YYYY"), or null for "any" and the windows.
+function parseRelYears(v){
+  if(_relParsed.v === v) return _relParsed.yrs;
+  let yrs = null, m;
+  if((m = /^(\d{4})$/.exec(v))) yrs = [+m[1], +m[1]];
+  else if((m = /^(\d{4})-(\d{4})$/.exec(v))) yrs = [Math.min(+m[1], +m[2]), Math.max(+m[1], +m[2])];
+  else if((m = /^\.\.(\d{4})$/.exec(v))) yrs = [-Infinity, +m[1]];
+  _relParsed = {v, yrs};
+  return yrs;
+}
+// Year span -> stored value. A span reaching the Older cell has no lower bound.
+function relSpec(lo, hi){
+  if(lo > hi) [lo, hi] = [hi, lo];
+  if(lo <= relOlderYear()) return ".." + hi;
+  return lo === hi ? String(lo) : `${lo}-${hi}`;
+}
+// Short human form, for the picker button and the summary chip.
+function relYearsText(v){
+  const yrs = parseRelYears(v); if(!yrs) return "";
+  if(yrs[0] === -Infinity) return `≤${yrs[1]}`;
+  return yrs[0] === yrs[1] ? String(yrs[0]) : `${yrs[0]}–${yrs[1]}`;
+}
+// UTC year of the Steam release date. release_ts is the date at 00:00 UTC, so a local-time
+// year would move every 1 January release into the previous year west of Greenwich.
+function relYear(x){
+  if(x._ry === undefined) x._ry = x.release_ts ? new Date(x.release_ts * 1000).getUTCFullYear() : null;
+  return x._ry;
+}
+
 // ----- filters (all except QTPD range) -----
 // Set only for the duration of computeSaleBounds() — see the min-sale block in passNonRange().
 let IGNORE_MIN_SALE = false;
@@ -3282,16 +3387,23 @@ function passNonRange(x){
       if(!(age <= d*86400)) return false;
     }
   }
-  // Released within — the same shape as Updated within above, on release_ts. A game with no
-  // release date cannot satisfy a recency window, so it drops out (Infinity age), but it DOES
-  // satisfy "1yr+", which asks for old rather than for recent.
+  // Released — a rolling window on release_ts (the same shape as Updated within above) or a span
+  // of calendar years (see parseRelYears). A game with no release date cannot satisfy a recency
+  // window or a year, so it drops out, but it DOES satisfy the legacy "1yr+", which asks for old
+  // rather than for recent.
   if(state.releasedWithin !== "any"){
     if(x.upcoming) return false;     // not released at all: a future date would read as "recent"
-    const rage = x.release_ts ? (NOW() - x.release_ts) : Infinity;
-    if(state.releasedWithin === "1yr+"){ if(!(rage > 365*86400)) return false; }
-    else {
-      const d = {"1mo":30,"3mo":90,"6mo":180,"1yr":365}[state.releasedWithin];
-      if(!(rage <= d*86400)) return false;
+    const yrs = parseRelYears(state.releasedWithin);
+    if(yrs){
+      const y = relYear(x);
+      if(y == null || y < yrs[0] || y > yrs[1]) return false;
+    } else {
+      const rage = x.release_ts ? (NOW() - x.release_ts) : Infinity;
+      if(state.releasedWithin === "1yr+"){ if(!(rage > 365*86400)) return false; }
+      else {
+        const d = REL_WINDOWS[state.releasedWithin];
+        if(d && !(rage <= d*86400)) return false;
+      }
     }
   }
   // Demo (demos.json — its own layer, so its own guard, for the same reason as HAS_PICS below:
@@ -3411,7 +3523,16 @@ function visibleGames(){
   // Released: an upcoming game sorts by the day it is due (a vague period's last day), a 1.0 launch
   // in the Upcoming view by its 1.0 day (relSortKey); a tie puts the more precise date first.
   const upView = releaseMode() === "upcoming";
-  const val = x => k === "qtpd" ? colValue(x) : k === "trend" ? gTrend(x) : k === "length" ? hoursFor(x)
+  // Tag match: band every game (see tagTier), then QTPD inside a band. With no tag required it
+  // has nothing to band by and is plain QTPD order (update() switches it back before that shows).
+  const tm = k === "tagmatch" && state.tagsInc.size > 0;
+  state._tierCounts = null;
+  if(tm){
+    const cuts = tagTierCuts(), cnt = [0, 0, 0];
+    for(const x of g){ const t = x._tier = tagTier(x, cuts); cnt[t]++; }
+    state._tierCounts = cnt;
+  }
+  const val = x => (k === "qtpd" || k === "tagmatch") ? colValue(x) : k === "trend" ? gTrend(x) : k === "length" ? hoursFor(x)
                  : k === "release_ts" ? relSortKey(x, upView)[0]
                  : k === "rating_pct" ? ratingVal(x)
                  : k === "review_count" ? countVal(x)
@@ -3421,6 +3542,7 @@ function visibleGames(){
                  : x[k];
   g.sort((a,b)=>{
     if(k === "title") return cmpTitle(a, b, dir);
+    if(tm && a._tier !== b._tier) return dir * (b._tier - a._tier);   // descending = best band first
     let av = val(a), bv = val(b);
     const an = av == null, bn = bv == null;
     if(an && bn) return 0;
@@ -3594,12 +3716,12 @@ function render(){
     // `media` pointing at a detached node and its <video> streaming with no way to reach it.
     // Same class of bug as the open-card state that item #13 fixed: the DOM does not survive.
     if(media && media.pop.closest("#gridview")) stopMedia();
-    $("#gridview").innerHTML = games.map(gridCardHTML).join("");
+    $("#gridview").innerHTML = games.map((g, i) => tierBreakHTML(games, i, false) + gridCardHTML(g)).join("");
     tbody.innerHTML = "";
   } else {
   $("#gridview").innerHTML = "";
   const inc = state.tagsInc;
-  tbody.innerHTML = games.map(g => {
+  tbody.innerHTML = games.map((g, gi) => {
     // Merged Price/Sale cell: struck full price on top, sale price + discount badge below.
     // A package-priced app gets a "from" prefix — see pkgFrom().
     const from = pkgFrom(g);
@@ -3782,7 +3904,7 @@ function render(){
     // On a phone this thumbnail is the way into the preview player (there is no hover to open
     // the .pop panel with), and the badge is what says so. Empty on every pointer device.
     const thumbClip = touchClipCls(g.appid);
-    return `<tr>
+    return tierBreakHTML(games, gi, true) + `<tr>
       <td data-label="Game"><div class="gamecell">
           <button class="hidebtn" data-hide="${g.appid}" title="Hide this game for this session" aria-label="Hide ${esc(g.title)}">×</button>
           <span class="thumb${isAdult(g) ? ' adult' : ''}${thumbClip}" data-appid="${g.appid}" data-art="${esc(g.art || "")}">
@@ -3848,7 +3970,8 @@ function growPage(){
   state.pagesShown += 1;
   if(state.view !== "grid"){ render(); return; }
   const to = Math.min(state.pageSize * state.pagesShown, all.length);
-  $("#gridview").insertAdjacentHTML("beforeend", all.slice(from, to).map(gridCardHTML).join(""));
+  $("#gridview").insertAdjacentHTML("beforeend",
+    all.slice(from, to).map((g, j) => tierBreakHTML(all, from + j, false) + gridCardHTML(g)).join(""));
   markStaged();                                        // the new cards may include the staged one
   const foot = $("#loadmore");
   if(to < all.length) foot.textContent = `Showing ${to} of ${all.length} — scroll for more…`;
@@ -4879,10 +5002,13 @@ function cycleTag(t, dir){
   const inc = state.tagsInc.has(t), exc = state.tagsExc.has(t);
   const cur = inc ? 1 : exc ? 2 : 0;          // 0 none, 1 include, 2 exclude
   const next = (cur + (dir < 0 ? 2 : 1)) % 3; // +1 forward, +2 ≡ -1 backward (mod 3)
+  const hadInc = state.tagsInc.size;
   state.tagsInc.delete(t); state.tagsExc.delete(t);
   if(next === 1){ state.tagsInc.add(t); state.tagLinger.delete(t); }
   else if(next === 2){ state.tagsExc.add(t); state.tagLinger.delete(t); }
   else if(cur !== 0){ state.tagLinger.set(t, performance.now()); startLingerTicker(); }   // cleared → linger, then fade
+  // The first required tag on an untouched list switches it to Tag match (see enterTagMatch).
+  if(!hadInc && state.tagsInc.size && state.sortKey === "qtpd" && state.sortDir < 0) enterTagMatch();
   syncURL();
   update();
 }
@@ -4923,6 +5049,96 @@ function similarActive(){
   return !!(state.similarTo && state.similarTags && state.tagsExc.size === 0
          && state.tagMode === "and" && sameSet(state.tagsInc, state.similarTags));
 }
+// ----- Tag match: where a required tag sits in each game's own tag list -----
+// Steam lists a game's tags most-voted first (PICS rank order; SteamSpy's list where PICS has
+// none), so position is the one measure we hold of how much a tag describes the game. The tag
+// filter alone only asks "has it", which let a game whose LAST tag was RPG top an RPG search.
+// Tag match sorts in three bands — every required tag in the game's top 5, within its top 10,
+// or further down — and keeps QTPD order inside each band. Bands rather than a pure position
+// sort because a pure one would put any game with RPG at #1, however weak, above an excellent
+// game that has it at #2 (owner, 2026-11-03: "Tiers, then QTPD"). In ALL mode a game is banded
+// by its LOWEST-placed required tag; in ANY mode by its highest. Asking for more tags than a
+// band holds widens the band, so five required tags can still all land in "the top 5".
+const TAG_TIER_CUTS = [5, 10];
+function tagPos(x){   // canonical tag -> 0-based position in x.tags, built once per tag list
+  if(x._tposOf !== x.tags){
+    const m = new Map();
+    (x.tags || []).forEach((t, i) => { const c = canon(String(t).toLowerCase()); if(!m.has(c)) m.set(c, i); });
+    x._tpos = m; x._tposOf = x.tags;
+  }
+  return x._tpos;
+}
+function tagTierCuts(){
+  const k = state.tagMode === "or" ? 1 : state.tagsInc.size;
+  return [Math.max(TAG_TIER_CUTS[0], k), Math.max(TAG_TIER_CUTS[1], k + 5)];
+}
+function tagTier(x, cuts){
+  const pos = tagPos(x);
+  let p;
+  if(state.tagMode === "or"){
+    p = Infinity;
+    for(const t of state.tagsInc){ const i = pos.get(t); if(i != null && i < p) p = i; }
+  } else {
+    p = -1;
+    for(const t of state.tagsInc){ const i = pos.get(t); if(i == null){ p = Infinity; break; } if(i > p) p = i; }
+  }
+  return p < cuts[0] ? 0 : p < cuts[1] ? 1 : 2;
+}
+// The line above each band, so the QTPD order visibly restarting at a band edge reads as a
+// new group rather than as a sorting bug.
+function tierLabel(t, g){
+  const cuts = tagTierCuts(), inc = [...state.tagsInc], n = inc.length, any = state.tagMode === "or";
+  if(similarActive()){
+    return ["Closest — all " + n + " main tags in the game's top " + cuts[0],
+            "Close — all " + n + " within its top " + cuts[1],
+            "Looser — at least one further down its tags"][t];
+  }
+  if(n === 1){
+    // Steam's own spelling ("RPG", not the rail's title-cased "Rpg"), from the band's first game,
+    // which carries the tag because the filter requires it.
+    const nm = ((g && g.tags) || []).find(x => canon(String(x).toLowerCase()) === inc[0]) || tagLabel(inc[0]);
+    return [`${nm} is one of the game's top ${cuts[0]} tags`, `${nm} at #${cuts[0] + 1}–${cuts[1]} of the game's tags`,
+            `${nm} further down the game's tags`][t];
+  }
+  if(any) return [`One of your tags in the game's top ${cuts[0]}`, `Best match at #${cuts[0] + 1}–${cuts[1]}`,
+                  "Your tags further down the game's tags"][t];
+  return [`All ${n} tags in the game's top ${cuts[0]}`, `All ${n} within its top ${cuts[1]}`,
+          "At least one further down the game's tags"][t];
+}
+// Band header before games[i] when it starts a band (i is the index into the FULL sorted list,
+// so a page appended later knows whether the band continues).
+function tierBreakHTML(list, i, asRow){
+  if(!state._tierCounts) return "";
+  const t = list[i]._tier;
+  if(i > 0 && list[i - 1]._tier === t) return "";
+  const n = state._tierCounts[t];
+  const body = `<span class="tier-lbl">${esc(tierLabel(t, list[i]))}</span><span class="tier-n">${n.toLocaleString()} game${n === 1 ? "" : "s"}</span>`;
+  return asRow ? `<tr class="tierrow"><td colspan="12">${body}</td></tr>` : `<div class="tierhead">${body}</div>`;
+}
+// Tag match follows the tags. The first required tag switches an untouched list (QTPD, high
+// first) to Tag match; Find similar always does, since ranking by likeness is its whole point.
+// Any other sort the user picked stays theirs. When the last required tag goes, the sort that
+// was there before comes back (update() calls leaveTagMatchIfEmpty).
+function enterTagMatch(){
+  if(state.sortKey === "tagmatch") return;
+  state.preTagSort = {key: state.sortKey, dir: state.sortDir};
+  state.sortKey = "tagmatch"; state.sortDir = -1;
+  syncSortArrows();
+}
+function leaveTagMatchIfEmpty(){
+  if(state.sortKey !== "tagmatch" || state.tagsInc.size) return;
+  const p = state.preTagSort || {key:"qtpd", dir:-1};
+  state.sortKey = p.key; state.sortDir = p.dir; state.preTagSort = null;
+  syncSortArrows();
+}
+// Tag match with nothing required has nothing to rank by. Every way of picking a sort runs
+// through here first, so none of them can land on it with an empty tag filter.
+function tagMatchBlocked(k){
+  if(k !== "tagmatch" || state.tagsInc.size) return false;
+  toast("<b>Tag match</b> ranks games by where your required tags sit in each game's own tag list. "
+      + "Require a tag first — click one in the Tags filter, or ≈ Similar on any game.", "", 6000);
+  return true;
+}
 function findSimilar(appid){
   const g = state.data && state.data.games.find(x => String(x.appid) === String(appid));
   if(!g) return;
@@ -4937,6 +5153,7 @@ function findSimilar(appid){
   state.tagMode = "and";
   document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode === "and"));
   state.similarTo = String(g.appid); state.similarTags = keys;
+  enterTagMatch();
   update();
   window.scrollTo({top:0, behavior:"smooth"});
 }
@@ -5458,7 +5675,7 @@ function syncPriceClassUI(){
     b.setAttribute("aria-pressed", pc === "all" ? allOn : (!allOn && state.priceClass.has(pc)));
   });
 }
-function update(){ ensureUpcoming(); resetPaging(); computeSaleBounds(); syncMinSaleUI(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
+function update(){ leaveTagMatchIfEmpty(); ensureUpcoming(); resetPaging(); computeSaleBounds(); syncMinSaleUI(); recomputeDomain(); buildTagRail(); render(); syncURL(); }
 // Release toggle. Picking Upcoming sorts soonest release first (TBA sinks: nulls always sort last)
 // and remembers the sort it replaced; leaving Upcoming puts that back, unless the user re-sorted
 // in the meantime, in which case their sort stands.
@@ -5877,7 +6094,7 @@ function markChangedControls(){
 // ── L2 — collapsed-bar filter summary sentence + inline editors ─────────────────────────
 const SORT_LABELS = {qtpd:"QTPD", title:"Name", rating_pct:"Review score", review_count:"Review count",
   trend:"Trend", wr:"Weighted", price_final:"Price", discount_pct:"Discount", discount_end:"Sale ends",
-  release_ts:"Released", updated:"Updated", playtime:"Playtime", length:"Length"};
+  release_ts:"Released", updated:"Updated", playtime:"Playtime", length:"Length", tagmatch:"Tag match"};
 // What each sort field MEANS, keyed the same as SORT_LABELS. The grid sort bar used to generate
 // its tooltips as `"Sort by " + label`, which on the one field nobody can guess produced the
 // tooltip "Sort by HLTB" — the acronym restated and nothing else (Length was HowLongToBeat's
@@ -5896,7 +6113,8 @@ const SORT_TIPS = {
   release_ts:   "Released — the Steam release date.",
   updated:      "Updated — how recently the game was last patched. Sorts most-recently-updated first.",
   playtime:     "Playtime — the median hours Steam reviewers actually played, split by whether they recommended it. Not the same as Length: this is time spent, not time to finish.",
-  length:       "Length — estimated hours to play a game through (story plus some side content), from how long its recommending Steam reviewers played it, calibrated per genre against HowLongToBeat. This is the length QTPD divides the price by."
+  length:       "Length — estimated hours to play a game through (story plus some side content), from how long its recommending Steam reviewers played it, calibrated per genre against HowLongToBeat. This is the length QTPD divides the price by.",
+  tagmatch:     "Tag match — games that carry your required tags high in their own Steam tag list come first: all of them in the game's top 5, then its top 10, then further down. QTPD orders each group. Needs at least one required tag; picking a tag switches it on by itself."
 };
 const REV_LBLS = {0:"0-99", 2:"100", 3:"1k", 4:"5k+"};
 
@@ -5957,7 +6175,7 @@ function renderSummary(){
   if(state.trendSet.size > 0 && state.trendSet.size < 3){ const map = {up:"▲", flat:"≈", down:"▼"}; const t = ["up","flat","down"].filter(x => state.trendSet.has(x)).map(x => map[x]).join(""); parts.push(chip("trend", `trend ${t}`)); }
   if(state.minHours != null || state.maxHours != null){ const lo = state.minHours != null ? `${state.minHours}h` : "0h"; const hi = state.maxHours != null ? `${state.maxHours}h` : "∞"; parts.push(chip("hours", `length ${lo}–${hi}`)); }
   if(state.updatedWithin !== "any"){ const t = state.updatedWithin === "1yr+" ? "not updated 1yr+" : `updated ≤ ${state.updatedWithin}`; parts.push(chip("upd", t)); }
-  if(state.releasedWithin !== "any"){ const t = state.releasedWithin === "1yr+" ? "released 1yr+ ago" : `released ≤ ${state.releasedWithin}`; parts.push(chip("rel", t)); }
+  if(state.releasedWithin !== "any"){ const v = state.releasedWithin; const t = parseRelYears(v) ? `released ${relYearsText(v)}` : v === "1yr+" ? "released 1yr+ ago" : `released ≤ ${v}`; parts.push(chip("rel", t)); }
   if(state.qRangeTouched){ const lo = state.qMinVal <= 0.001 ? "0" : fmtQval(state.qMinVal); const hi = state.qMaxUnbounded ? "∞" : fmtQval(state.qMaxVal); parts.push(chip("qrange", `QTPD ${lo}–${hi}`)); }
   if(state.release !== RELEASE_DEFAULT) parts.push(chip("release",
     (state.release === "upcoming" ? "upcoming only" : "released + upcoming")
@@ -6010,7 +6228,10 @@ function showPopover(anchor){
     pop.style.visibility = "visible";
   });
 }
-function closePopover(){ $("#popHost").classList.remove("on"); const p = $("#popover"); p.onclick = null; p.innerHTML = ""; }
+function closePopover(){
+  $("#popHost").classList.remove("on"); const p = $("#popover"); p.onclick = null; p.innerHTML = ""; p.classList.remove("relpop");
+  const rb = document.getElementById("relYearsBtn"); if(rb) rb.setAttribute("aria-expanded", "false");
+}
 
 // Filters that need the full control set (free text, ranges, tags) just deep-link into the
 // expanded bar; the rest get an inline option popover that drives the REAL hidden controls
@@ -6021,7 +6242,6 @@ const SUMMARY_EDITORS = {
   ratesrc:  {title:"Review period", cur:() => state.ratingSource, opts:[["All-time",'[data-ratesrc="all"]',"all"],["30-day",'[data-ratesrc="recent"]',"recent"]]},
   upd:      {title:"Updated within", cur:() => state.updatedWithin, opts:[["Any",'[data-upd="any"]',"any"],["1mo",'[data-upd="1mo"]',"1mo"],["3mo",'[data-upd="3mo"]',"3mo"],["6mo",'[data-upd="6mo"]',"6mo"],["1yr",'[data-upd="1yr"]',"1yr"],["1yr+",'[data-upd="1yr+"]',"1yr+"]]},
   release:  {title:"Release", cur:() => state.release, opts:[["Released",'[data-release="released"]',"released"],["Upcoming",'[data-release="upcoming"]',"upcoming"],["All",'[data-release="all"]',"all"]]},
-  rel:      {title:"Released within", cur:() => state.releasedWithin, opts:[["Any",'[data-rel="any"]',"any"],["1mo",'[data-rel="1mo"]',"1mo"],["3mo",'[data-rel="3mo"]',"3mo"],["6mo",'[data-rel="6mo"]',"6mo"],["1yr",'[data-rel="1yr"]',"1yr"],["1yr+",'[data-rel="1yr+"]',"1yr+"]]},
   // `size < 3`: mirrors the buttons — with every type included none of the three reads as picked,
   // so a click in here means "only this one", exactly as it does on the real control it clicks.
   pc:       {title:"Price type (toggle)", multi:true, has:v => state.priceClass.size < 3 && state.priceClass.has(v), opts:[["Full",'[data-pc="full"]',"full"],["Sale",'[data-pc="sale"]',"sale"],["Free",'[data-pc="free"]',"free"]]},
@@ -6045,6 +6265,7 @@ function openSummaryEditor(anchor, key){
     return;
   }
   if(key === "sort") return buildSortPopover(anchor);
+  if(key === "rel") return buildRelPopover(anchor, true);   // windows + the year grid in one popover
   const cfg = SUMMARY_EDITORS[key];
   if(!cfg){ setFiltersCompact(false); return; }
   buildOptionPopover(anchor, cfg);
@@ -6075,6 +6296,65 @@ function buildOptionPopover(anchor, cfg){
     else closePopover();
   };
   showPopover(anchor);
+}
+// ----- Released: buttons + the year grid -----
+function syncRelUI(){
+  const v = state.releasedWithin, yrs = parseRelYears(v);
+  document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed",
+    String(o.dataset.rel === "years" ? !!yrs : o.dataset.rel === v)));
+  const b = document.getElementById("relYearsBtn");
+  if(b) b.textContent = yrs ? `${relYearsText(v)} ▾` : "Year ▾";
+}
+function setRel(v){ state.releasedWithin = v; syncRelUI(); update(); }
+// The year grid. One click picks that year (and applies it at once, so the list behind updates);
+// a second click while the grid is still open turns it into a range and closes the grid. Click
+// outside or press Esc to keep the single year. The newest REL_GRID_YEARS years get a cell each;
+// the last cell, Older, is every year before them. From the summary chip the two rolling windows
+// ride along on top, since there the bar's own buttons are out of sight.
+let _relAnchor = null;   // the first year clicked in the open grid
+function buildRelPopover(anchor, withWindows){
+  const pop = $("#popover");
+  _relAnchor = null;
+  const cur = relCurYear(), older = relOlderYear();
+  const paint = () => {
+    const v = state.releasedWithin, yrs = parseRelYears(v);
+    const lo = yrs ? yrs[0] : null, hi = yrs ? yrs[1] : null;
+    let html = `<h4>Released</h4>`;
+    if(withWindows)
+      html += `<div class="pop-opts rp-win">` + [["any","Any"],["1mo","Last 30 days"],["1yr","Last 12 months"]]
+        .map(([k, l]) => `<button class="pop-opt${v === k ? " on" : ""}" data-relwin="${k}">${l}</button>`).join("") + `</div>`;
+    html += `<div class="rp-h">${_relAnchor != null
+      ? `${_relAnchor === older ? "Older" : _relAnchor} picked — click a second year for a range`
+      : "Click a year · then a second year for a range"}</div><div class="rp-grid" role="group" aria-label="Release year">`;
+    for(let y = cur; y >= older; y--){
+      const cellLo = y === older ? -Infinity : y;           // Older reaches back without limit
+      const inR = yrs && y >= lo && cellLo <= hi;
+      const end = yrs && ((y === older && lo === -Infinity) || y === lo || y === hi);
+      const lbl = y === older ? "Older" : String(y);
+      const tip = y === older ? `${older} and earlier` : `Released in ${y}`;
+      html += `<button type="button" class="yc${inR ? " in" : ""}${end ? " end" : ""}" data-ry="${y}" title="${tip}" aria-pressed="${!!inR}">${lbl}</button>`;
+    }
+    html += `</div>`;
+    if(yrs) html += `<div class="pop-actions"><button class="pop-opt" data-relwin="any">Clear years</button></div>`;
+    pop.innerHTML = html;
+  };
+  paint();
+  pop.classList.add("relpop");
+  pop.onclick = e => {
+    const w = e.target.closest("[data-relwin]");
+    if(w){ setRel(w.dataset.relwin); closePopover(); return; }
+    const c = e.target.closest("[data-ry]"); if(!c) return;
+    const y = +c.dataset.ry;
+    if(_relAnchor == null){
+      _relAnchor = y; setRel(relSpec(y, y)); paint();
+      const again = pop.querySelector(`[data-ry="${y}"]`); if(again) again.focus();   // paint() replaced the focused cell
+    } else {
+      const a = _relAnchor; _relAnchor = null; setRel(relSpec(a, y)); closePopover();
+    }
+  };
+  showPopover(anchor);
+  const rb = document.getElementById("relYearsBtn"); if(rb && anchor === rb) rb.setAttribute("aria-expanded", "true");
+  requestAnimationFrame(() => { const f = pop.querySelector(".yc.end") || pop.querySelector(".yc"); if(f) f.focus({preventScroll:true}); });
 }
 function buildSortPopover(anchor){
   const pop = $("#popover");
@@ -6460,6 +6740,10 @@ function syncSortArrows(){
       existing.textContent = "▼";   // default QTPD arrow stays as a hint
     }
   });
+  // The folded Tags strip hides the Tags sort button (and the arrow inside it), so the strip
+  // itself carries the mark while Tag match is the sort.
+  const tth = document.getElementById("tagsTh");
+  if(tth){ if(state.sortKey === "tagmatch") tth.dataset.tm = state.sortDir < 0 ? "▼" : "▲"; else delete tth.dataset.tm; }
   syncMobileSort();
 }
 // Keep the mobile Sort control (the card-mode replacement for the hidden <thead>) in step
@@ -6549,17 +6833,14 @@ function setGsortMenu(open){
   const b = document.getElementById("gsortMoreBtn"); if(b) b.setAttribute("aria-expanded", open ? "true" : "false");
 }
 function setSort(key){
+  if(tagMatchBlocked(key)) return;
   if(state.sortKey === key){ state.sortDir *= -1; }
-  else { state.sortKey = key; state.sortDir = (key === "title") ? 1 : -1; }
-  document.querySelectorAll("thead .sortable").forEach(th=>{
-    const existing = th.querySelector(".arrow");
-    if(th.dataset.sort === key){
-      const mark = state.sortDir < 0 ? "▼" : "▲";
-      if(existing) existing.textContent = mark;
-      else th.insertAdjacentHTML("beforeend", ` <span class="arrow">${mark}</span>`);
-    } else if(existing && th.dataset.sort !== "qtpd"){ existing.remove(); }
-  });
-  syncMobileSort();            // keep the mobile + grid sort dropdowns in step with header clicks
+  else {
+    // Picking Tag match by hand remembers the sort it replaced, as the automatic switch does.
+    if(key === "tagmatch") state.preTagSort = {key: state.sortKey, dir: state.sortDir};
+    state.sortKey = key; state.sortDir = (key === "title") ? 1 : -1;
+  }
+  syncSortArrows();            // header arrows + the mobile and grid sort controls
   render(); syncURL();
 }
 // Reflect state.flags into the cluster's button aria-pressed states (used on URL restore
@@ -6728,8 +7009,9 @@ function loadFromURL(){
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", state.trendSet.has(o.dataset.trend))); });
   setIf("upd", v => { state.updatedWithin=v;
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd===v)); });
-  setIf("rel", v => { state.releasedWithin=v;
-    document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o.dataset.rel===v)); });
+  // A value that is neither a window nor a year span is dropped rather than left to filter on.
+  setIf("rel", v => { state.releasedWithin = (REL_WINDOWS[v] || v === "1yr+" || parseRelYears(v)) ? v : "any";
+    syncRelUI(); });
   setIf("release", v => { if(["upcoming","all"].includes(v)) state.release = v; });
   setIf("wishonly", () => { state.wishOnly = true; });
   // PICS flags cluster restore.
@@ -6838,10 +7120,11 @@ function init(data){
     state.minHours=null; state.maxHours=null; state.releasedWithin="any";
     state.release=RELEASE_DEFAULT; state.preUpSort=null;
     state.minSale=null; state.minSaleForcedFull=false;
-    state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.ratingSource="recent"; state.ptMetric="up"; state.qRangeTouched=false;
+    state.tagMode="and"; state.wishOnly=false; state.sortKey="qtpd"; state.sortDir=-1; state.preTagSort=null; state.ratingSource="recent"; state.ptMetric="up"; state.qRangeTouched=false;
     state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", drm:"any", acct:"any", kac:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     ratingScheme = RATING_SCHEME_DEFAULT;
     loadFromURL();
+    syncRelUI();     // loadFromURL only touches the buttons when the link carries rel=
     syncSchemeUI();
     document.querySelectorAll("[data-tagmode]").forEach(o => o.setAttribute("aria-pressed", o.dataset.tagmode===state.tagMode));
     syncPriceClassUI();
@@ -7011,9 +7294,8 @@ function init(data){
     b.addEventListener("click", () => setRelease(b.dataset.release)));
   document.querySelectorAll("[data-rel]").forEach(b =>
     b.addEventListener("click", () => {
-      state.releasedWithin = b.dataset.rel;
-      document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o === b));
-      update();
+      if(b.dataset.rel === "years") buildRelPopover(b, false);   // the year grid; it sets the value itself
+      else setRel(b.dataset.rel);
     }));
   // --- PICS Flags cluster wiring ---
   // Single-select segmented groups: ai / ctrl / deck / adult.
@@ -7153,7 +7435,7 @@ function init(data){
     state.release=RELEASE_DEFAULT; state.preUpSort=null; syncReleaseUI(); computeFullCounts();
     $("#q").value=""; $("#minprice").value=""; $("#maxprice").value="";
     $("#minhours").value=""; $("#maxhours").value="";
-    document.querySelectorAll("[data-rel]").forEach(o => o.setAttribute("aria-pressed", o.dataset.rel==="any"));
+    syncRelUI();
     syncPriceClassUI(); $("#wishOnly").setAttribute("aria-pressed","false");
     document.querySelectorAll("[data-minscore]").forEach(o => o.setAttribute("aria-pressed", o.dataset.minscore==="0"));
     document.querySelectorAll("[data-trend]").forEach(o => o.setAttribute("aria-pressed", "true"));
@@ -7163,7 +7445,7 @@ function init(data){
     document.querySelectorAll("[data-upd]").forEach(o => o.setAttribute("aria-pressed", o.dataset.upd==="any"));
     state.flags={ ea:"any", eula:"any", fse:"any", vrOnly:"any", demo:"any", iap:"any", online:"any", drm:"any", acct:"any", kac:"any", ai:"any", ctrl:"any", deck:"any", adultF:ADULT_DEFAULT };
     syncFlagsUI();
-    state.sortKey="qtpd"; state.sortDir=-1; syncSortArrows();   // the default sort, the one the page loads with
+    state.sortKey="qtpd"; state.sortDir=-1; state.preTagSort=null; syncSortArrows();   // the default sort, the one the page loads with
     state.openCards.clear();                                    // nothing was flipped open at the start either
     update();
   }
@@ -7171,10 +7453,13 @@ function init(data){
   document.querySelectorAll("thead .sortable").forEach(th =>
     th.addEventListener("click", (e) => { e.stopPropagation(); setSort(th.dataset.sort); }));
 
-  // Tags column collapse. Tags isn't sortable and its header does nothing else, so the whole
-  // <th> is the toggle. Collapsing hands the column's 3fr of growth to Game (see the
-  // body.tags-collapsed grid template), which is where the width is actually useful.
-  // Arrows point the way the click will move things: "><" closes, "<>" reopens.
+  // Tags column collapse. The header holds two things now: the "Tags" label is the Tag match
+  // sort (it stops its click before it gets here), and the rest of the header — the "><" toggle
+  // and the empty space beside it — folds the column, as the whole header did before Tags was
+  // sortable. Folded, the sort button is hidden and the whole strip unfolds. Collapsing hands
+  // the column's 3fr of growth to Game (see the body.tags-collapsed grid template), which is
+  // where the width is actually useful. Arrows point the way the click will move things:
+  // "><" closes, "<>" reopens.
   (() => {
     const th = document.getElementById("tagsTh");
     const ind = document.getElementById("tagsToggle");
@@ -7182,9 +7467,9 @@ function init(data){
     const sync = () => {
       const off = document.body.classList.contains("tags-collapsed");
       ind.textContent = off ? "<>" : "><";
-      th.title = off ? "Expand the Tags column"
-                     : "Collapse the Tags column to give the width to Game (bigger art, full titles)";
-      th.setAttribute("aria-expanded", String(!off));
+      ind.title = off ? "Expand the Tags column"
+                      : "Collapse the Tags column to give the width to Game (bigger art, full titles)";
+      ind.setAttribute("aria-expanded", String(!off));
     };
     th.addEventListener("click", () => {
       const off = document.body.classList.toggle("tags-collapsed");
@@ -7231,6 +7516,8 @@ function init(data){
   const bindSortControl = (selectId, dirId) => {
     const sel = document.getElementById(selectId); if(!sel) return;
     sel.addEventListener("change", () => {
+      if(tagMatchBlocked(sel.value)){ syncMobileSort(); return; }
+      if(sel.value === "tagmatch" && state.sortKey !== "tagmatch") state.preTagSort = {key: state.sortKey, dir: state.sortDir};
       state.sortKey = sel.value;
       state.sortDir = (sel.value === "title") ? 1 : -1;   // A→Z for names, high→low otherwise
       syncSortArrows(); render(); syncURL();
@@ -7249,8 +7536,12 @@ function init(data){
       const b = e.target.closest("[data-sortk]");
       if(b){
         const k = b.dataset.sortk;
+        if(tagMatchBlocked(k)){ setGsortMenu(false); return; }
         if(state.sortKey === k){ state.sortDir *= -1; }          // re-click same field flips direction
-        else { state.sortKey = k; state.sortDir = (k === "title") ? 1 : -1; }
+        else {
+          if(k === "tagmatch") state.preTagSort = {key: state.sortKey, dir: state.sortDir};
+          state.sortKey = k; state.sortDir = (k === "title") ? 1 : -1;
+        }
         setGsortMenu(false); syncSortArrows(); render(); syncURL();
         return;
       }
@@ -7469,6 +7760,14 @@ function init(data){
   $("#shareBtn").addEventListener("click", copyLink);
   // Popover dismissal (backdrop click / Escape).
   $("#popBackdrop").addEventListener("click", closePopover);
+  // Esc closes whichever popover is up (summary editor, sort, CSV, the release-year grid). The
+  // year grid's button gets focus back, so a keyboard user lands where they opened it from.
+  document.addEventListener("keydown", e => {
+    if(e.key !== "Escape" || !$("#popHost").classList.contains("on")) return;
+    const fromRel = $("#popover").classList.contains("relpop");
+    closePopover(); e.preventDefault();
+    if(fromRel){ const rb = document.getElementById("relYearsBtn"); if(rb && rb.offsetParent) rb.focus(); }
+  });
   document.addEventListener("keydown", e => { if(e.key === "Escape") closePopover(); });
   // Mobile: once scrolled a little, shrink the sticky compact nav to just the summary + Show-filters
   // bar (CSS hides bar-main under body.nav-scrolled). Passive + class-only so scrolling stays smooth.
