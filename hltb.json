@@ -1,5 +1,5 @@
 {
-  "generated_at": 1793849043,
+  "generated_at": 1793849878,
   "count": 136132,
   "hltb": {
     "10": {
@@ -150245,10 +150245,10 @@
     "3951050": {
       "main": 1.3,
       "extra": 1.7,
-      "complete": 2.6,
-      "avg": 1.9,
+      "complete": 2.5,
+      "avg": 1.8,
       "match": "The House",
-      "fetched_at": 1792629578,
+      "fetched_at": 1793849094,
       "raw": {
         "main": 1.3,
         "extra": null,
@@ -201814,7 +201814,7 @@
       "complete": 1.3,
       "avg": 1.0,
       "match": "Lobotomy",
-      "fetched_at": 1792629602,
+      "fetched_at": 1793849120,
       "raw": {
         "main": null,
         "extra": null,
@@ -292070,19 +292070,22 @@
       "attempts": 6
     },
     "2466850": {
-      "main": null,
-      "extra": null,
-      "complete": null,
-      "avg": null,
-      "match": "3D PUZZLE - Rusty",
-      "fetched_at": 1793834044,
+      "main": 0.1,
+      "extra": 0.1,
+      "complete": 0.1,
+      "avg": 0.1,
+      "match": "3D PUZZLE - Battle Royal",
+      "fetched_at": 1793849436,
       "raw": {
         "main": null,
         "extra": null,
-        "complete": null
+        "complete": 0.1
       },
-      "n_comp": 1,
-      "attempts": 2
+      "est": [
+        "main",
+        "extra"
+      ],
+      "n_comp": 2
     },
     "2468740": {
       "main": null,
@@ -444102,11 +444105,11 @@
     },
     "3014010": {
       "main": 5.6,
-      "extra": 7.4,
+      "extra": 7.5,
       "complete": 6.4,
       "avg": 6.5,
       "match": "My Girlfriend's Special Place",
-      "fetched_at": 1792629539,
+      "fetched_at": 1793849055,
       "raw": {
         "main": 5.6,
         "extra": null,
@@ -444236,7 +444239,7 @@
       "complete": 16.0,
       "avg": 11.7,
       "match": "Azrael's Tear",
-      "fetched_at": 1792629541,
+      "fetched_at": 1793849057,
       "raw": {
         "main": 8.2,
         "extra": null,
@@ -447005,7 +447008,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Cube - The Jumper",
-      "fetched_at": 1792629618,
+      "fetched_at": 1793849141,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -447524,7 +447527,7 @@
       "complete": 0.5,
       "avg": 0.5,
       "match": "The End",
-      "fetched_at": 1792629556,
+      "fetched_at": 1793849074,
       "raw": {
         "main": 0.4,
         "extra": null,
@@ -447769,7 +447772,7 @@
       "complete": 4.7,
       "avg": 3.8,
       "match": "Summer Games Challenge",
-      "fetched_at": 1792629558,
+      "fetched_at": 1793849075,
       "raw": {
         "main": null,
         "extra": null,
@@ -451086,7 +451089,7 @@
       "complete": 40.3,
       "avg": 37.6,
       "match": "Grocery Store Simulator",
-      "fetched_at": 1792629559,
+      "fetched_at": 1793849077,
       "raw": {
         "main": 29.6,
         "extra": null,
@@ -454289,11 +454292,11 @@
     },
     "3040610": {
       "main": 19.1,
-      "extra": 31.2,
+      "extra": 31.4,
       "complete": 51.5,
-      "avg": 33.9,
+      "avg": 34.0,
       "match": "Irresistible Mistakes",
-      "fetched_at": 1792629594,
+      "fetched_at": 1793849114,
       "raw": {
         "main": null,
         "extra": null,
@@ -454839,7 +454842,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Hentai Sexy Nurses",
-      "fetched_at": 1792629595,
+      "fetched_at": 1793849115,
       "raw": {
         "main": null,
         "extra": null,
@@ -454869,10 +454872,10 @@
     "3042260": {
       "main": 1.2,
       "extra": 1.6,
-      "complete": 2.4,
+      "complete": 2.3,
       "avg": 1.7,
       "match": "Black Hole",
-      "fetched_at": 1792629639,
+      "fetched_at": 1793849164,
       "raw": {
         "main": 1.2,
         "extra": null,
@@ -454915,11 +454918,11 @@
     },
     "3042360": {
       "main": 5.3,
-      "extra": 7.0,
+      "extra": 7.1,
       "complete": 10.1,
       "avg": 7.5,
       "match": "Overclocked",
-      "fetched_at": 1792629598,
+      "fetched_at": 1793849117,
       "raw": {
         "main": 5.3,
         "extra": null,
@@ -456930,7 +456933,7 @@
       "complete": 9.3,
       "avg": 7.3,
       "match": "UFC: Throwdown",
-      "fetched_at": 1792629641,
+      "fetched_at": 1793849166,
       "raw": {
         "main": null,
         "extra": 7.0,
@@ -458931,7 +458934,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Tokyo Trigger",
-      "fetched_at": 1792629561,
+      "fetched_at": 1793849079,
       "raw": {
         "main": null,
         "extra": null,
@@ -461173,7 +461176,7 @@
       "complete": 1.5,
       "avg": 0.9,
       "match": "Dungeons & Keyboards",
-      "fetched_at": 1792629563,
+      "fetched_at": 1793849080,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -461402,7 +461405,7 @@
       "complete": 1.6,
       "avg": 1.2,
       "match": "Sugar Rush Speedway",
-      "fetched_at": 1792629543,
+      "fetched_at": 1793849059,
       "raw": {
         "main": 0.8,
         "extra": null,
@@ -464013,7 +464016,7 @@
       "complete": 6.4,
       "avg": 5.0,
       "match": "Roll",
-      "fetched_at": 1792629565,
+      "fetched_at": 1793849082,
       "raw": {
         "main": null,
         "extra": 4.8,
@@ -473509,7 +473512,7 @@
       "complete": 0.6,
       "avg": 0.4,
       "match": "Last Bus Home",
-      "fetched_at": 1792629620,
+      "fetched_at": 1793849143,
       "raw": {
         "main": 0.3,
         "extra": null,
@@ -475384,10 +475387,10 @@
     "3095260": {
       "main": 3.5,
       "extra": 4.7,
-      "complete": 6.9,
+      "complete": 6.8,
       "avg": 5.0,
       "match": "Darkblade Ascent",
-      "fetched_at": 1792629599,
+      "fetched_at": 1793849119,
       "raw": {
         "main": 3.5,
         "extra": null,
@@ -479925,7 +479928,7 @@
       "complete": 3.2,
       "avg": 2.4,
       "match": "Dream Abyss: Survivors",
-      "fetched_at": 1792629643,
+      "fetched_at": 1793849168,
       "raw": {
         "main": 1.5,
         "extra": 2.4,
@@ -481360,12 +481363,12 @@
       "attempts": 6
     },
     "3109310": {
-      "main": 33.3,
+      "main": 33.4,
       "extra": 60.0,
-      "complete": 98.7,
+      "complete": 98.6,
       "avg": 64.0,
       "match": "Galaxy Idle Clicker",
-      "fetched_at": 1792629621,
+      "fetched_at": 1793849144,
       "raw": {
         "main": null,
         "extra": 60.0,
@@ -481451,7 +481454,7 @@
       "complete": 3.6,
       "avg": 2.6,
       "match": "Magic Wand",
-      "fetched_at": 1792629544,
+      "fetched_at": 1793849060,
       "raw": {
         "main": 1.4,
         "extra": 2.7,
@@ -482515,7 +482518,7 @@
       "complete": 0.4,
       "avg": 0.3,
       "match": "Tall Bagel",
-      "fetched_at": 1792629567,
+      "fetched_at": 1793849084,
       "raw": {
         "main": 0.2,
         "extra": null,
@@ -485146,7 +485149,7 @@
       "complete": 6.8,
       "avg": 3.0,
       "match": "BYTEPATH",
-      "fetched_at": 1792629546,
+      "fetched_at": 1793849062,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -487958,7 +487961,7 @@
       "complete": 0.7,
       "avg": 0.6,
       "match": "I commissioned some butterflies 2",
-      "fetched_at": 1792629603,
+      "fetched_at": 1793849122,
       "raw": {
         "main": null,
         "extra": null,
@@ -488820,7 +488823,7 @@
       "complete": 4.5,
       "avg": 3.9,
       "match": "Paranoid",
-      "fetched_at": 1792629548,
+      "fetched_at": 1793849064,
       "raw": {
         "main": null,
         "extra": 4.0,
@@ -488829,7 +488832,7 @@
       "est": [
         "main"
       ],
-      "n_comp": 6
+      "n_comp": 7
     },
     "2955630": {
       "main": null,
@@ -489093,7 +489096,7 @@
       "complete": 1.8,
       "avg": 1.3,
       "match": "Break Arcade Games Out",
-      "fetched_at": 1792629605,
+      "fetched_at": 1793849124,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -489699,22 +489702,22 @@
       "attempts": 6
     },
     "2957690": {
-      "main": 1.0,
-      "extra": 1.3,
-      "complete": 1.6,
-      "avg": 1.3,
+      "main": 8.6,
+      "extra": 9.0,
+      "complete": 12.8,
+      "avg": 10.1,
       "match": "The Great Escape",
-      "fetched_at": 1792629606,
+      "fetched_at": 1793849126,
       "raw": {
-        "main": null,
-        "extra": null,
-        "complete": 1.6
+        "main": 8.6,
+        "extra": 9.0,
+        "complete": null
       },
       "est": [
-        "main",
-        "extra"
+        "complete"
       ],
-      "n_comp": 3
+      "n_comp": 24,
+      "comp_grew": true
     },
     "2957700": {
       "main": 9.6,
@@ -492697,7 +492700,7 @@
       "complete": 36.6,
       "avg": 24.1,
       "match": "Hunter's Arena: Legends",
-      "fetched_at": 1792629608,
+      "fetched_at": 1793849128,
       "raw": {
         "main": null,
         "extra": null,
@@ -494450,7 +494453,7 @@
       "complete": 12.3,
       "avg": 10.2,
       "match": "Self Defense Dojo",
-      "fetched_at": 1792629644,
+      "fetched_at": 1793849169,
       "raw": {
         "main": null,
         "extra": 10.6,
@@ -494778,7 +494781,7 @@
       "complete": 7.0,
       "avg": 5.4,
       "match": "Eclipse",
-      "fetched_at": 1792629623,
+      "fetched_at": 1793849147,
       "raw": {
         "main": null,
         "extra": 5.1,
@@ -496737,7 +496740,7 @@
       "complete": 14.1,
       "avg": 12.7,
       "match": "Workshop Simulator",
-      "fetched_at": 1792629549,
+      "fetched_at": 1793849066,
       "raw": {
         "main": 10.3,
         "extra": null,
@@ -499415,7 +499418,7 @@
       "complete": 7.0,
       "avg": 3.6,
       "match": "Tetraminos",
-      "fetched_at": 1792629646,
+      "fetched_at": 1793849172,
       "raw": {
         "main": null,
         "extra": 2.1,
@@ -501231,7 +501234,7 @@
       "complete": 0.6,
       "avg": 0.6,
       "match": "Xenosis",
-      "fetched_at": 1792629625,
+      "fetched_at": 1793849149,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -502486,7 +502489,7 @@
       "complete": 70.0,
       "avg": 44.5,
       "match": "Arboria",
-      "fetched_at": 1792629609,
+      "fetched_at": 1793849129,
       "raw": {
         "main": 17.6,
         "extra": 45.9,
@@ -503804,7 +503807,7 @@
       "complete": 10.0,
       "avg": 8.5,
       "match": "Spacebase DF-9",
-      "fetched_at": 1792629568,
+      "fetched_at": 1793849085,
       "raw": {
         "main": 6.7,
         "extra": null,
@@ -506670,7 +506673,7 @@
       "complete": 15.4,
       "avg": 10.4,
       "match": "Airforce Delta Strike",
-      "fetched_at": 1792629648,
+      "fetched_at": 1793849174,
       "raw": {
         "main": 5.1,
         "extra": 10.8,
@@ -506701,7 +506704,7 @@
       "complete": 90.0,
       "avg": 36.6,
       "match": "Dungeon Fighter Online",
-      "fetched_at": 1792629570,
+      "fetched_at": 1793849087,
       "raw": {
         "main": 8.5,
         "extra": null,
@@ -513487,7 +513490,7 @@
       "complete": 0.2,
       "avg": 0.1,
       "match": "A room you can't exit unless you find the numbers",
-      "fetched_at": 1792629550,
+      "fetched_at": 1793849068,
       "raw": {
         "main": 0.1,
         "extra": null,
@@ -517532,7 +517535,7 @@
       "complete": 244.0,
       "avg": 208.0,
       "match": "My Singing Monsters",
-      "fetched_at": 1792629573,
+      "fetched_at": 1793849089,
       "raw": {
         "main": 136.3,
         "extra": null,
@@ -517541,7 +517544,7 @@
       "est": [
         "extra"
       ],
-      "n_comp": 52
+      "n_comp": 53
     },
     "3247980": {
       "main": 18.6,
@@ -518409,10 +518412,10 @@
     "3250760": {
       "main": 3.7,
       "extra": 5.0,
-      "complete": 6.7,
+      "complete": 6.6,
       "avg": 5.1,
       "match": "Quantum Redshift",
-      "fetched_at": 1792629627,
+      "fetched_at": 1793849151,
       "raw": {
         "main": 3.7,
         "extra": 5.0,
@@ -518443,7 +518446,7 @@
       "complete": 4.3,
       "avg": 3.5,
       "match": "Save The Girl",
-      "fetched_at": 1792629629,
+      "fetched_at": 1793849153,
       "raw": {
         "main": null,
         "extra": null,
@@ -519040,12 +519043,12 @@
       "attempts": 6
     },
     "3252440": {
-      "main": 4.8,
+      "main": 4.7,
       "extra": 6.0,
-      "complete": 8.0,
-      "avg": 6.3,
+      "complete": 7.9,
+      "avg": 6.2,
       "match": "Geon",
-      "fetched_at": 1792629631,
+      "fetched_at": 1793849156,
       "raw": {
         "main": null,
         "extra": 6.0,
@@ -519212,7 +519215,7 @@
       "complete": 9.0,
       "avg": 5.5,
       "match": "Gazing From Beyond",
-      "fetched_at": 1792629575,
+      "fetched_at": 1793849091,
       "raw": {
         "main": 3.2,
         "extra": null,
@@ -519285,7 +519288,7 @@
       "complete": 0.6,
       "avg": 0.4,
       "match": "Hard Driver",
-      "fetched_at": 1792629615,
+      "fetched_at": 1793849136,
       "raw": {
         "main": 0.3,
         "extra": null,
@@ -519367,7 +519370,7 @@
       "complete": 12.2,
       "avg": 9.0,
       "match": "The Gate",
-      "fetched_at": 1792629610,
+      "fetched_at": 1793849131,
       "raw": {
         "main": 6.3,
         "extra": null,
@@ -520070,7 +520073,7 @@
       "complete": 1.0,
       "avg": 0.7,
       "match": "Fight or Flight",
-      "fetched_at": 1792629649,
+      "fetched_at": 1793849175,
       "raw": {
         "main": 0.5,
         "extra": null,
@@ -520625,7 +520628,7 @@
       "complete": 4.9,
       "avg": 3.3,
       "match": "The Red Stare",
-      "fetched_at": 1792629632,
+      "fetched_at": 1793849157,
       "raw": {
         "main": 1.2,
         "extra": 3.7,
@@ -522715,7 +522718,7 @@
       "complete": 5.0,
       "avg": 4.0,
       "match": "Kubits Gallery",
-      "fetched_at": 1792629580,
+      "fetched_at": 1793849096,
       "raw": {
         "main": null,
         "extra": null,
@@ -523125,7 +523128,7 @@
       "complete": 5.8,
       "avg": 4.7,
       "match": "Guardian",
-      "fetched_at": 1792629651,
+      "fetched_at": 1793849177,
       "raw": {
         "main": null,
         "extra": null,
@@ -524203,11 +524206,11 @@
     },
     "2819830": {
       "main": 10.5,
-      "extra": 13.9,
-      "complete": 20.4,
-      "avg": 14.9,
+      "extra": 14.0,
+      "complete": 20.5,
+      "avg": 15.0,
       "match": "Touhou Kourinden: Mythos of Phantasmagoria",
-      "fetched_at": 1792629634,
+      "fetched_at": 1793849159,
       "raw": {
         "main": 10.5,
         "extra": null,
@@ -526318,7 +526321,7 @@
       "complete": 0.9,
       "avg": 0.7,
       "match": "I commissioned some mice 5",
-      "fetched_at": 1792629582,
+      "fetched_at": 1793849097,
       "raw": {
         "main": null,
         "extra": null,
@@ -526359,12 +526362,12 @@
       "attempts": 6
     },
     "2824960": {
-      "main": 4.8,
+      "main": 4.7,
       "extra": 6.0,
-      "complete": 8.0,
-      "avg": 6.3,
+      "complete": 7.9,
+      "avg": 6.2,
       "match": "Fracas",
-      "fetched_at": 1792629611,
+      "fetched_at": 1793849132,
       "raw": {
         "main": null,
         "extra": 6.0,
@@ -526998,10 +527001,10 @@
     "2826220": {
       "main": 3.9,
       "extra": 5.2,
-      "complete": 7.7,
+      "complete": 7.6,
       "avg": 5.6,
       "match": "Tiny House Simulator",
-      "fetched_at": 1792629613,
+      "fetched_at": 1793849134,
       "raw": {
         "main": 3.9,
         "extra": null,
@@ -532136,7 +532139,7 @@
       "complete": 2.0,
       "avg": 1.4,
       "match": "Devader",
-      "fetched_at": 1792629653,
+      "fetched_at": 1793849179,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -532318,10 +532321,10 @@
     "2839790": {
       "main": 1.5,
       "extra": 2.0,
-      "complete": 3.0,
-      "avg": 2.2,
+      "complete": 2.9,
+      "avg": 2.1,
       "match": "Twilight Path",
-      "fetched_at": 1792629655,
+      "fetched_at": 1793849181,
       "raw": {
         "main": 1.5,
         "extra": null,
@@ -533522,10 +533525,10 @@
     "2842680": {
       "main": 1.7,
       "extra": 2.3,
-      "complete": 3.4,
-      "avg": 2.5,
+      "complete": 3.3,
+      "avg": 2.4,
       "match": "Deep Sleep: The Beggining",
-      "fetched_at": 1792629584,
+      "fetched_at": 1793849099,
       "raw": {
         "main": 1.7,
         "extra": null,
@@ -536090,12 +536093,12 @@
       "n_comp": 4
     },
     "2848850": {
-      "main": 4.7,
+      "main": 4.8,
       "extra": 6.1,
       "complete": 7.6,
-      "avg": 6.1,
+      "avg": 6.2,
       "match": "Unlocked",
-      "fetched_at": 1792629585,
+      "fetched_at": 1793849105,
       "raw": {
         "main": null,
         "extra": null,
@@ -537574,7 +537577,7 @@
       "complete": 0.3,
       "avg": 0.2,
       "match": "Baseball: Breakthrough Gaming Arcade",
-      "fetched_at": 1792629656,
+      "fetched_at": 1793849182,
       "raw": {
         "main": null,
         "extra": null,
@@ -539884,7 +539887,7 @@
       "complete": 1.3,
       "avg": 1.0,
       "match": "TP Bullet",
-      "fetched_at": 1792629636,
+      "fetched_at": 1793849160,
       "raw": {
         "main": null,
         "extra": null,
@@ -539902,7 +539905,7 @@
       "complete": 0.8,
       "avg": 0.6,
       "match": "Froggy Bouncing Adventures",
-      "fetched_at": 1792629552,
+      "fetched_at": 1793849069,
       "raw": {
         "main": null,
         "extra": null,
@@ -541875,7 +541878,7 @@
       "complete": 0.1,
       "avg": 0.1,
       "match": "The Last Night",
-      "fetched_at": 1792629587,
+      "fetched_at": 1793849107,
       "raw": {
         "main": 0.1,
         "extra": null,
@@ -544877,10 +544880,10 @@
     "2871840": {
       "main": 1.2,
       "extra": 1.6,
-      "complete": 2.4,
+      "complete": 2.3,
       "avg": 1.7,
       "match": "Blaston",
-      "fetched_at": 1792629554,
+      "fetched_at": 1793849072,
       "raw": {
         "main": 1.2,
         "extra": null,
@@ -546081,7 +546084,7 @@
       "complete": 2.0,
       "avg": 1.4,
       "match": "ShadoWalker",
-      "fetched_at": 1792629589,
+      "fetched_at": 1793849108,
       "raw": {
         "main": 1.0,
         "extra": null,
@@ -546091,7 +546094,7 @@
         "extra",
         "complete"
       ],
-      "n_comp": 2
+      "n_comp": 3
     },
     "2875000": {
       "main": null,
@@ -549560,7 +549563,7 @@
       "complete": 1.7,
       "avg": 1.1,
       "match": "Golden Balls",
-      "fetched_at": 1792629638,
+      "fetched_at": 1793849162,
       "raw": {
         "main": 0.7,
         "extra": null,
@@ -552746,7 +552749,7 @@
       "complete": 17.1,
       "avg": 12.6,
       "match": "Deep Dark Wrath",
-      "fetched_at": 1792629658,
+      "fetched_at": 1793849184,
       "raw": {
         "main": null,
         "extra": 12.0,
@@ -936054,13 +936057,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792968798,
+      "fetched_at": 1793849187,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 16
+      "attempts": 17
     },
     "1780960": {
       "main": null,
@@ -1045856,7 +1045859,7 @@
       "complete": 73.0,
       "avg": 43.8,
       "match": "Sword Art Online: Last Recollection",
-      "fetched_at": 1792968806,
+      "fetched_at": 1793849198,
       "raw": {
         "main": 28.1,
         "extra": 30.3,
@@ -1053663,7 +1053666,7 @@
       "complete": 0.5,
       "avg": 0.4,
       "match": "Siren Head: The Siren's Forest",
-      "fetched_at": 1792968808,
+      "fetched_at": 1793849199,
       "raw": {
         "main": 0.4,
         "extra": 0.4,
@@ -1074951,7 +1074954,7 @@
       "complete": 40.0,
       "avg": 21.5,
       "match": "Horse Tales: Emerald Valley Ranch",
-      "fetched_at": 1792968800,
+      "fetched_at": 1793849190,
       "raw": {
         "main": 5.0,
         "extra": 19.6,
@@ -1806845,7 +1806848,7 @@
       "complete": 1.5,
       "avg": 1.2,
       "match": "Ascension",
-      "fetched_at": 1792629592,
+      "fetched_at": 1793849113,
       "raw": {
         "main": 0.9,
         "extra": null,
@@ -1811323,7 +1811326,7 @@
       "complete": 36.0,
       "avg": 20.2,
       "match": "Fogpiercer",
-      "fetched_at": 1792968804,
+      "fetched_at": 1793849196,
       "raw": {
         "main": 5.1,
         "extra": 19.6,
@@ -1825242,7 +1825245,7 @@
       "complete": 4.1,
       "avg": 3.3,
       "match": "Typefighters",
-      "fetched_at": 1792629616,
+      "fetched_at": 1793849139,
       "raw": {
         "main": null,
         "extra": null,
@@ -1890181,13 +1890184,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1792968795,
+      "fetched_at": 1793849186,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 10
+      "attempts": 11
     },
     "4138930": {
       "main": null,
@@ -1906047,13 +1906050,13 @@
       "complete": 35.2,
       "avg": 20.4,
       "match": "Air",
-      "fetched_at": 1792968803,
+      "fetched_at": 1793849194,
       "raw": {
         "main": 8.9,
         "extra": 17.1,
         "complete": 35.2
       },
-      "n_comp": 28
+      "n_comp": 29
     },
     "3210600": {
       "main": null,
@@ -1982051,14 +1982054,14 @@
       "complete": null,
       "avg": null,
       "match": "Antigas Constelações",
-      "fetched_at": 1793834353,
+      "fetched_at": 1793849749,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "1892100": {
       "main": null,
@@ -1982066,14 +1982069,14 @@
       "complete": null,
       "avg": null,
       "match": "Heart Abyss",
-      "fetched_at": 1793834356,
+      "fetched_at": 1793849753,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "2508440": {
       "main": null,
@@ -1982081,13 +1982084,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834358,
+      "fetched_at": 1793849755,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "2780850": {
       "main": null,
@@ -1982095,13 +1982098,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834360,
+      "fetched_at": 1793849756,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3393720": {
       "main": null,
@@ -1982109,13 +1982112,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834361,
+      "fetched_at": 1793849758,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3503350": {
       "main": null,
@@ -1982123,13 +1982126,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834363,
+      "fetched_at": 1793849759,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3529090": {
       "main": null,
@@ -1982137,14 +1982140,14 @@
       "complete": null,
       "avg": null,
       "match": "Astra Bestiary",
-      "fetched_at": 1793834365,
+      "fetched_at": 1793849761,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "3719480": {
       "main": null,
@@ -1982152,13 +1982155,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834366,
+      "fetched_at": 1793849763,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3760370": {
       "main": null,
@@ -1982166,14 +1982169,14 @@
       "complete": null,
       "avg": null,
       "match": "Kick",
-      "fetched_at": 1793834368,
+      "fetched_at": 1793849765,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "4225280": {
       "main": null,
@@ -1982181,13 +1982184,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834370,
+      "fetched_at": 1793849766,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4251460": {
       "main": null,
@@ -1982195,14 +1982198,14 @@
       "complete": null,
       "avg": null,
       "match": "Godzilla: Destroy All Monsters Melee Remastered",
-      "fetched_at": 1793834372,
+      "fetched_at": 1793849768,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 2,
-      "attempts": 5
+      "attempts": 6
     },
     "4349540": {
       "main": null,
@@ -1982210,13 +1982213,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834374,
+      "fetched_at": 1793849769,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4431860": {
       "main": null,
@@ -1982224,13 +1982227,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834375,
+      "fetched_at": 1793849771,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4476270": {
       "main": null,
@@ -1982238,13 +1982241,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834379,
+      "fetched_at": 1793849775,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4548830": {
       "main": null,
@@ -1982252,13 +1982255,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834383,
+      "fetched_at": 1793849779,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4608850": {
       "main": null,
@@ -1982266,13 +1982269,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834385,
+      "fetched_at": 1793849780,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4663730": {
       "main": null,
@@ -1982280,13 +1982283,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834387,
+      "fetched_at": 1793849782,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4700280": {
       "main": null,
@@ -1982294,13 +1982297,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834388,
+      "fetched_at": 1793849783,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4736470": {
       "main": null,
@@ -1982308,13 +1982311,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834390,
+      "fetched_at": 1793849786,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4757720": {
       "main": null,
@@ -1982322,28 +1982325,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834392,
+      "fetched_at": 1793849787,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4886450": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "Hexzen",
-      "fetched_at": 1793834393,
+      "match": null,
+      "fetched_at": 1793849788,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "4956910": {
       "main": null,
@@ -1982351,13 +1982354,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834397,
+      "fetched_at": 1793849790,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4978010": {
       "main": null,
@@ -1982365,13 +1982368,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834398,
+      "fetched_at": 1793849791,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4982380": {
       "main": 9.0,
@@ -1982393,13 +1982396,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834400,
+      "fetched_at": 1793849793,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5002430": {
       "main": null,
@@ -1982407,13 +1982410,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834403,
+      "fetched_at": 1793849796,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5023750": {
       "main": null,
@@ -1982421,13 +1982424,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834405,
+      "fetched_at": 1793849798,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5058710": {
       "main": null,
@@ -1982435,13 +1982438,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834406,
+      "fetched_at": 1793849800,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5077680": {
       "main": null,
@@ -1982449,13 +1982452,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834410,
+      "fetched_at": 1793849803,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5089780": {
       "main": null,
@@ -1982463,13 +1982466,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834413,
+      "fetched_at": 1793849807,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5095030": {
       "main": 5.6,
@@ -1982495,13 +1982498,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834417,
+      "fetched_at": 1793849810,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5101960": {
       "main": null,
@@ -1982509,13 +1982512,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834418,
+      "fetched_at": 1793849811,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5122860": {
       "main": null,
@@ -1982523,13 +1982526,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834422,
+      "fetched_at": 1793849814,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5147670": {
       "main": null,
@@ -1982537,13 +1982540,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834423,
+      "fetched_at": 1793849816,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5181520": {
       "main": null,
@@ -1982551,13 +1982554,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834424,
+      "fetched_at": 1793849817,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5190490": {
       "main": null,
@@ -1982565,13 +1982568,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834426,
+      "fetched_at": 1793849819,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5205300": {
       "main": null,
@@ -1982579,13 +1982582,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834429,
+      "fetched_at": 1793849823,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5209220": {
       "main": null,
@@ -1982593,13 +1982596,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834431,
+      "fetched_at": 1793849824,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5266240": {
       "main": null,
@@ -1982607,14 +1982610,14 @@
       "complete": null,
       "avg": null,
       "match": "Potato Please",
-      "fetched_at": 1793834433,
+      "fetched_at": 1793849826,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 5,
-      "attempts": 5
+      "attempts": 6
     },
     "5300840": {
       "main": null,
@@ -1982622,13 +1982625,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834434,
+      "fetched_at": 1793849827,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5304140": {
       "main": null,
@@ -1982636,13 +1982639,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834436,
+      "fetched_at": 1793849829,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5315870": {
       "main": null,
@@ -1982650,13 +1982653,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834438,
+      "fetched_at": 1793849831,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5321820": {
       "main": null,
@@ -1982664,13 +1982667,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834439,
+      "fetched_at": 1793849833,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5322360": {
       "main": null,
@@ -1982678,13 +1982681,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834441,
+      "fetched_at": 1793849835,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5327390": {
       "main": null,
@@ -1982692,13 +1982695,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834444,
+      "fetched_at": 1793849838,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5336550": {
       "main": null,
@@ -1982706,13 +1982709,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834446,
+      "fetched_at": 1793849839,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5350770": {
       "main": null,
@@ -1982720,13 +1982723,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834448,
+      "fetched_at": 1793849841,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5356850": {
       "main": null,
@@ -1982734,13 +1982737,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834449,
+      "fetched_at": 1793849842,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5357830": {
       "main": null,
@@ -1982748,13 +1982751,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834451,
+      "fetched_at": 1793849844,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5359210": {
       "main": null,
@@ -1982762,13 +1982765,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834453,
+      "fetched_at": 1793849845,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5361480": {
       "main": null,
@@ -1982776,13 +1982779,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834455,
+      "fetched_at": 1793849846,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5361870": {
       "main": 0.1,
@@ -1982808,13 +1982811,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834456,
+      "fetched_at": 1793849848,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5370670": {
       "main": null,
@@ -1982822,13 +1982825,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834457,
+      "fetched_at": 1793849849,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5371210": {
       "main": null,
@@ -1982836,13 +1982839,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834459,
+      "fetched_at": 1793849850,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5382130": {
       "main": null,
@@ -1982850,13 +1982853,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834460,
+      "fetched_at": 1793849851,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5395140": {
       "main": null,
@@ -1982864,13 +1982867,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834461,
+      "fetched_at": 1793849852,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5401770": {
       "main": null,
@@ -1982878,13 +1982881,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834462,
+      "fetched_at": 1793849853,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5414140": {
       "main": null,
@@ -1982892,13 +1982895,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834463,
+      "fetched_at": 1793849854,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5415860": {
       "main": null,
@@ -1982906,13 +1982909,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834465,
+      "fetched_at": 1793849856,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5423570": {
       "main": null,
@@ -1982920,13 +1982923,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834466,
+      "fetched_at": 1793849857,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5425850": {
       "main": null,
@@ -1982934,13 +1982937,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834469,
+      "fetched_at": 1793849860,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5430590": {
       "main": null,
@@ -1982948,13 +1982951,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834470,
+      "fetched_at": 1793849862,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5430760": {
       "main": null,
@@ -1982962,13 +1982965,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834474,
+      "fetched_at": 1793849865,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5439370": {
       "main": null,
@@ -1982976,13 +1982979,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834475,
+      "fetched_at": 1793849867,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5442520": {
       "main": null,
@@ -1982990,13 +1982993,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834477,
+      "fetched_at": 1793849868,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5443430": {
       "main": null,
@@ -1983004,13 +1983007,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834479,
+      "fetched_at": 1793849870,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5456470": {
       "main": null,
@@ -1983018,13 +1983021,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834482,
+      "fetched_at": 1793849873,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5456900": {
       "main": null,
@@ -1983032,13 +1983035,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834483,
+      "fetched_at": 1793849875,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5461600": {
       "main": null,
@@ -1983046,14 +1983049,14 @@
       "complete": null,
       "avg": null,
       "match": "Soulknight Survivor",
-      "fetched_at": 1793834485,
+      "fetched_at": 1793849876,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "5465890": {
       "main": null,
@@ -1983061,13 +1983064,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834487,
+      "fetched_at": 1793849878,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "877900": {
       "main": null,
@@ -1983075,13 +1983078,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834188,
+      "fetched_at": 1793849586,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "1066070": {
       "main": null,
@@ -1983089,14 +1983092,14 @@
       "complete": null,
       "avg": null,
       "match": "Cave In",
-      "fetched_at": 1793834191,
+      "fetched_at": 1793849591,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "1669180": {
       "main": null,
@@ -1983104,13 +1983107,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834193,
+      "fetched_at": 1793849593,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "1786720": {
       "main": null,
@@ -1983118,13 +1983121,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834195,
+      "fetched_at": 1793849595,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2100410": {
       "main": null,
@@ -1983132,13 +1983135,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834196,
+      "fetched_at": 1793849597,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2175160": {
       "main": null,
@@ -1983146,13 +1983149,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834198,
+      "fetched_at": 1793849598,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2191810": {
       "main": null,
@@ -1983160,13 +1983163,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834200,
+      "fetched_at": 1793849600,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2218060": {
       "main": null,
@@ -1983174,13 +1983177,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834201,
+      "fetched_at": 1793849601,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2430710": {
       "main": 0.8,
@@ -1983202,13 +1983205,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834203,
+      "fetched_at": 1793849603,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2905910": {
       "main": null,
@@ -1983216,13 +1983219,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834205,
+      "fetched_at": 1793849605,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3194960": {
       "main": null,
@@ -1983230,13 +1983233,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834206,
+      "fetched_at": 1793849606,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3218230": {
       "main": null,
@@ -1983244,14 +1983247,14 @@
       "complete": null,
       "avg": null,
       "match": "ArcheAge Chronicles",
-      "fetched_at": 1793834208,
+      "fetched_at": 1793849608,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "3676990": {
       "main": null,
@@ -1983259,13 +1983262,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834210,
+      "fetched_at": 1793849609,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3700350": {
       "main": null,
@@ -1983273,13 +1983276,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834211,
+      "fetched_at": 1793849611,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3797250": {
       "main": null,
@@ -1983287,13 +1983290,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834214,
+      "fetched_at": 1793849613,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3973010": {
       "main": null,
@@ -1983301,13 +1983304,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834215,
+      "fetched_at": 1793849614,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4031280": {
       "main": null,
@@ -1983315,13 +1983318,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834217,
+      "fetched_at": 1793849615,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4098920": {
       "main": null,
@@ -1983329,28 +1983332,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834219,
+      "fetched_at": 1793849619,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4281480": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": null,
-      "fetched_at": 1793834222,
+      "match": "Mandala",
+      "fetched_at": 1793849622,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "4286110": {
       "main": null,
@@ -1983358,13 +1983361,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834223,
+      "fetched_at": 1793849623,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4304980": {
       "main": 5.6,
@@ -1983390,13 +1983393,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834225,
+      "fetched_at": 1793849627,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4410360": {
       "main": null,
@@ -1983404,13 +1983407,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834229,
+      "fetched_at": 1793849630,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4450900": {
       "main": null,
@@ -1983418,13 +1983421,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834230,
+      "fetched_at": 1793849632,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4492590": {
       "main": null,
@@ -1983432,13 +1983435,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834232,
+      "fetched_at": 1793849634,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4500000": {
       "main": null,
@@ -1983446,13 +1983449,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834234,
+      "fetched_at": 1793849635,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4516970": {
       "main": null,
@@ -1983460,13 +1983463,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834235,
+      "fetched_at": 1793849637,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4519480": {
       "main": null,
@@ -1983474,13 +1983477,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834237,
+      "fetched_at": 1793849639,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4553780": {
       "main": null,
@@ -1983488,13 +1983491,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834239,
+      "fetched_at": 1793849640,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4577360": {
       "main": null,
@@ -1983502,13 +1983505,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834242,
+      "fetched_at": 1793849644,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4587130": {
       "main": null,
@@ -1983516,13 +1983519,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834248,
+      "fetched_at": 1793849645,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4589160": {
       "main": null,
@@ -1983530,13 +1983533,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834250,
+      "fetched_at": 1793849647,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4607460": {
       "main": null,
@@ -1983544,13 +1983547,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834251,
+      "fetched_at": 1793849649,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4619940": {
       "main": null,
@@ -1983558,13 +1983561,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834253,
+      "fetched_at": 1793849650,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4635950": {
       "main": null,
@@ -1983572,13 +1983575,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834256,
+      "fetched_at": 1793849653,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4641930": {
       "main": null,
@@ -1983586,13 +1983589,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834259,
+      "fetched_at": 1793849656,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4673980": {
       "main": null,
@@ -1983600,13 +1983603,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834261,
+      "fetched_at": 1793849658,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4688870": {
       "main": null,
@@ -1983614,13 +1983617,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834263,
+      "fetched_at": 1793849660,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4718130": {
       "main": null,
@@ -1983628,13 +1983631,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834264,
+      "fetched_at": 1793849661,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4773050": {
       "main": null,
@@ -1983642,13 +1983645,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834267,
+      "fetched_at": 1793849663,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4777330": {
       "main": null,
@@ -1983656,13 +1983659,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834269,
+      "fetched_at": 1793849664,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4779470": {
       "main": 2.8,
@@ -1983687,28 +1983690,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834273,
+      "fetched_at": 1793849667,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4844510": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "Wisper",
-      "fetched_at": 1793834276,
+      "match": null,
+      "fetched_at": 1793849670,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "4877740": {
       "main": null,
@@ -1983716,13 +1983719,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834278,
+      "fetched_at": 1793849672,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4881430": {
       "main": null,
@@ -1983730,13 +1983733,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834279,
+      "fetched_at": 1793849673,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4901160": {
       "main": 5.7,
@@ -1983762,13 +1983765,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834282,
+      "fetched_at": 1793849676,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4946100": {
       "main": null,
@@ -1983776,13 +1983779,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834285,
+      "fetched_at": 1793849680,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4964640": {
       "main": null,
@@ -1983790,13 +1983793,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834286,
+      "fetched_at": 1793849682,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4965490": {
       "main": null,
@@ -1983804,13 +1983807,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834290,
+      "fetched_at": 1793849685,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4973630": {
       "main": null,
@@ -1983818,13 +1983821,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834291,
+      "fetched_at": 1793849686,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4999620": {
       "main": null,
@@ -1983832,13 +1983835,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834293,
+      "fetched_at": 1793849689,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5000980": {
       "main": null,
@@ -1983846,13 +1983849,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834295,
+      "fetched_at": 1793849690,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5019880": {
       "main": null,
@@ -1983860,13 +1983863,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834296,
+      "fetched_at": 1793849692,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5028280": {
       "main": null,
@@ -1983874,13 +1983877,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834298,
+      "fetched_at": 1793849694,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5029430": {
       "main": null,
@@ -1983888,13 +1983891,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834300,
+      "fetched_at": 1793849695,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5033230": {
       "main": null,
@@ -1983902,13 +1983905,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834301,
+      "fetched_at": 1793849697,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5062020": {
       "main": null,
@@ -1983916,13 +1983919,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834305,
+      "fetched_at": 1793849700,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5073660": {
       "main": null,
@@ -1983930,13 +1983933,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834308,
+      "fetched_at": 1793849704,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5111890": {
       "main": null,
@@ -1983944,13 +1983947,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834310,
+      "fetched_at": 1793849705,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5112500": {
       "main": null,
@@ -1983958,13 +1983961,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834313,
+      "fetched_at": 1793849709,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5135030": {
       "main": null,
@@ -1983972,13 +1983975,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834314,
+      "fetched_at": 1793849711,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5147060": {
       "main": null,
@@ -1983986,14 +1983989,14 @@
       "complete": null,
       "avg": null,
       "match": "Codenames",
-      "fetched_at": 1793834318,
+      "fetched_at": 1793849714,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "5168430": {
       "main": null,
@@ -1984001,13 +1984004,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834323,
+      "fetched_at": 1793849720,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5176710": {
       "main": null,
@@ -1984015,13 +1984018,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834326,
+      "fetched_at": 1793849722,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5179590": {
       "main": null,
@@ -1984029,13 +1984032,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834328,
+      "fetched_at": 1793849724,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5212850": {
       "main": null,
@@ -1984043,14 +1984046,14 @@
       "complete": null,
       "avg": null,
       "match": "Ruinarch",
-      "fetched_at": 1793834331,
+      "fetched_at": 1793849728,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 6,
-      "attempts": 4
+      "attempts": 5
     },
     "5217110": {
       "main": null,
@@ -1984058,13 +1984061,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834333,
+      "fetched_at": 1793849729,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5232060": {
       "main": null,
@@ -1984072,13 +1984075,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834336,
+      "fetched_at": 1793849732,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5238060": {
       "main": null,
@@ -1984086,13 +1984089,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834338,
+      "fetched_at": 1793849733,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5259260": {
       "main": null,
@@ -1984100,13 +1984103,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834339,
+      "fetched_at": 1793849734,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5274720": {
       "main": null,
@@ -1984114,13 +1984117,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834340,
+      "fetched_at": 1793849735,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5290910": {
       "main": null,
@@ -1984128,13 +1984131,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834341,
+      "fetched_at": 1793849736,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5291360": {
       "main": null,
@@ -1984142,13 +1984145,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834342,
+      "fetched_at": 1793849738,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5318810": {
       "main": null,
@@ -1984156,13 +1984159,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834345,
+      "fetched_at": 1793849741,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5319550": {
       "main": null,
@@ -1984170,13 +1984173,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834346,
+      "fetched_at": 1793849742,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5328020": {
       "main": null,
@@ -1984184,13 +1984187,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834348,
+      "fetched_at": 1793849744,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5402790": {
       "main": null,
@@ -1984198,13 +1984201,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834350,
+      "fetched_at": 1793849745,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5416440": {
       "main": null,
@@ -1984212,13 +1984215,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834351,
+      "fetched_at": 1793849747,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5436750": {
       "main": 0.1,
@@ -1984260,13 +1984263,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834045,
+      "fetched_at": 1793849438,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "3339970": {
       "main": null,
@@ -1984274,14 +1984277,14 @@
       "complete": null,
       "avg": null,
       "match": "WendyQuest: Legend of the Four Corner Stones",
-      "fetched_at": 1793834047,
+      "fetched_at": 1793849439,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 3
+      "attempts": 4
     },
     "3540660": {
       "main": null,
@@ -1984289,13 +1984292,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834049,
+      "fetched_at": 1793849441,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "3908430": {
       "main": null,
@@ -1984303,13 +1984306,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834050,
+      "fetched_at": 1793849443,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4252600": {
       "main": null,
@@ -1984317,13 +1984320,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834052,
+      "fetched_at": 1793849444,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4287400": {
       "main": null,
@@ -1984331,13 +1984334,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834054,
+      "fetched_at": 1793849446,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4295520": {
       "main": null,
@@ -1984345,13 +1984348,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834055,
+      "fetched_at": 1793849448,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4334530": {
       "main": null,
@@ -1984359,13 +1984362,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834057,
+      "fetched_at": 1793849449,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4370030": {
       "main": null,
@@ -1984373,13 +1984376,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834058,
+      "fetched_at": 1793849452,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4414460": {
       "main": null,
@@ -1984387,13 +1984390,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834060,
+      "fetched_at": 1793849453,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4427790": {
       "main": null,
@@ -1984401,13 +1984404,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834063,
+      "fetched_at": 1793849457,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4503110": {
       "main": null,
@@ -1984415,13 +1984418,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834065,
+      "fetched_at": 1793849459,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4540280": {
       "main": null,
@@ -1984429,13 +1984432,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834066,
+      "fetched_at": 1793849460,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4584470": {
       "main": 1.0,
@@ -1984461,13 +1984464,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834068,
+      "fetched_at": 1793849463,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4762960": {
       "main": null,
@@ -1984475,14 +1984478,14 @@
       "complete": null,
       "avg": null,
       "match": "Outbreak: Dead City",
-      "fetched_at": 1793834069,
+      "fetched_at": 1793849465,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 3
+      "attempts": 4
     },
     "4850250": {
       "main": null,
@@ -1984490,13 +1984493,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834071,
+      "fetched_at": 1793849466,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4888210": {
       "main": null,
@@ -1984504,13 +1984507,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834075,
+      "fetched_at": 1793849470,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4917630": {
       "main": null,
@@ -1984518,13 +1984521,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834078,
+      "fetched_at": 1793849473,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4926050": {
       "main": null,
@@ -1984532,14 +1984535,14 @@
       "complete": null,
       "avg": null,
       "match": "Hush",
-      "fetched_at": 1793834080,
+      "fetched_at": 1793849475,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 1,
-      "attempts": 3
+      "attempts": 4
     },
     "4935290": {
       "main": null,
@@ -1984547,13 +1984550,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834083,
+      "fetched_at": 1793849478,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "4995440": {
       "main": null,
@@ -1984561,13 +1984564,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834085,
+      "fetched_at": 1793849480,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5010000": {
       "main": null,
@@ -1984575,13 +1984578,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834088,
+      "fetched_at": 1793849483,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5015250": {
       "main": null,
@@ -1984589,13 +1984592,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834090,
+      "fetched_at": 1793849485,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5072640": {
       "main": null,
@@ -1984603,13 +1984606,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834091,
+      "fetched_at": 1793849487,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5079090": {
       "main": null,
@@ -1984617,13 +1984620,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834094,
+      "fetched_at": 1793849489,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5105360": {
       "main": null,
@@ -1984631,13 +1984634,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834095,
+      "fetched_at": 1793849490,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5173710": {
       "main": null,
@@ -1984645,14 +1984648,14 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834097,
+      "fetched_at": 1793849494,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 3
+      "attempts": 4
     },
     "5183430": {
       "main": null,
@@ -1984660,13 +1984663,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834099,
+      "fetched_at": 1793849496,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5221650": {
       "main": null,
@@ -1984674,13 +1984677,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834100,
+      "fetched_at": 1793849498,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5227470": {
       "main": null,
@@ -1984688,28 +1984691,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834101,
+      "fetched_at": 1793849500,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5234140": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": null,
-      "fetched_at": 1793834103,
+      "match": "InterSection",
+      "fetched_at": 1793849504,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 3
+      "attempts": 4
     },
     "5306790": {
       "main": null,
@@ -1984717,13 +1984720,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834105,
+      "fetched_at": 1793849505,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5324510": {
       "main": null,
@@ -1984731,13 +1984734,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834108,
+      "fetched_at": 1793849509,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5332010": {
       "main": null,
@@ -1984745,13 +1984748,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834110,
+      "fetched_at": 1793849511,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5335160": {
       "main": null,
@@ -1984759,13 +1984762,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834113,
+      "fetched_at": 1793849515,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5343850": {
       "main": null,
@@ -1984773,13 +1984776,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834115,
+      "fetched_at": 1793849517,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5347500": {
       "main": null,
@@ -1984787,13 +1984790,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834117,
+      "fetched_at": 1793849519,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5354220": {
       "main": null,
@@ -1984801,13 +1984804,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834118,
+      "fetched_at": 1793849521,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5367880": {
       "main": null,
@@ -1984815,13 +1984818,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834122,
+      "fetched_at": 1793849525,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5381710": {
       "main": null,
@@ -1984829,13 +1984832,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834123,
+      "fetched_at": 1793849527,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5382010": {
       "main": null,
@@ -1984843,13 +1984846,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834125,
+      "fetched_at": 1793849529,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5382620": {
       "main": null,
@@ -1984857,13 +1984860,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834128,
+      "fetched_at": 1793849534,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5393860": {
       "main": null,
@@ -1984871,13 +1984874,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834132,
+      "fetched_at": 1793849537,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5418530": {
       "main": null,
@@ -1984885,13 +1984888,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834134,
+      "fetched_at": 1793849539,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5419600": {
       "main": null,
@@ -1984899,13 +1984902,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834135,
+      "fetched_at": 1793849541,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5428620": {
       "main": null,
@@ -1984913,13 +1984916,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834139,
+      "fetched_at": 1793849544,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5433640": {
       "main": null,
@@ -1984927,13 +1984930,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834147,
+      "fetched_at": 1793849546,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5433900": {
       "main": null,
@@ -1984941,14 +1984944,14 @@
       "complete": null,
       "avg": null,
       "match": "Along Came a Spider",
-      "fetched_at": 1793834149,
+      "fetched_at": 1793849548,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 1,
-      "attempts": 3
+      "attempts": 4
     },
     "5436570": {
       "main": null,
@@ -1984956,13 +1984959,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834151,
+      "fetched_at": 1793849550,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5447710": {
       "main": null,
@@ -1984970,13 +1984973,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834154,
+      "fetched_at": 1793849552,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5449150": {
       "main": null,
@@ -1984984,13 +1984987,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834156,
+      "fetched_at": 1793849554,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5450620": {
       "main": null,
@@ -1984998,13 +1985001,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834158,
+      "fetched_at": 1793849555,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5451230": {
       "main": null,
@@ -1985012,13 +1985015,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834160,
+      "fetched_at": 1793849557,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5452520": {
       "main": null,
@@ -1985026,13 +1985029,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834163,
+      "fetched_at": 1793849560,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5456840": {
       "main": null,
@@ -1985040,13 +1985043,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834164,
+      "fetched_at": 1793849562,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5456960": {
       "main": null,
@@ -1985054,13 +1985057,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834166,
+      "fetched_at": 1793849563,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5457850": {
       "main": null,
@@ -1985068,13 +1985071,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834168,
+      "fetched_at": 1793849565,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5459170": {
       "main": null,
@@ -1985082,13 +1985085,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834169,
+      "fetched_at": 1793849567,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5460740": {
       "main": null,
@@ -1985096,13 +1985099,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834171,
+      "fetched_at": 1793849569,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5464240": {
       "main": null,
@@ -1985110,13 +1985113,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834174,
+      "fetched_at": 1793849572,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5465990": {
       "main": null,
@@ -1985124,13 +1985127,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834176,
+      "fetched_at": 1793849574,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5466620": {
       "main": null,
@@ -1985138,13 +1985141,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834178,
+      "fetched_at": 1793849575,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5469970": {
       "main": null,
@@ -1985152,13 +1985155,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834179,
+      "fetched_at": 1793849577,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5471190": {
       "main": 23.6,
@@ -1985180,13 +1985183,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834181,
+      "fetched_at": 1793849579,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5479840": {
       "main": null,
@@ -1985194,13 +1985197,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834183,
+      "fetched_at": 1793849580,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "5500000": {
       "main": null,
@@ -1985208,13 +1985211,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793834186,
+      "fetched_at": 1793849584,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 3
+      "attempts": 4
     },
     "2056530": {
       "main": null,
@@ -1985222,13 +1985225,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847244,
+      "fetched_at": 1793849201,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "2265280": {
       "main": null,
@@ -1985236,13 +1985239,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847246,
+      "fetched_at": 1793849203,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "2386910": {
       "main": null,
@@ -1985250,13 +1985253,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847248,
+      "fetched_at": 1793849204,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "2847290": {
       "main": null,
@@ -1985264,14 +1985267,14 @@
       "complete": null,
       "avg": null,
       "match": "The Maze",
-      "fetched_at": 1793847253,
+      "fetched_at": 1793849208,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 1
+      "attempts": 2
     },
     "2885890": {
       "main": null,
@@ -1985279,13 +1985282,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847255,
+      "fetched_at": 1793849210,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "2991310": {
       "main": null,
@@ -1985293,14 +1985296,14 @@
       "complete": null,
       "avg": null,
       "match": "Eternal Palace Sakura",
-      "fetched_at": 1793847256,
+      "fetched_at": 1793849212,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 1
+      "attempts": 2
     },
     "2995290": {
       "main": null,
@@ -1985308,13 +1985311,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847258,
+      "fetched_at": 1793849214,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3002130": {
       "main": null,
@@ -1985322,14 +1985325,14 @@
       "complete": null,
       "avg": null,
       "match": "Theos: Cities Of Myth",
-      "fetched_at": 1793847261,
+      "fetched_at": 1793849215,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 1
+      "attempts": 2
     },
     "3059040": {
       "main": null,
@@ -1985337,13 +1985340,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847263,
+      "fetched_at": 1793849217,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3082430": {
       "main": null,
@@ -1985351,13 +1985354,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847268,
+      "fetched_at": 1793849220,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3133120": {
       "main": null,
@@ -1985365,13 +1985368,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847270,
+      "fetched_at": 1793849221,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3275210": {
       "main": null,
@@ -1985379,13 +1985382,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847272,
+      "fetched_at": 1793849223,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3325390": {
       "main": null,
@@ -1985393,13 +1985396,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847274,
+      "fetched_at": 1793849224,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3491960": {
       "main": null,
@@ -1985407,13 +1985410,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847277,
+      "fetched_at": 1793849226,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3596560": {
       "main": null,
@@ -1985421,13 +1985424,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847279,
+      "fetched_at": 1793849228,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3603900": {
       "main": null,
@@ -1985435,13 +1985438,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847280,
+      "fetched_at": 1793849230,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3646940": {
       "main": null,
@@ -1985449,13 +1985452,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847282,
+      "fetched_at": 1793849232,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3727090": {
       "main": null,
@@ -1985463,14 +1985466,14 @@
       "complete": null,
       "avg": null,
       "match": "Horses of Hoofprint Bay",
-      "fetched_at": 1793847284,
+      "fetched_at": 1793849233,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 1
+      "attempts": 2
     },
     "3855530": {
       "main": null,
@@ -1985478,13 +1985481,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847286,
+      "fetched_at": 1793849235,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "3889990": {
       "main": null,
@@ -1985492,13 +1985495,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847290,
+      "fetched_at": 1793849239,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4088720": {
       "main": null,
@@ -1985506,13 +1985509,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847291,
+      "fetched_at": 1793849240,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4095800": {
       "main": null,
@@ -1985520,13 +1985523,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847293,
+      "fetched_at": 1793849243,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4168200": {
       "main": null,
@@ -1985534,13 +1985537,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847295,
+      "fetched_at": 1793849244,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4180550": {
       "main": null,
@@ -1985548,13 +1985551,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847300,
+      "fetched_at": 1793849247,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4228510": {
       "main": null,
@@ -1985562,28 +1985565,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847302,
+      "fetched_at": 1793849248,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4262460": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "Robo Runner",
-      "fetched_at": 1793847306,
+      "match": null,
+      "fetched_at": 1793849251,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 1,
-      "attempts": 1
+      "attempts": 2
     },
     "4280450": {
       "main": null,
@@ -1985591,13 +1985594,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847307,
+      "fetched_at": 1793849253,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4326740": {
       "main": null,
@@ -1985605,13 +1985608,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847309,
+      "fetched_at": 1793849255,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4347370": {
       "main": 1.7,
@@ -1985633,14 +1985636,14 @@
       "complete": null,
       "avg": null,
       "match": "Hull Rupture",
-      "fetched_at": 1793847315,
+      "fetched_at": 1793849256,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 1
+      "attempts": 2
     },
     "4363370": {
       "main": null,
@@ -1985648,13 +1985651,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847317,
+      "fetched_at": 1793849258,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4412410": {
       "main": null,
@@ -1985662,13 +1985665,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847319,
+      "fetched_at": 1793849259,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4513920": {
       "main": null,
@@ -1985676,13 +1985679,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847320,
+      "fetched_at": 1793849261,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4539850": {
       "main": null,
@@ -1985690,13 +1985693,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847323,
+      "fetched_at": 1793849262,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4547060": {
       "main": null,
@@ -1985704,13 +1985707,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847325,
+      "fetched_at": 1793849264,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4553490": {
       "main": null,
@@ -1985718,13 +1985721,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847327,
+      "fetched_at": 1793849265,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4589260": {
       "main": null,
@@ -1985732,13 +1985735,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847330,
+      "fetched_at": 1793849267,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4636920": {
       "main": null,
@@ -1985746,13 +1985749,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847332,
+      "fetched_at": 1793849269,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4644460": {
       "main": null,
@@ -1985760,13 +1985763,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847334,
+      "fetched_at": 1793849273,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4646190": {
       "main": null,
@@ -1985774,13 +1985777,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847336,
+      "fetched_at": 1793849274,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4646650": {
       "main": null,
@@ -1985788,13 +1985791,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847338,
+      "fetched_at": 1793849277,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4658920": {
       "main": null,
@@ -1985802,13 +1985805,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847340,
+      "fetched_at": 1793849280,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4672990": {
       "main": null,
@@ -1985816,13 +1985819,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847344,
+      "fetched_at": 1793849286,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4677370": {
       "main": null,
@@ -1985830,13 +1985833,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847345,
+      "fetched_at": 1793849288,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4739370": {
       "main": null,
@@ -1985844,13 +1985847,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847348,
+      "fetched_at": 1793849289,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4756250": {
       "main": null,
@@ -1985858,13 +1985861,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847350,
+      "fetched_at": 1793849292,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4783460": {
       "main": null,
@@ -1985872,13 +1985875,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847352,
+      "fetched_at": 1793849293,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4802430": {
       "main": null,
@@ -1985886,13 +1985889,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847354,
+      "fetched_at": 1793849295,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4832510": {
       "main": null,
@@ -1985900,13 +1985903,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847358,
+      "fetched_at": 1793849297,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4899480": {
       "main": null,
@@ -1985914,13 +1985917,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847363,
+      "fetched_at": 1793849300,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4904200": {
       "main": null,
@@ -1985928,13 +1985931,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847367,
+      "fetched_at": 1793849303,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4920680": {
       "main": null,
@@ -1985942,13 +1985945,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847369,
+      "fetched_at": 1793849305,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4920710": {
       "main": null,
@@ -1985956,13 +1985959,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847370,
+      "fetched_at": 1793849308,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4927530": {
       "main": null,
@@ -1985970,13 +1985973,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847374,
+      "fetched_at": 1793849313,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4931970": {
       "main": null,
@@ -1985984,13 +1985987,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847378,
+      "fetched_at": 1793849315,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4932300": {
       "main": null,
@@ -1985998,13 +1986001,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847380,
+      "fetched_at": 1793849318,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4935230": {
       "main": null,
@@ -1986012,13 +1986015,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847382,
+      "fetched_at": 1793849319,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4938300": {
       "main": null,
@@ -1986026,13 +1986029,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847385,
+      "fetched_at": 1793849323,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4960380": {
       "main": null,
@@ -1986040,13 +1986043,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847387,
+      "fetched_at": 1793849325,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4962500": {
       "main": null,
@@ -1986054,13 +1986057,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847389,
+      "fetched_at": 1793849327,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4977850": {
       "main": null,
@@ -1986068,13 +1986071,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847392,
+      "fetched_at": 1793849329,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4982860": {
       "main": null,
@@ -1986082,13 +1986085,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847395,
+      "fetched_at": 1793849332,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5008320": {
       "main": null,
@@ -1986096,13 +1986099,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847399,
+      "fetched_at": 1793849335,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5024920": {
       "main": null,
@@ -1986110,13 +1986113,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847404,
+      "fetched_at": 1793849338,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5037510": {
       "main": null,
@@ -1986124,13 +1986127,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847405,
+      "fetched_at": 1793849339,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5046850": {
       "main": null,
@@ -1986138,13 +1986141,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847406,
+      "fetched_at": 1793849341,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5047110": {
       "main": null,
@@ -1986152,13 +1986155,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847411,
+      "fetched_at": 1793849343,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5049000": {
       "main": null,
@@ -1986166,13 +1986169,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847414,
+      "fetched_at": 1793849345,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5065190": {
       "main": null,
@@ -1986180,13 +1986183,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847417,
+      "fetched_at": 1793849349,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5072070": {
       "main": null,
@@ -1986194,13 +1986197,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847419,
+      "fetched_at": 1793849351,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5086530": {
       "main": null,
@@ -1986208,13 +1986211,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847422,
+      "fetched_at": 1793849355,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5091900": {
       "main": null,
@@ -1986222,13 +1986225,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847424,
+      "fetched_at": 1793849357,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5094940": {
       "main": null,
@@ -1986236,13 +1986239,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847425,
+      "fetched_at": 1793849359,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5096780": {
       "main": null,
@@ -1986250,13 +1986253,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847427,
+      "fetched_at": 1793849360,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5097170": {
       "main": null,
@@ -1986264,13 +1986267,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847431,
+      "fetched_at": 1793849362,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5098820": {
       "main": null,
@@ -1986278,13 +1986281,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847434,
+      "fetched_at": 1793849364,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5106900": {
       "main": null,
@@ -1986292,13 +1986295,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847437,
+      "fetched_at": 1793849367,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5106940": {
       "main": null,
@@ -1986306,13 +1986309,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847439,
+      "fetched_at": 1793849368,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5112450": {
       "main": null,
@@ -1986320,13 +1986323,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847442,
+      "fetched_at": 1793849371,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5113760": {
       "main": null,
@@ -1986334,13 +1986337,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847444,
+      "fetched_at": 1793849372,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5121140": {
       "main": null,
@@ -1986348,13 +1986351,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847446,
+      "fetched_at": 1793849373,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5124150": {
       "main": null,
@@ -1986362,13 +1986365,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847448,
+      "fetched_at": 1793849374,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5137810": {
       "main": null,
@@ -1986376,13 +1986379,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847449,
+      "fetched_at": 1793849376,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5139380": {
       "main": null,
@@ -1986390,13 +1986393,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847451,
+      "fetched_at": 1793849378,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5139560": {
       "main": null,
@@ -1986404,13 +1986407,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847453,
+      "fetched_at": 1793849379,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5182840": {
       "main": null,
@@ -1986418,13 +1986421,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847456,
+      "fetched_at": 1793849381,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5205270": {
       "main": null,
@@ -1986432,13 +1986435,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847459,
+      "fetched_at": 1793849383,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5208780": {
       "main": null,
@@ -1986446,13 +1986449,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847461,
+      "fetched_at": 1793849384,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5229450": {
       "main": null,
@@ -1986460,13 +1986463,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847463,
+      "fetched_at": 1793849386,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5234980": {
       "main": null,
@@ -1986474,13 +1986477,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847465,
+      "fetched_at": 1793849387,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5243280": {
       "main": null,
@@ -1986488,13 +1986491,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847467,
+      "fetched_at": 1793849389,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5257590": {
       "main": null,
@@ -1986502,13 +1986505,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847471,
+      "fetched_at": 1793849393,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5260230": {
       "main": null,
@@ -1986516,13 +1986519,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847473,
+      "fetched_at": 1793849395,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5279240": {
       "main": null,
@@ -1986530,13 +1986533,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847474,
+      "fetched_at": 1793849396,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5283340": {
       "main": 4.2,
@@ -1986558,13 +1986561,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847483,
+      "fetched_at": 1793849398,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5297930": {
       "main": null,
@@ -1986572,13 +1986575,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847485,
+      "fetched_at": 1793849400,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5306690": {
       "main": null,
@@ -1986586,13 +1986589,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847486,
+      "fetched_at": 1793849402,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5316530": {
       "main": null,
@@ -1986600,13 +1986603,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847488,
+      "fetched_at": 1793849404,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5321810": {
       "main": null,
@@ -1986614,13 +1986617,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847490,
+      "fetched_at": 1793849405,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5334830": {
       "main": null,
@@ -1986628,13 +1986631,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847491,
+      "fetched_at": 1793849407,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5338170": {
       "main": null,
@@ -1986642,13 +1986645,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847493,
+      "fetched_at": 1793849410,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5348470": {
       "main": null,
@@ -1986656,13 +1986659,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847495,
+      "fetched_at": 1793849412,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5362330": {
       "main": null,
@@ -1986670,13 +1986673,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847497,
+      "fetched_at": 1793849413,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5366060": {
       "main": null,
@@ -1986684,13 +1986687,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847499,
+      "fetched_at": 1793849415,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5371500": {
       "main": 0.3,
@@ -1986715,13 +1986718,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847502,
+      "fetched_at": 1793849417,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5405590": {
       "main": null,
@@ -1986729,13 +1986732,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847507,
+      "fetched_at": 1793849421,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5423800": {
       "main": null,
@@ -1986743,13 +1986746,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847509,
+      "fetched_at": 1793849422,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5425530": {
       "main": null,
@@ -1986757,13 +1986760,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847511,
+      "fetched_at": 1793849424,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5446080": {
       "main": null,
@@ -1986771,13 +1986774,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847513,
+      "fetched_at": 1793849426,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5447610": {
       "main": null,
@@ -1986785,13 +1986788,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847515,
+      "fetched_at": 1793849427,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5460640": {
       "main": null,
@@ -1986799,13 +1986802,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847516,
+      "fetched_at": 1793849429,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5462430": {
       "main": null,
@@ -1986813,13 +1986816,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847520,
+      "fetched_at": 1793849432,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5472340": {
       "main": null,
@@ -1986827,13 +1986830,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847522,
+      "fetched_at": 1793849433,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5480070": {
       "main": null,
@@ -1986841,13 +1986844,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1793847525,
+      "fetched_at": 1793849434,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     }
   }
 }
