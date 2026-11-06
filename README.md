@@ -1,5 +1,7 @@
 # QTPD
 
+**QTPD (Quality Time Per Dollar)** ranks thousands of Steam games by how many well-reviewed hours you get per dollar. **Use it: https://mlmariss.github.io/SteamQTPD/** · [How it works](https://mlmariss.github.io/SteamQTPD/how-it-works.html)
+
 Finds the best **quality time per dollar** across Steam games. A set of scrapers
 build up a database **over time** (committed to this repo as JSON); a static page
 (`index.html`) reads it and lets you browse, sort, and filter — with live discount

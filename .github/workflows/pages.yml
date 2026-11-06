@@ -120,6 +120,12 @@ jobs:
       - name: Write SEO snapshot into the staged page
         run: python3 seo_snapshot.py _site/index.html presets.json
 
+      # The "Ways to use QTPD" links put games in front of visitors who asked for nothing
+      # specific, so each must carry adult=hide (house rule; presets.py holds the shelves to the
+      # same). Also checks the section is static, folded natively, and not copied elsewhere.
+      - name: Check the Ways to use QTPD section (adult=hide on every link)
+        run: python3 test_ways_to_use.py
+
       - name: Verify every path the frontend fetches is staged
         run: |
           missing=0
