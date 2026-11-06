@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Guard for index.html's "Ways to use QTPD" section (#ways-to-use, SEO handover 2026-11-06).
+"""Guard for index.html's "Ways to use QTPD" (#ways-to-use, SEO handover 2026-11-06): the panel
+of the ? help menu in the header, a native <details> whose summary is the ? button.
 
 The section's headings link to filtered views of the list, which makes it a surface that puts
 games in front of a visitor who did not ask for anything specific. House rule (CLAUDE.md, Product
@@ -89,7 +90,29 @@ check("closed by default (no `open` attribute)", p.attrs is not None and "open" 
 check("nothing inside is hidden by [hidden] or inline display:none", not p.hidden)
 check("no <script>/<noscript>/<template> inside: the text is plain static HTML", "<script" not in
       INDEX[INDEX.find('id="ways-to-use"'):INDEX.find("</details>", INDEX.find('id="ways-to-use"'))])
-check("summary heading is 'Ways to use QTPD'", "".join(p.h2) == "Ways to use QTPD")
+
+
+class Wrappers(HTMLParser):
+    """Which hiding elements (<noscript>, <template>) are open where #ways-to-use starts."""
+    def __init__(self):
+        super().__init__()
+        self.open, self.at = [], None
+    def handle_starttag(self, tag, attrs):
+        if tag in ("noscript", "template"):
+            self.open.append(tag)
+        if dict(attrs).get("id") == "ways-to-use":
+            self.at = list(self.open)
+    def handle_endtag(self, tag):
+        if tag in ("noscript", "template") and self.open and self.open[-1] == tag:
+            self.open.pop()
+
+
+w = Wrappers()
+w.feed(INDEX)
+check("not inside a <noscript> or <template>: browsers and crawlers both get it",
+      w.at == [])
+check("section heading (h2) is 'Ways to use QTPD'", "".join(p.h2) == "Ways to use QTPD")
+check("the summary is the ? help button", '<summary class="util-btn help-btn" id="helpBtn"' in INDEX)
 
 print("\n== ten groups, each a heading plus one sentence ==")
 heads = [h for h in p.h3]
@@ -117,8 +140,8 @@ for href in views:
         for t in (q.get(key, [""])[0].split(",") if key in q else []):
             check(f"{key} token '{t}' exists", t in flag_tokens)
 others = [h for h in p.links if not h.startswith("?")]
-check("the only non-view link is the wishlist jump (#wishBox, a real id)",
-      others == ["#wishBox"] and INDEX.count('id="wishBox"') == 1)
+check("the other links are How it works and the wishlist jump (#wishBox, a real id)",
+      sorted(others) == ["#wishBox", "how-it-works.html"] and INDEX.count('id="wishBox"') == 1)
 
 print("\n== one full copy: how-it-works.html points here and does not repeat it ==")
 check("how-it-works.html links to ./#ways-to-use", 'href="./#ways-to-use"' in HOW)
