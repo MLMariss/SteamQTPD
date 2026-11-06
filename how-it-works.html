@@ -134,6 +134,21 @@
   </ul>
   <p>Prices, sales, review scores, length and tags are collected from Steam and refreshed
     automatically, so the ranking follows each sale as it starts and ends.</p>
+  <!-- Facts below match the Flags tooltips in index.html and notices.py (FLAGGED_DAYS = 7, daily
+       workflow, most-reviewed first, anti-cheat page checks limited to multiplayer/co-op games).
+       Checked 2026-11-06; if either changes, change this too. -->
+  <p><strong>Store-page flags.</strong> A Steam store page can state that a game
+    “Incorporates 3rd-party DRM” (usually Denuvo, or a publisher's online activation), “Requires
+    3rd-Party Account” (EA, Ubisoft, PlayStation Network and the like) or “Uses Kernel Level
+    Anti-Cheat”. QTPD reads those notices game by game, every day, most-reviewed games first, and
+    checks every flagged game again each week, so a game that drops Denuvo loses the flag within
+    about a week. Anti-cheat is checked mainly on multiplayer and co-op games, and developers state
+    it themselves, so a game that runs one without saying so is not flagged. The other flags come
+    from Valve's own data: in-app purchases and generative-AI content (both declared by the
+    developer), a block on Steam Family Sharing (reliable when present, but some games block
+    sharing without it) and an always-online requirement (from Valve's Steam Deck tests, so only
+    Deck-tested games carry it). Hiding a flag hides the games where it was found, so treat the
+    rest as “none found”, not as “none”.</p>
 
   <h2>What gets left out</h2>
   <ul>
@@ -151,6 +166,9 @@
     more. Every filter is saved in the page address, so a view can be bookmarked or shared. Search
     a title to see any game's score, or use <em>Find similar</em> to rank games like one you
     already enjoyed.</p>
+  <p>All the ways to use QTPD, from Steam sale deals and Steam Deck games to ranking your own
+    wishlist or hiding games with microtransactions, are listed on the
+    <a href="./#ways-to-use">QTPD page</a>.</p>
   <a class="cta" href="./">Open QTPD →</a>
 
   <h2>Who made it</h2>

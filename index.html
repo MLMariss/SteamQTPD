@@ -7,14 +7,14 @@
 <!-- Search and share metadata. The canonical is the bare page URL on purpose: every filtered
      view (?q=, ?tags=, ...) is the same page in a different state, so search engines should
      index one URL, not one per filter combination. -->
-<meta name="description" content="Find the Steam games that give the most well-reviewed hours for your money. Filter thousands of games by price, sale, review score, length and tags." />
+<meta name="description" content="Find Steam games that give the most well-reviewed hours for your money. Filter by sale, length, reviews and Steam Deck, or hide microtransactions and Denuvo." />
 <link rel="canonical" href="https://mlmariss.github.io/SteamQTPD/" />
 <!-- Google Search Console ownership check. Keep it: removing it un-verifies the property. -->
 <meta name="google-site-verification" content="IvYCR0YKDXf-n9wctR5p3lpm84IUgNj_r0MvaYAJ7HE" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="QTPD" />
 <meta property="og:title" content="QTPD: Steam games ranked by quality time per dollar" />
-<meta property="og:description" content="Find the Steam games that give the most well-reviewed hours for your money. Filter thousands of games by price, sale, review score, length and tags." />
+<meta property="og:description" content="Find Steam games that give the most well-reviewed hours for your money. Filter by sale, length, reviews and Steam Deck, or hide microtransactions and Denuvo." />
 <meta property="og:url" content="https://mlmariss.github.io/SteamQTPD/" />
 <meta property="og:image" content="https://mlmariss.github.io/SteamQTPD/og-image.png" />
 <meta property="og:image:width" content="1200" />
@@ -33,7 +33,7 @@
   "name": "QTPD",
   "alternateName": "Quality Time Per Dollar",
   "url": "https://mlmariss.github.io/SteamQTPD/",
-  "description": "Find the Steam games that give the most well-reviewed hours for your money. Filter thousands of games by price, sale, review score, length and tags.",
+  "description": "Find Steam games that give the most well-reviewed hours for your money. Filter by sale, length, reviews and Steam Deck, or hide microtransactions and Denuvo.",
   "applicationCategory": "GameApplication",
   "operatingSystem": "Any (web browser)",
   "browserRequirements": "Requires JavaScript",
@@ -138,6 +138,15 @@
   .logo b{color:var(--gold); -webkit-text-fill-color:var(--gold)}
   .tagline{font-family:var(--mono); font-size:13px; color:var(--muted); letter-spacing:.02em;
         margin:0; font-weight:400}  /* an <h1> (the page's main heading for search) that must look like the old <div> */
+  /* The H1 reads "Steam games ranked by quality time per dollar" (SEO handover, 2026-11-06): the
+     words people search for, in the page's main heading. On one line it is 363px, which fits the
+     desktop bar but ran ~70px off a phone with the filter panel open. Below the table breakpoint
+     (body.narrow) the lead-in drops to its own smaller line above "quality time per dollar", so
+     the block is as wide as the old tagline and every word stays visible: no CSS-hidden heading
+     text on the phone view, which is the one Google indexes. Owner's pick, 2026-11-06. */
+  body.narrow .brand{align-items:center}
+  body.narrow .tl-pre{display:block; font-size:10px; letter-spacing:.07em; text-transform:uppercase;
+        color:var(--muted-2); line-height:1.25}
   .search{flex:1 1 240px; min-width:180px; position:relative}
   .search input{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
         font-family:var(--sans); font-size:14px; padding:10px 34px 10px 36px; border-radius:9px; outline:none}
@@ -262,6 +271,35 @@
   .seo-snap h3 a{color:var(--text); text-decoration:none}
   .seo-snap p{margin:0 0 4px}
   .seo-snap ol{margin:0; padding-left:18px; color:var(--muted)}
+  /* ── Ways to use QTPD (#ways-to-use) ──────────────────────────────────────────────────────
+     Folded by default into one summary row under the top bar, so the shelves and the list keep
+     their place. It sits on the page's content edge (--card-inset, like the shelves below it).
+     The summary is clamped to two lines, which only happens on a phone; a desktop shows it whole
+     on one. scroll-margin keeps a #ways-to-use jump clear of the phone's sticky nav (--nav-h).
+     --nav-h is only set once the app boots, after the browser has already made the jump, so
+     the fallback has to be at least the tallest bar (a phone's, ~175px before boot): the section sits right under
+     the bar at every width, so the jump then lands at the very top with the section in view,
+     rather than tucked behind the sticky nav. */
+  .wtu{margin:10px var(--card-inset) 0; scroll-margin-top:calc(var(--nav-h,200px) + 8px)}
+  .wtu > summary{cursor:pointer; list-style:none; padding:3px 0; color:var(--muted-2); font-size:13px;
+        line-height:1.5; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+        overflow:hidden; -webkit-tap-highlight-color:transparent}
+  .wtu > summary::-webkit-details-marker{display:none}
+  .wtu > summary::before{content:"▸"; display:inline-block; width:11px; margin-right:5px; text-align:center;
+        font-size:11px; line-height:1; vertical-align:1px; color:var(--muted-2); transition:transform .15s ease}
+  .wtu[open] > summary::before{transform:rotate(90deg)}
+  .wtu[open] > summary{display:block}     /* open: the whole summary line, no clamp */
+  .wtu > summary h2{display:inline; margin:0; font-family:var(--mono); font-size:12px; font-weight:500;
+        letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+  .wtu > summary:hover h2, .wtu > summary:hover::before{color:var(--text)}
+  .wtu > summary:focus-visible{outline:2px solid var(--gold); outline-offset:3px; border-radius:4px}
+  .wtu-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px 28px;
+        padding:12px 0 8px 14px}
+  .wtu-grid h3{font-size:14px; font-weight:600; margin:0 0 3px; color:var(--title)}
+  .wtu-grid h3 a{color:inherit}
+  .wtu-grid h3 a:hover{color:var(--gold)}
+  .wtu-grid p{margin:0; font-size:13px; line-height:1.5; color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){ .wtu > summary::before{transition:none} }
   .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
              padding:11px var(--card-inset) 0}
   /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
@@ -1961,7 +1999,7 @@ try{
     <div class="bar-main">
       <div class="brand">
         <button class="logo" id="logoToggle" type="button" title="Back to the start — clear every filter, the search box and the sort, and return to the top of the list." aria-label="Back to the start">Q<b>T</b>PD</button>
-        <h1 class="tagline">quality time per dollar</h1>
+        <h1 class="tagline"><span class="tl-pre">Steam games ranked by </span>quality time per dollar</h1>
       </div>
       <label class="search" id="searchBox" title="Search — game titles. Words match in any order, also inside longer words; case, accents and punctuation are ignored. &quot;a phrase&quot; = those whole words in order · =&quot;Title&quot; = exactly that title · -word = leave out · a OR b = either · year:2020, year:2015-2018, before:2010, after:2022 = release date (also before:2024-06, after:2024-03-15).">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -2372,6 +2410,103 @@ try{
 </div>
 
 <div class="wrap body">
+  <!-- Ways to use QTPD (SEO handover, 2026-11-06). The search needs QTPD's features really serve
+       (Steam sale deals, Steam Deck, wishlists, no microtransactions …), written as what a reader
+       can do. It is never a list of search phrases. Rules that keep it from being spam:
+         · static HTML, never rendered by JavaScript, so Bing and the AI crawlers that run no JS
+           read it too;
+         · folded with a native <details>, closed by default, and nothing else hides it (no
+           display:none, no [hidden], no load-on-click). The summary carries the key phrases
+           because some engines weigh folded text less;
+         · every sentence describes a feature that exists, checked against the code on
+           2026-11-06. Change the sentence when a feature changes;
+         · this is the ONE full copy. how-it-works.html links here and does not repeat it, and
+           the mlmariss.github.io homepage links to #ways-to-use (keep that id).
+       Every games link carries adult=hide (house rule: a surface the visitor did not ask
+       something specific of never features adult games). test_ways_to_use.py fails if one
+       doesn't, and the canonical tag folds every ?… address back into this one page. -->
+  <details class="wtu" id="ways-to-use">
+    <summary><h2>Ways to use QTPD</h2><span class="wtu-teaser">: Steam sale deals, cheap Steam Deck games, your wishlist ranked, games without microtransactions or Denuvo, and more</span></summary>
+    <div class="wtu-grid">
+      <section>
+        <h3><a href="?pc=sale&amp;pmax=10&amp;minscore=70&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;sort=qtpd&amp;dir=-1">Steam sale deals worth buying</a></h3>
+        <p>Filter by discount and sale price, sort by value or by when the sale ends, and see the best Steam deals under $5, $10 or $20 ranked by well-reviewed hours per dollar instead of percentage off.</p>
+      </section>
+      <section>
+        <h3><a href="?deck=playable&amp;pc=sale&amp;minscore=80&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;sort=qtpd&amp;dir=-1">Cheap Steam Deck games</a></h3>
+        <p>Show only Steam Deck Verified or Playable games to find the best-value Steam Deck games on sale.</p>
+      </section>
+      <section>
+        <h3><a href="#wishBox">Your Steam wishlist, ranked</a></h3>
+        <p>Paste your Steam profile to load your wishlist (its game details need to be public), then see which wishlisted games are on sale and which give the most for your money.</p>
+      </section>
+      <section>
+        <h3><a href="?noflags=iap,drm,kac&amp;minscore=80&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;sort=qtpd&amp;dir=-1">Games without microtransactions, Denuvo or kernel anti-cheat</a></h3>
+        <p>QTPD reads each game's store-page notices and Valve's own flags, so you can hide games with in-app purchases, third-party DRM such as Denuvo, kernel-level anti-cheat, always-online requirements or a separate publisher account, games that disclose generative AI, and games that block Steam Family Sharing.</p>
+      </section>
+      <section>
+        <h3><a href="?hmin=40&amp;minscore=80&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;exc=idle,incremental,clicker,idler,mmorpg,massively+multiplayer,free+to+play&amp;sort=qtpd&amp;dir=-1">Long games and short games</a></h3>
+        <p>Filter by estimated time to beat to find long games worth the money (40 or 100+ hours) or <a href="?hmax=6&amp;pmax=10&amp;minscore=70&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;exc=idle,incremental,clicker,idler,mmorpg,massively+multiplayer,free+to+play&amp;sort=qtpd&amp;dir=-1">short games you can finish in a weekend</a>.</p>
+      </section>
+      <section>
+        <h3><a href="?minscore=80&amp;rev=2,3&amp;ratesrc=all&amp;adult=hide&amp;exc=idle,incremental,clicker,idler,mmorpg,massively+multiplayer,free+to+play&amp;sort=qtpd&amp;dir=-1">Highest rated games and hidden gems</a></h3>
+        <p>Sort by review score, set a minimum number of reviews, or find highly rated games few people have reviewed yet. The review trend shows games whose recent reviews beat their all-time score.</p>
+      </section>
+      <section>
+        <h3><a href="?pc=free&amp;minscore=80&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;exc=idle,incremental,clicker,idler&amp;sort=qtpd&amp;dir=-1">Free games worth playing</a></h3>
+        <p>Filter to free games and QTPD ranks them by well-reviewed hours, since there is no price to divide by. Or sort them by review score to find the best free-to-play games on Steam.</p>
+      </section>
+      <section>
+        <h3><a href="?release=upcoming&amp;adult=hide">Upcoming games, Early Access and demos</a></h3>
+        <p>Browse upcoming Steam games and Early Access games by announced 1.0 date, or show only <a href="?flags=demo&amp;minscore=80&amp;rev=3,4&amp;ratesrc=all&amp;adult=hide&amp;exc=idle,incremental,clicker,idler,mmorpg,massively+multiplayer,free+to+play&amp;sort=qtpd&amp;dir=-1">games with a free demo</a> to try before you buy.</p>
+      </section>
+      <section>
+        <h3><a href="?inc=co-op&amp;minscore=70&amp;rev=4&amp;ratesrc=all&amp;adult=hide&amp;sort=qtpd&amp;dir=-1">Co-op, genres and games like the one you love</a></h3>
+        <p>Filter by Steam tags (co-op, survival, colony sim, roguelike), or use Find similar on any game to list games like it, closest match first, then sort them by value.</p>
+      </section>
+      <section>
+        <h3>Can't decide?</h3>
+        <p>Lucky jumps to a random game from your current results: a random game picker that sticks to your filters.</p>
+      </section>
+    </div>
+  </details>
+  <script>
+  // Open the section when the address ends in #ways-to-use (the homepage links there), and let
+  // the wishlist heading open the filter panel at the wishlist box, which lives in the folded
+  // panel where a plain #wishBox jump would land on nothing. Runs before the app script below;
+  // setFiltersCompact() is defined there, so the wishlist jump waits for DOMContentLoaded.
+  (() => {
+    const wtu = document.getElementById("ways-to-use");
+    const openWish = () => {
+      if(typeof setFiltersCompact !== "function") return;
+      setFiltersCompact(false);
+      document.getElementById("wishBox").scrollIntoView({block:"center"});
+      if(matchMedia("(hover:hover)").matches) document.getElementById("steamid").focus({preventScroll:true});
+    };
+    // A later jump (hashchange) places the section itself: under the bar only while the bar is
+    // sticky (the phone's compact nav). --nav-h alone can't do it, because with the filter panel
+    // open it is the whole panel's height and scroll-margin would send the jump past the page top.
+    const showWtu = () => {
+      wtu.open = true;
+      const tb = document.getElementById("topbar");
+      const cover = getComputedStyle(tb).position === "sticky" ? tb.getBoundingClientRect().height : 0;
+      window.scrollTo(0, Math.max(0, wtu.getBoundingClientRect().top + window.scrollY - cover - 8));
+    };
+    // A fragment change also fires popstate, whose handler scrolls to the top over two animation
+    // frames (it reads the jump as Back/Forward). popstate fires first, so its frames are queued
+    // first, and waiting two frames here lands after them.
+    const onHash = () => {
+      if(location.hash === "#ways-to-use"){ wtu.open = true; requestAnimationFrame(() => requestAnimationFrame(showWtu)); }
+      else if(location.hash === "#wishBox") openWish();
+    };
+    wtu.addEventListener("click", e => {
+      if(e.target.closest('a[href="#wishBox"]')){ e.preventDefault(); openWish(); }
+    });
+    window.addEventListener("hashchange", onHash);
+    if(location.hash === "#ways-to-use") wtu.open = true;
+    else if(location.hash === "#wishBox") document.addEventListener("DOMContentLoaded", openWish);
+  })();
+  </script>
   <!-- Results bar: the view switcher, sitting on top of the thing it switches, plus a legend
        for the grid's two unlabelled signals (the % and the gold edge). Both were reported as
        "no idea what this is" — the switcher because it had no context, the card marks because
@@ -2529,7 +2664,7 @@ try{
 
   <!-- Static on purpose (was filled by renderFoot()): this is the page's plain-text description,
        and search / AI crawlers that do not run JavaScript would otherwise see none of it. -->
-  <div class="foot" id="foot">QTPD ranks Steam games by quality time per dollar: how many hours of well-reviewed play each dollar buys. Prices, sales, review scores, length and tags are collected from Steam and refreshed automatically.<br>
+  <div class="foot" id="foot">QTPD ranks thousands of Steam games by quality time per dollar: how many well-reviewed hours each dollar buys. It's a cost-per-hour measure that also counts quality, so a long but badly reviewed game doesn't top the list. Use it to find Steam sale deals, cheap Steam Deck games, long or short games, hidden gems and free games, to rank your own Steam wishlist, or to hide games with microtransactions, Denuvo or kernel anti-cheat. Prices, sales, review scores, length and tags are collected from Steam and refreshed automatically.<br>
 QTPD = (Length hours × rating%) ÷ price. Length is estimated from how long Steam reviewers who recommend a game played it, calibrated per genre against HowLongToBeat. Higher = more quality time per dollar. Null for free games &amp; games with fewer than 3 recommending reviews.<br>
 Tag counts reflect the current results. Variants like Online/Local Co-Op are merged. Thumbnails load lazily from Steam's CDN. Method and source: <a href="https://github.com/MLMariss/SteamQTPD">GitHub</a> · <a href="how-it-works.html">How QTPD works</a>.<br>
 Made by MLMariss · <a href="https://www.youtube.com/@MLMariss/videos">YouTube</a> · <a href="https://mlmariss.github.io/">Home</a></div>

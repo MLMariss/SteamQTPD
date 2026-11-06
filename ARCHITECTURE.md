@@ -4701,6 +4701,19 @@ formula, a threshold or a default changes, update the explainer page too.
   each number comes from, what is left out, the launch video embedded). It has no data and no
   JavaScript, so every crawler reads all of it, and it can rank for "quality time per dollar"
   searches without adding text to the tool's screen. Both are in `sitemap.xml`.
+- **Main heading.** The tagline is the page's `<h1>`: "Steam games ranked by quality time per
+  dollar". On narrow screens the lead-in drops to its own small line (`.tl-pre`) instead of
+  being hidden, so no heading text is CSS-hidden on the phone view Google indexes.
+- **Ways to use QTPD** (`<details id="ways-to-use">`, directly under the top bar, closed by
+  default). Ten groups, a heading and one sentence each, for the secondary searches QTPD really
+  serves (sale deals, Steam Deck, wishlist, no microtransactions/Denuvo, long/short, hidden gems,
+  free, upcoming/demos, co-op/similar, random pick). Each heading links to a filtered view. It is
+  the **only** full copy: the explainer links to `./#ways-to-use` and does not repeat it, and the
+  `mlmariss.github.io` homepage links there too, so keep the id. Static HTML folded only by the
+  native `<details>`; a few lines of script open it on `#ways-to-use` and turn the wishlist
+  heading into "open the filter panel at the wishlist box". Every sentence was checked against
+  the code on 2026-11-06; change it when the feature changes. `test_ways_to_use.py` holds it to
+  that shape (and to `adult=hide`, below), and `pages.yml` runs it before every deploy.
 - **Help button** (`#helpBtn`, the `?` after CSV and 🔗 in the header): links to the explainer;
   its tooltip carries the one-line "what is QTPD" description. That sentence was briefly a
   visible row above the shelves and was moved here because it cost the list a row of space.
@@ -4717,11 +4730,14 @@ formula, a threshold or a default changes, update the explainer page too.
   sitemap.
 - **At deploy** (`pages.yml`): `seo_snapshot.py` writes the `<noscript>` top picks; the
   published sitemap gets today's date as `<lastmod>` on the tool URL (the data changes daily;
-  the explainer gets none, since a shallow checkout cannot date it honestly); and an
+  the explainer's date is set by hand in `sitemap.xml`, and changes only when its text does,
+  since a shallow checkout cannot date it honestly); and an
   **IndexNow** ping tells Bing, Yandex, Seznam and Naver the pages changed. Google ignores
   IndexNow. The ping runs only on a push that changed site files and in the 06:00 UTC hour,
   never on every 30-minute republish, and never fails the deploy. The key is the 32-hex
   `<key>.txt` file in the repo root, public by design; its name is also listed in `pages.yml`'s
   push paths.
 - **Adult rule.** The explainer shows no games. Any future page that lists games is an
-  unrequested surface and must carry `adult=hide` (see CLAUDE.md, product rules).
+  unrequested surface and must carry `adult=hide` (see CLAUDE.md, product rules). The Ways to
+  use QTPD links are such a surface: each carries `adult=hide` and no `q=`, and
+  `test_ways_to_use.py` fails the deploy if one does not.
