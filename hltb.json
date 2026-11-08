@@ -1,5 +1,5 @@
 {
-  "generated_at": 1794123940,
+  "generated_at": 1794124673,
   "count": 136864,
   "hltb": {
     "10": {
@@ -121,17 +121,18 @@
     },
     "2280": {
       "main": 12.0,
-      "extra": 25.5,
+      "extra": 26.1,
       "complete": 41.5,
-      "avg": 26.3,
+      "avg": 26.5,
       "match": "DOOM + DOOM II",
-      "fetched_at": 1793676299,
+      "fetched_at": 1794124056,
       "raw": {
         "main": 12.0,
-        "extra": 25.5,
+        "extra": 26.1,
         "complete": 41.5
       },
-      "n_comp": 185
+      "n_comp": 188,
+      "comp_grew": true
     },
     "2310": {
       "main": 5.4,
@@ -148,18 +149,19 @@
       "n_comp": 2493
     },
     "2990": {
-      "main": 12.4,
+      "main": 12.3,
       "extra": 16.2,
       "complete": 21.5,
       "avg": 16.7,
       "match": "FlatOut 2",
-      "fetched_at": 1793676695,
+      "fetched_at": 1794124349,
       "raw": {
-        "main": 12.4,
+        "main": 12.3,
         "extra": 16.2,
         "complete": 21.5
       },
-      "n_comp": 865
+      "n_comp": 868,
+      "comp_grew": true
     },
     "3320": {
       "main": 4.2,
@@ -630,7 +632,7 @@
       "complete": 17.6,
       "avg": 10.3,
       "match": "Super Hexagon",
-      "fetched_at": 1793676519,
+      "fetched_at": 1794124203,
       "raw": {
         "main": 5.3,
         "extra": 8.1,
@@ -1151,13 +1153,13 @@
       "complete": 2.7,
       "avg": 2.6,
       "match": "The Room",
-      "fetched_at": 1793676204,
+      "fetched_at": 1794123986,
       "raw": {
         "main": 2.6,
         "extra": 2.6,
         "complete": 2.7
       },
-      "n_comp": 5273,
+      "n_comp": 5279,
       "comp_grew": true
     },
     "292030": {
@@ -1471,13 +1473,13 @@
       "complete": 24.9,
       "avg": 13.5,
       "match": "Paint the Town Red",
-      "fetched_at": 1793676170,
+      "fetched_at": 1794123962,
       "raw": {
         "main": 5.3,
         "extra": 10.3,
         "complete": 24.9
       },
-      "n_comp": 178
+      "n_comp": 179
     },
     "337340": {
       "main": 5.1,
@@ -1629,7 +1631,7 @@
       "complete": 8.8,
       "avg": 8.3,
       "match": "Fran Bow",
-      "fetched_at": 1793676649,
+      "fetched_at": 1794124305,
       "raw": {
         "main": 7.6,
         "extra": 8.6,
@@ -1816,14 +1818,13 @@
       "complete": 41.3,
       "avg": 34.3,
       "match": "Steins;Gate",
-      "fetched_at": 1793676459,
+      "fetched_at": 1794124166,
       "raw": {
         "main": 26.3,
         "extra": 35.4,
         "complete": 41.3
       },
-      "n_comp": 1776,
-      "comp_grew": true
+      "n_comp": 1776
     },
     "413150": {
       "main": 53.4,
@@ -1988,7 +1989,7 @@
       "complete": 70.5,
       "avg": 49.8,
       "match": "Hot Dogs, Horseshoes & Hand Grenades",
-      "fetched_at": 1793676572,
+      "fetched_at": 1794124243,
       "raw": {
         "main": 35.0,
         "extra": 43.9,
@@ -2091,14 +2092,13 @@
       "complete": 16.8,
       "avg": 11.3,
       "match": "DUSK",
-      "fetched_at": 1793676514,
+      "fetched_at": 1794124198,
       "raw": {
         "main": 7.5,
         "extra": 9.7,
         "complete": 16.8
       },
-      "n_comp": 1538,
-      "comp_grew": true
+      "n_comp": 1538
     },
     "521200": {
       "main": 16.3,
@@ -2134,7 +2134,7 @@
       "complete": 33.4,
       "avg": 14.7,
       "match": "Just Shapes & Beats",
-      "fetched_at": 1793676494,
+      "fetched_at": 1794124187,
       "raw": {
         "main": 3.3,
         "extra": 7.3,
@@ -2163,7 +2163,7 @@
       "complete": 1.7,
       "avg": 1.2,
       "match": "Sally Face - Episode One: Strange Neighbors",
-      "fetched_at": 1793676323,
+      "fetched_at": 1794124071,
       "raw": {
         "main": 0.8,
         "extra": 1.2,
@@ -107467,14 +107467,13 @@
       "complete": 7.1,
       "avg": 5.6,
       "match": "The Liar Princess and the Blind Prince",
-      "fetched_at": 1793676856,
+      "fetched_at": 1794124404,
       "raw": {
         "main": 4.5,
         "extra": 5.2,
         "complete": 7.1
       },
-      "n_comp": 229,
-      "comp_grew": true
+      "n_comp": 229
     },
     "3901970": {
       "main": null,
@@ -210757,28 +210756,28 @@
       "complete": 28.6,
       "avg": 16.2,
       "match": "Call of Duty: Modern Warfare II",
-      "fetched_at": 1793676614,
+      "fetched_at": 1794124279,
       "raw": {
         "main": 8.2,
         "extra": 11.9,
         "complete": 28.6
       },
-      "n_comp": 2846,
+      "n_comp": 2857,
       "comp_grew": true
     },
     "3595270": {
       "main": 5.5,
-      "extra": 7.6,
+      "extra": 7.7,
       "complete": 19.0,
       "avg": 10.7,
       "match": "Call of Duty: Modern Warfare III",
-      "fetched_at": 1793676628,
+      "fetched_at": 1794124291,
       "raw": {
         "main": 5.5,
-        "extra": 7.6,
+        "extra": 7.7,
         "complete": 19.0
       },
-      "n_comp": 1403,
+      "n_comp": 1414,
       "comp_grew": true
     },
     "3595280": {
@@ -220918,7 +220917,7 @@
       "complete": 7.2,
       "avg": 5.1,
       "match": "Succubus Successor: Delilah's Juicy Journey",
-      "fetched_at": 1793243763,
+      "fetched_at": 1794124391,
       "raw": {
         "main": 4.0,
         "extra": 4.2,
@@ -247813,7 +247812,7 @@
       "complete": 3.0,
       "avg": 1.7,
       "match": "GeoGuessr",
-      "fetched_at": 1793676192,
+      "fetched_at": 1794123979,
       "raw": {
         "main": 0.6,
         "extra": 1.4,
@@ -279388,14 +279387,13 @@
       "complete": 127.2,
       "avg": 71.4,
       "match": "Rome: Total War",
-      "fetched_at": 1793676413,
+      "fetched_at": 1794124133,
       "raw": {
         "main": 34.1,
         "extra": 52.8,
         "complete": 127.2
       },
-      "n_comp": 896,
-      "comp_grew": true
+      "n_comp": 896
     },
     "34330": {
       "main": 27.7,
@@ -279519,13 +279517,13 @@
       "complete": 104.8,
       "avg": 74.9,
       "match": "Dragon Age: Origins - Ultimate Edition",
-      "fetched_at": 1793676227,
+      "fetched_at": 1794124003,
       "raw": {
         "main": 49.3,
         "extra": 70.7,
         "complete": 104.8
       },
-      "n_comp": 4546,
+      "n_comp": 4550,
       "comp_grew": true
     },
     "51010": {
@@ -279623,13 +279621,13 @@
       "complete": 13.2,
       "avg": 9.2,
       "match": "Call of Duty: Ghosts",
-      "fetched_at": 1793676188,
+      "fetched_at": 1794123976,
       "raw": {
         "main": 6.0,
         "extra": 8.4,
         "complete": 13.2
       },
-      "n_comp": 5116,
+      "n_comp": 5119,
       "comp_grew": true
     },
     "212680": {
@@ -279755,7 +279753,7 @@
       "complete": 136.7,
       "avg": 71.9,
       "match": "Dungeon Defenders II",
-      "fetched_at": 1793676667,
+      "fetched_at": 1794124326,
       "raw": {
         "main": 21.3,
         "extra": 57.6,
@@ -280076,7 +280074,7 @@
       "complete": 49.8,
       "avg": 32.9,
       "match": "TerraTech",
-      "fetched_at": 1793676532,
+      "fetched_at": 1794124213,
       "raw": {
         "main": 17.5,
         "extra": 31.4,
@@ -280537,7 +280535,7 @@
       "complete": 97.6,
       "avg": 68.0,
       "match": "Marvel's Midnight Suns",
-      "fetched_at": 1793676573,
+      "fetched_at": 1794124244,
       "raw": {
         "main": 40.5,
         "extra": 66.0,
@@ -280551,14 +280549,13 @@
       "complete": 110.0,
       "avg": 84.4,
       "match": "Divinity: Original Sin - Enhanced Edition",
-      "fetched_at": 1793676163,
+      "fetched_at": 1794123954,
       "raw": {
         "main": 60.2,
         "extra": 83.0,
         "complete": 110.0
       },
-      "n_comp": 2866,
-      "comp_grew": true
+      "n_comp": 2866
     },
     "378360": {
       "main": null,
@@ -280654,7 +280651,7 @@
       "complete": 980.3,
       "avg": 442.4,
       "match": "X4: Foundations",
-      "fetched_at": 1793676290,
+      "fetched_at": 1794124049,
       "raw": {
         "main": 66.4,
         "extra": 280.6,
@@ -280774,13 +280771,13 @@
       "complete": 165.8,
       "avg": 89.8,
       "match": "Spelunky 2",
-      "fetched_at": 1793676696,
+      "fetched_at": 1794124351,
       "raw": {
         "main": 27.7,
         "extra": 75.9,
         "complete": 165.8
       },
-      "n_comp": 367
+      "n_comp": 368
     },
     "424030": {
       "main": null,
@@ -281188,7 +281185,7 @@
       "complete": 76.4,
       "avg": 55.8,
       "match": "Tropico 6",
-      "fetched_at": 1793676301,
+      "fetched_at": 1794124057,
       "raw": {
         "main": 34.5,
         "extra": 56.6,
@@ -281603,18 +281600,18 @@
       "attempts": 25
     },
     "569480": {
-      "main": 9.7,
+      "main": 9.3,
       "extra": 15.6,
       "complete": 16.7,
-      "avg": 14.0,
+      "avg": 13.9,
       "match": "Kingdoms and Castles",
-      "fetched_at": 1793676210,
+      "fetched_at": 1794123991,
       "raw": {
-        "main": 9.7,
+        "main": 9.3,
         "extra": 15.6,
         "complete": 16.7
       },
-      "n_comp": 339
+      "n_comp": 340
     },
     "578080": {
       "main": 101.3,
@@ -281697,14 +281694,13 @@
       "complete": 52.8,
       "avg": 26.2,
       "match": "Into the Breach",
-      "fetched_at": 1793676675,
+      "fetched_at": 1794124332,
       "raw": {
         "main": 5.8,
         "extra": 20.0,
         "complete": 52.8
       },
-      "n_comp": 2233,
-      "comp_grew": true
+      "n_comp": 2234
     },
     "594040": {
       "main": null,
@@ -282396,7 +282392,7 @@
       "complete": 75.7,
       "avg": 53.8,
       "match": "Wasteland 3",
-      "fetched_at": 1793676651,
+      "fetched_at": 1794124306,
       "raw": {
         "main": 36.2,
         "extra": 49.5,
@@ -282650,13 +282646,13 @@
       "complete": 58.8,
       "avg": 38.9,
       "match": "The Riftbreaker",
-      "fetched_at": 1793676530,
+      "fetched_at": 1794124212,
       "raw": {
         "main": 23.4,
         "extra": 34.6,
         "complete": 58.8
       },
-      "n_comp": 254
+      "n_comp": 255
     },
     "784150": {
       "main": 68.0,
@@ -282692,7 +282688,7 @@
       "complete": 97.7,
       "avg": 60.8,
       "match": "Outward",
-      "fetched_at": 1793676208,
+      "fetched_at": 1794123990,
       "raw": {
         "main": 32.0,
         "extra": 52.7,
@@ -283592,7 +283588,7 @@
       "complete": 200.0,
       "avg": 118.8,
       "match": "Dwarf Fortress",
-      "fetched_at": 1793676201,
+      "fetched_at": 1794123985,
       "raw": {
         "main": 48.0,
         "extra": 108.3,
@@ -284090,7 +284086,7 @@
       "complete": 120.3,
       "avg": 72.1,
       "match": "Dinkum",
-      "fetched_at": 1793676309,
+      "fetched_at": 1794124062,
       "raw": {
         "main": 31.3,
         "extra": 64.8,
@@ -284138,7 +284134,7 @@
       "complete": 110.1,
       "avg": 70.5,
       "match": "Transport Fever 2",
-      "fetched_at": 1793676184,
+      "fetched_at": 1794123973,
       "raw": {
         "main": 44.5,
         "extra": 56.9,
@@ -284315,7 +284311,7 @@
       "complete": 67.8,
       "avg": 51.8,
       "match": "Solasta: Crown of the Magister",
-      "fetched_at": 1793676656,
+      "fetched_at": 1794124311,
       "raw": {
         "main": 39.5,
         "extra": 48.0,
@@ -284580,7 +284576,7 @@
       "complete": 217.5,
       "avg": 94.1,
       "match": "Humankind",
-      "fetched_at": 1793676319,
+      "fetched_at": 1794124067,
       "raw": {
         "main": 15.4,
         "extra": 49.5,
@@ -284594,13 +284590,13 @@
       "complete": 73.4,
       "avg": 45.4,
       "match": "Mindustry",
-      "fetched_at": 1793676385,
+      "fetched_at": 1794124116,
       "raw": {
         "main": 20.9,
         "extra": 42.0,
         "complete": 73.4
       },
-      "n_comp": 114
+      "n_comp": 115
     },
     "1127500": {
       "main": 6.8,
@@ -284608,13 +284604,13 @@
       "complete": 45.7,
       "avg": 21.6,
       "match": "Mini Motorways",
-      "fetched_at": 1793676548,
+      "fetched_at": 1794124226,
       "raw": {
         "main": 6.8,
         "extra": 12.3,
         "complete": 45.7
       },
-      "n_comp": 421
+      "n_comp": 423
     },
     "1128810": {
       "main": 14.7,
@@ -284783,13 +284779,13 @@
       "complete": 39.7,
       "avg": 34.2,
       "match": "Hardspace: Shipbreaker",
-      "fetched_at": 1793676665,
+      "fetched_at": 1794124324,
       "raw": {
         "main": 27.7,
         "extra": 35.1,
         "complete": 39.7
       },
-      "n_comp": 618
+      "n_comp": 619
     },
     "1162750": {
       "main": 50.0,
@@ -286443,7 +286439,7 @@
       "complete": 59.4,
       "avg": 27.8,
       "match": "Dorfromantik",
-      "fetched_at": 1793676280,
+      "fetched_at": 1794124041,
       "raw": {
         "main": 5.2,
         "extra": 18.8,
@@ -288909,13 +288905,13 @@
       "complete": 61.8,
       "avg": 40.5,
       "match": "Age of Mythology: Retold",
-      "fetched_at": 1793676632,
+      "fetched_at": 1794124293,
       "raw": {
         "main": 24.6,
         "extra": 35.0,
         "complete": 61.8
       },
-      "n_comp": 219
+      "n_comp": 221
     },
     "1935910": {
       "main": null,
@@ -288968,13 +288964,13 @@
       "complete": 99.9,
       "avg": 67.7,
       "match": "Darkest Dungeon II",
-      "fetched_at": 1793676467,
+      "fetched_at": 1794124170,
       "raw": {
         "main": 33.2,
         "extra": 70.1,
         "complete": 99.9
       },
-      "n_comp": 211
+      "n_comp": 212
     },
     "1946590": {
       "main": 0.2,
@@ -289016,13 +289012,13 @@
       "complete": 12.6,
       "avg": 10.0,
       "match": "Stacklands",
-      "fetched_at": 1793676270,
+      "fetched_at": 1794124034,
       "raw": {
         "main": 6.5,
         "extra": 10.8,
         "complete": 12.6
       },
-      "n_comp": 686
+      "n_comp": 687
     },
     "1948540": {
       "main": null,
@@ -290207,7 +290203,7 @@
       "complete": 400.0,
       "avg": 218.0,
       "match": "Magic: The Gathering Arena",
-      "fetched_at": 1793676214,
+      "fetched_at": 1794123994,
       "raw": {
         "main": 54.0,
         "extra": 200.0,
@@ -290740,7 +290736,7 @@
       "complete": 34.1,
       "avg": 20.5,
       "match": "Thronefall",
-      "fetched_at": 1793676576,
+      "fetched_at": 1794124246,
       "raw": {
         "main": 8.2,
         "extra": 19.2,
@@ -291484,7 +291480,7 @@
       "complete": 95.8,
       "avg": 58.6,
       "match": "Dynasty Warriors: Origins",
-      "fetched_at": 1793676248,
+      "fetched_at": 1794124018,
       "raw": {
         "main": 33.6,
         "extra": 46.3,
@@ -295431,13 +295427,13 @@
       "complete": 44.9,
       "avg": 21.5,
       "match": "CloverPit",
-      "fetched_at": 1793676470,
+      "fetched_at": 1794124171,
       "raw": {
         "main": 7.5,
         "extra": 12.2,
         "complete": 44.9
       },
-      "n_comp": 426,
+      "n_comp": 429,
       "comp_grew": true
     },
     "3316940": {
@@ -322726,7 +322722,7 @@
       "complete": 55.5,
       "avg": 31.4,
       "match": "Warhammer 40,000: Dawn of War III",
-      "fetched_at": 1793676580,
+      "fetched_at": 1794124251,
       "raw": {
         "main": 17.5,
         "extra": 21.2,
@@ -323858,7 +323854,7 @@
       "complete": 80.0,
       "avg": 57.4,
       "match": "Hobo: Tough Life",
-      "fetched_at": 1793676704,
+      "fetched_at": 1794124358,
       "raw": {
         "main": 39.3,
         "extra": 52.8,
@@ -324408,7 +324404,7 @@
       "complete": 17.4,
       "avg": 14.7,
       "match": "Contraband Police",
-      "fetched_at": 1793676496,
+      "fetched_at": 1794124188,
       "raw": {
         "main": 12.1,
         "extra": 14.6,
@@ -324786,13 +324782,13 @@
       "complete": 55.4,
       "avg": 33.7,
       "match": "Tribes of Midgard",
-      "fetched_at": 1793676609,
+      "fetched_at": 1794124275,
       "raw": {
         "main": 16.0,
         "extra": 29.7,
         "complete": 55.4
       },
-      "n_comp": 298
+      "n_comp": 299
     },
     "859580": {
       "main": 16.4,
@@ -324800,7 +324796,7 @@
       "complete": 664.5,
       "avg": 265.2,
       "match": "Imperator: Rome",
-      "fetched_at": 1793676421,
+      "fetched_at": 1794124139,
       "raw": {
         "main": 16.4,
         "extra": 114.7,
@@ -325469,7 +325465,7 @@
       "complete": 50.5,
       "avg": 35.0,
       "match": "Hydroneer",
-      "fetched_at": 1793676360,
+      "fetched_at": 1794124096,
       "raw": {
         "main": 22.9,
         "extra": 31.7,
@@ -325703,13 +325699,13 @@
       "complete": 29.3,
       "avg": 19.5,
       "match": "Gas Station Simulator",
-      "fetched_at": 1793676381,
+      "fetched_at": 1794124113,
       "raw": {
         "main": 12.3,
         "extra": 16.9,
         "complete": 29.3
       },
-      "n_comp": 495
+      "n_comp": 496
     },
     "1150090": {
       "main": 28.6,
@@ -325892,17 +325888,17 @@
     },
     "1169040": {
       "main": 24.0,
-      "extra": 46.5,
+      "extra": 45.6,
       "complete": 71.2,
-      "avg": 47.2,
+      "avg": 46.9,
       "match": "Necesse",
-      "fetched_at": 1793676297,
+      "fetched_at": 1794124055,
       "raw": {
         "main": 24.0,
-        "extra": 46.5,
+        "extra": 45.6,
         "complete": 71.2
       },
-      "n_comp": 151
+      "n_comp": 153
     },
     "1172710": {
       "main": 51.3,
@@ -326117,13 +326113,13 @@
       "complete": 15.9,
       "avg": 10.4,
       "match": "Summer Memories",
-      "fetched_at": 1793676534,
+      "fetched_at": 1794124215,
       "raw": {
         "main": 4.0,
         "extra": 11.3,
         "complete": 15.9
       },
-      "n_comp": 87
+      "n_comp": 88
     },
     "1235140": {
       "main": 46.1,
@@ -326884,7 +326880,7 @@
       "complete": 167.0,
       "avg": 95.0,
       "match": "Sun Haven",
-      "fetched_at": 1793676518,
+      "fetched_at": 1794124201,
       "raw": {
         "main": 43.9,
         "extra": 74.2,
@@ -326993,7 +326989,7 @@
       "complete": 78.7,
       "avg": 37.4,
       "match": "Undisputed",
-      "fetched_at": 1793676647,
+      "fetched_at": 1794124304,
       "raw": {
         "main": 14.9,
         "extra": 18.7,
@@ -327571,13 +327567,14 @@
       "complete": 21.5,
       "avg": 16.3,
       "match": "Cairn",
-      "fetched_at": 1793676698,
+      "fetched_at": 1794124352,
       "raw": {
         "main": 11.9,
         "extra": 15.4,
         "complete": 21.5
       },
-      "n_comp": 555
+      "n_comp": 560,
+      "comp_grew": true
     },
     "1589120": {
       "main": 14.4,
@@ -327748,17 +327745,18 @@
     },
     "1637320": {
       "main": 4.9,
-      "extra": 12.9,
+      "extra": 12.8,
       "complete": 34.0,
-      "avg": 17.3,
+      "avg": 17.2,
       "match": "Dome Keeper",
-      "fetched_at": 1793676645,
+      "fetched_at": 1794124303,
       "raw": {
         "main": 4.9,
-        "extra": 12.9,
+        "extra": 12.8,
         "complete": 34.0
       },
-      "n_comp": 614
+      "n_comp": 617,
+      "comp_grew": true
     },
     "1641960": {
       "main": 26.6,
@@ -328950,14 +328948,13 @@
       "complete": 36.0,
       "avg": 26.7,
       "match": "BALL x PIT",
-      "fetched_at": 1793676400,
+      "fetched_at": 1794124126,
       "raw": {
         "main": 19.2,
         "extra": 25.0,
         "complete": 36.0
       },
-      "n_comp": 1536,
-      "comp_grew": true
+      "n_comp": 1536
     },
     "2073620": {
       "main": 6.0,
@@ -346092,16 +346089,16 @@
     "4197610": {
       "main": 5.3,
       "extra": 7.4,
-      "complete": 21.6,
+      "complete": 21.5,
       "avg": 11.4,
       "match": "Librarian: Tidy Up the Arcane Library!",
-      "fetched_at": 1793676456,
+      "fetched_at": 1794124163,
       "raw": {
         "main": 5.3,
         "extra": 7.4,
-        "complete": 21.6
+        "complete": 21.5
       },
-      "n_comp": 732,
+      "n_comp": 746,
       "comp_grew": true
     },
     "4197890": {
@@ -420675,14 +420672,13 @@
       "complete": 17.4,
       "avg": 8.5,
       "match": "No, I'm not a Human",
-      "fetched_at": 1793676234,
+      "fetched_at": 1794124007,
       "raw": {
         "main": 2.4,
         "extra": 5.8,
         "complete": 17.4
       },
-      "n_comp": 494,
-      "comp_grew": true
+      "n_comp": 494
     },
     "3180240": {
       "main": 4.8,
@@ -444263,14 +444259,13 @@
       "complete": 1.8,
       "avg": 1.4,
       "match": "BrokenLore: LOW",
-      "fetched_at": 1793677064,
+      "fetched_at": 1794124414,
       "raw": {
         "main": 1.0,
         "extra": 1.3,
         "complete": 1.8
       },
-      "n_comp": 24,
-      "comp_grew": true
+      "n_comp": 24
     },
     "3014580": {
       "main": 2.7,
@@ -461539,13 +461534,13 @@
       "complete": 129.0,
       "avg": 58.0,
       "match": "F1 25",
-      "fetched_at": 1793676346,
+      "fetched_at": 1794124088,
       "raw": {
         "main": 9.2,
         "extra": 35.9,
         "complete": 129.0
       },
-      "n_comp": 92
+      "n_comp": 94
     },
     "3059560": {
       "main": 3.0,
@@ -485383,16 +485378,16 @@
     "2947440": {
       "main": 10.8,
       "extra": 16.6,
-      "complete": 34.9,
-      "avg": 20.8,
+      "complete": 34.8,
+      "avg": 20.7,
       "match": "Silent Hill f",
-      "fetched_at": 1793676284,
+      "fetched_at": 1794124044,
       "raw": {
         "main": 10.8,
         "extra": 16.6,
-        "complete": 34.9
+        "complete": 34.8
       },
-      "n_comp": 2316,
+      "n_comp": 2328,
       "comp_grew": true
     },
     "2947450": {
@@ -585119,18 +585114,18 @@
       "attempts": 6
     },
     "2680010": {
-      "main": 33.9,
+      "main": 32.9,
       "extra": 46.7,
       "complete": 57.7,
-      "avg": 46.1,
+      "avg": 45.8,
       "match": "The First Berserker: Khazan",
-      "fetched_at": 1793676220,
+      "fetched_at": 1794123998,
       "raw": {
-        "main": 33.9,
+        "main": 32.9,
         "extra": 46.7,
         "complete": 57.7
       },
-      "n_comp": 648,
+      "n_comp": 653,
       "comp_grew": true
     },
     "2680030": {
@@ -597077,7 +597072,7 @@
       "complete": 18.1,
       "avg": 12.5,
       "match": "Night-Runners Prologue",
-      "fetched_at": 1793676682,
+      "fetched_at": 1794124337,
       "raw": {
         "main": 8.2,
         "extra": 11.3,
@@ -614715,14 +614710,13 @@
       "complete": 1.2,
       "avg": 1.1,
       "match": "Indigo Park: Chapter 1",
-      "fetched_at": 1793676603,
+      "fetched_at": 1794124270,
       "raw": {
         "main": 1.0,
         "extra": 1.1,
         "complete": 1.2
       },
-      "n_comp": 124,
-      "comp_grew": true
+      "n_comp": 125
     },
     "2504540": {
       "main": null,
@@ -618827,13 +618821,13 @@
       "complete": 82.4,
       "avg": 60.1,
       "match": "Final Fantasy XVI",
-      "fetched_at": 1793676179,
+      "fetched_at": 1794123969,
       "raw": {
         "main": 38.3,
         "extra": 59.5,
         "complete": 82.4
       },
-      "n_comp": 5783,
+      "n_comp": 5792,
       "comp_grew": true
     },
     "2515030": {
@@ -673151,7 +673145,7 @@
       "complete": 6.2,
       "avg": 4.1,
       "match": "Deadshot",
-      "fetched_at": 1793243765,
+      "fetched_at": 1794124393,
       "raw": {
         "main": 2.4,
         "extra": 3.6,
@@ -730590,7 +730584,7 @@
       "complete": 117.7,
       "avg": 79.5,
       "match": "Horizon Forbidden West - Complete Edition",
-      "fetched_at": 1793676241,
+      "fetched_at": 1794124012,
       "raw": {
         "main": 47.8,
         "extra": 73.1,
@@ -734727,14 +734721,13 @@
       "complete": 9.7,
       "avg": 6.6,
       "match": "Scott Pilgrim EX",
-      "fetched_at": 1793676782,
+      "fetched_at": 1794124397,
       "raw": {
         "main": 4.0,
         "extra": 6.0,
         "complete": 9.7
       },
-      "n_comp": 59,
-      "comp_grew": true
+      "n_comp": 59
     },
     "2640980": {
       "main": null,
@@ -794762,7 +794755,7 @@
       "complete": 92.4,
       "avg": 45.2,
       "match": "Soulstone Survivors",
-      "fetched_at": 1793676431,
+      "fetched_at": 1794124147,
       "raw": {
         "main": 11.6,
         "extra": 31.5,
@@ -797902,14 +797895,13 @@
       "complete": 118.5,
       "avg": 86.6,
       "match": "Like a Dragon: Infinite Wealth",
-      "fetched_at": 1793676587,
+      "fetched_at": 1794124256,
       "raw": {
         "main": 57.1,
         "extra": 84.1,
         "complete": 118.5
       },
-      "n_comp": 2293,
-      "comp_grew": true
+      "n_comp": 2293
     },
     "2072480": {
       "main": null,
@@ -820767,13 +820759,13 @@
       "complete": 0.6,
       "avg": 0.5,
       "match": "Aperture Desk Job",
-      "fetched_at": 1793676525,
+      "fetched_at": 1794124207,
       "raw": {
         "main": 0.5,
         "extra": 0.5,
         "complete": 0.6
       },
-      "n_comp": 4418
+      "n_comp": 4420
     },
     "1902640": {
       "main": null,
@@ -833750,13 +833742,13 @@
       "complete": 23.2,
       "avg": 19.5,
       "match": "Demonologist",
-      "fetched_at": 1793676570,
+      "fetched_at": 1794124242,
       "raw": {
         "main": 15.2,
         "extra": 20.0,
         "complete": 23.2
       },
-      "n_comp": 81
+      "n_comp": 82
     },
     "1929630": {
       "main": 0.5,
@@ -839154,14 +839146,13 @@
       "complete": 24.4,
       "avg": 17.1,
       "match": "Mafia: The Old Country",
-      "fetched_at": 1793676243,
+      "fetched_at": 1794124014,
       "raw": {
         "main": 12.2,
         "extra": 14.7,
         "complete": 24.4
       },
-      "n_comp": 1504,
-      "comp_grew": true
+      "n_comp": 1504
     },
     "1941550": {
       "main": null,
@@ -851026,13 +851017,13 @@
       "complete": 29.5,
       "avg": 15.2,
       "match": "20 Minutes Till Dawn",
-      "fetched_at": 1793676303,
+      "fetched_at": 1794124059,
       "raw": {
         "main": 3.7,
         "extra": 12.4,
         "complete": 29.5
       },
-      "n_comp": 757
+      "n_comp": 758
     },
     "1966910": {
       "main": null,
@@ -858937,14 +858928,13 @@
       "complete": 76.7,
       "avg": 59.5,
       "match": "Digimon Story: Time Stranger",
-      "fetched_at": 1793676643,
+      "fetched_at": 1794124302,
       "raw": {
         "main": 41.8,
         "extra": 60.1,
         "complete": 76.7
       },
-      "n_comp": 532,
-      "comp_grew": true
+      "n_comp": 534
     },
     "1984350": {
       "main": null,
@@ -859662,7 +859652,7 @@
       "complete": 11.8,
       "avg": 9.7,
       "match": "SCP: Containment Breach Multiplayer",
-      "fetched_at": 1793676331,
+      "fetched_at": 1794124077,
       "raw": {
         "main": 7.9,
         "extra": 9.5,
@@ -901850,7 +901840,7 @@
       "complete": 5.5,
       "avg": 4.8,
       "match": "Omega Strikers",
-      "fetched_at": 1793676584,
+      "fetched_at": 1794124253,
       "raw": {
         "main": 4.2,
         "extra": 4.8,
@@ -927041,7 +927031,7 @@
       "complete": 105.1,
       "avg": 51.4,
       "match": "Hatsune Miku: Project Diva MegaMix+",
-      "fetched_at": 1793676619,
+      "fetched_at": 1794124283,
       "raw": {
         "main": 15.4,
         "extra": 33.8,
@@ -938758,17 +938748,16 @@
     "1891090": {
       "main": 0.8,
       "extra": 1.7,
-      "complete": 5.2,
+      "complete": 5.3,
       "avg": 2.6,
       "match": "Final Vendetta",
-      "fetched_at": 1793676810,
+      "fetched_at": 1794124400,
       "raw": {
         "main": 0.8,
         "extra": 1.7,
-        "complete": 5.2
+        "complete": 5.3
       },
-      "n_comp": 114,
-      "comp_grew": true
+      "n_comp": 115
     },
     "1891120": {
       "main": null,
@@ -943682,13 +943671,14 @@
       "complete": 18.9,
       "avg": 10.5,
       "match": "Call of Duty: Black Ops Cold War",
-      "fetched_at": 1793676637,
+      "fetched_at": 1794124297,
       "raw": {
         "main": 5.5,
         "extra": 7.0,
         "complete": 18.9
       },
-      "n_comp": 3149
+      "n_comp": 3157,
+      "comp_grew": true
     },
     "1985820": {
       "main": 6.2,
@@ -984251,13 +984241,13 @@
       "complete": 33.7,
       "avg": 18.0,
       "match": "The Quarry",
-      "fetched_at": 1793676594,
+      "fetched_at": 1794124263,
       "raw": {
         "main": 9.2,
         "extra": 11.0,
         "complete": 33.7
       },
-      "n_comp": 3485,
+      "n_comp": 3491,
       "comp_grew": true
     },
     "1577140": {
@@ -987807,13 +987797,13 @@
       "complete": 21.7,
       "avg": 14.6,
       "match": "High On Life",
-      "fetched_at": 1793676516,
+      "fetched_at": 1794124200,
       "raw": {
         "main": 9.2,
         "extra": 12.8,
         "complete": 21.7
       },
-      "n_comp": 3630,
+      "n_comp": 3638,
       "comp_grew": true
     },
     "1583240": {
@@ -1000740,7 +1000730,7 @@
       "complete": 853.4,
       "avg": 292.4,
       "match": "My Hero Ultra Rumble",
-      "fetched_at": 1793676378,
+      "fetched_at": 1794124110,
       "raw": {
         "main": 10.7,
         "extra": 13.2,
@@ -1010632,14 +1010622,13 @@
       "complete": 3.0,
       "avg": 2.6,
       "match": "Paradise Marsh",
-      "fetched_at": 1793676785,
+      "fetched_at": 1794124398,
       "raw": {
         "main": 2.0,
         "extra": 2.8,
         "complete": 3.0
       },
-      "n_comp": 98,
-      "comp_grew": true
+      "n_comp": 99
     },
     "1709180": {
       "main": null,
@@ -1015434,7 +1015423,7 @@
       "complete": 67.6,
       "avg": 56.7,
       "match": "ASTLIBRA Revision",
-      "fetched_at": 1793676223,
+      "fetched_at": 1794124000,
       "raw": {
         "main": 39.2,
         "extra": 63.2,
@@ -1017840,14 +1017829,13 @@
       "complete": 3.2,
       "avg": 3.1,
       "match": "PICO PARK",
-      "fetched_at": 1793676266,
+      "fetched_at": 1794124031,
       "raw": {
         "main": 3.1,
         "extra": 3.1,
         "complete": 3.2
       },
-      "n_comp": 780,
-      "comp_grew": true
+      "n_comp": 781
     },
     "1510040": {
       "main": null,
@@ -1036621,7 +1036609,7 @@
       "complete": 66.6,
       "avg": 30.6,
       "match": "Aliens: Fireteam Elite",
-      "fetched_at": 1793676433,
+      "fetched_at": 1794124148,
       "raw": {
         "main": 8.4,
         "extra": 16.7,
@@ -1039479,14 +1039467,13 @@
       "complete": 25.8,
       "avg": 19.8,
       "match": "Born of Bread",
-      "fetched_at": 1793676774,
+      "fetched_at": 1794124395,
       "raw": {
         "main": 13.6,
         "extra": 20.0,
         "complete": 25.8
       },
-      "n_comp": 39,
-      "comp_grew": true
+      "n_comp": 39
     },
     "1555150": {
       "main": 4.0,
@@ -1055591,7 +1055578,7 @@
       "complete": 74.8,
       "avg": 32.1,
       "match": "The Texas Chain Saw Massacre",
-      "fetched_at": 1793676577,
+      "fetched_at": 1794124247,
       "raw": {
         "main": 2.0,
         "extra": 19.4,
@@ -1072353,7 +1072340,7 @@
       "complete": 383.5,
       "avg": 261.1,
       "match": "Leaf Blower Revolution - Idle Game",
-      "fetched_at": 1793676452,
+      "fetched_at": 1794124160,
       "raw": {
         "main": 63.5,
         "extra": 336.3,
@@ -1086522,13 +1086509,14 @@
       "complete": 49.9,
       "avg": 31.7,
       "match": "Gotham Knights",
-      "fetched_at": 1793676521,
+      "fetched_at": 1794124204,
       "raw": {
         "main": 17.4,
         "extra": 27.7,
         "complete": 49.9
       },
-      "n_comp": 1564
+      "n_comp": 1568,
+      "comp_grew": true
     },
     "1496930": {
       "main": null,
@@ -1122173,7 +1122161,7 @@
       "complete": 80.0,
       "avg": 38.0,
       "match": "Risk of Rain Returns",
-      "fetched_at": 1793676312,
+      "fetched_at": 1794124063,
       "raw": {
         "main": 6.9,
         "extra": 27.0,
@@ -1125487,14 +1125475,13 @@
       "complete": 4995.8,
       "avg": 3282.7,
       "match": "RuneScape",
-      "fetched_at": 1793676407,
+      "fetched_at": 1794124130,
       "raw": {
         "main": 1515.6,
         "extra": 3336.6,
         "complete": 4995.8
       },
-      "n_comp": 231,
-      "comp_grew": true
+      "n_comp": 231
     },
     "1343410": {
       "main": null,
@@ -1156965,13 +1156952,13 @@
       "complete": 41.6,
       "avg": 20.9,
       "match": "Star Wars: Squadrons",
-      "fetched_at": 1793676364,
+      "fetched_at": 1794124100,
       "raw": {
         "main": 9.1,
         "extra": 11.9,
         "complete": 41.6
       },
-      "n_comp": 1400
+      "n_comp": 1401
     },
     "1222750": {
       "main": 9.2,
@@ -1163839,14 +1163826,13 @@
       "complete": 26.9,
       "avg": 21.7,
       "match": "Sonic Frontiers",
-      "fetched_at": 1793676366,
+      "fetched_at": 1794124101,
       "raw": {
         "main": 16.4,
         "extra": 21.9,
         "complete": 26.9
       },
-      "n_comp": 2121,
-      "comp_grew": true
+      "n_comp": 2123
     },
     "1237330": {
       "main": null,
@@ -1170550,14 +1170536,13 @@
       "complete": 36.0,
       "avg": 25.7,
       "match": "Deathloop",
-      "fetched_at": 1793676252,
+      "fetched_at": 1794124021,
       "raw": {
         "main": 16.4,
         "extra": 24.6,
         "complete": 36.0
       },
-      "n_comp": 4041,
-      "comp_grew": true
+      "n_comp": 4043
     },
     "1252390": {
       "main": 5.8,
@@ -1171399,7 +1171384,7 @@
       "complete": 625.7,
       "avg": 371.9,
       "match": "Bless Unleashed",
-      "fetched_at": 1793676218,
+      "fetched_at": 1794123997,
       "raw": {
         "main": 190.0,
         "extra": 300.0,
@@ -1175586,7 +1175571,7 @@
       "complete": 31.5,
       "avg": 23.5,
       "match": "Need for Speed",
-      "fetched_at": 1793676329,
+      "fetched_at": 1794124075,
       "raw": {
         "main": 16.0,
         "extra": 22.9,
@@ -1175600,7 +1175585,7 @@
       "complete": 36.8,
       "avg": 21.0,
       "match": "Need for Speed: Most Wanted",
-      "fetched_at": 1793676444,
+      "fetched_at": 1794124154,
       "raw": {
         "main": 10.2,
         "extra": 16.0,
@@ -1175609,18 +1175594,19 @@
       "n_comp": 2063
     },
     "1262580": {
-      "main": 18.8,
+      "main": 18.9,
       "extra": 27.5,
       "complete": 47.1,
-      "avg": 31.1,
+      "avg": 31.2,
       "match": "Need for Speed: Payback",
-      "fetched_at": 1793676197,
+      "fetched_at": 1794123982,
       "raw": {
-        "main": 18.8,
+        "main": 18.9,
         "extra": 27.5,
         "complete": 47.1
       },
-      "n_comp": 1731
+      "n_comp": 1734,
+      "comp_grew": true
     },
     "1262600": {
       "main": 12.8,
@@ -1188836,13 +1188822,14 @@
       "complete": 52.5,
       "avg": 32.5,
       "match": "Tiny Tina's Wonderlands",
-      "fetched_at": 1793676546,
+      "fetched_at": 1794124225,
       "raw": {
         "main": 16.1,
         "extra": 28.9,
         "complete": 52.5
       },
-      "n_comp": 1880
+      "n_comp": 1884,
+      "comp_grew": true
     },
     "1370170": {
       "main": 2.0,
@@ -1206372,7 +1206359,7 @@
       "complete": 176.5,
       "avg": 117.9,
       "match": "Coral Island",
-      "fetched_at": 1793676417,
+      "fetched_at": 1794124136,
       "raw": {
         "main": 56.6,
         "extra": 120.5,
@@ -1213385,7 +1213372,7 @@
       "complete": 59.0,
       "avg": 40.2,
       "match": "Wayfinder",
-      "fetched_at": 1793676454,
+      "fetched_at": 1794124161,
       "raw": {
         "main": 24.1,
         "extra": 37.6,
@@ -1219368,13 +1219355,13 @@
       "complete": 27.3,
       "avg": 21.3,
       "match": "A Plague Tale: Requiem",
-      "fetched_at": 1793676482,
+      "fetched_at": 1794124179,
       "raw": {
         "main": 17.0,
         "extra": 19.6,
         "complete": 27.3
       },
-      "n_comp": 4742,
+      "n_comp": 4749,
       "comp_grew": true
     },
     "1182970": {
@@ -1240664,13 +1240651,13 @@
       "complete": 790.8,
       "avg": 292.0,
       "match": "Phantasy Star Online 2: New Genesis",
-      "fetched_at": 1793676536,
+      "fetched_at": 1794124216,
       "raw": {
         "main": 18.6,
         "extra": 66.7,
         "complete": 790.8
       },
-      "n_comp": 135
+      "n_comp": 136
     },
     "1056650": {
       "main": null,
@@ -1262674,13 +1262661,13 @@
       "complete": 19.2,
       "avg": 15.4,
       "match": "Gears 5",
-      "fetched_at": 1793676556,
+      "fetched_at": 1794124232,
       "raw": {
         "main": 11.3,
         "extra": 15.7,
         "complete": 19.2
       },
-      "n_comp": 3340,
+      "n_comp": 3343,
       "comp_grew": true
     },
     "1097860": {
@@ -1264950,19 +1264937,18 @@
       "attempts": 6
     },
     "1102190": {
-      "main": 3.3,
+      "main": 3.4,
       "extra": 32.5,
       "complete": 96.8,
       "avg": 44.2,
       "match": "Monster Train",
-      "fetched_at": 1793676630,
+      "fetched_at": 1794124292,
       "raw": {
-        "main": 3.3,
+        "main": 3.4,
         "extra": 32.5,
         "complete": 96.8
       },
-      "n_comp": 889,
-      "comp_grew": true
+      "n_comp": 891
     },
     "1102200": {
       "main": null,
@@ -1270593,18 +1270579,18 @@
       "attempts": 6
     },
     "1113560": {
-      "main": 20.0,
+      "main": 20.1,
       "extra": 40.7,
       "complete": 70.1,
       "avg": 43.6,
       "match": "NieR Replicant ver.1.22474487139...",
-      "fetched_at": 1793676351,
+      "fetched_at": 1794124090,
       "raw": {
-        "main": 20.0,
+        "main": 20.1,
         "extra": 40.7,
         "complete": 70.1
       },
-      "n_comp": 4197,
+      "n_comp": 4207,
       "comp_grew": true
     },
     "1113570": {
@@ -1298219,13 +1298205,14 @@
       "complete": 40.0,
       "avg": 27.6,
       "match": "Dead Island 2",
-      "fetched_at": 1793676268,
+      "fetched_at": 1794124032,
       "raw": {
         "main": 16.2,
         "extra": 26.7,
         "complete": 40.0
       },
-      "n_comp": 2070
+      "n_comp": 2073,
+      "comp_grew": true
     },
     "934780": {
       "main": 9.2,
@@ -1311109,16 +1311096,16 @@
     "960910": {
       "main": 10.0,
       "extra": 12.1,
-      "complete": 22.2,
-      "avg": 14.8,
+      "complete": 22.1,
+      "avg": 14.7,
       "match": "Heavy Rain",
-      "fetched_at": 1793676288,
+      "fetched_at": 1794124047,
       "raw": {
         "main": 10.0,
         "extra": 12.1,
-        "complete": 22.2
+        "complete": 22.1
       },
-      "n_comp": 7805,
+      "n_comp": 7817,
       "comp_grew": true
     },
     "960940": {
@@ -1318992,7 +1318979,7 @@
       "complete": 177.9,
       "avg": 84.3,
       "match": "Cell to Singularity - Evolution Never Ends",
-      "fetched_at": 1793676403,
+      "fetched_at": 1794124128,
       "raw": {
         "main": 7.3,
         "extra": 67.8,
@@ -1320255,7 +1320242,7 @@
       "complete": 26.2,
       "avg": 19.0,
       "match": "The Ascent",
-      "fetched_at": 1793676550,
+      "fetched_at": 1794124228,
       "raw": {
         "main": 12.0,
         "extra": 18.9,
@@ -1328002,13 +1327989,13 @@
       "complete": 34.0,
       "avg": 25.9,
       "match": "Spyro Reignited Trilogy",
-      "fetched_at": 1793676663,
+      "fetched_at": 1794124323,
       "raw": {
         "main": 17.2,
         "extra": 26.4,
         "complete": 34.0
       },
-      "n_comp": 3543,
+      "n_comp": 3549,
       "comp_grew": true
     },
     "996620": {
@@ -1328158,14 +1328145,14 @@
       "attempts": 6
     },
     "997010": {
-      "main": 14.3,
+      "main": 14.4,
       "extra": 20.5,
       "complete": 22.2,
       "avg": 19.0,
       "match": "Police Simulator: Patrol Officers",
-      "fetched_at": 1793676623,
+      "fetched_at": 1794124286,
       "raw": {
-        "main": 14.3,
+        "main": 14.4,
         "extra": 20.5,
         "complete": 22.2
       },
@@ -1330520,14 +1330507,14 @@
     "1002300": {
       "main": 10.8,
       "extra": 19.4,
-      "complete": 62.4,
-      "avg": 30.9,
+      "complete": 56.6,
+      "avg": 28.9,
       "match": "Fear & Hunger",
-      "fetched_at": 1793676687,
+      "fetched_at": 1794124342,
       "raw": {
         "main": 10.8,
         "extra": 19.4,
-        "complete": 62.4
+        "complete": 56.6
       },
       "n_comp": 419
     },
@@ -1334961,7 +1334948,7 @@
       "complete": 61.7,
       "avg": 35.7,
       "match": "Neon Abyss",
-      "fetched_at": 1793676582,
+      "fetched_at": 1794124252,
       "raw": {
         "main": 11.4,
         "extra": 34.1,
@@ -1348475,14 +1348462,13 @@
       "complete": 17.7,
       "avg": 12.1,
       "match": "Animal Well",
-      "fetched_at": 1793676544,
+      "fetched_at": 1794124223,
       "raw": {
         "main": 7.1,
         "extra": 11.5,
         "complete": 17.7
       },
-      "n_comp": 2150,
-      "comp_grew": true
+      "n_comp": 2152
     },
     "813250": {
       "main": 2.2,
@@ -1360462,13 +1360448,14 @@
       "complete": 6.2,
       "avg": 4.4,
       "match": "Untitled Goose Game",
-      "fetched_at": 1793676541,
+      "fetched_at": 1794124220,
       "raw": {
         "main": 3.0,
         "extra": 4.1,
         "complete": 6.2
       },
-      "n_comp": 4489
+      "n_comp": 4493,
+      "comp_grew": true
     },
     "837500": {
       "main": null,
@@ -1381130,17 +1381117,17 @@
     },
     "729040": {
       "main": 22.2,
-      "extra": 35.1,
+      "extra": 35.2,
       "complete": 64.3,
-      "avg": 40.5,
+      "avg": 40.6,
       "match": "Borderlands",
-      "fetched_at": 1793676393,
+      "fetched_at": 1794124122,
       "raw": {
         "main": 22.2,
-        "extra": 35.1,
+        "extra": 35.2,
         "complete": 64.3
       },
-      "n_comp": 11815,
+      "n_comp": 11820,
       "comp_grew": true
     },
     "729050": {
@@ -1382337,14 +1382324,13 @@
       "complete": 47.3,
       "avg": 28.8,
       "match": "Crash Bandicoot N. Sane Trilogy",
-      "fetched_at": 1793676693,
+      "fetched_at": 1794124346,
       "raw": {
         "main": 15.0,
         "extra": 24.1,
         "complete": 47.3
       },
-      "n_comp": 4267,
-      "comp_grew": true
+      "n_comp": 4269
     },
     "731500": {
       "main": null,
@@ -1384463,7 +1384449,7 @@
       "complete": 40.4,
       "avg": 18.3,
       "match": "Chinese Parents",
-      "fetched_at": 1793676419,
+      "fetched_at": 1794124137,
       "raw": {
         "main": 4.0,
         "extra": 10.6,
@@ -1433007,14 +1432993,13 @@
       "complete": 66.5,
       "avg": 28.4,
       "match": "Descenders",
-      "fetched_at": 1793676601,
+      "fetched_at": 1794124269,
       "raw": {
         "main": 5.2,
         "extra": 13.4,
         "complete": 66.5
       },
-      "n_comp": 256,
-      "comp_grew": true
+      "n_comp": 257
     },
     "681290": {
       "main": null,
@@ -1439364,13 +1439349,13 @@
       "complete": 43.3,
       "avg": 24.9,
       "match": "Roboquest",
-      "fetched_at": 1793676566,
+      "fetched_at": 1794124239,
       "raw": {
         "main": 9.8,
         "extra": 21.5,
         "complete": 43.3
       },
-      "n_comp": 579
+      "n_comp": 580
     },
     "692920": {
       "main": 1.4,
@@ -1459418,14 +1459403,13 @@
       "complete": 5.4,
       "avg": 3.7,
       "match": "ICEY",
-      "fetched_at": 1793676373,
+      "fetched_at": 1794124107,
       "raw": {
         "main": 2.6,
         "extra": 3.2,
         "complete": 5.4
       },
-      "n_comp": 760,
-      "comp_grew": true
+      "n_comp": 760
     },
     "553680": {
       "main": null,
@@ -1461393,13 +1461377,13 @@
       "complete": 9.0,
       "avg": 6.1,
       "match": "My Friend Pedro",
-      "fetched_at": 1793676335,
+      "fetched_at": 1794124080,
       "raw": {
         "main": 4.1,
         "extra": 5.2,
         "complete": 9.0
       },
-      "n_comp": 3260
+      "n_comp": 3259
     },
     "557400": {
       "main": 170.7,
@@ -1464456,7 +1464440,7 @@
       "complete": 36.1,
       "avg": 20.1,
       "match": "Alien Swarm: Reactive Drop",
-      "fetched_at": 1793676579,
+      "fetched_at": 1794124249,
       "raw": {
         "main": 7.7,
         "extra": 16.5,
@@ -1466467,16 +1466451,17 @@
     "567640": {
       "main": 39.4,
       "extra": 52.4,
-      "complete": 98.1,
-      "avg": 63.3,
+      "complete": 98.3,
+      "avg": 63.4,
       "match": "Danganronpa V3: Killing Harmony",
-      "fetched_at": 1793676640,
+      "fetched_at": 1794124298,
       "raw": {
         "main": 39.4,
         "extra": 52.4,
-        "complete": 98.1
+        "complete": 98.3
       },
-      "n_comp": 3287
+      "n_comp": 3297,
+      "comp_grew": true
     },
     "567660": {
       "main": 4.4,
@@ -1468498,7 +1468483,7 @@
       "complete": 42.8,
       "avg": 23.4,
       "match": "Golf It!",
-      "fetched_at": 1793676216,
+      "fetched_at": 1794123995,
       "raw": {
         "main": 3.0,
         "extra": 24.5,
@@ -1474996,14 +1474981,13 @@
       "complete": 19.0,
       "avg": 11.4,
       "match": "Sonic Mania",
-      "fetched_at": 1793676314,
+      "fetched_at": 1794124064,
       "raw": {
         "main": 5.7,
         "extra": 9.4,
         "complete": 19.0
       },
-      "n_comp": 3646,
-      "comp_grew": true
+      "n_comp": 3646
     },
     "584600": {
       "main": 4.5,
@@ -1483428,14 +1483412,13 @@
       "complete": 28.5,
       "avg": 20.1,
       "match": "The Evil Within 2",
-      "fetched_at": 1793676231,
+      "fetched_at": 1794124005,
       "raw": {
         "main": 13.4,
         "extra": 18.5,
         "complete": 28.5
       },
-      "n_comp": 3318,
-      "comp_grew": true
+      "n_comp": 3318
     },
     "601490": {
       "main": null,
@@ -1485812,13 +1485795,13 @@
       "complete": 30.9,
       "avg": 21.9,
       "match": "Moonlighter",
-      "fetched_at": 1793676539,
+      "fetched_at": 1794124219,
       "raw": {
         "main": 14.1,
         "extra": 20.6,
         "complete": 30.9
       },
-      "n_comp": 2362,
+      "n_comp": 2365,
       "comp_grew": true
     },
     "606160": {
@@ -1486148,14 +1486131,13 @@
       "complete": 52.1,
       "avg": 38.9,
       "match": "Greedfall",
-      "fetched_at": 1793676689,
+      "fetched_at": 1794124343,
       "raw": {
         "main": 23.3,
         "extra": 41.3,
         "complete": 52.1
       },
-      "n_comp": 1429,
-      "comp_grew": true
+      "n_comp": 1431
     },
     "606890": {
       "main": 5.3,
@@ -1486987,13 +1486969,14 @@
       "complete": 6.2,
       "avg": 4.2,
       "match": "FAR: Lone Sails",
-      "fetched_at": 1793676472,
+      "fetched_at": 1794124173,
       "raw": {
         "main": 3.1,
         "extra": 3.4,
         "complete": 6.2
       },
-      "n_comp": 2102
+      "n_comp": 2105,
+      "comp_grew": true
     },
     "609340": {
       "main": 1.9,
@@ -1494247,7 +1494230,7 @@
       "complete": 47.1,
       "avg": 33.7,
       "match": "Portal Knights",
-      "fetched_at": 1793676653,
+      "fetched_at": 1794124307,
       "raw": {
         "main": 20.4,
         "extra": 33.6,
@@ -1498494,13 +1498477,13 @@
       "complete": 50.9,
       "avg": 30.0,
       "match": "Dead Island: Definitive Edition",
-      "fetched_at": 1793676368,
+      "fetched_at": 1794124103,
       "raw": {
         "main": 15.4,
         "extra": 23.8,
         "complete": 50.9
       },
-      "n_comp": 2002,
+      "n_comp": 2007,
       "comp_grew": true
     },
     "383180": {
@@ -1499156,14 +1499139,13 @@
       "complete": 4.0,
       "avg": 2.8,
       "match": "ABZÛ",
-      "fetched_at": 1793676383,
+      "fetched_at": 1794124115,
       "raw": {
         "main": 1.9,
         "extra": 2.5,
         "complete": 4.0
       },
-      "n_comp": 8324,
-      "comp_grew": true
+      "n_comp": 8326
     },
     "384200": {
       "main": 1.3,
@@ -1503198,14 +1503180,13 @@
       "complete": 11.6,
       "avg": 6.6,
       "match": "Layers of Fear",
-      "fetched_at": 1793676389,
+      "fetched_at": 1794124119,
       "raw": {
         "main": 3.4,
         "extra": 4.7,
         "complete": 11.6
       },
-      "n_comp": 3801,
-      "comp_grew": true
+      "n_comp": 3802
     },
     "391740": {
       "main": null,
@@ -1511663,16 +1511644,16 @@
     "409720": {
       "main": 10.5,
       "extra": 14.4,
-      "complete": 23.9,
-      "avg": 16.3,
+      "complete": 23.8,
+      "avg": 16.2,
       "match": "BioShock 2",
-      "fetched_at": 1793676274,
+      "fetched_at": 1794124037,
       "raw": {
         "main": 10.5,
         "extra": 14.4,
-        "complete": 23.9
+        "complete": 23.8
       },
-      "n_comp": 14494,
+      "n_comp": 14505,
       "comp_grew": true
     },
     "409730": {
@@ -1513283,16 +1513264,16 @@
     "413420": {
       "main": 33.6,
       "extra": 41.7,
-      "complete": 60.3,
+      "complete": 60.2,
       "avg": 45.2,
       "match": "Danganronpa 2: Goodbye Despair",
-      "fetched_at": 1793676182,
+      "fetched_at": 1794123971,
       "raw": {
         "main": 33.6,
         "extra": 41.7,
-        "complete": 60.3
+        "complete": 60.2
       },
-      "n_comp": 5098,
+      "n_comp": 5108,
       "comp_grew": true
     },
     "413470": {
@@ -1515367,14 +1515348,13 @@
       "complete": 1.1,
       "avg": 0.9,
       "match": "Emily is Away",
-      "fetched_at": 1793676168,
+      "fetched_at": 1794123958,
       "raw": {
         "main": 0.7,
         "extra": 1.0,
         "complete": 1.1
       },
-      "n_comp": 4144,
-      "comp_grew": true
+      "n_comp": 4145
     },
     "417880": {
       "main": 4.5,
@@ -1516236,13 +1516216,13 @@
       "complete": 6.0,
       "avg": 4.0,
       "match": "Blackwake",
-      "fetched_at": 1793676474,
+      "fetched_at": 1794124174,
       "raw": {
         "main": 2.1,
         "extra": 4.0,
         "complete": 6.0
       },
-      "n_comp": 127
+      "n_comp": 128
     },
     "420300": {
       "main": null,
@@ -1518758,14 +1518738,13 @@
       "complete": 41.5,
       "avg": 29.3,
       "match": "Vampyr",
-      "fetched_at": 1793676529,
+      "fetched_at": 1794124211,
       "raw": {
         "main": 16.8,
         "extra": 29.5,
         "complete": 41.5
       },
-      "n_comp": 2584,
-      "comp_grew": true
+      "n_comp": 2585
     },
     "427470": {
       "main": 9.8,
@@ -1527174,7 +1527153,7 @@
       "complete": 57.9,
       "avg": 26.1,
       "match": "Bloons TD Battles",
-      "fetched_at": 1793676286,
+      "fetched_at": 1794124045,
       "raw": {
         "main": 9.4,
         "extra": 11.0,
@@ -1528453,7 +1528432,7 @@
       "complete": 165.1,
       "avg": 102.4,
       "match": "Farming Simulator 17",
-      "fetched_at": 1793676492,
+      "fetched_at": 1794124186,
       "raw": {
         "main": 35.4,
         "extra": 106.7,
@@ -1530788,7 +1530767,7 @@
       "complete": 78.5,
       "avg": 48.2,
       "match": "Sid Meier's Civilization: Beyond Earth",
-      "fetched_at": 1793676618,
+      "fetched_at": 1794124282,
       "raw": {
         "main": 16.9,
         "extra": 49.1,
@@ -1531034,14 +1531013,13 @@
       "complete": 23.8,
       "avg": 13.2,
       "match": "Sonic Generations",
-      "fetched_at": 1793676504,
+      "fetched_at": 1794124193,
       "raw": {
         "main": 5.4,
         "extra": 10.5,
         "complete": 23.8
       },
-      "n_comp": 5111,
-      "comp_grew": true
+      "n_comp": 5111
     },
     "72000": {
       "main": 6.5,
@@ -1532016,18 +1531994,18 @@
       "n_comp": 672
     },
     "99900": {
-      "main": 48.5,
+      "main": 46.9,
       "extra": 116.3,
       "complete": 453.3,
-      "avg": 206.0,
+      "avg": 205.5,
       "match": "Spiral Knights",
-      "fetched_at": 1793676560,
+      "fetched_at": 1794124235,
       "raw": {
-        "main": 48.5,
+        "main": 46.9,
         "extra": 116.3,
         "complete": 453.3
       },
-      "n_comp": 183
+      "n_comp": 184
     },
     "99910": {
       "main": 55.0,
@@ -1532209,13 +1532187,13 @@
       "complete": 187.2,
       "avg": 66.9,
       "match": "ORION: Prelude",
-      "fetched_at": 1793676334,
+      "fetched_at": 1794124079,
       "raw": {
         "main": 3.7,
         "extra": 9.7,
         "complete": 187.2
       },
-      "n_comp": 319
+      "n_comp": 320
     },
     "105000": {
       "main": 9.9,
@@ -1533943,13 +1533921,13 @@
       "complete": 164.3,
       "avg": 73.0,
       "match": "Awesomenauts",
-      "fetched_at": 1793676423,
+      "fetched_at": 1794124141,
       "raw": {
         "main": 10.3,
         "extra": 44.3,
         "complete": 164.3
       },
-      "n_comp": 608
+      "n_comp": 609
     },
     "204340": {
       "main": 10.1,
@@ -1534992,7 +1534970,7 @@
       "complete": 54.9,
       "avg": 42.1,
       "match": "Star Wars: Knights of the Old Republic II - The Sith Lords",
-      "fetched_at": 1793676488,
+      "fetched_at": 1794124184,
       "raw": {
         "main": 30.4,
         "extra": 40.9,
@@ -1535308,7 +1535286,7 @@
       "complete": 17.6,
       "avg": 11.8,
       "match": "Call of Duty: Advanced Warfare",
-      "fetched_at": 1793676502,
+      "fetched_at": 1794124192,
       "raw": {
         "main": 7.1,
         "extra": 10.6,
@@ -1535912,7 +1535890,7 @@
       "complete": 1701.7,
       "avg": 697.6,
       "match": "The Lord of the Rings Online",
-      "fetched_at": 1793676598,
+      "fetched_at": 1794124266,
       "raw": {
         "main": 124.1,
         "extra": 266.9,
@@ -1536045,13 +1536023,13 @@
       "complete": 48.0,
       "avg": 24.4,
       "match": "Sonic Adventure 2",
-      "fetched_at": 1793676354,
+      "fetched_at": 1794124092,
       "raw": {
         "main": 9.1,
         "extra": 16.2,
         "complete": 48.0
       },
-      "n_comp": 2359,
+      "n_comp": 2364,
       "comp_grew": true
     },
     "213650": {
@@ -1537366,14 +1537344,13 @@
       "complete": 40.4,
       "avg": 20.6,
       "match": "DmC: Devil May Cry",
-      "fetched_at": 1793676161,
+      "fetched_at": 1794123951,
       "raw": {
         "main": 9.2,
         "extra": 12.2,
         "complete": 40.4
       },
-      "n_comp": 6837,
-      "comp_grew": true
+      "n_comp": 6839
     },
     "220460": {
       "main": 11.8,
@@ -1538371,7 +1538348,7 @@
       "complete": 19.0,
       "avg": 15.5,
       "match": "Sven Co-Op",
-      "fetched_at": 1793676166,
+      "fetched_at": 1794123956,
       "raw": {
         "main": 9.5,
         "extra": 18.0,
@@ -1539064,14 +1539041,13 @@
       "complete": 9.1,
       "avg": 8.6,
       "match": "Asylum",
-      "fetched_at": 1793677026,
+      "fetched_at": 1794124411,
       "raw": {
         "main": 8.0,
         "extra": 8.6,
         "complete": 9.1
       },
-      "n_comp": 20,
-      "comp_grew": true
+      "n_comp": 20
     },
     "230230": {
       "main": 65.8,
@@ -1539564,14 +1539540,13 @@
       "complete": 36.0,
       "avg": 21.2,
       "match": "Shadow Warrior",
-      "fetched_at": 1793676440,
+      "fetched_at": 1794124151,
       "raw": {
         "main": 12.3,
         "extra": 15.4,
         "complete": 36.0
       },
-      "n_comp": 3265,
-      "comp_grew": true
+      "n_comp": 3267
     },
     "233150": {
       "main": 4.0,
@@ -1540654,14 +1540629,13 @@
       "complete": 15.7,
       "avg": 10.0,
       "match": "Transistor",
-      "fetched_at": 1793676212,
+      "fetched_at": 1794123992,
       "raw": {
         "main": 6.0,
         "extra": 8.4,
         "complete": 15.7
       },
-      "n_comp": 7421,
-      "comp_grew": true
+      "n_comp": 7421
     },
     "237950": {
       "main": 34.6,
@@ -1540710,13 +1540684,13 @@
       "complete": 46.8,
       "avg": 33.7,
       "match": "Deus Ex: Human Revolution - Director's Cut",
-      "fetched_at": 1793676276,
+      "fetched_at": 1794124038,
       "raw": {
         "main": 23.2,
         "extra": 31.1,
         "complete": 46.8
       },
-      "n_comp": 5662,
+      "n_comp": 5666,
       "comp_grew": true
     },
     "238050": {
@@ -1540739,7 +1540713,7 @@
       "complete": 30.8,
       "avg": 18.1,
       "match": "Sniper Elite III",
-      "fetched_at": 1793676341,
+      "fetched_at": 1794124085,
       "raw": {
         "main": 9.1,
         "extra": 14.4,
@@ -1541001,7 +1540975,7 @@
       "complete": 44.2,
       "avg": 25.8,
       "match": "Thief",
-      "fetched_at": 1793676575,
+      "fetched_at": 1794124245,
       "raw": {
         "main": 11.0,
         "extra": 22.2,
@@ -1542600,7 +1542574,7 @@
       "complete": 85.8,
       "avg": 50.5,
       "match": "Viscera Cleanup Detail",
-      "fetched_at": 1793676585,
+      "fetched_at": 1794124254,
       "raw": {
         "main": 12.7,
         "extra": 53.0,
@@ -1543119,13 +1543093,13 @@
       "complete": 51.1,
       "avg": 25.9,
       "match": "Risk of Rain",
-      "fetched_at": 1793676264,
+      "fetched_at": 1794124030,
       "raw": {
         "main": 4.7,
         "extra": 21.8,
         "complete": 51.1
       },
-      "n_comp": 2149
+      "n_comp": 2150
     },
     "248860": {
       "main": 10.7,
@@ -1543175,14 +1543149,13 @@
       "complete": 39.4,
       "avg": 25.2,
       "match": "LEGO Marvel Super Heroes",
-      "fetched_at": 1793676258,
+      "fetched_at": 1794124026,
       "raw": {
         "main": 12.2,
         "extra": 24.0,
         "complete": 39.4
       },
-      "n_comp": 5025,
-      "comp_grew": true
+      "n_comp": 5027
     },
     "249190": {
       "main": 22.7,
@@ -1546683,7 +1546656,7 @@
       "complete": 4.0,
       "avg": 3.4,
       "match": "Valiant Hearts: Coming Home",
-      "fetched_at": 1793676399,
+      "fetched_at": 1794124125,
       "raw": {
         "main": 3.0,
         "extra": 3.2,
@@ -1552375,14 +1552348,13 @@
       "complete": 9.4,
       "avg": 5.6,
       "match": "A Story About My Uncle",
-      "fetched_at": 1793676295,
+      "fetched_at": 1794124053,
       "raw": {
         "main": 3.1,
         "extra": 4.3,
         "complete": 9.4
       },
-      "n_comp": 4431,
-      "comp_grew": true
+      "n_comp": 4431
     },
     "278420": {
       "main": 4.6,
@@ -1553115,7 +1553087,7 @@
       "complete": 52.0,
       "avg": 35.6,
       "match": "Creativerse",
-      "fetched_at": 1793676228,
+      "fetched_at": 1794124004,
       "raw": {
         "main": 25.4,
         "extra": 29.4,
@@ -1553789,14 +1553761,13 @@
       "complete": 50.9,
       "avg": 33.1,
       "match": "100% Orange Juice",
-      "fetched_at": 1793676254,
+      "fetched_at": 1794124023,
       "raw": {
         "main": 8.4,
         "extra": 40.0,
         "complete": 50.9
       },
-      "n_comp": 404,
-      "comp_grew": true
+      "n_comp": 404
     },
     "282860": {
       "main": null,
@@ -1555402,13 +1555373,13 @@
       "complete": 35.1,
       "avg": 20.4,
       "match": "Resident Evil: Revelations 2",
-      "fetched_at": 1793676190,
+      "fetched_at": 1794123977,
       "raw": {
         "main": 10.2,
         "extra": 15.8,
         "complete": 35.1
       },
-      "n_comp": 3270,
+      "n_comp": 3276,
       "comp_grew": true
     },
     "287310": {
@@ -1557324,13 +1557295,13 @@
       "complete": 111.3,
       "avg": 70.6,
       "match": "Pillars of Eternity",
-      "fetched_at": 1793676480,
+      "fetched_at": 1794124178,
       "raw": {
         "main": 36.3,
         "extra": 64.2,
         "complete": 111.3
       },
-      "n_comp": 2473
+      "n_comp": 2475
     },
     "291690": {
       "main": 4.4,
@@ -1560635,14 +1560606,13 @@
       "complete": 2.3,
       "avg": 1.9,
       "match": "6180 the moon",
-      "fetched_at": 1793677055,
+      "fetched_at": 1794124412,
       "raw": {
         "main": 1.4,
         "extra": 2.0,
         "complete": 2.3
       },
-      "n_comp": 245,
-      "comp_grew": true
+      "n_comp": 245
     },
     "299680": {
       "main": 1.4,
@@ -1562050,14 +1562020,14 @@
       "n_comp": 3
     },
     "302670": {
-      "main": 12.7,
+      "main": 15.4,
       "extra": 65.0,
       "complete": 159.2,
-      "avg": 79.0,
+      "avg": 79.9,
       "match": "Call to Arms",
-      "fetched_at": 1793676568,
+      "fetched_at": 1794124241,
       "raw": {
-        "main": 12.7,
+        "main": 15.4,
         "extra": 65.0,
         "complete": 159.2
       },
@@ -1562238,13 +1562208,13 @@
       "complete": 1.7,
       "avg": 1.6,
       "match": "The Beginner's Guide",
-      "fetched_at": 1793676606,
+      "fetched_at": 1794124273,
       "raw": {
         "main": 1.5,
         "extra": 1.6,
         "complete": 1.7
       },
-      "n_comp": 4394,
+      "n_comp": 4399,
       "comp_grew": true
     },
     "303260": {
@@ -1566518,7 +1566488,7 @@
       "complete": 1625.0,
       "avg": 700.6,
       "match": "Microsoft Flight Simulator X",
-      "fetched_at": 1793676450,
+      "fetched_at": 1794124158,
       "raw": {
         "main": 182.1,
         "extra": 294.8,
@@ -1570405,14 +1570375,13 @@
       "complete": 90.2,
       "avg": 46.7,
       "match": "Dragon Ball Xenoverse",
-      "fetched_at": 1793676686,
+      "fetched_at": 1794124340,
       "raw": {
         "main": 17.2,
         "extra": 32.6,
         "complete": 90.2
       },
-      "n_comp": 2201,
-      "comp_grew": true
+      "n_comp": 2202
     },
     "323490": {
       "main": null,
@@ -1570542,13 +1570511,13 @@
       "complete": 14.9,
       "avg": 12.7,
       "match": "Move or Die",
-      "fetched_at": 1793676599,
+      "fetched_at": 1794124267,
       "raw": {
         "main": 11.2,
         "extra": 11.9,
         "complete": 14.9
       },
-      "n_comp": 235
+      "n_comp": 236
     },
     "324070": {
       "main": 3.3,
@@ -1570790,14 +1570759,13 @@
       "complete": 7.2,
       "avg": 6.2,
       "match": "Half-Life: Opposing Force",
-      "fetched_at": 1793676325,
+      "fetched_at": 1794124073,
       "raw": {
         "main": 5.2,
         "extra": 6.3,
         "complete": 7.2
       },
-      "n_comp": 5486,
-      "comp_grew": true
+      "n_comp": 5486
     },
     "60": {
       "main": 37.7,
@@ -1570819,14 +1570787,13 @@
       "complete": 101.8,
       "avg": 39.5,
       "match": "Counter-Strike: Condition Zero",
-      "fetched_at": 1793676356,
+      "fetched_at": 1794124093,
       "raw": {
         "main": 3.9,
         "extra": 12.9,
         "complete": 101.8
       },
-      "n_comp": 1193,
-      "comp_grew": true
+      "n_comp": 1192
     },
     "130": {
       "main": 3.0,
@@ -1570849,7 +1570816,7 @@
       "complete": 15.4,
       "avg": 11.4,
       "match": "Day of Defeat: Source",
-      "fetched_at": 1793676589,
+      "fetched_at": 1794124258,
       "raw": {
         "main": 8.7,
         "extra": 10.0,
@@ -1573319,13 +1573286,13 @@
       "complete": 23.5,
       "avg": 17.1,
       "match": "BioShock",
-      "fetched_at": 1793676173,
+      "fetched_at": 1794123964,
       "raw": {
         "main": 12.1,
         "extra": 15.6,
         "complete": 23.5
       },
-      "n_comp": 26556,
+      "n_comp": 26579,
       "comp_grew": true
     },
     "7730": {
@@ -1573423,13 +1573390,13 @@
       "complete": 16.2,
       "avg": 10.8,
       "match": "Call of Duty 4: Modern Warfare",
-      "fetched_at": 1793676429,
+      "fetched_at": 1794124145,
       "raw": {
         "main": 6.9,
         "extra": 9.2,
         "complete": 16.2
       },
-      "n_comp": 9576,
+      "n_comp": 9587,
       "comp_grew": true
     },
     "8000": {
@@ -1574218,7 +1574185,7 @@
       "complete": 55.0,
       "avg": 38.4,
       "match": "TrackMania Nations Forever",
-      "fetched_at": 1793676558,
+      "fetched_at": 1794124234,
       "raw": {
         "main": 13.8,
         "extra": 46.4,
@@ -1575226,14 +1575193,13 @@
       "complete": 30.6,
       "avg": 21.8,
       "match": "Assassin's Creed",
-      "fetched_at": 1793676512,
+      "fetched_at": 1794124196,
       "raw": {
         "main": 14.9,
         "extra": 20.0,
         "complete": 30.6
       },
-      "n_comp": 15354,
-      "comp_grew": true
+      "n_comp": 15354
     },
     "15120": {
       "main": 8.1,
@@ -1575993,14 +1575959,13 @@
       "complete": 30.2,
       "avg": 19.5,
       "match": "Dead Space",
-      "fetched_at": 1793676308,
+      "fetched_at": 1794124061,
       "raw": {
         "main": 12.2,
         "extra": 16.2,
         "complete": 30.2
       },
-      "n_comp": 4713,
-      "comp_grew": true
+      "n_comp": 4713
     },
     "17500": {
       "main": null,
@@ -1576410,14 +1576375,13 @@
       "complete": 22.5,
       "avg": 17.5,
       "match": "Alice: Madness Returns",
-      "fetched_at": 1793676260,
+      "fetched_at": 1794124027,
       "raw": {
         "main": 14.0,
         "extra": 15.9,
         "complete": 22.5
       },
-      "n_comp": 3350,
-      "comp_grew": true
+      "n_comp": 3350
     },
     "19800": {
       "main": 7.0,
@@ -1576744,14 +1576708,13 @@
       "complete": 137.7,
       "avg": 53.5,
       "match": "Street Fighter IV",
-      "fetched_at": 1793676854,
+      "fetched_at": 1794124403,
       "raw": {
         "main": 2.5,
         "extra": 20.3,
         "complete": 137.7
       },
-      "n_comp": 526,
-      "comp_grew": true
+      "n_comp": 526
     },
     "21670": {
       "main": 6.8,
@@ -1576939,17 +1576902,17 @@
     },
     "22300": {
       "main": 22.2,
-      "extra": 50.6,
+      "extra": 50.7,
       "complete": 113.9,
-      "avg": 62.2,
+      "avg": 62.3,
       "match": "Fallout 3",
-      "fetched_at": 1793676673,
+      "fetched_at": 1794124330,
       "raw": {
         "main": 22.2,
-        "extra": 50.6,
+        "extra": 50.7,
         "complete": 113.9
       },
-      "n_comp": 5123,
+      "n_comp": 5127,
       "comp_grew": true
     },
     "22310": {
@@ -1576972,13 +1576935,13 @@
       "complete": 329.0,
       "avg": 158.1,
       "match": "The Elder Scrolls III: Morrowind - Game of the Year Edition",
-      "fetched_at": 1793676339,
+      "fetched_at": 1794124083,
       "raw": {
         "main": 46.1,
         "extra": 99.3,
         "complete": 329.0
       },
-      "n_comp": 485
+      "n_comp": 486
     },
     "22330": {
       "main": 27.6,
@@ -1579146,7 +1579109,7 @@
       "complete": 23.2,
       "avg": 13.2,
       "match": "ARMA II: Operation Arrowhead",
-      "fetched_at": 1793676654,
+      "fetched_at": 1794124309,
       "raw": {
         "main": 8.0,
         "extra": 8.4,
@@ -1579576,13 +1579539,13 @@
       "complete": 34.8,
       "avg": 19.2,
       "match": "Trine 2: Complete Story",
-      "fetched_at": 1793676671,
+      "fetched_at": 1794124329,
       "raw": {
         "main": 9.1,
         "extra": 13.7,
         "complete": 34.8
       },
-      "n_comp": 1902,
+      "n_comp": 1905,
       "comp_grew": true
     },
     "35800": {
@@ -1580247,7 +1580210,7 @@
       "complete": 31.9,
       "avg": 23.7,
       "match": "Fallout",
-      "fetched_at": 1793676523,
+      "fetched_at": 1794124206,
       "raw": {
         "main": 16.2,
         "extra": 22.9,
@@ -1581012,14 +1580975,13 @@
       "complete": 28.8,
       "avg": 17.9,
       "match": "Serious Sam 3: BFE",
-      "fetched_at": 1793676321,
+      "fetched_at": 1794124069,
       "raw": {
         "main": 10.1,
         "extra": 14.7,
         "complete": 28.8
       },
-      "n_comp": 1933,
-      "comp_grew": true
+      "n_comp": 1933
     },
     "41100": {
       "main": 4.2,
@@ -1581427,14 +1581389,14 @@
     },
     "42910": {
       "main": 10.5,
-      "extra": 16.5,
+      "extra": 16.7,
       "complete": 47.1,
-      "avg": 24.7,
+      "avg": 24.8,
       "match": "Magicka",
-      "fetched_at": 1793676175,
+      "fetched_at": 1794123966,
       "raw": {
         "main": 10.5,
-        "extra": 16.5,
+        "extra": 16.7,
         "complete": 47.1
       },
       "n_comp": 3091
@@ -1582528,13 +1582490,13 @@
       "complete": 16.4,
       "avg": 12.4,
       "match": "Dead Space 2",
-      "fetched_at": 1793676294,
+      "fetched_at": 1794124052,
       "raw": {
         "main": 9.1,
         "extra": 11.6,
         "complete": 16.4
       },
-      "n_comp": 6910,
+      "n_comp": 6917,
       "comp_grew": true
     },
     "47790": {
@@ -1583884,7 +1583846,7 @@
       "complete": 24.8,
       "avg": 16.1,
       "match": "Shadow Warrior 2",
-      "fetched_at": 1793676357,
+      "fetched_at": 1794124095,
       "raw": {
         "main": 7.7,
         "extra": 15.9,
@@ -1585617,14 +1585579,13 @@
       "complete": 70.5,
       "avg": 32.8,
       "match": "Devil May Cry 4: Special Edition",
-      "fetched_at": 1793676660,
+      "fetched_at": 1794124316,
       "raw": {
         "main": 11.0,
         "extra": 17.0,
         "complete": 70.5
       },
-      "n_comp": 3186,
-      "comp_grew": true
+      "n_comp": 3186
     },
     "329070": {
       "main": 0.5,
@@ -1586035,7 +1585996,7 @@
       "complete": 28.4,
       "avg": 20.5,
       "match": "Children of Morta",
-      "fetched_at": 1793676625,
+      "fetched_at": 1794124288,
       "raw": {
         "main": 14.2,
         "extra": 18.8,
@@ -1587256,7 +1587217,7 @@
       "complete": 11.4,
       "avg": 6.3,
       "match": "Five Nights at Freddy's 2",
-      "fetched_at": 1793676490,
+      "fetched_at": 1794124185,
       "raw": {
         "main": 3.0,
         "extra": 4.6,
@@ -1590729,14 +1590690,13 @@
       "complete": 33.9,
       "avg": 19.4,
       "match": "HuniePop",
-      "fetched_at": 1793676199,
+      "fetched_at": 1794123983,
       "raw": {
         "main": 9.4,
         "extra": 15.0,
         "complete": 33.9
       },
-      "n_comp": 2262,
-      "comp_grew": true
+      "n_comp": 2262
     },
     "339820": {
       "main": null,
@@ -1596757,13 +1596717,13 @@
       "complete": 15.9,
       "avg": 10.1,
       "match": "Wolfenstein: The Old Blood",
-      "fetched_at": 1793676610,
+      "fetched_at": 1794124276,
       "raw": {
         "main": 5.9,
         "extra": 8.5,
         "complete": 15.9
       },
-      "n_comp": 7324,
+      "n_comp": 7329,
       "comp_grew": true
     },
     "350090": {
@@ -1602202,13 +1602162,14 @@
       "complete": 162.4,
       "avg": 97.6,
       "match": "Final Fantasy X/X-2 HD Remaster",
-      "fetched_at": 1793676621,
+      "fetched_at": 1794124285,
       "raw": {
         "main": 50.5,
         "extra": 80.0,
         "complete": 162.4
       },
-      "n_comp": 2321
+      "n_comp": 2326,
+      "comp_grew": true
     },
     "359900": {
       "main": 8.1,
@@ -1605262,14 +1605223,13 @@
       "complete": 11.3,
       "avg": 9.2,
       "match": "Hacknet",
-      "fetched_at": 1793676476,
+      "fetched_at": 1794124176,
       "raw": {
         "main": 7.2,
         "extra": 9.0,
         "complete": 11.3
       },
-      "n_comp": 1674,
-      "comp_grew": true
+      "n_comp": 1674
     },
     "365460": {
       "main": null,
@@ -1606783,17 +1606743,17 @@
     },
     "368230": {
       "main": 7.9,
-      "extra": 13.3,
+      "extra": 13.2,
       "complete": 24.8,
       "avg": 15.3,
       "match": "Kingdom: Classic",
-      "fetched_at": 1793676642,
+      "fetched_at": 1794124300,
       "raw": {
         "main": 7.9,
-        "extra": 13.3,
+        "extra": 13.2,
         "complete": 24.8
       },
-      "n_comp": 1190
+      "n_comp": 1191
     },
     "368250": {
       "main": 7.3,
@@ -1612504,13 +1612464,13 @@
       "complete": 41.8,
       "avg": 23.0,
       "match": "Bayonetta",
-      "fetched_at": 1793676181,
+      "fetched_at": 1794123970,
       "raw": {
         "main": 11.6,
         "extra": 15.5,
         "complete": 41.8
       },
-      "n_comp": 9260,
+      "n_comp": 9267,
       "comp_grew": true
     },
     "460810": {
@@ -1618745,14 +1618705,13 @@
       "complete": 18.5,
       "avg": 13.9,
       "match": "Quantum Break",
-      "fetched_at": 1793676237,
+      "fetched_at": 1794124009,
       "raw": {
         "main": 10.1,
         "extra": 13.1,
         "complete": 18.5
       },
-      "n_comp": 5882,
-      "comp_grew": true
+      "n_comp": 5882
     },
     "474980": {
       "main": 2.6,
@@ -1642945,7 +1642904,7 @@
       "complete": 115.9,
       "avg": 57.3,
       "match": "Warhammer 40,000: Inquisitor - Martyr",
-      "fetched_at": 1793676658,
+      "fetched_at": 1794124313,
       "raw": {
         "main": 22.7,
         "extra": 33.4,
@@ -1650583,13 +1650542,13 @@
       "complete": 53.2,
       "avg": 24.9,
       "match": "Injustice 2",
-      "fetched_at": 1793676554,
+      "fetched_at": 1794124231,
       "raw": {
         "main": 5.7,
         "extra": 15.7,
         "complete": 53.2
       },
-      "n_comp": 3271,
+      "n_comp": 3274,
       "comp_grew": true
     },
     "627350": {
@@ -1651892,16 +1651851,16 @@
     "629820": {
       "main": 8.1,
       "extra": 10.2,
-      "complete": 13.0,
-      "avg": 10.4,
+      "complete": 13.1,
+      "avg": 10.5,
       "match": "Maneater",
-      "fetched_at": 1793676435,
+      "fetched_at": 1794124150,
       "raw": {
         "main": 8.1,
         "extra": 10.2,
-        "complete": 13.0
+        "complete": 13.1
       },
-      "n_comp": 2535,
+      "n_comp": 2541,
       "comp_grew": true
     },
     "629840": {
@@ -1652496,17 +1652455,17 @@
     },
     "631510": {
       "main": 23.1,
-      "extra": 31.6,
-      "complete": 88.1,
-      "avg": 47.6,
+      "extra": 31.4,
+      "complete": 88.8,
+      "avg": 47.8,
       "match": "Devil May Cry HD Collection",
-      "fetched_at": 1793676484,
+      "fetched_at": 1794124181,
       "raw": {
         "main": 23.1,
-        "extra": 31.6,
-        "complete": 88.1
+        "extra": 31.4,
+        "complete": 88.8
       },
-      "n_comp": 1681,
+      "n_comp": 1684,
       "comp_grew": true
     },
     "631540": {
@@ -1662901,7 +1662860,7 @@
       "complete": 32.7,
       "avg": 23.3,
       "match": "Rogue Company",
-      "fetched_at": 1793676478,
+      "fetched_at": 1794124177,
       "raw": {
         "main": 11.2,
         "extra": 25.9,
@@ -1668233,7 +1668192,7 @@
       "complete": 64.0,
       "avg": 37.5,
       "match": "XCOM: Chimera Squad",
-      "fetched_at": 1793676592,
+      "fetched_at": 1794124261,
       "raw": {
         "main": 21.3,
         "extra": 27.1,
@@ -1674458,13 +1674417,13 @@
       "complete": 15.9,
       "avg": 12.4,
       "match": "Death's Door",
-      "fetched_at": 1793676669,
+      "fetched_at": 1794124327,
       "raw": {
         "main": 9.2,
         "extra": 12.0,
         "complete": 15.9
       },
-      "n_comp": 4633,
+      "n_comp": 4641,
       "comp_grew": true
     },
     "894060": {
@@ -1675289,13 +1675248,13 @@
       "complete": 45.4,
       "avg": 24.0,
       "match": "Project Wingman",
-      "fetched_at": 1793676694,
+      "fetched_at": 1794124347,
       "raw": {
         "main": 11.3,
         "extra": 15.3,
         "complete": 45.4
       },
-      "n_comp": 400
+      "n_comp": 402
     },
     "895890": {
       "main": null,
@@ -1689557,13 +1689516,14 @@
       "complete": 41.9,
       "avg": 24.4,
       "match": "Sniper Elite 5",
-      "fetched_at": 1793676278,
+      "fetched_at": 1794124039,
       "raw": {
         "main": 10.9,
         "extra": 20.4,
         "complete": 41.9
       },
-      "n_comp": 995
+      "n_comp": 998,
+      "comp_grew": true
     },
     "1029730": {
       "main": null,
@@ -1696632,13 +1696592,13 @@
       "complete": 217.8,
       "avg": 134.8,
       "match": "Disney Dreamlight Valley",
-      "fetched_at": 1793676527,
+      "fetched_at": 1794124209,
       "raw": {
         "main": 65.9,
         "extra": 120.7,
         "complete": 217.8
       },
-      "n_comp": 202
+      "n_comp": 203
     },
     "1401610": {
       "main": 1.0,
@@ -1706053,7 +1706013,7 @@
       "complete": 11.6,
       "avg": 9.1,
       "match": "Tiny Bunny",
-      "fetched_at": 1793676236,
+      "fetched_at": 1794124008,
       "raw": {
         "main": 5.5,
         "extra": 10.1,
@@ -1715146,13 +1715106,13 @@
       "complete": 22.6,
       "avg": 14.8,
       "match": "Sifu",
-      "fetched_at": 1793676380,
+      "fetched_at": 1794124112,
       "raw": {
         "main": 7.7,
         "extra": 14.0,
         "complete": 22.6
       },
-      "n_comp": 3093,
+      "n_comp": 3098,
       "comp_grew": true
     },
     "2138720": {
@@ -1751633,7 +1751593,7 @@
       "complete": 100.0,
       "avg": 39.7,
       "match": "Overlewd",
-      "fetched_at": 1793673964,
+      "fetched_at": 1794124388,
       "raw": {
         "main": 7.3,
         "extra": 11.8,
@@ -1791269,17 +1791229,17 @@
     },
     "3280350": {
       "main": 35.7,
-      "extra": 64.4,
+      "extra": 64.3,
       "complete": 117.8,
       "avg": 72.6,
       "match": "Death Stranding 2: On The Beach",
-      "fetched_at": 1793676371,
+      "fetched_at": 1794124106,
       "raw": {
         "main": 35.7,
-        "extra": 64.4,
+        "extra": 64.3,
         "complete": 117.8
       },
-      "n_comp": 1877,
+      "n_comp": 1883,
       "comp_grew": true
     },
     "3280370": {
@@ -1799499,14 +1799459,13 @@
       "complete": 65.8,
       "avg": 44.3,
       "match": "Assassin's Creed Black Flag Resynced",
-      "fetched_at": 1793676232,
+      "fetched_at": 1794124006,
       "raw": {
         "main": 24.3,
         "extra": 42.8,
         "complete": 65.8
       },
-      "n_comp": 766,
-      "comp_grew": true
+      "n_comp": 766
     },
     "4175650": {
       "main": null,
@@ -1805500,14 +1805459,13 @@
       "complete": 3.5,
       "avg": 2.0,
       "match": "Sheepy: A Short Adventure",
-      "fetched_at": 1793676537,
+      "fetched_at": 1794124218,
       "raw": {
         "main": 1.1,
         "extra": 1.5,
         "complete": 3.5
       },
-      "n_comp": 564,
-      "comp_grew": true
+      "n_comp": 564
     },
     "2335510": {
       "main": null,
@@ -1831827,7 +1831785,7 @@
       "complete": 74.0,
       "avg": 33.4,
       "match": "Crab Champions",
-      "fetched_at": 1793676224,
+      "fetched_at": 1794124002,
       "raw": {
         "main": 3.8,
         "extra": 22.3,
@@ -1843826,7 +1843784,7 @@
       "complete": 18.6,
       "avg": 10.7,
       "match": "Rhythm Doctor",
-      "fetched_at": 1793676415,
+      "fetched_at": 1794124134,
       "raw": {
         "main": 4.4,
         "extra": 9.2,
@@ -1869346,7 +1869304,7 @@
       "complete": 0.7,
       "avg": 0.5,
       "match": "Cats & Seek: Toge Land",
-      "fetched_at": 1793243766,
+      "fetched_at": 1794124394,
       "raw": {
         "main": 0.3,
         "extra": 0.5,
@@ -1914701,17 +1914659,17 @@
     },
     "2288340": {
       "main": 18.5,
-      "extra": 24.1,
-      "complete": 38.6,
-      "avg": 27.1,
+      "extra": 24.2,
+      "complete": 41.3,
+      "avg": 28.0,
       "match": "Ace Combat 8: Wings of Theve",
-      "fetched_at": 1793676564,
+      "fetched_at": 1794124238,
       "raw": {
         "main": 18.5,
-        "extra": 24.1,
-        "complete": 38.6
+        "extra": 24.2,
+        "complete": 41.3
       },
-      "n_comp": 195,
+      "n_comp": 209,
       "comp_grew": true
     },
     "2407780": {
@@ -1930404,7 +1930362,7 @@
       "complete": 11.9,
       "avg": 10.8,
       "match": "Wandersong",
-      "fetched_at": 1793676727,
+      "fetched_at": 1794124374,
       "raw": {
         "main": 9.4,
         "extra": 11.2,
@@ -1930432,13 +1930390,14 @@
       "complete": 2.6,
       "avg": 2.2,
       "match": "Gorogoa",
-      "fetched_at": 1793676699,
+      "fetched_at": 1794124353,
       "raw": {
         "main": 1.8,
         "extra": 2.1,
         "complete": 2.6
       },
-      "n_comp": 3073
+      "n_comp": 3077,
+      "comp_grew": true
     },
     "557630": {
       "main": 3.0,
@@ -1931249,7 +1931208,7 @@
       "complete": 32.8,
       "avg": 25.3,
       "match": "Steins;Gate 0",
-      "fetched_at": 1793676710,
+      "fetched_at": 1794124363,
       "raw": {
         "main": 14.5,
         "extra": 28.5,
@@ -1931277,7 +1931236,7 @@
       "complete": 15.7,
       "avg": 10.4,
       "match": "Hypnospace Outlaw",
-      "fetched_at": 1793676718,
+      "fetched_at": 1794124367,
       "raw": {
         "main": 5.9,
         "extra": 9.7,
@@ -1931291,7 +1931250,7 @@
       "complete": 3.6,
       "avg": 3.2,
       "match": "Fox Hime Zero",
-      "fetched_at": 1793676716,
+      "fetched_at": 1794124366,
       "raw": {
         "main": 2.9,
         "extra": 3.0,
@@ -1931763,7 +1931722,7 @@
       "complete": 4.2,
       "avg": 3.7,
       "match": "Fluffy Store",
-      "fetched_at": 1793676728,
+      "fetched_at": 1794124375,
       "raw": {
         "main": 3.3,
         "extra": 3.7,
@@ -1931777,7 +1931736,7 @@
       "complete": 1.7,
       "avg": 1.6,
       "match": "Spring Falls",
-      "fetched_at": 1793676747,
+      "fetched_at": 1794124390,
       "raw": {
         "main": 1.4,
         "extra": 1.6,
@@ -1932190,13 +1932149,13 @@
       "complete": 88.8,
       "avg": 34.0,
       "match": "Monster Prom 2: Monster Camp",
-      "fetched_at": 1793676713,
+      "fetched_at": 1794124365,
       "raw": {
         "main": 1.5,
         "extra": 11.6,
         "complete": 88.8
       },
-      "n_comp": 220
+      "n_comp": 221
     },
     "1144400": {
       "main": null,
@@ -1932690,13 +1932649,13 @@
       "complete": 6.2,
       "avg": 5.6,
       "match": "There Is No Game: Wrong Dimension",
-      "fetched_at": 1793676462,
+      "fetched_at": 1794124167,
       "raw": {
         "main": 5.0,
         "extra": 5.6,
         "complete": 6.2
       },
-      "n_comp": 1576
+      "n_comp": 1577
     },
     "1241510": {
       "main": 0.5,
@@ -1932704,7 +1932663,7 @@
       "complete": 0.5,
       "avg": 0.5,
       "match": "The Test",
-      "fetched_at": 1793676700,
+      "fetched_at": 1794124355,
       "raw": {
         "main": 0.5,
         "extra": 0.6,
@@ -1933115,7 +1933074,7 @@
       "complete": 48.0,
       "avg": 38.7,
       "match": "Dracu-Riot!",
-      "fetched_at": 1793676745,
+      "fetched_at": 1794124387,
       "raw": {
         "main": 33.0,
         "extra": 35.0,
@@ -1933143,7 +1933102,7 @@
       "complete": 4.1,
       "avg": 3.1,
       "match": "It Steals",
-      "fetched_at": 1793676732,
+      "fetched_at": 1794124378,
       "raw": {
         "main": 1.9,
         "extra": 3.3,
@@ -1933590,7 +1933549,7 @@
       "complete": 0.6,
       "avg": 0.4,
       "match": "Mitoza",
-      "fetched_at": 1793676725,
+      "fetched_at": 1794124373,
       "raw": {
         "main": 0.3,
         "extra": 0.4,
@@ -1933621,7 +1933580,7 @@
       "complete": 16.7,
       "avg": 12.1,
       "match": "Supraland: Six Inches Under",
-      "fetched_at": 1793676721,
+      "fetched_at": 1794124370,
       "raw": {
         "main": 8.2,
         "extra": 11.3,
@@ -1934503,7 +1934462,7 @@
       "complete": 2.7,
       "avg": 2.0,
       "match": "Zodiacats",
-      "fetched_at": 1793676741,
+      "fetched_at": 1794124384,
       "raw": {
         "main": 1.1,
         "extra": 2.1,
@@ -1934949,7 +1934908,7 @@
       "complete": 1.7,
       "avg": 1.5,
       "match": "Save Room - Organization Puzzle",
-      "fetched_at": 1793676731,
+      "fetched_at": 1794124377,
       "raw": {
         "main": 1.4,
         "extra": 1.5,
@@ -1935845,13 +1935804,13 @@
       "complete": 1.8,
       "avg": 1.2,
       "match": "BABBDI",
-      "fetched_at": 1793676706,
+      "fetched_at": 1794124360,
       "raw": {
         "main": 0.7,
         "extra": 1.1,
         "complete": 1.8
       },
-      "n_comp": 312
+      "n_comp": 314
     },
     "2250060": {
       "main": 0.7,
@@ -1935859,7 +1935818,7 @@
       "complete": 1.0,
       "avg": 0.9,
       "match": "I commissioned some bees 0",
-      "fetched_at": 1793676720,
+      "fetched_at": 1794124369,
       "raw": {
         "main": 0.7,
         "extra": 0.9,
@@ -1936335,13 +1936294,13 @@
       "complete": 7.6,
       "avg": 6.5,
       "match": "Pseudoregalia",
-      "fetched_at": 1793676702,
+      "fetched_at": 1794124357,
       "raw": {
         "main": 5.3,
         "extra": 6.7,
         "complete": 7.6
       },
-      "n_comp": 847
+      "n_comp": 849
     },
     "2366970": {
       "main": 11.6,
@@ -1936349,7 +1936308,7 @@
       "complete": 15.7,
       "avg": 13.4,
       "match": "Arco",
-      "fetched_at": 1793676735,
+      "fetched_at": 1794124379,
       "raw": {
         "main": 11.6,
         "extra": 12.9,
@@ -1937221,7 +1937180,7 @@
       "complete": 1.6,
       "avg": 1.1,
       "match": "A Park Full of Cats",
-      "fetched_at": 1793676738,
+      "fetched_at": 1794124381,
       "raw": {
         "main": 0.8,
         "extra": 0.9,
@@ -1937660,14 +1937619,13 @@
       "complete": 3.1,
       "avg": 2.7,
       "match": "Arctic Eggs",
-      "fetched_at": 1793676712,
+      "fetched_at": 1794124364,
       "raw": {
         "main": 2.4,
         "extra": 2.7,
         "complete": 3.1
       },
-      "n_comp": 431,
-      "comp_grew": true
+      "n_comp": 431
     },
     "2768430": {
       "main": 7.1,
@@ -1937675,13 +1937633,13 @@
       "complete": 21.4,
       "avg": 14.3,
       "match": "ATLYSS",
-      "fetched_at": 1793676605,
+      "fetched_at": 1794124272,
       "raw": {
         "main": 7.1,
         "extra": 14.4,
         "complete": 21.4
       },
-      "n_comp": 77
+      "n_comp": 79
     },
     "2771670": {
       "main": 1.1,
@@ -1938945,7 +1938903,7 @@
       "complete": 11.8,
       "avg": 5.3,
       "match": "PUMPKIN PANIC",
-      "fetched_at": 1793676723,
+      "fetched_at": 1794124372,
       "raw": {
         "main": 2.0,
         "extra": 2.1,
@@ -1940313,7 +1940271,7 @@
       "complete": 3.4,
       "avg": 3.3,
       "match": "Catgirl",
-      "fetched_at": 1793676740,
+      "fetched_at": 1794124382,
       "raw": {
         "main": 3.0,
         "extra": 3.5,
@@ -1940794,7 +1940752,7 @@
       "complete": 1.0,
       "avg": 0.9,
       "match": "Ye Guild Clerk!",
-      "fetched_at": 1793676736,
+      "fetched_at": 1794124380,
       "raw": {
         "main": 0.6,
         "extra": 1.0,
@@ -1942337,14 +1942295,13 @@
       "complete": 12.8,
       "avg": 7.8,
       "match": "Toy Story 3: The Video Game",
-      "fetched_at": 1793677022,
+      "fetched_at": 1794124407,
       "raw": {
         "main": 4.2,
         "extra": 6.4,
         "complete": 12.8
       },
-      "n_comp": 804,
-      "comp_grew": true
+      "n_comp": 804
     },
     "4052150": {
       "main": null,
@@ -1994702,13 +1994659,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101600,
+      "fetched_at": 1794124561,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "1825840": {
       "main": null,
@@ -1994716,13 +1994673,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101602,
+      "fetched_at": 1794124562,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3293060": {
       "main": null,
@@ -1994730,13 +1994687,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101603,
+      "fetched_at": 1794124563,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3443330": {
       "main": null,
@@ -1994744,13 +1994701,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101605,
+      "fetched_at": 1794124564,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3529660": {
       "main": null,
@@ -1994758,13 +1994715,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101609,
+      "fetched_at": 1794124567,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3609100": {
       "main": null,
@@ -1994772,13 +1994729,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101610,
+      "fetched_at": 1794124569,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3725550": {
       "main": null,
@@ -1994786,13 +1994743,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101612,
+      "fetched_at": 1794124570,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3827390": {
       "main": null,
@@ -1994800,13 +1994757,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101617,
+      "fetched_at": 1794124574,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "3873760": {
       "main": 2.5,
@@ -1994832,13 +1994789,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101619,
+      "fetched_at": 1794124576,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4111040": {
       "main": null,
@@ -1994846,13 +1994803,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101622,
+      "fetched_at": 1794124579,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4159290": {
       "main": null,
@@ -1994860,13 +1994817,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101624,
+      "fetched_at": 1794124580,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4159350": {
       "main": null,
@@ -1994874,13 +1994831,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101625,
+      "fetched_at": 1794124582,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4183850": {
       "main": null,
@@ -1994888,13 +1994845,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101627,
+      "fetched_at": 1794124583,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4248190": {
       "main": null,
@@ -1994902,13 +1994859,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101629,
+      "fetched_at": 1794124585,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4297470": {
       "main": null,
@@ -1994916,13 +1994873,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101631,
+      "fetched_at": 1794124586,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4346220": {
       "main": null,
@@ -1994930,13 +1994887,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101633,
+      "fetched_at": 1794124588,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4454690": {
       "main": null,
@@ -1994944,13 +1994901,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101634,
+      "fetched_at": 1794124589,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4463730": {
       "main": null,
@@ -1994958,13 +1994915,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101637,
+      "fetched_at": 1794124592,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4536940": {
       "main": null,
@@ -1994972,13 +1994929,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101639,
+      "fetched_at": 1794124593,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4591470": {
       "main": 13.2,
@@ -1995000,13 +1994957,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101640,
+      "fetched_at": 1794124595,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4653110": {
       "main": null,
@@ -1995014,13 +1994971,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101641,
+      "fetched_at": 1794124596,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4658010": {
       "main": null,
@@ -1995028,13 +1994985,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101643,
+      "fetched_at": 1794124598,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4672440": {
       "main": null,
@@ -1995042,13 +1994999,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101646,
+      "fetched_at": 1794124601,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4673450": {
       "main": null,
@@ -1995056,13 +1995013,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101648,
+      "fetched_at": 1794124602,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4685680": {
       "main": null,
@@ -1995070,13 +1995027,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101650,
+      "fetched_at": 1794124603,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4726670": {
       "main": null,
@@ -1995084,13 +1995041,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101653,
+      "fetched_at": 1794124606,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4733300": {
       "main": null,
@@ -1995098,13 +1995055,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101655,
+      "fetched_at": 1794124608,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4735200": {
       "main": null,
@@ -1995112,13 +1995069,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101660,
+      "fetched_at": 1794124611,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4786300": {
       "main": null,
@@ -1995126,13 +1995083,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101662,
+      "fetched_at": 1794124612,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4808350": {
       "main": null,
@@ -1995140,13 +1995097,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101664,
+      "fetched_at": 1794124613,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4809600": {
       "main": null,
@@ -1995154,13 +1995111,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101666,
+      "fetched_at": 1794124614,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4818140": {
       "main": null,
@@ -1995168,13 +1995125,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101667,
+      "fetched_at": 1794124615,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4834460": {
       "main": null,
@@ -1995182,13 +1995139,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101669,
+      "fetched_at": 1794124616,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4864920": {
       "main": null,
@@ -1995196,13 +1995153,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101671,
+      "fetched_at": 1794124617,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4869510": {
       "main": null,
@@ -1995210,13 +1995167,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101673,
+      "fetched_at": 1794124618,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4877750": {
       "main": null,
@@ -1995224,13 +1995181,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101674,
+      "fetched_at": 1794124619,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4891560": {
       "main": null,
@@ -1995238,13 +1995195,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101676,
+      "fetched_at": 1794124620,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4897630": {
       "main": null,
@@ -1995252,13 +1995209,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101677,
+      "fetched_at": 1794124621,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4909100": {
       "main": null,
@@ -1995266,13 +1995223,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101679,
+      "fetched_at": 1794124622,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4956770": {
       "main": null,
@@ -1995280,13 +1995237,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101681,
+      "fetched_at": 1794124623,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4959560": {
       "main": null,
@@ -1995294,28 +1995251,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101683,
+      "fetched_at": 1794124624,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4971330": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "Depth Charge / Marksman",
-      "fetched_at": 1794101684,
+      "match": null,
+      "fetched_at": 1794124625,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 5
+      "attempts": 6
     },
     "4986470": {
       "main": null,
@@ -1995323,13 +1995280,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101686,
+      "fetched_at": 1794124627,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4990890": {
       "main": null,
@@ -1995337,13 +1995294,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101687,
+      "fetched_at": 1794124628,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "4995060": {
       "main": null,
@@ -1995351,13 +1995308,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101689,
+      "fetched_at": 1794124630,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5001990": {
       "main": null,
@@ -1995365,13 +1995322,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101693,
+      "fetched_at": 1794124632,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5005640": {
       "main": null,
@@ -1995379,13 +1995336,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101696,
+      "fetched_at": 1794124635,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5047920": {
       "main": null,
@@ -1995393,13 +1995350,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101697,
+      "fetched_at": 1794124637,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5055990": {
       "main": null,
@@ -1995407,13 +1995364,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101699,
+      "fetched_at": 1794124638,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5064060": {
       "main": null,
@@ -1995421,13 +1995378,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101700,
+      "fetched_at": 1794124640,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5074010": {
       "main": 0.2,
@@ -1995453,13 +1995410,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101701,
+      "fetched_at": 1794124641,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5116760": {
       "main": null,
@@ -1995467,13 +1995424,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101703,
+      "fetched_at": 1794124643,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5118920": {
       "main": null,
@@ -1995481,13 +1995438,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101704,
+      "fetched_at": 1794124644,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5139320": {
       "main": null,
@@ -1995495,13 +1995452,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101706,
+      "fetched_at": 1794124646,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5150470": {
       "main": null,
@@ -1995509,13 +1995466,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101708,
+      "fetched_at": 1794124647,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5174990": {
       "main": null,
@@ -1995523,13 +1995480,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101711,
+      "fetched_at": 1794124650,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5208460": {
       "main": null,
@@ -1995537,13 +1995494,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101713,
+      "fetched_at": 1794124652,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5217960": {
       "main": null,
@@ -1995551,13 +1995508,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101715,
+      "fetched_at": 1794124653,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5221200": {
       "main": null,
@@ -1995565,13 +1995522,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101716,
+      "fetched_at": 1794124654,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5236160": {
       "main": null,
@@ -1995579,13 +1995536,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101720,
+      "fetched_at": 1794124657,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5268180": {
       "main": null,
@@ -1995593,13 +1995550,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101722,
+      "fetched_at": 1794124658,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5338650": {
       "main": null,
@@ -1995607,13 +1995564,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101724,
+      "fetched_at": 1794124660,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5365100": {
       "main": null,
@@ -1995621,13 +1995578,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101727,
+      "fetched_at": 1794124663,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5423390": {
       "main": null,
@@ -1995635,13 +1995592,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101729,
+      "fetched_at": 1794124664,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5456600": {
       "main": null,
@@ -1995649,13 +1995606,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101733,
+      "fetched_at": 1794124667,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5459680": {
       "main": null,
@@ -1995663,28 +1995620,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101734,
+      "fetched_at": 1794124669,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5464570": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "RoBoRumble",
-      "fetched_at": 1794101738,
+      "match": null,
+      "fetched_at": 1794124671,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 16,
-      "attempts": 5
+      "attempts": 6
     },
     "5483650": {
       "main": null,
@@ -1995692,13 +1995649,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101739,
+      "fetched_at": 1794124672,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "5485270": {
       "main": null,
@@ -1995706,13 +1995663,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101741,
+      "fetched_at": 1794124673,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 5
+      "attempts": 6
     },
     "2210880": {
       "main": null,
@@ -1995720,13 +1995677,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101498,
+      "fetched_at": 1794124483,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2763970": {
       "main": null,
@@ -1995734,13 +1995691,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101500,
+      "fetched_at": 1794124484,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2953170": {
       "main": null,
@@ -1995748,28 +1995705,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101501,
+      "fetched_at": 1794124486,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3372990": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "The Backrooms",
-      "fetched_at": 1794101505,
+      "match": null,
+      "fetched_at": 1794124488,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "3435580": {
       "main": null,
@@ -1995777,13 +1995734,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101508,
+      "fetched_at": 1794124490,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3449210": {
       "main": null,
@@ -1995791,13 +1995748,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101510,
+      "fetched_at": 1794124491,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3480840": {
       "main": null,
@@ -1995805,13 +1995762,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101513,
+      "fetched_at": 1794124493,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3809360": {
       "main": null,
@@ -1995819,13 +1995776,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101515,
+      "fetched_at": 1794124500,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3883480": {
       "main": null,
@@ -1995833,13 +1995790,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101516,
+      "fetched_at": 1794124501,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "3914830": {
       "main": null,
@@ -1995847,13 +1995804,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101517,
+      "fetched_at": 1794124502,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4381150": {
       "main": null,
@@ -1995861,14 +1995818,14 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101519,
+      "fetched_at": 1794124503,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "4391570": {
       "main": 6.9,
@@ -1995893,13 +1995850,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101520,
+      "fetched_at": 1794124505,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4795820": {
       "main": null,
@@ -1995907,13 +1995864,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101521,
+      "fetched_at": 1794124506,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4835870": {
       "main": null,
@@ -1995921,13 +1995878,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101523,
+      "fetched_at": 1794124508,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4907430": {
       "main": null,
@@ -1995935,13 +1995892,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101525,
+      "fetched_at": 1794124509,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4911350": {
       "main": null,
@@ -1995949,13 +1995906,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101526,
+      "fetched_at": 1794124511,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4925930": {
       "main": null,
@@ -1995963,13 +1995920,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101528,
+      "fetched_at": 1794124512,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "4976270": {
       "main": null,
@@ -1995977,13 +1995934,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101530,
+      "fetched_at": 1794124514,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5020910": {
       "main": null,
@@ -1995991,13 +1995948,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101532,
+      "fetched_at": 1794124515,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5184450": {
       "main": null,
@@ -1996005,13 +1995962,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101534,
+      "fetched_at": 1794124517,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5230360": {
       "main": null,
@@ -1996019,13 +1995976,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101535,
+      "fetched_at": 1794124518,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5231690": {
       "main": null,
@@ -1996033,13 +1995990,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101537,
+      "fetched_at": 1794124520,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5246960": {
       "main": null,
@@ -1996047,14 +1996004,14 @@
       "complete": null,
       "avg": null,
       "match": "Journey to the West",
-      "fetched_at": 1794101541,
+      "fetched_at": 1794124523,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 4
+      "attempts": 5
     },
     "5250630": {
       "main": null,
@@ -1996062,13 +1996019,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101552,
+      "fetched_at": 1794124524,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5272550": {
       "main": null,
@@ -1996076,13 +1996033,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101554,
+      "fetched_at": 1794124525,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5282000": {
       "main": null,
@@ -1996090,13 +1996047,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101556,
+      "fetched_at": 1794124527,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5324450": {
       "main": null,
@@ -1996104,13 +1996061,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101557,
+      "fetched_at": 1794124529,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5326140": {
       "main": null,
@@ -1996118,13 +1996075,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101559,
+      "fetched_at": 1794124530,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5338830": {
       "main": null,
@@ -1996132,13 +1996089,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101563,
+      "fetched_at": 1794124533,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5339950": {
       "main": null,
@@ -1996146,13 +1996103,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101566,
+      "fetched_at": 1794124537,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5352150": {
       "main": null,
@@ -1996160,13 +1996117,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101568,
+      "fetched_at": 1794124538,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5356730": {
       "main": null,
@@ -1996174,13 +1996131,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101569,
+      "fetched_at": 1794124540,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5393000": {
       "main": null,
@@ -1996188,13 +1996145,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101571,
+      "fetched_at": 1794124541,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5423940": {
       "main": null,
@@ -1996202,13 +1996159,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101575,
+      "fetched_at": 1794124544,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5429880": {
       "main": null,
@@ -1996216,13 +1996173,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101576,
+      "fetched_at": 1794124546,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5433690": {
       "main": null,
@@ -1996230,13 +1996187,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101578,
+      "fetched_at": 1794124547,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5441740": {
       "main": null,
@@ -1996244,13 +1996201,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101580,
+      "fetched_at": 1794124549,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5444960": {
       "main": null,
@@ -1996258,13 +1996215,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101581,
+      "fetched_at": 1794124550,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5445910": {
       "main": null,
@@ -1996272,13 +1996229,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101583,
+      "fetched_at": 1794124551,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5446410": {
       "main": null,
@@ -1996286,13 +1996243,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101585,
+      "fetched_at": 1794124552,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5451370": {
       "main": null,
@@ -1996300,13 +1996257,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101587,
+      "fetched_at": 1794124553,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5452650": {
       "main": null,
@@ -1996314,13 +1996271,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101588,
+      "fetched_at": 1794124554,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5463420": {
       "main": 16.2,
@@ -1996342,13 +1996299,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101590,
+      "fetched_at": 1794124555,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5475680": {
       "main": null,
@@ -1996356,13 +1996313,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101591,
+      "fetched_at": 1794124556,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5478090": {
       "main": null,
@@ -1996370,13 +1996327,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101593,
+      "fetched_at": 1794124557,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5481550": {
       "main": 3.2,
@@ -1996398,13 +1996355,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101595,
+      "fetched_at": 1794124558,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5484860": {
       "main": null,
@@ -1996412,13 +1996369,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101596,
+      "fetched_at": 1794124559,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "5486310": {
       "main": null,
@@ -1996426,13 +1996383,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101599,
+      "fetched_at": 1794124560,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 4
+      "attempts": 5
     },
     "2948120": {
       "main": null,
@@ -1996440,13 +1996397,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101432,
+      "fetched_at": 1794124433,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "3548510": {
       "main": 0.8,
@@ -1996472,13 +1996429,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101434,
+      "fetched_at": 1794124434,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4541310": {
       "main": null,
@@ -1996486,28 +1996443,28 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101436,
+      "fetched_at": 1794124435,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4626180": {
       "main": null,
       "extra": null,
       "complete": null,
       "avg": null,
-      "match": "INTERNS",
-      "fetched_at": 1794101437,
+      "match": null,
+      "fetched_at": 1794124437,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 0,
-      "attempts": 2
+      "attempts": 3
     },
     "4631810": {
       "main": null,
@@ -1996515,13 +1996472,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101439,
+      "fetched_at": 1794124438,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4640760": {
       "main": null,
@@ -1996529,13 +1996486,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101441,
+      "fetched_at": 1794124439,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4688280": {
       "main": null,
@@ -1996543,13 +1996500,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101442,
+      "fetched_at": 1794124440,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4737870": {
       "main": null,
@@ -1996557,13 +1996514,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101446,
+      "fetched_at": 1794124442,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4832540": {
       "main": null,
@@ -1996571,13 +1996528,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101447,
+      "fetched_at": 1794124443,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "4873800": {
       "main": null,
@@ -1996585,13 +1996542,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101449,
+      "fetched_at": 1794124445,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5105000": {
       "main": null,
@@ -1996599,13 +1996556,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101452,
+      "fetched_at": 1794124448,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5138130": {
       "main": null,
@@ -1996613,13 +1996570,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101453,
+      "fetched_at": 1794124449,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5150150": {
       "main": null,
@@ -1996627,13 +1996584,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101454,
+      "fetched_at": 1794124451,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5218890": {
       "main": null,
@@ -1996641,13 +1996598,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101456,
+      "fetched_at": 1794124452,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5220950": {
       "main": null,
@@ -1996655,13 +1996612,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101465,
+      "fetched_at": 1794124455,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5252470": {
       "main": null,
@@ -1996669,13 +1996626,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101467,
+      "fetched_at": 1794124457,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5273050": {
       "main": null,
@@ -1996683,13 +1996640,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101469,
+      "fetched_at": 1794124458,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5289710": {
       "main": null,
@@ -1996697,14 +1996654,14 @@
       "complete": null,
       "avg": null,
       "match": "AltspaceVR",
-      "fetched_at": 1794101471,
+      "fetched_at": 1794124459,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 10,
-      "attempts": 2
+      "attempts": 3
     },
     "5307510": {
       "main": null,
@@ -1996712,13 +1996669,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101472,
+      "fetched_at": 1794124461,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5308680": {
       "main": null,
@@ -1996726,13 +1996683,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101474,
+      "fetched_at": 1794124462,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5325220": {
       "main": null,
@@ -1996740,13 +1996697,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101478,
+      "fetched_at": 1794124465,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5399970": {
       "main": null,
@@ -1996754,13 +1996711,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101481,
+      "fetched_at": 1794124468,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5402520": {
       "main": null,
@@ -1996768,13 +1996725,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101483,
+      "fetched_at": 1794124470,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5405270": {
       "main": null,
@@ -1996782,13 +1996739,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101485,
+      "fetched_at": 1794124471,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5421210": {
       "main": null,
@@ -1996796,13 +1996753,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101486,
+      "fetched_at": 1794124473,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5435190": {
       "main": null,
@@ -1996810,13 +1996767,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101488,
+      "fetched_at": 1794124474,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5444410": {
       "main": null,
@@ -1996824,14 +1996781,14 @@
       "complete": null,
       "avg": null,
       "match": "Humiliation Dungeon Survivors",
-      "fetched_at": 1794101490,
+      "fetched_at": 1794124476,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
       "n_comp": 1,
-      "attempts": 2
+      "attempts": 3
     },
     "5471310": {
       "main": null,
@@ -1996839,13 +1996796,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101492,
+      "fetched_at": 1794124477,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5472000": {
       "main": null,
@@ -1996853,13 +1996810,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101493,
+      "fetched_at": 1794124478,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5472270": {
       "main": null,
@@ -1996867,13 +1996824,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101495,
+      "fetched_at": 1794124480,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "5477320": {
       "main": null,
@@ -1996881,13 +1996838,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794101497,
+      "fetched_at": 1794124481,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 2
+      "attempts": 3
     },
     "3681220": {
       "main": null,
@@ -1996895,13 +1996852,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120325,
+      "fetched_at": 1794124416,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4189160": {
       "main": null,
@@ -1996909,13 +1996866,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120326,
+      "fetched_at": 1794124417,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4763220": {
       "main": null,
@@ -1996923,13 +1996880,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120330,
+      "fetched_at": 1794124420,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "4982580": {
       "main": null,
@@ -1996937,13 +1996894,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120331,
+      "fetched_at": 1794124421,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5201710": {
       "main": null,
@@ -1996951,13 +1996908,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120335,
+      "fetched_at": 1794124424,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5289190": {
       "main": null,
@@ -1996965,13 +1996922,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120339,
+      "fetched_at": 1794124428,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5335100": {
       "main": null,
@@ -1996979,13 +1996936,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120341,
+      "fetched_at": 1794124429,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5371810": {
       "main": null,
@@ -1996993,13 +1996950,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120343,
+      "fetched_at": 1794124430,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5381260": {
       "main": null,
@@ -1997007,13 +1996964,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120344,
+      "fetched_at": 1794124431,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     },
     "5481740": {
       "main": null,
@@ -1997021,13 +1996978,13 @@
       "complete": null,
       "avg": null,
       "match": null,
-      "fetched_at": 1794120346,
+      "fetched_at": 1794124432,
       "raw": {
         "main": null,
         "extra": null,
         "complete": null
       },
-      "attempts": 1
+      "attempts": 2
     }
   }
 }
