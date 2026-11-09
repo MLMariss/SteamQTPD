@@ -2463,14 +2463,17 @@ opposite questions. The row wraps to two lines below ~2000px wide.
   mmorpg,massively+multiplayer,free+to+play`. Their Length is enormous — the people who
   recommend an MMO or an idler have played it for hundreds of hours (it was the same under HLTB:
   EVE Online's "main" was 1,777 h) — so divided by a small price they top every value ranking. Excluded from the
-  **length shelves**, and (idlers only, for *No AI*) from the two **Flags shelves** below, which sort by QTPD over a broad
-  band where an idler opens the list (Cookie Clicker did, on the first cut of *No AI*). They are
-  legitimate results everywhere else.
+  **length shelves**, and (idlers only, for *No AI*) from the two **Flags shelves** below, which run over a broad
+  band where an idler opens a QTPD sort (Cookie Clicker did, on the first cut of *No AI*, which sorted by QTPD
+  until 2026-11-09). They are legitimate results everywhere else.
 - **The Flags shelves (2026-11-02).** *No AI, no strings* goes **first** (owner's call): no AI
   disclosure (`ai=hide`) and `noflags=ea,eula,fse,iap,drm,acct` — finished, no publisher EULA,
-  no family-share block, no in-app purchases, no 3rd-party DRM or account notice — at 80%+ / 5k+.
-  Its `exc=` is its own shorter list (`NO_IDLE`: idlers and free-to-play): the owner let MMOs
-  back onto it from the live page, the same day `drm` / `acct` were added. `presets.py` reads
+  no family-share block, no in-app purchases, no 3rd-party DRM or account notice — at 80%+ / 1k+,
+  **newest release first** (`sort=release_ts`). Its `exc=` is its own shorter list (`NO_IDLE`:
+  idlers only): the owner let MMOs back onto it from the live page, the same day `drm` / `acct`
+  were added, and on 2026-11-09 retuned it from the live page again — 5k+ → 1k+, free-to-play
+  back in (a free game with no in-app purchases is the "no strings" the shelf promises;
+  `noflags=iap` already keeps out the ones that sell things), QTPD → Released ↓. `presets.py` reads
   `exc=` straight off each query, so a shelf with its own list is measured as the page runs it. On its own `ai=hide` moved only 55
   of 2,442 popular games, so the bundle is what makes it a shelf; the EULA rule alone drops
   about a third of popular games, much of AAA, and that was chosen knowingly. The label says
@@ -2834,6 +2837,20 @@ is reached on mobile (§3.4 L2, R5, R6). The `.bar-tools` cluster holds the **vi
 (Table · Card · Grid) and **`Lucky`** (random pick from the filtered set, shown only once a
 filter is active), **`CSV`** (column-picker export of the whole filtered set) and **`🔗`**
 (copy the current state URL).
+
+**The landing view's defaults are on the summary line (2026-11-09, owner).** Min reviews 100+,
+Adult content *Exclude* and *Released* only each get a chip while they are at their default —
+`reviews: 100/1k/5k+`, `no adult`, `released only`, the same text the chip carries when a user
+picks that setting — so the line answers "why is this not all 136k games" and each default is one
+click from its popover. They are **muted** (`.sumf.plain.dflt`, the `sorted by` chip's look), not
+gold: gold means *changed from the default* on this page, and **Reset** and **Lucky** still key
+off changed filters only, so the landing view shows neither. A default chip is drawn only while
+that default is actually narrowing the list — a typed title search lifts all three
+(`searching()` / `adultMode()` / `releaseMode()`), Find similar and the Publisher filter lift the
+review floor only, Wishlist and a future-dated `year:` lift *Released*, and the review floor skips
+upcoming games, so its chip is dropped in the Upcoming view. A chip never names a filter that is
+not running. Once a default is changed, its chip turns gold in the same slot (`renderSummary()`,
+`DEFAULT_TIPS`).
 
 The **QTPD logo wordmark doubles as a filter toggle** — clicking it opens/closes the whole
 filter nav (identical to the "Show / Hide filters" collapse handle, which stays). The logo is a
@@ -3767,6 +3784,14 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Defaults named on the summary line; No AI shelf retuned (9 Nov 2026).** From the owner's
+  annotated screenshot. The collapsed bar's "Showing …" line now carries muted chips for the
+  three landing-view defaults — `reviews: 100/1k/5k+`, `released only`, `no adult` — so it is
+  clear why the list is not every game, and each opens its popover to change it. Hidden while a
+  search lifts that default; Reset still appears only for changes. *No AI, no strings* is now
+  1k+ reviews (was 5k+), lets free-to-play back in, and sorts newest release first: ~4,090 games
+  (was ~1,200). §11 *Preset shelves*, *The landing view's defaults are on the summary line*.
 
 - **Filter panel tiles, a year picker, Tag match (3 Nov 2026).** From the owner's annotated
   screenshot. Every filter control is one height (38px) and rows align tops, so labels share a
