@@ -4704,19 +4704,22 @@ formula, a threshold or a default changes, update the explainer page too.
 - **Main heading.** The tagline is the page's `<h1>`: "Steam games ranked by quality time per
   dollar". On narrow screens the lead-in drops to its own small line (`.tl-pre`) instead of
   being hidden, so no heading text is CSS-hidden on the phone view Google indexes.
-- **Ways to use QTPD** (`<details id="ways-to-use">`, directly under the top bar, closed by
-  default). Ten groups, a heading and one sentence each, for the secondary searches QTPD really
-  serves (sale deals, Steam Deck, wishlist, no microtransactions/Denuvo, long/short, hidden gems,
-  free, upcoming/demos, co-op/similar, random pick). Each heading links to a filtered view. It is
-  the **only** full copy: the explainer links to `./#ways-to-use` and does not repeat it, and the
+- **Help menu and Ways to use QTPD** (`<details class="help-menu" id="ways-to-use">`; its
+  `<summary>` is the `?` button, `#helpBtn`, after CSV and 🔗 in the header). Opened, it drops a
+  panel over the list: "How QTPD works →" (the link to the explainer, with the one-line "what is
+  QTPD" description that used to be the button's tooltip), then **Ways to use QTPD**: ten groups,
+  a heading and one sentence each, for the secondary searches QTPD really serves (sale deals,
+  Steam Deck, wishlist, no microtransactions/Denuvo, long/short, hidden gems, free,
+  upcoming/demos, co-op/similar, random pick). Each heading links to a filtered view. Shut, it
+  takes no space. It briefly was a row directly under the top bar and was moved into `?` the
+  same day because that row cost the list space (owner, 2026-11-06). It is the **only** full
+  copy: the explainer links to `./#ways-to-use` and does not repeat it, and the
   `mlmariss.github.io` homepage links there too, so keep the id. Static HTML folded only by the
-  native `<details>`; a few lines of script open it on `#ways-to-use` and turn the wishlist
+  native `<details>`, so crawlers that run no JavaScript read all of it. A few lines of script
+  open it on `#ways-to-use`, close it on an outside click or Escape, and turn the wishlist
   heading into "open the filter panel at the wishlist box". Every sentence was checked against
   the code on 2026-11-06; change it when the feature changes. `test_ways_to_use.py` holds it to
   that shape (and to `adult=hide`, below), and `pages.yml` runs it before every deploy.
-- **Help button** (`#helpBtn`, the `?` after CSV and 🔗 in the header): links to the explainer;
-  its tooltip carries the one-line "what is QTPD" description. That sentence was briefly a
-  visible row above the shelves and was moved here because it cost the list a row of space.
 - **Footer** (`.foot`): the plain-text description and formula (static on purpose, see the
   comment there), a link to the explainer, and the "Made by MLMariss · YouTube · Home" line.
 - **Structured data.** `index.html` declares a `WebApplication`; the explainer a `VideoObject`
