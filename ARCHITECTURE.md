@@ -102,6 +102,10 @@ the one layer fetched **lazily** — one shard per hovered game, never at load; 
 generated `.md` files are never served to the browser. Nor, since Sep 2026, is `hltb.json`
 (37 MB): HowLongToBeat is calibration input for `length_model.py` (§9.7) and nothing else —
 the page shows one review-based **Length** instead of HLTB's Main / +Extras / 100%.
+Since Nov 2026 `pages.yml` also leaves these out of the **published** site: `cp *.json` is followed
+by an exclude list (`*_state.json`, `hltb.json`, `hltb_igdb.json`, `catalog.json`,
+`reviews_restore.json`, `length_coefs.json`; ~82 MB), and the deploy's verify step fails if
+any page's `fetch(…)` / `loadLayer(…)` or quoted `*.md` name is missing from `_site`.
 
 ### 2.1 The trailer layer (`trailers.py` → `trailers.json`)
 
@@ -466,7 +470,11 @@ after the same tip-only fetch. So:
   writer imports `gitsync.py`, so every sparse list carries `/gitsync.py`; **`test_workflows.py`
   fails when a sparse list misses any local module a workflow's scripts import** (transitively,
   including function-level imports). Jobs that read most of the repo (coverage, freshness,
-  presets, length, playtime summaries, pages) stay full-tree, shallow.
+  presets, length, playtime summaries) stay full-tree, shallow.
+- **The Pages deploy is sparse in cone mode** (Nov 2026): every root file plus `lookups/` and
+  `shots/`, the two served subdirectories, ~430 MB of the ~2.3 GB tree. Full-tree, its checkout
+  took ~4.5 min of every deploy. A new served subdirectory goes in that list *and* in the
+  stage step's `cp -r` lines.
 - **Commits are 30 min apart** for the heavy writers (scraper, prices, hltb, tags, recent,
   trailers, shots, demos; most were 5–10 min). Every commit is a permanent new version of the
   file; this slows history growth, it doesn't shrink what is there. Pass-end commits (prices'
@@ -3784,6 +3792,16 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Faster, sturdier Pages deploys; review prompts published (9 Nov 2026).** Two merged PRs sat
+  off the live site after GitHub's `syncing_files` phase ran past `deploy-pages`' 10-min timeout
+  twice running (normally ~4 min), and each deploy also spent ~4.5 min checking out the 2.3 GB
+  tree. `pages.yml` now checks out sparse in cone mode (root files + `lookups/` + `shots/`),
+  publishes without the ~82 MB of JSON no page fetches, and gives `deploy-pages` 20 min. The
+  verify step now covers every page and `loadLayer()` (it had checked only `fetch()` in
+  `index.html`, so none of the core layers) and the prompts `index.html` loads; widened, it showed
+  the Review Digest's three `review_prompt*.md` files had never been published, so the live
+  digest ran on its inline fallback prompts. They are staged now. §2, §4 *Checkouts*.
 
 - **Defaults named on the summary line; No AI shelf retuned (9 Nov 2026).** From the owner's
   annotated screenshot. The collapsed bar's "Showing …" line now carries muted chips for the

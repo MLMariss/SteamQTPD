@@ -59,13 +59,26 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Shallow + sparse (ARCHITECTURE §4 "Checkouts"). The full tree is ~2.3 GB, most of it
+      # scraper input the site never serves (playtime_raw/ alone is 1.5 GB, then pics_raw/,
+      # pics/, updates_raw/), and fetching it took ~4.5 min of every deploy (2026-11-09).
+      # Cone mode, unlike the scraper jobs' explicit file lists: it always checks out every
+      # ROOT file (index.html, the *.json layers, the scripts below, the search files), plus
+      # the directories named here. With a sparse list, checkout is a partial clone, so blobs
+      # outside it are never downloaded.
+      # A NEW SERVED SUBDIRECTORY goes here AND in the stage step below.
       - uses: actions/checkout@v5
         with:
           ref: main
+          fetch-depth: 1
+          sparse-checkout-cone-mode: true
+          sparse-checkout: |
+            lookups
+            shots
 
       # Stage exactly what the browser fetches: index.html, the root data layers, and the
       # SUBDIRECTORIES it also reads. `cp *.json` copies root files only, so any served
-      # directory has to be named here explicitly.
+      # directory has to be named here explicitly (and in the sparse list above).
       #
       # This has bitten twice. `lookups/` (PICS id -> name decode maps, §9.6) was never
       # staged, so those ids silently failed to decode on the live site while working
@@ -83,6 +96,16 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp *.json _site/
+          # Root JSON no page fetches: scraper state and calibration inputs, committed to main for
+          # the jobs that read them. Publishing them added ~82 MB (about a fifth of the JSON) to
+          # every deploy for GitHub to sync, and that sync is the step that times out (2026-11-09).
+          # An exclude list, not an allow-list, so a new data layer still publishes by default;
+          # the verify step below fails the deploy if a page fetches a file named here.
+          rm -f _site/*_state.json _site/hltb.json _site/hltb_igdb.json _site/catalog.json \
+                _site/reviews_restore.json _site/length_coefs.json
+          # The Review Digest's prompts (§17), fetched on first open of the digest modal. They were
+          # never staged, so the live page fell back to its inline copies of them.
+          cp review_prompt*.md _site/
           cp -r lookups _site/
           cp -r shots _site/ 2>/dev/null || echo "note: shots/ absent (layer not populated yet)"
           # Search / sharing files. favicon.svg was never staged, so the live tab icon 404'd.
@@ -126,15 +149,25 @@ jobs:
       - name: Check the Ways to use QTPD section (adult=hide on every link)
         run: python3 test_ways_to_use.py
 
+      # Covers fetch("x.json") and loadLayer("x.json") on every page, plus the quoted *.md names
+      # index.html loads (the review prompts). Until 2026-11-09 it only matched fetch("…") in
+      # index.html, so it checked none of the core layers (games, prices, pics, lookups/… all go
+      # through loadLayer) and not the prompts, which were indeed missing.
       - name: Verify every path the frontend fetches is staged
         run: |
           missing=0
-          for p in $(grep -o 'fetch("[^"]*\.json"' index.html | sed 's/fetch("//; s/"//'); do
-            if [ ! -f "_site/$p" ]; then echo "MISSING from _site: $p"; missing=1; fi
+          for page in index.html stats.html monitor.html how-it-works.html; do
+            for p in $( { grep -oE '(fetch|loadLayer)\("[^"]*\.json"' "$page" | sed -E 's/^[a-zA-Z]+\("//'
+                          grep -oE '"[A-Za-z0-9_./-]+\.md"' "$page"; } | tr -d '"' | sort -u); do
+              if [ ! -f "_site/$p" ]; then echo "MISSING from _site: $p (loaded by $page)"; missing=1; fi
+            done
           done
-          # shots/ is fetched with a computed shard name, so check the directory itself.
-          if grep -q 'fetch(`shots/' index.html && [ -d shots ] && [ ! -d _site/shots ]; then
-            echo "MISSING from _site: shots/ (exists in repo but was not staged)"; missing=1
+          # shots/ is fetched with a computed shard name, so check the directory itself. Ask git,
+          # not the disk: with a sparse checkout, a directory left off the list is absent on disk
+          # too, and `[ -d shots ]` would wave it through.
+          if grep -q 'fetch(`shots/' index.html && git ls-tree -d --name-only HEAD shots | grep -q . \
+             && [ ! -d _site/shots ]; then
+            echo "MISSING from _site: shots/ (in the repo but not staged; in the sparse list?)"; missing=1
           fi
           if [ "$missing" = "1" ]; then
             echo "Refusing to publish a site with a data layer missing."; exit 1
@@ -150,8 +183,16 @@ jobs:
         with:
           path: _site
 
+      # 20 min, not the action's default 10. GitHub's "syncing_files" phase normally takes ~4 min
+      # for this site, but on 2026-11-09 it ran past 10 min twice in a row; the action then
+      # cancelled both deploys, and two merged PRs stayed off the live site. A slow sync is
+      # better finished than thrown away: the next deploy would sync the same files from scratch.
+      # Cost: a deploy that really hangs holds the one-at-a-time "pages" queue 10 min longer.
+      # (pages-watchdog.yml only clears deploys stuck in "waiting", never a running one.)
       - id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          timeout: 1200000
 
       # IndexNow: tells Bing (which also feeds Copilot and DuckDuckGo), Yandex, Seznam and Naver
       # that the pages changed, so they recrawl in hours instead of whenever. Google ignores it.
