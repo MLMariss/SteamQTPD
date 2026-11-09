@@ -6288,10 +6288,26 @@ const FLAG_SUM = [
                  text:{hide:"no adult", any:"adult included", only:"adult only"}},
 ].map(f => ({def:"any", ...f,
   sel: v => f.seg ? `[data-${f.seg}="${v}"]` : `[data-flag="${f.key}"][data-val="${v}"]`}));
+// The landing view's three defaults — Min reviews 100+, Adult content Exclude, Released only — are
+// named on the line too (owner, 2026-11-09), so it is clear why the list is not ALL games and each
+// can be clicked away. Muted, not gold: gold on this page means "you changed this", and Reset and
+// Lucky still key off changed filters alone. Each shows only while it is actually narrowing the
+// list: a typed search lifts all three (searching / adultMode / releaseMode), Find similar and the
+// Publisher filter lift the review floor alone, and the floor skips upcoming games — so a chip the
+// search has lifted disappears rather than claiming a filter that is not running. The text is the
+// same one the chip carries when a user picks that setting themselves.
+const DEFAULT_TIPS = {
+  rev:     "On by default: games with fewer than 100 reviews are hidden. A title search lifts it. Click to change.",
+  release: "On by default: released games only. A title search also shows upcoming ones. Click to change.",
+  adult:   "On by default: games the Steam store flags as adult are hidden. A title search lifts it. Click to change.",
+};
 function renderSummary(){
   const host = $("#filterSummary"); if(!host) return;
   const parts = [];
-  const chip = (key, text) => `<button class="sumf" data-sumf="${key}">${esc(text)}</button>`;
+  let changed = 0;                                         // chips for filters moved off their default
+  const chip = (key, text) => { changed++; return `<button class="sumf" data-sumf="${key}">${esc(text)}</button>`; };
+  const dchip = (key, text, tip) => `<button class="sumf plain dflt" data-sumf="${key}" title="${esc(tip)}">${esc(text)}</button>`;
+  const revText = () => { const t = [...state.revBands].sort((a,b)=>a-b).map(i => REV_LBLS[i]).join("/"); return state.revBands.size ? `reviews: ${t}` : "reviews: none"; };
   if(state.q) parts.push(chip("q", qLabel()));
   if(state.co.trim()) parts.push(chip("co", `by “${state.co.trim()}”${CO_STATUS === "loading" ? " (loading…)" : CO_STATUS === "error" ? " (unavailable)" : ""}`));
   if(state.qBasis === "before") parts.push(chip("basis", "full-price QTPD"));
@@ -6301,7 +6317,8 @@ function renderSummary(){
   // separate so each is independently removable; they just never say the same thing twice.
   if(state.minScore > 0) parts.push(chip("minscore", `rating ≥ ${state.minScore}%${state.ratingSource === "recent" ? " 30d" : ""}`));
   if(state.ratingSource !== "recent") parts.push(chip("ratesrc", "all-time scores"));
-  if(!sameSet(state.revBands, REV_DEFAULT)){ const t = [...state.revBands].sort((a,b)=>a-b).map(i => REV_LBLS[i]).join("/"); parts.push(chip("rev", state.revBands.size ? `reviews: ${t}` : "reviews: none")); }
+  if(!sameSet(state.revBands, REV_DEFAULT)) parts.push(chip("rev", revText()));
+  else if(revFloorOn() && releaseMode() !== "upcoming") parts.push(dchip("rev", revText(), DEFAULT_TIPS.rev));
   if(state.minPrice != null || state.maxPrice != null){ const lo = state.minPrice != null ? `$${state.minPrice}` : "$0"; const hi = state.maxPrice != null ? `$${state.maxPrice}` : "∞"; parts.push(chip("price", `${lo}–${hi}`)); }
   if(state.priceClass.size < 3){ const lbl = {full:"full price",sale:"on sale",free:"free"}; const t = ["full","sale","free"].filter(c => state.priceClass.has(c)).map(c => lbl[c]).join(" / "); parts.push(chip("pc", t)); }
   if(state.minSale != null) parts.push(chip("minsale", `sale ≥ ${state.minSale}%`));
@@ -6313,11 +6330,16 @@ function renderSummary(){
   if(state.release !== RELEASE_DEFAULT) parts.push(chip("release",
     (state.release === "upcoming" ? "upcoming only" : "released + upcoming")
     + (UP_STATUS === "loading" ? " (loading…)" : UP_STATUS === "error" ? " (unavailable)" : "")));
+  else if(releaseMode() === "released") parts.push(dchip("release", "released only", DEFAULT_TIPS.release));
   if(state.wishOnly) parts.push(chip("wishonly", "wishlist only"));
   // Flags: one chip per flag moved off its default. They had none, which was harmless while only
   // the panel could set a flag — but a shelf can now (No AI, no strings), and a shelf must show
   // every control it moved. Each chip opens the same choice the Flags panel offers.
-  for(const f of FLAG_SUM){ const v = state.flags[f.key]; if(v !== f.def && f.text[v]) parts.push(chip("flag_" + f.key, f.text[v])); }
+  for(const f of FLAG_SUM){
+    const v = state.flags[f.key];
+    if(v !== f.def && f.text[v]) parts.push(chip("flag_" + f.key, f.text[v]));
+    else if(f.key === "adultF" && adultMode() === "hide") parts.push(dchip("flag_" + f.key, f.text.hide, DEFAULT_TIPS.adult));
+  }
 
   // Tags close the line as their OWN inline cycle-chips (not a "+2 −1" count) — the same
   // interacted-tag chips as the collapsed Tags header, so each can be re-cycled in place and
@@ -6336,10 +6358,10 @@ function renderSummary(){
   const sortChip = `<button class="sumf plain" data-sumf="sort">${esc(sortName)} ${state.sortDir < 0 ? "↓" : "↑"}</button>`;
   const count = state._totalFiltered != null ? state._totalFiltered : "";
   const lead = [parts.join(" "), tagsPart].filter(Boolean).join(" ");
-  const active = !!lead;                                   // any non-default filter (incl. lingering tags)
+  const active = changed > 0 || !!tagsPart;                // any non-default filter (incl. lingering tags) — the default chips alone are not
   // Warning-styled Reset in the top-right corner of the line — only when there's something to reset.
   const resetBtn = active ? `<button class="sumreset" data-reset="1" title="Clear all filters">Reset</button>` : "";
-  host.innerHTML = resetBtn + (active
+  host.innerHTML = resetBtn + (lead
     ? `<span class="sumlbl">Showing</span> ${lead} <span class="sumlbl">· ${count} games · sorted by</span> ${sortChip}`
     : `<span class="sumlbl">All ${count} games · sorted by</span> ${sortChip}`);
   applyLingerOpacities();

@@ -82,15 +82,17 @@ ADULT_TAGS = {"Nudity", "Sexual Content", "Mature", "NSFW", "Hentai"}
 NO_ENDING = ["idle", "incremental", "clicker", "idler", "mmorpg", "massively multiplayer",
              "free to play"]
 # The length shelves carry an exc= list, and so do the two Flags shelves (No AI, no strings; Try
-# before you buy): they sort by QTPD over a broad band, where an idler with a 900-hour Length at
-# $5 opens the list (Cookie Clicker did, on the first cut of No AI). The list names the
+# before you buy): over a broad band an idler with a 900-hour Length at $5 opens a QTPD sort
+# (Cookie Clicker did, on the first cut of No AI, which sorted by QTPD until 2026-11-09). The list names the
 # no-ending tags alone — adult content is handled by `adult=hide`, not by tag name (see the
 # HOUSE RULE above).
 NO_ENDING_Q = "exc=" + ",".join(t.replace(" ", "+") for t in NO_ENDING)
 # The No AI shelf's own list (owner, 2026-11-02): MMOs stay ON that shelf, so it excludes the
-# idlers and free-to-play only. Its in-app-purchase and EULA conditions already keep most
-# live-service MMOs out; the ones that pass are games the owner wants shown.
-NO_IDLE = ["idle", "incremental", "clicker", "idler", "free to play"]
+# idlers only. Its in-app-purchase and EULA conditions already keep most live-service MMOs out;
+# the ones that pass are games the owner wants shown. Free-to-play left this list on 2026-11-09
+# (owner, from the live page): a free game with no in-app purchases is exactly the "no strings"
+# the shelf promises, and `noflags=iap` already keeps out the free games that sell things.
+NO_IDLE = ["idle", "incremental", "clicker", "idler"]
 NO_IDLE_Q = "exc=" + ",".join(t.replace(" ", "+") for t in NO_IDLE)
 
 # Canonicalisation, mirroring CANON_GROUPS in index.html.
@@ -137,13 +139,17 @@ PRESETS = [
     # online, drm, acct, kac) or the chip stops reading as active once the page rewrites the URL.
     # Measured 2026-11-02 (before drm/acct): 1,215 games; opens on Gothic II, Wall World, Dead
     # Age. On its own, ai=hide moved only 55 of 2,442 popular games — the bundle is the shelf.
+    # Retuned 2026-11-09 (owner, from the live page): 1k+ reviews rather than 5k+, free-to-play
+    # no longer excluded (see NO_IDLE), and newest release first instead of QTPD — the shelf
+    # reads as "what has come out lately that I can buy without strings attached".
     dict(id="noai", label="No AI, no strings", tone="popular",
          blurb="No generative AI disclosed, no Early Access, no extra EULA, no family-share block, "
-               "no in-app purchases, no 3rd-party DRM or account — and 80%+ positive. AI, DRM and "
-               "account notices are the developer's own; Steam has required the AI one since 2024.",
-         q="ai=hide&noflags=ea,eula,fse,iap,drm,acct&minscore=80&rev=4&ratesrc=all&adult=hide&"
-           + NO_IDLE_Q + "&sort=qtpd&dir=-1",
-         rev=(5000, None), minscore=80),
+               "no in-app purchases, no 3rd-party DRM or account — 80%+ positive, 1,000+ reviews, "
+               "newest first. AI, DRM and account notices are the developer's own; Steam has "
+               "required the AI one since 2024.",
+         q="ai=hide&noflags=ea,eula,fse,iap,drm,acct&minscore=80&rev=3,4&ratesrc=all&adult=hide&"
+           + NO_IDLE_Q + "&sort=release_ts&dir=-1",
+         rev=(1000, None), minscore=80),
     dict(id="deals", label="Best deals under $10", tone="popular",
          blurb="Discounted right now, under $10, and actually good.",
          q="pc=sale&pmax=10&minscore=70&rev=4&ratesrc=all&adult=hide&sort=qtpd&dir=-1",
