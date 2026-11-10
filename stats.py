@@ -25,6 +25,17 @@ index.html): the storefront's adult flag, authoritative wherever PICS has covere
 the tag heuristic only where it hasn't. The flag is the only lock: no tag is pushed down by name.
 build() refuses to write a biggest-releases list that contains an adult game.
 
+TAGS. The tag ranking reads Steam's full tag list from PICS (up to 20 a game, named through
+lookups/tags.json) and falls back to tags.json only where PICS has none. tags.json keeps each
+game's top 8, and since games began carrying ~17 tags (2020 on) a top-8 cut drops broad tags:
+Indie read 73% -> 19% from 2018 to 2026 there, against 79% -> 60% on the full lists. "tpg" counts,
+per review group, the games PICS covers and the tags they carry, so the page can draw tags per game.
+
+EARLY ACCESS STOCK. ea_stock is how many games were in Early Access at the end of each bucket:
+games in it today from their release date (the EA start), and games that left it from their EA
+start to their 1.0 date. A game that left with no EA start on record is invisible, so the past
+is a floor (exact for the current bucket, ~1,750 known exits in all, none before 2017).
+
 SALE TIMING. prices.json holds only the current discount, so this job keeps the history it needs
 in sales_state.json (not served): for each game it has watched since its release, the day it was
 first priced, the last day it was seen, and every sale episode [start day, last day seen on
@@ -105,12 +116,16 @@ DISC_EDGES = [20, 30, 40, 50, 60, 70, 80, 90]
 # The state records the edges its rows were built with ("groups"); changing them here rebuilds
 # every row from git (stale_days), and until then the page gets the catalog numbers only.
 SALE_GROUP_EDGES = [100, 5000]
+# The same three review groups for "tags per game": the most-played games carry Steam's full 20
+# tags, the long tail fewer (Nov 2026: 19.9 a game at 10,000+ reviews, 14.6 under 10).
+TAG_GROUP_EDGES = SALE_GROUP_EDGES
 DAY_ROW = 3 * (len(SALE_GROUP_EDGES) + 2)        # catalog + one triple per group
 # Steam's review summary, as the store words it, for games with 10+ reviews.
 LABELS = ["Overwhelmingly Positive", "Very Positive", "Positive", "Mostly Positive", "Mixed",
           "Mostly Negative", "Negative", "Very Negative", "Overwhelmingly Negative"]
 
 LAUNCH_DAYS = 7                  # a sale starting in the first week is the launch discount
+LAUNCH_SPAN = 15                 # days 0-14: how many games are still on their launch discount
 TRACK_SLACK = 3                  # first price check within 3 days of release, or not watched
 BACKFILL_GAP_DAYS = 2            # a state this many days behind is filled from git, not live
 
@@ -329,6 +344,14 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
     A = {k: zeros() for k in ("rel", "rel_c", "pics", "ai", "ai_live", "deck3", "deck2", "deck1",
                               "ctrl_full", "ctrl_part", "vr", "demo", "ea_in", "ea_now", "rated",
                               "rating_sum", "len_n", "priced", "price_sum", "free", "rw", "price_rw")}
+    # Tags per game, by review group (TAG_GROUP_EDGES): games PICS covers, and the tags they carry.
+    tpg_g = [zeros() for _ in range(len(TAG_GROUP_EDGES) + 1)]
+    tpg_n = [zeros() for _ in range(len(TAG_GROUP_EDGES) + 1)]
+    # Games in Early Access at the end of each bucket: +1 where a game entered it, -1 where it left,
+    # summed up below. Entries before the first bucket (the weekly file) land in it.
+    ea_d = zeros()
+    tag_name = json.loads((HERE / "lookups" / "tags.json").read_text(encoding="utf-8")) \
+        if (HERE / "lookups" / "tags.json").exists() else {}
     lab = [zeros() for _ in LABELS]
     revb = [zeros() for _ in range(len(REV_EDGES) + 1)]
     lenb = [zeros() for _ in range(len(LEN_EDGES) + 1)]
@@ -347,11 +370,14 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         if t is None:
             continue
         m = of(t) - m0
+        p = pics.get(str(a))
+        if p and p.get("ea") and a not in ea_left:     # in Early Access since its release date
+            ea_d[max(0, m)] += 1
         if m < 0:                                       # before the weekly file starts
             continue
-        p = pics.get(str(a))
         tg = tags.get(str(a)) or g.get("tags") or []
         adult = is_adult(p, tg)
+        covered = bool(p and (p.get("cats") or p.get("tags") or p.get("state") is not None))
         A["rel"][m] += 1
         day = t // DAY - d0
         if 0 <= day < len(daily):
@@ -400,6 +426,10 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
 
         rc, rp = _int(g.get("review_count")) or 0, _int(g.get("rating_pct"))
         revb[bisect_right(REV_EDGES, rc)][m] += 1
+        if covered:                                     # a count, not a ranking: every game
+            gi = bisect_right(TAG_GROUP_EDGES, rc)
+            tpg_g[gi][m] += 1
+            tpg_n[gi][m] += len(p.get("tags") or [])
         li = steam_label(rp, rc)
         if li is not None:
             lab[li][m] += 1
@@ -412,7 +442,10 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
 
         if not adult:
             A["rel_c"][m] += 1
-            for x in tg:
+            # Steam's full tag list (up to 20) where PICS has it; tags.json keeps each game's top 8
+            # only, which drops broad tags like Indie from games that carry 20 (§11.8).
+            full = [tag_name[str(x)] for x in (p or {}).get("tags") or [] if str(x) in tag_name]
+            for x in full or tg:
                 tag_c.setdefault(x, zeros())[m] += 1
             for gid in (p or {}).get("genres") or []:
                 if gid not in GENRE_SKIP:
@@ -435,6 +468,13 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
             A["ea_in"][ms] += 1
         if 0 <= me < n:
             ea_out.setdefault(me, []).append((e - s) // DAY)
+        if ms < n:
+            ea_d[max(0, ms)] += 1
+            ea_d[max(0, me)] -= 1
+    ea_stock, run = [], 0
+    for v in ea_d:
+        run += v
+        ea_stock.append(run)
 
     for lst in top.values():
         lst.sort(key=lambda r: -r[2])
@@ -469,9 +509,25 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         if m < 0:
             continue
         s = sale.setdefault(m, {"n": 0, "l": 0, "lp": 0, "e": {}, "c": {}, "ep": 0,
-                                "lh": [0] * (len(DISC_EDGES) + 1), "fh": [0] * (len(DISC_EDGES) + 1)})
+                                "lh": [0] * (len(DISC_EDGES) + 1), "fh": [0] * (len(DISC_EDGES) + 1),
+                                "lo": [0] * LAUNCH_SPAN, "lk": [0] * LAUNCH_SPAN, "ae": {}, "ac": {}})
         s["n"] += 1
         eps = [rec[i:i + 3] for i in range(2, len(rec), 3)]
+        # How long launch discounts last: for each of the first LAUNCH_SPAN days, whether the game
+        # was checked that day or around it (lk) and, if so, whether it was discounted (lo).
+        for d in range(LAUNCH_SPAN):
+            if rec[0] <= rday + d <= rec[1]:
+                s["lk"][d] += 1
+                if any(e[0] <= rday + d <= e[1] for e in eps):
+                    s["lo"][d] += 1
+        # Any discount, the launch one included: its first day (days since release), or, never
+        # discounted yet, the last check — the events and censoring of a second Kaplan-Meier curve.
+        if eps:
+            d = str(max(0, eps[0][0] - rday))
+            s["ae"][d] = s["ae"].get(d, 0) + 1
+        else:
+            d = str(max(0, rec[1] - rday))
+            s["ac"][d] = s["ac"].get(d, 0) + 1
         launch = [e for e in eps if e[0] < rday + LAUNCH_DAYS]
         if launch:
             s["l"] += 1
@@ -496,6 +552,7 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
                      "UTC day 7w-3 (a Monday) to 7w+3. Same fields as stats.json's per-month ones.",
             "generated_at": now, "w0": m0, "weeks": n,
             "m": A, "lab": lab, "revb": revb, "lenb": lenb, "priceb": priceb, "priceb_rev": pricerev,
+            "ea_stock": ea_stock, "tpg": {"g": tpg_g, "n": tpg_n},
             "tags": {"names": tag_names, "m": tag_m},
             "genres": {"names": [genre_names[str(g)] for g in genre_ids], "m": genre_m},
             "top": {str(m): v for m, v in sorted(top.items())},
@@ -523,6 +580,8 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         "sale_group_edges": SALE_GROUP_EDGES,
         "disc_edges": DISC_EDGES,
         "daily": daily,
+        "ea_stock": ea_stock,
+        "tag_group_edges": TAG_GROUP_EDGES, "tpg": {"g": tpg_g, "n": tpg_n},
         "tags": {"names": tag_names, "m": tag_m},
         "genres": {"names": [genre_names[str(g)] for g in genre_ids], "m": genre_m},
         "_top": ["appid", "title", "reviews", "rating_pct", "left_ea"],
@@ -530,7 +589,7 @@ def build(now, games, pics, tags, prices, ea_dates, length, demos, state, tag_ra
         "ea_out": {str(m): sorted(v) for m, v in sorted(ea_out.items())},
         "sale": {str(m): v for m, v in sorted(sale.items())},
         "sale_days": sale_days,
-        "launch_days": LAUNCH_DAYS,
+        "launch_days": LAUNCH_DAYS, "launch_span": LAUNCH_SPAN,
         "now": {"ea": len(ea_ages), "ea_age_edges": EA_AGE_EDGES,
                 "ea_ages": [sum(1 for x in ea_ages if bisect_right(EA_AGE_EDGES, x) == i)
                             for i in range(len(EA_AGE_EDGES) + 1)],

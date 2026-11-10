@@ -191,29 +191,47 @@
   .click{cursor:pointer}
 
   /* Ranked rows (tags, genres): the bar is the selected period, the tick the compared one; then
-     each period's share and game count, and the change, under a header row naming them. */
-  .hb{display:grid; grid-template-columns:minmax(80px, 11em) minmax(40px, 1fr) auto; gap:5px 12px; align-items:center; font-size:14px}
-  .hb.cmp{grid-template-columns:minmax(80px, 11em) minmax(40px, 1fr) auto auto auto}
-  .hb .n{color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .hb .h{font-size:12.5px; font-weight:500; color:var(--muted); text-align:right; white-space:nowrap;
-         padding-bottom:3px; border-bottom:1px solid var(--line)}
-  .hb .h:first-child{text-align:left}
-  .hb .tr{position:relative; height:14px}
-  .hb .bar{position:absolute; left:0; top:2px; height:10px; background:var(--s1); border-radius:0 4px 4px 0}
-  .hb .tick{position:absolute; top:-1px; width:2px; height:16px; background:var(--cmp); border-radius:1px; margin-left:-1px}
+     each period's share and game count in time order (earlier left), each pair under a header
+     naming its period with its colour key, the selected pair tinted, and the change. */
+  .hb{display:grid; grid-template-columns:minmax(80px, 11em) minmax(40px, 1fr) auto auto; gap:0; align-items:stretch; font-size:14px}
+  .hb.cmp{grid-template-columns:minmax(80px, 11em) minmax(40px, 1fr) auto auto auto auto auto}
+  .hb > span{padding:3px 8px; line-height:22px}
+  .hb .n{color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-left:0}
+  .hb .h{font-size:12.5px; font-weight:500; color:var(--muted); text-align:right; white-space:nowrap; border-bottom:1px solid var(--line)}
+  .hb .h.n{text-align:left}
+  .hb .ph{grid-column:span 2; text-align:center; font-size:13px; font-weight:600; color:var(--title); white-space:nowrap}
+  .hb .ph i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px; vertical-align:-1px}
+  .hb .s{background:rgba(57,135,229,.11)}
+  .hb .tr{position:relative; min-height:22px}
+  .hb .bar{position:absolute; left:8px; top:calc(50% - 5px); height:10px; background:var(--s1); border-radius:0 4px 4px 0}
+  .hb .tick{position:absolute; top:calc(50% - 8px); width:2px; height:16px; background:var(--cmp); border-radius:1px; margin-left:7px}
   .hb .val{font-size:14px; font-weight:600; color:var(--title); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
   .hb .val.c{color:var(--muted)}
-  .hb .val small{font-size:12.5px; font-weight:400; color:var(--muted); margin-left:6px; display:inline-block; min-width:3.6em}
+  .hb .cnt{font-size:12.5px; color:var(--muted); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
   .hb .dv{font-size:13.5px; font-weight:500; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; color:var(--muted)}
   @media (max-width:560px){
-    .hb .val small{display:none} .hb{gap:4px 8px}
-    .hb.cmp{grid-template-columns:minmax(64px, 11em) minmax(24px, 1fr) auto auto auto}
+    .hb .cnt{display:none} .hb .ph{grid-column:span 1}
+    .hb > span{padding:3px 4px}
+    .hb{grid-template-columns:minmax(60px, 8em) minmax(40px, 1fr) auto}
+    .hb.cmp{grid-template-columns:minmax(60px, 7.5em) minmax(36px, 1fr) auto auto auto}
+    .hb .ph{white-space:normal; font-size:12.5px}
     .hb .h{white-space:normal; max-width:4.6em; justify-self:end}
-    .hb .h:first-child{justify-self:start}
+    .hb .h.n{justify-self:start}
   }
+  /* Every period at once (the tag and genre table): one column a period, the tag column kept in
+     view, the selected column tinted blue and the compared one gray. */
+  table.mx td small{display:block; font-size:12px; color:var(--muted-2)}
+  table.mx th:first-child, table.mx td:first-child{position:sticky; left:0; z-index:1; background:var(--panel)}
+  table.mx th:first-child{z-index:2; background:var(--panel-2)}
+  table.mx th.sel, table.mx td.sel{background:rgba(57,135,229,.18)}
+  table.mx th.cmp, table.mx td.cmp{background:rgba(179,186,203,.13)}
+  table.mx tr.sec td{background:var(--panel-2); color:var(--muted); font-weight:600; position:sticky; left:0}
+  /* "No data" beside a tile's comparison: said, so an empty line isn't read as a fault. */
+  .nd{color:var(--muted-2); font-weight:400}
 
   /* 100% bars (rating mix) */
-  .stk{display:grid; grid-template-columns:minmax(70px, 8em) minmax(0, 1fr); gap:8px 10px; align-items:center; font-size:13px}
+  .stk{position:relative; display:grid; grid-template-columns:minmax(70px, 8em) minmax(0, 1fr); gap:8px 10px; align-items:center; font-size:13px}
+  .stk .bar span:hover, .stk .bar span.on{filter:brightness(1.12)}
   .stk .bar{display:flex; height:22px; gap:2px}
   .stk .bar span{display:flex; align-items:center; justify-content:center; height:100%; min-width:0; overflow:hidden;
                  font:600 12px var(--sans); font-variant-numeric:tabular-nums; color:#0e1320; white-space:nowrap}
@@ -293,7 +311,11 @@
   <section aria-labelledby="h-rel">
     <h2 id="h-rel">Releases</h2>
     <div class="two">
-      <div><h3>Releases per day</h3><p class="sub" id="s-daily"></p><div class="chart" id="c-daily"></div></div>
+      <div><div class="ch"><h3 id="h-daily">Releases per day</h3>
+          <div class="seg sm" id="runit" role="group" aria-label="Releases per"><button type="button" data-u="d">Day</button><button type="button" data-u="w">Week</button><button type="button" data-u="m">Month</button></div></div>
+        <p class="sub" id="s-daily"></p>
+        <div class="legend" id="lg-daily"><span><i style="background:var(--s1)"></i><span class="l-sel"></span></span><span><i style="background:var(--cmp)"></i><span class="l-cmp"></span></span></div>
+        <div class="chart" id="c-daily"></div></div>
       <div><h3>Day of the week</h3><p class="sub">Share of the period's releases that came out on each weekday (UTC).</p>
         <div class="legend"><span><i style="background:var(--s1)"></i><span class="l-sel"></span></span><span><i style="background:var(--cmp)"></i><span class="l-cmp"></span></span></div>
         <div class="chart" id="c-dow"></div></div>
@@ -311,7 +333,10 @@
       <div><div class="mini-h"><h3 style="display:inline">Genres</h3> <span id="i-genres"></span></div><div id="c-genres" style="margin-top:8px"></div>
         <p class="note" id="n-tags"></p></div>
     </div>
-    <details><summary>Table</summary><div class="tbl" id="t-tags"></div></details>
+    <div style="margin-top:16px"><div class="hi"><h3>Tags per game</h3><span id="i-tpg"></span></div>
+      <p class="sub" id="s-tpg"></p>
+      <div class="legend" id="lg-tpg"></div><div class="chart" id="c-tpg"></div></div>
+    <details id="d-tags"><summary>Table: every period</summary><div class="tbl" id="t-tags"></div></details>
   </section>
 
   <section aria-labelledby="h-price">
@@ -340,9 +365,9 @@
         <div class="legend"><span><i style="background:var(--s1)"></i><span class="l-sel"></span></span><span><i style="background:var(--cmp)"></i><span class="l-cmp"></span></span></div>
         <div class="chart" id="c-eadur"></div></div>
       <div><h3>Early Access launches and 1.0 exits</h3><p class="sub">Share of each period's releases.</p>
-        <div class="legend"><span><i class="line" style="background:var(--s1)"></i>Launched in Early Access</span><span><i class="line" style="background:var(--s2)"></i>Left it (1.0)</span></div>
+        <div class="legend" id="lg-eatrend"><span><i class="line" style="background:var(--s1)"></i>Launched in Early Access</span><span><i class="line" style="background:var(--s2)"></i>Left it (1.0)</span><span id="lg-eastock"><i class="line" style="background:var(--s3)"></i>Games in Early Access (traceable), right axis</span></div>
         <div class="chart" id="c-eatrend"></div>
-        <p class="note">1.0 exits count only where Steam kept the game's Early Access start (none before 2017), so that line runs low.</p></div>
+        <p class="note" id="n-eatrend"></p></div>
     </div>
     <details><summary>Table</summary><div class="tbl" id="t-ea"></div></details>
   </section>
@@ -353,9 +378,10 @@
     <div class="tiles four" id="sale-sum"></div>
     <div class="two">
       <div><div class="hi"><h3>How soon new games get discounted</h3><span id="i-km"></span></div>
-        <p class="sub">Launched with a discount (the column), then the first discount after launch, by days since release.</p>
+        <p class="sub">The columns: games still on their launch discount, day by day. The line: games that have had their next discount since, by days after release.</p>
         <div class="legend"><span><i class="line" style="background:var(--s1)"></i><span class="l-sel"></span></span><span><i class="line" style="background:var(--cmp)"></i><span class="l-cmp"></span></span></div>
-        <div class="chart" id="c-km"></div></div>
+        <div class="chart" id="c-km"></div>
+        <dl class="defs" id="d-km"></dl></div>
       <div><div class="hi"><h3>How deep the discounts go</h3><span id="i-depth"></span></div>
         <p class="sub" id="s-depth"></p>
         <div class="legend"><span><i style="background:var(--s1)"></i>Launch discount</span><span><i style="background:var(--s2)"></i>First discount after launch</span></div>
@@ -387,22 +413,26 @@
       <div><h3>Length</h3><p class="sub" id="s-len"></p>
         <div class="legend"><span><i style="background:var(--s1)"></i><span class="l-sel"></span></span><span><i style="background:var(--cmp)"></i><span class="l-cmp"></span></span></div>
         <div class="chart" id="c-len"></div></div>
-      <div><div><h3 style="display:inline">Biggest releases</h3> <span id="i-top"></span></div>
-        <p class="sub">The period's releases with the most Steam reviews.</p>
-        <ol class="toplist" id="c-top"></ol></div>
+      <div><h3>Share of releases with a demo</h3><p class="sub" id="s-demo"></p><div class="chart" id="c-demo"></div></div>
     </div>
+    <div style="margin-top:16px"><div class="ch"><div class="hi"><h3 id="h-labt">Steam rating over time</h3><span id="i-labt"></span></div>
+        <div class="seg sm" id="labmode" role="group" aria-label="Share of"><button type="button" data-m="rated">Rated games</button><button type="button" data-m="all">All releases</button></div></div>
+      <p class="sub" id="s-labt"></p>
+      <div class="legend" id="lg-labt"></div><div class="chart" id="c-labt"></div></div>
     <details><summary>Table</summary><div class="tbl" id="t-recv"></div></details>
   </section>
 
   <section aria-labelledby="h-cal">
-    <h2 id="h-cal">Release calendar</h2>
+    <h2 id="h-cal">Release calendar &amp; biggest releases</h2>
     <div class="two">
       <div><h3>Busy and quiet months</h3>
         <p class="sub">Releases per month, each year shaded against its own busiest month (so a quiet year's pattern
           still shows). Click a month to pick the period holding it at the grouping you chose: its week, month, quarter
           or year (in Week view, the week of the 1st).</p>
         <div class="chart" id="c-heat"></div></div>
-      <div><h3>Share of releases with a demo</h3><p class="sub" id="s-demo"></p><div class="chart" id="c-demo"></div></div>
+      <div><div><h3 style="display:inline">Biggest releases</h3> <span id="i-top"></span></div>
+        <p class="sub">The period's releases with the most Steam reviews.</p>
+        <ol class="toplist" id="c-top"></ol></div>
     </div>
     <details><summary>Table</summary><div class="tbl" id="t-cal"></div></details>
   </section>
@@ -428,15 +458,16 @@ const MIN_N = 20;                // a share or price over fewer games than this 
 // What each number counts, for the ⓘ popovers.
 const TIP = {
   games:"Released games in QTPD's catalog: every game on Steam with a store page and a release date. Unreleased games are not counted.",
-  onsale:"Share of games with a price that are discounted right now, from the hourly US price check, and their average discount.",
+  onsale:"Share of games with a price that are discounted right now, from the hourly US price check, and their average discount. The change is against an average day of the period you compare with (a week ago under No compare); the daily check has covered the whole catalog since early July 2026, so earlier periods have nothing to compare with.",
   rules:"Steam allows one discount in a game's first 30 days: the launch discount, up to 40% off, in its first week. After that, 30 days must pass between discounts. Games that left Early Access are left out: Steam dates them by their 1.0 launch, long after their first discount.",
   eanow:"Games Steam lists in Early Access today, and how long ago they entered it (their Steam release date, which is the Early Access start until 1.0).",
   planned:"Early Access games whose developer has given Steam a 1.0 date that is still ahead.",
   rel:"Games whose Steam release date falls in the period. A game that left Early Access is dated by its 1.0 launch, as Steam dates it. The change compares releases per day, so a period still in progress compares fairly.",
-  tag:"The user tag found on the most releases in the period (SteamSpy tags, or the store's when SteamSpy has none), over games without the storefront's adult flag.",
+  tag:"The user tag found on the most releases in the period, from Steam's full tag list (up to 20 a game; SteamSpy's top 8 where Steam's metadata has none), over games without the storefront's adult flag.",
   price:"The middle full price of the period's paid releases (free games left out), at today's US price. Half cost less, half more.",
   free:"Releases that are free to play or free.",
   ealen:"Median time in Early Access of games that left it in the period: from Early Access start to 1.0. Known for games that left in 2017 or later where Steam kept the start date, about 70% of them.",
+  anydisc:"Share of games watched from release (late June 2026 on) that had any discount, the launch discount included, within 30 days of release, and by day 90. A game not yet discounted counts until its last check (a Kaplan-Meier estimate), so recent periods are not pulled down; \"not yet\" means the period's games haven't been watched that long.",
   sale:"Median days from release to a game's first discount after its launch week, among games watched from release (late June 2026 on). Steam allows no discount but the launch discount in a game's first 30 days, so this is rarely under 30. Games not yet discounted count until today (a Kaplan-Meier estimate), so it is not pulled down by the games discounted first. \"> N days\" means fewer than half have had one yet, N days being as long as the period's games have been watched.",
   watched:"Games whose first price check came within 3 days of release, so none of their discounts can have been missed. Price checks every hour began in late June 2026; games that left Early Access are left out (Steam dates them by their 1.0 launch, long after their first sale).",
   launch:"A discount that starts in a game's first week on the store. Steam lets a developer set one up before release, capped at 40% off; it is the only discount allowed in the first 30 days.",
@@ -445,7 +476,9 @@ const TIP = {
   deck:"Releases Valve rates Verified or Playable on Steam Deck, among releases Steam's metadata covers. Most games are not rated at all.",
   invisible:"Releases with fewer than 10 Steam reviews today: too few for Steam to show a rating. Recent periods are higher because their games have had less time.",
   len:"The middle Length estimate of the period's releases that have one: QTPD's review-based play time (how long reviewers who recommend a game played it).",
-  tags:"Share of the period's releases carrying each tag, top 15. Over games without the storefront's adult flag; that flag is the only lock, so a tag is never left out by name.",
+  tags:"Share of the period's releases carrying each tag, top 15, from Steam's full tag list (up to 20 a game). Over games without the storefront's adult flag; that flag is the only lock, so a tag is never left out by name. Games carry more tags than they used to (see Tags per game), so most tags' shares rise over the years.",
+  tpg:"Steam user tags on each release, up to Steam's limit of 20, by how many Steam reviews the game has today. Counted over every game Steam's metadata covers. A game few people play used to be left with a handful of tags; since 2020 most new games carry 15 or more from the start.",
+  labt:"Each period's releases by their Steam rating today. Rated games: those with 10+ reviews, as Steam rates them. All releases adds the games with fewer than 10 reviews, too few for a rating. Older periods show the games still on Steam, which have had years to collect reviews, so the long view mixes age with quality.",
   genres:"Steam's own genres. Its genre field also carries four content descriptors (Violent, Gore, Nudity, Sexual Content); they describe content, not a kind of game, so they are not ranked here.",
   top:"Over games without the storefront's adult flag. 1.0 marks a game that left Early Access in the period, which Steam dates by its 1.0 launch.",
 };
@@ -569,13 +602,15 @@ document.addEventListener("focusin", e => {
 document.addEventListener("keydown", e => { if(e.key === "Escape") closePop(); });
 
 // ---------- column chart ----------
-// cats: [{label, sel, cmp, selN?, cmpN?, tip?, role?}] — one band per category; with `paired` each
-// band holds the selected value (blue) and the compared one (gray) side by side, otherwise one
-// column whose colour is its role (sel / cmp / dim). selN / cmpN are the game counts behind a
-// share, shown beside it in the tooltip. `colors` repaints the pair (two series of one period).
+// cats: [{label, sel, cmp, selN?, cmpN?, tip?, role?, fadeSel?, fadeCmp?}] — one band per category;
+// with `paired` each band holds the selected value (blue) and the compared one (gray) side by side,
+// in time order: `cmpFirst` puts the compared one on the left when it is the earlier period (and
+// first in the tooltip), otherwise one column whose colour is its role (sel / cmp / dim). selN /
+// cmpN are the game counts behind a share, shown beside it in the tooltip; fadeSel / fadeCmp draw a
+// bar faded (a stretch still in progress). `colors` repaints the pair (two series of one period).
 // `valueLabel` writes each bar's value above it when every label fits; a pair whose two labels
 // won't sit side by side stacks them over the pair. onPick(i, event) makes columns clickable.
-function columnChart(host, {cats, paired, height, fmt, axisFmt, label, xLabel, onPick, faded, keyNav, valueLabel, colors}){
+function columnChart(host, {cats, paired, height, fmt, axisFmt, label, xLabel, onPick, faded, keyNav, valueLabel, colors, cmpFirst}){
   host.textContent = "";
   if(!cats.length || !cats.some(c => (c.sel || 0) > 0 || (c.cmp || 0) > 0)){ empty(host, "Nothing in this period."); return; }
   const cSel = colors ? colors[0] : C.sel, cCmp = colors ? colors[1] : C.cmp;
@@ -627,12 +662,13 @@ function columnChart(host, {cats, paired, height, fmt, axisFmt, label, xLabel, o
   const marks = cats.map((c, i) => {
     const g = svgEl("g", {}, svg), cx = ml + band * (i + 0.5);
     if(paired){
-      bar(g, cx - bw - 1, c.sel, cSel);
-      bar(g, cx + 1, c.cmp, cCmp);
-      if(showLabs && stack[i]){            // selected on top, compared under it, coloured when both are one period's
-        const top = Math.max(c.sel || 0, c.cmp || 0);
-        vlab(g, cx, top, labs[i][0], "vl", 15, colors ? cSel : null); vlab(g, cx, top, labs[i][1], colors ? "vl" : "vl c", 0, colors ? cCmp : null);
-      } else if(showLabs){ vlab(g, cx - bw / 2 - 1, c.sel, labs[i][0], "vl"); vlab(g, cx + bw / 2 + 1, c.cmp, labs[i][1], colors ? "vl" : "vl c"); }
+      const xs = cmpFirst ? cx + 1 : cx - bw - 1, xc = cmpFirst ? cx - bw - 1 : cx + 1;
+      bar(g, xs, c.sel, cSel, c.fadeSel ? 0.5 : null);
+      bar(g, xc, c.cmp, cCmp, c.fadeCmp ? 0.5 : null);
+      if(showLabs && stack[i]){            // the earlier period on top, the later under it, coloured when both are one period's
+        const top = Math.max(c.sel || 0, c.cmp || 0), [d0, d1] = cmpFirst ? [0, 15] : [15, 0];
+        vlab(g, cx, top, labs[i][0], "vl", d0, colors ? cSel : null); vlab(g, cx, top, labs[i][1], colors ? "vl" : "vl c", d1, colors ? cCmp : null);
+      } else if(showLabs){ vlab(g, xs + bw / 2, c.sel, labs[i][0], "vl"); vlab(g, xc + bw / 2, c.cmp, labs[i][1], colors ? "vl" : "vl c"); }
     } else {
       const color = c.role === "sel" ? C.sel : c.role === "cmp" ? C.cmp : c.role === "dim" ? C.dim : C.sel;
       // The picked and compared columns keep 3px, so they show among a thousand weeks.
@@ -655,8 +691,9 @@ function columnChart(host, {cats, paired, height, fmt, axisFmt, label, xLabel, o
     tip.textContent = "";
     tip.appendChild(el("div", "tt", c.tip || c.label));
     if(paired){
-      tipRow(tip, cSel, withN(c.sel, c.selN), c.nameSel || "selected");
-      tipRow(tip, cCmp, withN(c.cmp, c.cmpN), c.nameCmp || "compared");
+      const rs = () => tipRow(tip, cSel, withN(c.sel, c.selN), c.nameSel || "selected"),
+            rc = () => tipRow(tip, cCmp, withN(c.cmp, c.cmpN), c.nameCmp || "compared");
+      if(cmpFirst){ rc(); rs(); } else { rs(); rc(); }
     } else tipRow(tip, c.role === "cmp" ? C.cmp : c.role === "dim" ? C.dim : C.sel, withN(c.sel, c.selN), c.name || "");
     tip.hidden = false;
     placeTip(tip, host, (ml + band * (i + 0.5)) * host.clientWidth / W, mt);
@@ -681,22 +718,32 @@ function columnChart(host, {cats, paired, height, fmt, axisFmt, label, xLabel, o
 // ---------- line chart over x (numbers) ----------
 // series: [{name, color, pts:[[x, y|null], ...], width?, op?}]; x is a period index (trend) or a day.
 // areas: [{name, color, pts:[[x, lo|null, hi|null], ...], fmt, hold?, label?}] — a shaded range
-// drawn behind the lines (the middle half of prices; a launch-week column), named in the tooltip:
-// at its own x values, or anywhere in the x range `hold` [from, to]. `label` {text, x, v, dy?, cls?} writes a
-// value over it. bands: [{x0, x1, fill, op?, label?, end?}] shade a stretch of x, with an optional
-// label (a line or a list of lines) at its top, right-aligned with `end`, left out when it doesn't
-// fit; onPick(x) makes it clickable.
-function lineChart(host, {series, areas, x0, x1, height, yMax, yFmt, axisFmt, xFmt, xTicks, label, bands, onPick, step, tipHead}){
+// drawn behind the lines (the middle half of prices), named in the tooltip: at its own x values,
+// or anywhere in the x range `hold` [from, to]. `label` {text, x, v, dy?, cls?} writes a value over
+// it. bands: [{x0, x1, fill, op?, label?, end?}] shade a stretch of x, with an optional label (a
+// line or a list of lines) at its top, right-aligned with `end`, left out when it doesn't fit.
+// cols: [{name, color, outline?, w, pts:[[x, v|null], ...], fmt(v, x)}] — one column per x, w wide
+// in x units (an outline draws the compared period over the selected one's columns).
+// bridge: a gap of nulls inside a series is crossed with a dashed line, so a trend reads through
+// periods with too few games; nullFmt(s, x) says why there is no value there, in the tooltip.
+// right: {series, fmt, axisFmt} — series on a second scale, labelled on the right, its ticks on the
+// left scale's gridlines. onPick(x) makes it clickable.
+function lineChart(host, {series, areas, cols, x0, x1, height, yMax, yFmt, axisFmt, xFmt, xTicks, label, bands, onPick, step, tipHead, bridge, nullFmt, right}){
   host.textContent = "";
-  areas = areas || [];
-  const all = series.flatMap(s => s.pts.filter(p => p[1] != null));
+  areas = areas || []; cols = cols || [];
+  const rs = right ? right.series : [];
+  const all = series.flatMap(s => s.pts.filter(p => p[1] != null)).concat(cols.flatMap(c => c.pts.filter(p => p[1] != null)));
   if(!all.length){ empty(host, "No data for this period."); return; }
   const W = Math.max(240, host.clientWidth), H = height;
-  const ml = 48, mr = 10, mt = 8, mb = 22, pw = W - ml - mr, ph = H - mt - mb;
+  const ml = 48, mr = right ? 50 : 10, mt = 8, mb = 22, pw = W - ml - mr, ph = H - mt - mb;
   const max = yMax != null ? yMax : Math.max(...all.map(p => p[1]), ...areas.flatMap(a => a.pts.map(p => p[2] || 0)));
   const ticks = niceTicks(max, H > 150 ? 4 : 3), top = ticks[ticks.length - 1] || 1;
   const x = v => ml + (x1 > x0 ? (v - x0) / (x1 - x0) : 0.5) * pw;
   const y = v => mt + ph - (v / top) * ph;
+  // The right scale: as many steps as the left one, so both share its gridlines.
+  const rMax = Math.max(0, ...rs.flatMap(s => s.pts.map(p => p[1] || 0)));
+  const rStep = rMax > 0 ? niceStep(rMax / Math.max(1, ticks.length - 1)) : 1, rTop = rStep * Math.max(1, ticks.length - 1);
+  const yr = v => mt + ph - (v / rTop) * ph;
   const svg = svgEl("svg", {viewBox:`0 0 ${W} ${H}`, height:H, role:"img", "aria-label":label}, host);
   for(const b of bands || []){
     const a = x(b.x0), z = x(b.x1);
@@ -720,29 +767,45 @@ function lineChart(host, {series, areas, x0, x1, height, yMax, yFmt, axisFmt, xF
     if(ar.label) svgEl("text", {x:x(ar.label.x), y:y(ar.label.v) - 5 - (ar.label.dy || 0), "text-anchor":"middle", class:ar.label.cls || "vl"}, svg).textContent = ar.label.text;
   }
   const ax = svgEl("g", {class:"axis"}, svg);
-  for(const v of ticks){
+  ticks.forEach((v, k) => {
     svgEl("line", {x1:ml, x2:W - mr, y1:y(v), y2:y(v), stroke: v === 0 ? C.axis : C.line, "stroke-width":1, "shape-rendering":"crispEdges"}, ax);
     svgEl("text", {x:ml - 6, y:y(v) + 4, "text-anchor":"end"}, ax).textContent = axisFmt(v);
-  }
+    if(right) svgEl("text", {x:W - mr + 6, y:y(v) + 4, "text-anchor":"start"}, ax).textContent = right.axisFmt(rStep * k);
+  });
   const xt = xTicks ? xTicks(pw) : [];
   xt.forEach(([v, text], i) => svgEl("text", {x:x(v), y:H - 6, "text-anchor": i === 0 && x(v) < ml + 20 ? "start" : x(v) > W - mr - 20 ? "end" : "middle"}, ax).textContent = text);
-  for(const s of series){
-    let d = "", pen = false, prevY = null;
-    for(const [t, v] of s.pts){
-      if(v == null){ pen = false; continue; }
-      if(step && pen) d += "L" + x(t).toFixed(1) + " " + y(prevY).toFixed(1);
-      d += (pen ? "L" : "M") + x(t).toFixed(1) + " " + y(v).toFixed(1);
-      pen = true; prevY = v;
+  // Columns: from the baseline, rounded on top where wide enough to show it.
+  for(const c of cols){
+    const g = svgEl("g", {}, svg);
+    for(const [t, v] of c.pts){
+      if(!(v > 0)) continue;
+      const a = x(t - c.w / 2), z = x(t + c.w / 2), w = Math.max(1, z - a), yt = y(v), yb = y(0);
+      if(c.outline) svgEl("path", {d:`M${a.toFixed(1)} ${yb}V${yt.toFixed(1)}H${(a + w).toFixed(1)}V${yb}`, fill:"none", stroke:c.color, "stroke-width":1.5}, g);
+      else svgEl("rect", {x:a, y:yt, width:w, height:yb - yt, rx:w >= 6 ? 2 : 0, fill:c.color, opacity:c.op || 1}, g);
     }
+  }
+  const draw = (s, yy) => {
+    let d = "", gap = "", pen = false, prevY = null, lastPt = null, broken = false;
+    for(const [t, v] of s.pts){
+      if(v == null){ pen = false; if(lastPt) broken = true; continue; }
+      if(step && pen) d += "L" + x(t).toFixed(1) + " " + yy(prevY).toFixed(1);
+      if(bridge && broken && lastPt) gap += "M" + x(lastPt[0]).toFixed(1) + " " + yy(lastPt[1]).toFixed(1) + "L" + x(t).toFixed(1) + " " + yy(v).toFixed(1);
+      d += (pen ? "L" : "M") + x(t).toFixed(1) + " " + yy(v).toFixed(1);
+      pen = true; prevY = v; lastPt = [t, v]; broken = false;
+    }
+    if(gap) svgEl("path", {d:gap, fill:"none", stroke:s.color, "stroke-width":1.5, "stroke-dasharray":"3 4", "stroke-linecap":"round", opacity:0.75}, svg);
+    // A lone point between gaps still shows: a dot, as a line of one point draws nothing.
     const ln = svgEl("path", {d, fill:"none", stroke:s.color, "stroke-width":s.width || 2, "stroke-linejoin":"round", "stroke-linecap":"round"}, svg);
     if(s.op != null) ln.setAttribute("opacity", s.op);
     const last = [...s.pts].reverse().find(p => p[1] != null);
-    if(last && !step && s.op == null) svgEl("circle", {cx:x(last[0]), cy:y(last[1]), r:4, fill:s.color, stroke:C.panel, "stroke-width":2}, svg);
-  }
+    if(last && !step && s.op == null) svgEl("circle", {cx:x(last[0]), cy:yy(last[1]), r:4, fill:s.color, stroke:C.panel, "stroke-width":2}, svg);
+  };
+  for(const s of series) draw(s, y);
+  for(const s of rs) draw(s, yr);
   // crosshair snapped to the nearest x any series has
-  const xs = [...new Set(series.flatMap(s => s.pts.map(p => p[0])))].sort((a, b) => a - b);
+  const xs = [...new Set(series.concat(rs).flatMap(s => s.pts.map(p => p[0])).concat(cols.flatMap(c => c.pts.map(p => p[0]))))].sort((a, b) => a - b);
   const cross = svgEl("line", {y1:mt, y2:mt + ph, stroke:C.axis, "stroke-width":1, visibility:"hidden"}, svg);
-  const dots = series.map(s => svgEl("circle", {r:4, fill:s.color, stroke:C.panel, "stroke-width":2, visibility:"hidden"}, svg));
+  const dots = series.concat(rs).map(s => svgEl("circle", {r:4, fill:s.color, stroke:C.panel, "stroke-width":2, visibility:"hidden"}, svg));
   const hit = svgEl("rect", {x:ml, y:mt, width:pw, height:ph, fill:"transparent"}, svg);
   if(onPick) hit.classList.add("click");
   const tip = el("div", "tip"); tip.hidden = true; host.appendChild(tip);
@@ -759,6 +822,15 @@ function lineChart(host, {series, areas, x0, x1, height, yMax, yFmt, axisFmt, xF
     tip.textContent = "";
     tip.appendChild(el("div", "tt", tipHead ? tipHead(t) : xFmt(t)));
     let ty = null;
+    for(const c of cols){
+      const p = c.pts.find(p => p[0] === t);
+      if(p && p[1] != null){
+        const r = el("div", "row"), k = el("i"); k.style.height = "10px"; k.style.width = "10px"; k.style.borderRadius = "2px";
+        if(c.outline){ k.style.background = "transparent"; k.style.border = `1.5px solid ${c.color}`; } else k.style.background = c.color;
+        r.append(k, el("b", null, c.fmt(p[1], t)), el("span", null, c.name)); tip.appendChild(r);
+        ty = ty == null ? y(p[1]) : Math.min(ty, y(p[1]));
+      }
+    }
     for(const ar of areas){
       const p = ar.pts.find(p => p[0] === t) || (ar.hold && t >= ar.hold[0] && t <= ar.hold[1] ? ar.pts[0] : null);
       if(p && p[1] != null && p[2] != null){
@@ -766,13 +838,22 @@ function lineChart(host, {series, areas, x0, x1, height, yMax, yFmt, axisFmt, xF
         r.append(k, el("b", null, ar.fmt(p[1], p[2])), el("span", null, ar.name)); tip.appendChild(r);
       }
     }
-    series.forEach((s, k) => {
+    const row = (s, k, yy, fmt) => {
       const v = valAt(s, t);
-      if(v == null || (step && t > s.pts[s.pts.length - 1][0])){ dots[k].setAttribute("visibility", "hidden"); tipRow(tip, s.color, "—", s.name, true); return; }
-      dots[k].setAttribute("cx", px); dots[k].setAttribute("cy", y(v)); dots[k].setAttribute("visibility", "visible");
-      ty = ty == null ? y(v) : Math.min(ty, y(v));
-      tipRow(tip, s.color, yFmt(v, s, t), s.name, true);
-    });
+      if(v == null || (step && t > s.pts[s.pts.length - 1][0])){
+        dots[k].setAttribute("visibility", "hidden");
+        if(!step) tipRow(tip, s.color, nullFmt ? nullFmt(s, t) : "—", s.name, true);
+        else if(!cols.length) tipRow(tip, s.color, "—", s.name, true);
+        return;
+      }
+      const txt = fmt(v, s, t);
+      if(txt == null){ dots[k].setAttribute("visibility", "hidden"); return; }      // nothing to say at this x
+      dots[k].setAttribute("cx", px); dots[k].setAttribute("cy", yy(v)); dots[k].setAttribute("visibility", "visible");
+      ty = ty == null ? yy(v) : Math.min(ty, yy(v));
+      tipRow(tip, s.color, txt, s.name, true);
+    };
+    series.forEach((s, k) => row(s, k, y, yFmt));
+    rs.forEach((s, k) => row(s, series.length + k, yr, right.fmt));
     tip.hidden = false;
     placeTip(tip, host, px * host.clientWidth / W, (ty == null ? mt : ty) * host.clientHeight / H);
   }
@@ -797,29 +878,39 @@ function lineChart(host, {series, areas, x0, x1, height, yMax, yFmt, axisFmt, xF
 }
 
 // ---------- ranked rows (tags, genres) ----------
-// rows: [{name, sel, selN, cmp, cmpN}]; heads: [first column, selected period, compared period].
-// With a compared period each row also carries the tick, its share, and the change in points.
-function rankRows(host, rows, cmpOn, heads){
+// rows: [{name, sel, selN, cmp, cmpN}]; H: {first, sel, cmp, vs, cmpFirst} — the first column's
+// heading, the selected and compared periods' names, the change's "vs …", and whether the compared
+// period is the earlier one (its pair then comes first: columns run in time order). Each period
+// has its share and its game count under a header naming it with its colour key; the selected
+// pair is tinted. The bar is the selected period, the tick the compared one.
+function rankRows(host, rows, cmpOn, H){
   host.textContent = "";
   if(!rows.length){ empty(host, "Nothing in this period."); return; }
   const max = Math.max(...rows.map(r => Math.max(r.sel || 0, cmpOn ? r.cmp || 0 : 0))) || 1;
   const g = el("div", cmpOn ? "hb cmp" : "hb");
-  g.append(el("span", "h", heads[0]), el("span", "h", ""), el("span", "h", heads[1]));
-  if(cmpOn) g.append(el("span", "h", heads[2]), el("span", "h", "Change"));
-  const val = (share, n, cls) => { const v = el("span", cls, fmtPct(share)); v.appendChild(el("small", null, n == null ? "" : fmtInt(n))); return v; };
+  const key = (name, color, cls) => { const h = el("span", "h ph" + (cls ? " " + cls : "")), i = el("i"); i.style.background = color; h.append(i, name); return h; };
+  const order = cmpOn ? (H.cmpFirst ? ["c", "s"] : ["s", "c"]) : ["s"];
+  g.append(el("span", "h n", ""), el("span", "h", ""));
+  for(const k of order) g.appendChild(k === "s" ? key(H.sel, "var(--s1)", "s") : key(H.cmp, "var(--cmp)"));
+  if(cmpOn) g.appendChild(el("span", "h", ""));
+  g.append(el("span", "h n", H.first), el("span", "h", ""));
+  for(const k of order){ g.append(el("span", "h" + (k === "s" ? " s" : ""), "Share"), el("span", "h cnt" + (k === "s" ? " s" : ""), "Games")); }
+  if(cmpOn) g.appendChild(el("span", "h", H.vs));
   for(const r of rows){
     g.appendChild(el("span", "n", r.name));
     const tr = el("span", "tr"), b = el("span", "bar");
-    b.style.width = (r.sel / max * 100) + "%"; tr.appendChild(b);
-    if(cmpOn && r.cmp != null){ const t = el("span", "tick"); t.style.left = (r.cmp / max * 100) + "%"; tr.appendChild(t); }
+    b.style.width = `calc(${(r.sel / max * 100).toFixed(2)}% - 16px * ${(r.sel / max).toFixed(3)})`; tr.appendChild(b);
+    if(cmpOn && r.cmp != null){ const t = el("span", "tick"); t.style.left = `calc(${(r.cmp / max * 100).toFixed(2)}% - 16px * ${(r.cmp / max).toFixed(3)})`; tr.appendChild(t); }
     tr.setAttribute("aria-hidden", "true");
-    tr.title = `${r.name}: ${fmtShare(r.sel, r.selN)}${cmpOn ? ` · ${heads[2]}: ${fmtShare(r.cmp, r.cmpN)}` : ""}`;
+    const pair = (k) => `${k === "s" ? H.sel : H.cmp}: ${fmtShare(k === "s" ? r.sel : r.cmp, k === "s" ? r.selN : r.cmpN)}`;
+    tr.title = `${r.name}: ` + order.map(pair).join(" · ");
     g.appendChild(tr);
-    g.appendChild(val(r.sel, r.selN, "val"));
-    if(cmpOn){
-      g.appendChild(val(r.cmp, r.cmpN, "val c"));
-      const d = el("span", "dv"); d.appendChild(dnode(dPP(r.sel, r.cmp))); g.appendChild(d);
+    for(const k of order){
+      const sel = k === "s";
+      g.append(el("span", sel ? "val s" : "val c", fmtPct(sel ? r.sel : r.cmp)),
+               el("span", sel ? "cnt s" : "cnt", fmtInt(sel ? r.selN : r.cmpN)));
     }
+    if(cmpOn){ const d = el("span", "dv"); d.appendChild(dnode(dPP(r.sel, r.cmp))); g.appendChild(d); }
   }
   host.appendChild(g);
 }
@@ -832,6 +923,7 @@ function rankRows(host, rows, cmpOn, heads){
 // period holding day CMPD — a day, so it survives a change of grouping.
 let S = null, SW = null, BASE = 0, TODAY = 0, START_ABS = 0;
 let G = "y", SEL = 0, VS = "prev", CMPD = null, PER = [];
+let CF = false;                  // the compared period is the earlier one: it goes first (left, top)
 const SPAN = {m:1, q:3, y:12}, YOY = {w:52, m:12, q:4, y:1};
 const monthDay = abs => Date.UTC(Math.floor(abs / 12), abs % 12, 1) / 864e5;
 const dayDate = d => new Date(d * 864e5);
@@ -973,16 +1065,24 @@ function metrics(p){
   // 1.0 launches out of Early Access as a share of the period's releases; none are known before 2017.
   r.eaOutShare = p.dEnd >= EA_OUT_FROM ? ratio(r.eaOut.length, r.rel) : null;
   const nb = (S.disc_edges || []).length + 1;
-  const sl = {n:0, l:0, lp:0, e:{}, c:{}, ep:0, lh:Array(nb).fill(0), fh:Array(nb).fill(0), depth:false};
+  const span = S.launch_span || 15;
+  const sl = {n:0, l:0, lp:0, e:{}, c:{}, ep:0, lh:Array(nb).fill(0), fh:Array(nb).fill(0), depth:false,
+              lo:Array(span).fill(0), lk:Array(span).fill(0), days:false, ae:{}, ac:{}, any:false};
   for(let i = p.lo; i <= p.hi; i++){
     const s = D.sale[i]; if(!s) continue;
     sl.n += s.n; sl.l += s.l; sl.lp += s.lp; sl.ep += s.ep;
     for(const k in s.e) sl.e[k] = (sl.e[k] || 0) + s.e[k];
     for(const k in s.c) sl.c[k] = (sl.c[k] || 0) + s.c[k];
     if(s.lh && s.fh){ sl.depth = true; s.lh.forEach((v, j) => sl.lh[j] += v); s.fh.forEach((v, j) => sl.fh[j] += v); }
+    if(s.lo && s.lk){ sl.days = true; s.lo.forEach((v, j) => sl.lo[j] += v); s.lk.forEach((v, j) => sl.lk[j] += v); }
+    if(s.ae && s.ac){ sl.any = true; for(const k in s.ae) sl.ae[k] = (sl.ae[k] || 0) + s.ae[k]; for(const k in s.ac) sl.ac[k] = (sl.ac[k] || 0) + s.ac[k]; }
   }
   r.sale = sl;
   r.km = sl.n >= MIN_AT_RISK ? kaplan(sl.e, sl.c, sl.n) : null;
+  // Any discount, the launch one included (absent until stats.py has written ae/ac): by day 30 and 90.
+  r.kmAny = sl.any && sl.n >= MIN_AT_RISK ? kaplan(sl.ae, sl.ac, sl.n) : null;
+  // Still on the launch discount, day by day (days 0-14), where enough games were checked that day.
+  r.launchOn = sl.days ? sl.lo.map((v, d) => sl.lk[d] >= MIN_N ? v / sl.lk[d] : null) : null;
   r.launchShare = sl.n ? sl.l / sl.n : null;
   r.launchPct = sl.l ? sl.lp / sl.l : null;
   r.firstN = Object.values(sl.e).reduce((a, b) => a + b, 0);
@@ -997,7 +1097,15 @@ function metrics(p){
   r.n.demo = sumA(m.demo, p); r.demo = ratio(r.n.demo, r.rel);
   r.revb = sumRows(D.revb, p);
   r.n.invisible = r.revb[0] + r.revb[1]; r.invisible = ratio(r.n.invisible, r.rel);
-  r.lab = sumRows(D.lab, p); r.rated = sumA(m.rated, p);
+  r.lab = sumRows(D.lab, p); r.rated = sumA(m.rated, p); r.labTot = r.lab.reduce((a, b) => a + b, 0);
+  // Games in Early Access at the end of the period (absent until stats.py has written ea_stock).
+  r.eaStock = D.ea_stock ? D.ea_stock[p.hi] : null;
+  // Tags per game by review group: games PICS covers, and their tags (absent until written).
+  r.tpgG = D.tpg ? D.tpg.g.map(a => sumA(a, p)) : null;
+  r.tpgN = D.tpg ? D.tpg.n.map(a => sumA(a, p)) : null;
+  r.tpg = r.tpgG ? r.tpgG.map((g, k) => g >= MIN_N ? r.tpgN[k] / g : null) : null;
+  const tg = r.tpgG ? r.tpgG.reduce((a, b) => a + b, 0) : 0;
+  r.tpgAll = tg >= MIN_N ? r.tpgN.reduce((a, b) => a + b, 0) / tg : null; r.tpgAllN = tg;
   r.avgRating = ratio(sumA(m.rating_sum, p), r.rated);
   r.lenb = sumRows(D.lenb, p); r.lenN = sumA(m.len_n, p); r.lenMed = r.lenN >= MIN_N ? interpMedian(r.lenb, S.len_edges) : null;
   const top = [];
@@ -1079,22 +1187,40 @@ function bandsFor(){
   return out;
 }
 // A trend across every period at the current grouping, with the selected and compared bands.
-// A series with `cnt` (r => [count, out of]) shows the counts behind each share in its tooltip.
+// A series with `cnt` (r => [count, out of]) shows the counts behind each share in its tooltip
+// (`fmtCnt(count, of)` words them otherwise). A period with too few games has no value: the line
+// crosses it dashed, and its tooltip says how few (opts.nullWhy(i) for series without counts).
+// opts.right {series, fmt, axisFmt} draws series on a second scale, on the right.
 function trend(host, series, opts){
-  const fmtV = (v, s, t) => { if(!s.cnt) return opts.yFmt(v); const [k, of] = s.cnt(metrics(PER[t])); return `${opts.yFmt(v)} · ${fmtInt(k)} of ${fmtInt(of)}`; };
-  lineChart(host, {series:series.map(s => ({...s, pts:PER.map((p, i) => [i, s.f ? s.f(metrics(p)) : s.fi(i)])})),
+  const fmtV = (v, s, t) => { if(!s.cnt) return opts.yFmt(v); const [k, of] = s.cnt(metrics(PER[t]));
+    return `${opts.yFmt(v)} · ${s.fmtCnt ? s.fmtCnt(k, of) : `${fmtInt(k)} of ${fmtInt(of)}`}`; };
+  const pts = s => PER.map((p, i) => [i, s.f ? s.f(metrics(p)) : s.fi(i)]);
+  const nullFmt = (s, t) => s.fi ? "—" : s.cnt ? `too few games (${fmtInt(s.cnt(metrics(PER[t]))[1])})` : opts.nullWhy ? opts.nullWhy(t) : "too few games";
+  lineChart(host, {series:series.map(s => ({...s, pts:pts(s)})),
     areas:(opts.areas || []).map(a => ({...a, pts:PER.map((p, i) => { const r = metrics(p); return [i, a.lo(r), a.hi(r)]; })})),
+    right:opts.right ? {...opts.right, series:opts.right.series.map(s => ({...s, pts:pts(s)}))} : null,
     x0:-0.5, x1:PER.length - 0.5, height:opts.height || fitH(host, 0.42, 150, 220), yMax:opts.yMax,
-    yFmt:fmtV, axisFmt:opts.axisFmt, xFmt:i => PER[i].label + (PER[i].partial ? " (so far)" : ""),
+    yFmt:fmtV, axisFmt:opts.axisFmt, xFmt:i => PER[i].label + (PER[i].partial ? " (so far)" : ""), bridge:true, nullFmt,
     tipHead:opts.tipHead, xTicks:yearTicks, bands:bandsFor(), onPick:i => select(i), label:opts.label});
 }
-// "▲ 0.4 pp vs Aug ’26" — the change, coloured, and what it is against.
-const vsLine = (change, B, tail = "") => B ? [dnode(change), `${tail} vs ${B.p.short}`] : null;
+// "▲ 0.4 pp vs Aug ’26" — the change, coloured, and what it is against. When the compared period
+// has no figure, the line says so and why ("vs 2018: no data (discount tracking began Jul 2026)"),
+// so an empty line isn't taken for a fault; `why` false means the selected period has none either
+// (the tile already shows "—"), and the line is left out.
+function vsLine(change, B, tail = "", why){
+  if(!B) return null;
+  if(change != null) return [dnode(change), `${tail} vs ${B.p.short}`];
+  if(why === false) return null;
+  return [el("span", "nd", `vs ${B.p.short}: no data${why ? ` (${why})` : ""}`)];
+}
+const SALE_WHY = r => r.sale.n ? "too few games watched from release" : "discount tracking began Jul 2026";
+const fmtDate = d => { const t = dayDate(d); return `${MON[t.getUTCMonth()]} ${t.getUTCDate()}, ${t.getUTCFullYear()}`; };
 
 function render(){
   closePop();
   const p = PER[SEL], ci = cmpIndex(), q = ci != null ? PER[ci] : null;
   const A = metrics(p), B = metrics(q);
+  CF = !!q && q.d0 < p.d0;
   const selName = p.label + (p.partial ? " so far" : ""), cmpName = q ? q.label : "—";
   document.querySelectorAll("#gran button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.g === G)));
   document.querySelectorAll("#vs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.vs === VS)));
@@ -1119,7 +1245,13 @@ function render(){
   }
   document.querySelectorAll(".l-sel").forEach(e => e.textContent = selName);
   document.querySelectorAll(".l-cmp").forEach(e => { e.textContent = cmpName; e.parentNode.hidden = !q; });
-  const vsTxt = q ? ` vs ${q.short}` : "";
+  // Legends name the two periods in time order, the earlier first, as the columns stand.
+  document.querySelectorAll(".l-cmp").forEach(e => {
+    const it = e.parentNode, lg = it.parentNode, other = lg.querySelector(".l-sel");
+    if(!other) return;
+    const si = other.parentNode;
+    if(CF) lg.insertBefore(it, si); else if(si.nextSibling !== it) lg.insertBefore(it, si.nextSibling);
+  });
   const vsHash = VS === "prev" ? "" : VS === "custom" ? (q ? `&vs=${q.key}` : "") : `&vs=${VS}`;
   try { history.replaceState(null, "", "#" + p.key + vsHash); } catch(e){}
 
@@ -1133,27 +1265,48 @@ function render(){
     xLabel:(c, i) => PER[i].yStart && PER[i].y % yEvery === 0 ? String(PER[i].y) : null,
     onPick:(i, e) => e && e.shiftKey ? compareWith(i) : select(i), faded:(c, i) => PER[i].partial, keyNav:d => select(SEL + d)});
 
-  // Tiles
+  renderNow(q);
+
+  // Tiles. Each change line says what it is against; where the compared period has no figure it
+  // says so, and why.
   const T = $("#tiles"); T.textContent = "";
+  const few = what => `fewer than ${MIN_N} ${what}`;
   tile(T, "Releases", fmtInt(A.rel), `${A.perDay.toFixed(A.perDay < 10 ? 1 : 0)} a day${p.partial ? " so far" : ""}`,
-       vsLine(dRel(A.perDay, B && B.perDay), B, " a day"), TIP.rel);
+       vsLine(dRel(A.perDay, B && B.perDay), B, " a day", "no releases"), TIP.rel);
   const t0 = A.tags[0];
   const t0b = B && t0 ? B.tags.find(t => t.name === t0.name) : null;
   tile(T, "Most common tag", t0 && t0.n ? t0.name : "—",
        t0 && t0.share != null ? `on ${fmtPct(t0.share, 0)} (${fmtInt(t0.n)}) · then ${A.tags.slice(1, 3).map(x => x.name).join(", ")}` : "",
-       B && t0 ? vsLine(dPP(t0.share, t0b ? t0b.share : 0), B, B.tags[0] && B.tags[0].name !== t0.name ? ` (top then: ${B.tags[0].name})` : "") : null, TIP.tag);
+       t0 && t0.n ? vsLine(B && B.relC ? dPP(t0.share, t0b ? t0b.share : 0) : null, B, B && B.tags[0] && B.tags[0].n && B.tags[0].name !== t0.name ? ` (top then: ${B.tags[0].name})` : "", "no releases") : null, TIP.tag);
   tile(T, "Median price", A.medOver ? "$100+" : fmtUsd(A.medPrice), `${fmtInt(A.paid)} paid games · mean ${fmtUsd(A.meanPrice)}`,
-       vsLine(dAbs(A.medPrice, B && B.medPrice, fmtUsd), B), TIP.price);
-  tile(T, "Free to play", fmtPct(A.freeShare), `${fmtInt(A.free)} of ${fmtInt(A.free + A.paid)} releases`, vsLine(dPP(A.freeShare, B && B.freeShare), B), TIP.free);
+       vsLine(dAbs(A.medPrice, B && B.medPrice, fmtUsd), B, "", A.medPrice == null ? false : few("paid games")), TIP.price);
+  tile(T, "Free to play", fmtPct(A.freeShare), `${fmtInt(A.free)} of ${fmtInt(A.free + A.paid)} releases`,
+       vsLine(dPP(A.freeShare, B && B.freeShare), B, "", A.freeShare == null ? false : few("releases")), TIP.free);
   tile(T, "Early Access length", fmtDur(A.eaMed), A.eaOut.length ? `median · ${fmtInt(A.eaOut.length)} left EA` : "no game left EA with a known start",
-       B && B.eaMed != null && A.eaMed != null ? vsLine(dAbs(A.eaMed / 30.44, B.eaMed / 30.44, v => v.toFixed(1) + " months"), B) : null, TIP.ealen);
-  tile(T, "First discount", A.km && A.km.med != null ? `${A.km.med} days` : A.km ? `> ${A.km.last} days` : "—",
-       A.km ? `after release · ${fmtPct(A.launchShare, 0)} (${fmtInt(A.sale.l)}) had a launch discount` : A.sale.n ? "too few games watched from launch" : "discount history starts late June 2026",
-       B && B.km && B.km.med != null && A.km && A.km.med != null ? vsLine(dAbs(A.km.med, B.km.med, v => v + " days"), B) : null, TIP.sale);
-  tile(T, "AI content disclosed", fmtPct(A.ai), `${fmtInt(A.n.ai)} of ${fmtInt(A.pics)} · ${fmtPct(A.aiLive)} (${fmtInt(A.n.aiLive)}) generate it live`, vsLine(dPP(A.ai, B && B.ai), B), TIP.ai);
-  tile(T, "Steam Deck OK", fmtPct(A.deck), `${fmtInt(A.n.deck)} games · Verified ${fmtPct(A.deck3)} (${fmtInt(A.n.deck3)}) · Playable ${fmtPct(A.deck2)} (${fmtInt(A.n.deck2)})`, vsLine(dPP(A.deck, B && B.deck), B), TIP.deck);
-  tile(T, "Under 10 reviews", fmtPct(A.invisible), `${fmtInt(A.n.invisible)} games · too few for a Steam rating`, vsLine(dPP(A.invisible, B && B.invisible), B), TIP.invisible);
-  tile(T, "Median length", fmtHours(A.lenMed), `${fmtInt(A.lenN)} games with a Length`, vsLine(dAbs(A.lenMed, B && B.lenMed, fmtHours), B), TIP.len);
+       vsLine(B && B.eaMed != null && A.eaMed != null ? dAbs(A.eaMed / 30.44, B.eaMed / 30.44, v => v.toFixed(1) + " months") : null, B, "",
+              A.eaMed == null ? false : B && B.p.dEnd < EA_OUT_FROM ? "exits are known from 2017" : "no game left Early Access with a known start"), TIP.ealen);
+  // Any discount, the launch one included: how many within 30 days, and by day 90. Until stats.py
+  // has written the any-discount counts, the tile keeps the first discount after launch.
+  if(A.kmAny || !A.sale.any){
+    const by = (r, k) => r && r.kmAny ? r.kmAny[k] : null;
+    tile(T, "Discounted within 30 days", by(A, "by30") != null ? fmtPct(by(A, "by30"), 0) : "—",
+         A.kmAny ? `of games watched from release · ${by(A, "by90") != null ? fmtPct(by(A, "by90"), 0) + " by day 90" : "day 90 not reached yet"} · ${fmtPct(A.launchShare, 0)} launched discounted`
+                 : A.sale.n ? "too few games watched from release" : "discount tracking began late June 2026",
+         vsLine(dPP(by(A, "by30"), by(B, "by30")), B, "", by(A, "by30") == null ? false : SALE_WHY(B)), TIP.anydisc);
+  } else {
+    tile(T, "Next discount after launch", A.km && A.km.med != null ? `${A.km.med} days` : A.km ? `> ${A.km.last} days` : "—",
+         A.km ? `after release · ${fmtPct(A.launchShare, 0)} (${fmtInt(A.sale.l)}) had a launch discount` : A.sale.n ? "too few games watched from launch" : "discount history starts late June 2026",
+         vsLine(B && B.km && B.km.med != null && A.km && A.km.med != null ? dAbs(A.km.med, B.km.med, v => v + " days") : null, B, "", A.km && A.km.med != null ? SALE_WHY(B) : false), TIP.sale);
+  }
+  const meta = few("games in Steam's metadata");
+  tile(T, "AI content disclosed", fmtPct(A.ai), `${fmtInt(A.n.ai)} of ${fmtInt(A.pics)} · ${fmtPct(A.aiLive)} (${fmtInt(A.n.aiLive)}) generate it live`,
+       vsLine(dPP(A.ai, B && B.ai), B, "", A.ai == null ? false : meta), TIP.ai);
+  tile(T, "Steam Deck OK", fmtPct(A.deck), `${fmtInt(A.n.deck)} games · Verified ${fmtPct(A.deck3)} (${fmtInt(A.n.deck3)}) · Playable ${fmtPct(A.deck2)} (${fmtInt(A.n.deck2)})`,
+       vsLine(dPP(A.deck, B && B.deck), B, "", A.deck == null ? false : meta), TIP.deck);
+  tile(T, "Under 10 reviews", fmtPct(A.invisible), `${fmtInt(A.n.invisible)} games · too few for a Steam rating`,
+       vsLine(dPP(A.invisible, B && B.invisible), B, "", A.invisible == null ? false : few("releases")), TIP.invisible);
+  tile(T, "Median length", fmtHours(A.lenMed), `${fmtInt(A.lenN)} games with a Length`,
+       vsLine(dAbs(A.lenMed, B && B.lenMed, fmtHours), B, "", A.lenMed == null ? false : few("games with a Length")), TIP.len);
 
   renderReleases(A, B, p, q);
   renderTags(A, B);
@@ -1165,31 +1318,91 @@ function render(){
   renderCalendar(A, B);
 }
 
+// Releases per day, week or month inside the selected period (the switch offers what fits the
+// grouping: a week has days only). By week or month the compared period is drawn beside it, its
+// k-th week or month against the selected one's; a week cut by the period's edge, or by today,
+// is drawn faded. By day there are too many to pair, so the selected period stands alone.
+let REL_UNIT = "d";
+const REL_UNITS = {y:["d", "w", "m"], q:["d", "w", "m"], m:["d", "w"], w:["d"]};
+const REL_NAME = {d:"day", w:"week", m:"month"};
+function relBuckets(p, unit){
+  const end = Math.min(p.dEnd, TODAY), sum = (a, b) => { let n = 0; for(let d = a; d <= b; d++) n += S.daily[d - S.d0] || 0; return n; };
+  const out = [];
+  if(unit === "d"){ for(let d = p.d0; d <= end; d++) out.push({a:d, b:d, n:sum(d, d), partial:false}); return out; }
+  if(unit === "w"){
+    for(let w = p.d0 - (p.d0 + 3) % 7; w <= end; w += 7){
+      const a = Math.max(w, p.d0), b = Math.min(w + 6, end);
+      out.push({a, b, n:sum(a, b), partial:a > w || b < w + 6, w});
+    }
+    return out;
+  }
+  const t = dayDate(p.d0);
+  for(let abs = t.getUTCFullYear() * 12 + t.getUTCMonth(); monthDay(abs) <= end; abs++){
+    const a = Math.max(monthDay(abs), p.d0), full = monthDay(abs + 1) - 1, b = Math.min(full, end);
+    out.push({a, b, n:sum(a, b), partial:b < full, abs});
+  }
+  return out;
+}
+function dayRange(a, b){            // "Oct 19–25, 2026" · "Sep 28 – Oct 4, 2026" · across New Year, both years
+  if(a === b) return fmtDate(a);
+  const x = dayDate(a), y = dayDate(b), ya = x.getUTCFullYear(), yb = y.getUTCFullYear();
+  if(ya !== yb) return `${fmtDate(a)} – ${fmtDate(b)}`;
+  if(x.getUTCMonth() !== y.getUTCMonth()) return `${MON[x.getUTCMonth()]} ${x.getUTCDate()} – ${MON[y.getUTCMonth()]} ${y.getUTCDate()}, ${yb}`;
+  return `${MON[x.getUTCMonth()]} ${x.getUTCDate()}–${y.getUTCDate()}, ${yb}`;
+}
+const bucketName = (k, unit) => unit === "w" ? dayRange(k.a, k.b) : unit === "m" ? `${MONL[k.abs % 12]} ${Math.floor(k.abs / 12)}` : fmtDayLong(k.a);
 function renderReleases(A, B, p, q){
-  const busiest = A.daily.reduce((b, x) => x[1] > b[1] ? x : b, [null, -1]);
-  $("#s-daily").textContent = busiest[0] != null && busiest[1] > 0 ? `Busiest day: ${fmtDayLong(busiest[0])}, ${fmtInt(busiest[1])} releases.` : "";
-  const cd = $("#c-daily");
-  columnChart(cd, {cats:A.daily.map(([d, v]) => ({label:fmtDayTs(d), sel:v, tip:fmtDayLong(d), name:"releases", d})),
-    height:fitH(cd, 0.42, 170, 240), fmt:fmtInt, axisFmt:fmtCompact, label:`Releases per day, ${p.label}`,
-    valueLabel:G === "w" ? v => fmtInt(v) : null,
-    xLabel:(c) => { const t = new Date(c.d * 864e5), day = t.getUTCDate();
+  const units = REL_UNITS[G];
+  if(!units.includes(REL_UNIT)) REL_UNIT = "d";
+  const u = REL_UNIT, sw = $("#runit");
+  sw.hidden = units.length < 2;
+  sw.querySelectorAll("button").forEach(b => {
+    b.hidden = !units.includes(b.dataset.u);
+    b.setAttribute("aria-pressed", String(b.dataset.u === u));
+    b.onclick = () => { REL_UNIT = b.dataset.u; renderReleases(A, B, p, q); };
+  });
+  $("#h-daily").textContent = `Releases per ${REL_NAME[u]}`;
+  const ka = relBuckets(p, u), kb = B && u !== "d" ? relBuckets(q, u) : null;
+  const busiest = ka.reduce((m, k) => k.n > m.n ? k : m, {n:-1});
+  $("#s-daily").textContent = busiest.n > 0 ? `Busiest ${REL_NAME[u]}: ${bucketName(busiest, u)}, ${fmtInt(busiest.n)} releases.` : "";
+  $("#lg-daily").hidden = !kb;
+  const cd = $("#c-daily"), n = Math.max(ka.length, kb ? kb.length : 0);
+  const cats = [];
+  for(let i = 0; i < n; i++){
+    const x = ka[i], y = kb ? kb[i] : null, days = k => k && k.partial ? ` (${k.b - k.a + 1} days)` : "";
+    cats.push({label: x ? (u === "m" ? MON[x.abs % 12] : fmtDayTs(x.a)) : "", sel: x ? x.n : null, cmp: y ? y.n : null, d: x ? x.a : null,
+      fadeSel: !!(x && x.partial), fadeCmp: !!(y && y.partial),
+      tip: u === "d" ? fmtDayLong(x.a) : u === "w" ? `Week ${i + 1}` : MONL[(x || y).abs % 12],
+      name:"releases", nameSel: x ? bucketName(x, u) + days(x) : p.label, nameCmp: y ? bucketName(y, u) + days(y) : (q ? q.label : "")});
+  }
+  columnChart(cd, {cats, paired:!!kb, cmpFirst:CF,
+    height:fitH(cd, 0.42, 170, 240), fmt:fmtInt, axisFmt:fmtCompact, label:`Releases per ${REL_NAME[u]}, ${p.label}${kb ? ` and ${q.label}` : ""}`,
+    valueLabel:G === "w" || u !== "d" ? v => v == null ? null : fmtInt(v) : null,
+    faded:(c, i) => ka[i] && ka[i].partial,
+    xLabel:u === "d" ? (c) => { const t = new Date(c.d * 864e5), day = t.getUTCDate();
       return G === "w" ? `${WD[(c.d + 3) % 7]} ${day}` : G === "m" ? ([1, 8, 15, 22, 29].includes(day) ? String(day) : null)
-           : day === 1 && (G === "q" || t.getUTCMonth() % 2 === 0) ? MON[t.getUTCMonth()] : null; }});
+           : day === 1 && (G === "q" || t.getUTCMonth() % 2 === 0) ? MON[t.getUTCMonth()] : null; } : null});
   const cw = $("#c-dow"), tot = a => a.reduce((x, y) => x + y, 0) || 1;
   columnChart(cw, {cats:WD.map((w, i) => ({label:w, sel:A.dow[i] / tot(A.dow), cmp:B ? B.dow[i] / tot(B.dow) : null, selN:A.dow[i], cmpN:B ? B.dow[i] : null,
-      tip:w, nameSel:p.label, nameCmp:q ? q.label : ""})), paired:!!B,
+      tip:w, nameSel:p.label, nameCmp:q ? q.label : ""})), paired:!!B, cmpFirst:CF,
     height:fitH(cw, 0.42, 170, 240), fmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:"Share of releases by weekday", valueLabel:pctLabel});
-  table($("#t-rel"), ["Day (UTC)", "Releases"], A.daily.map(([d, v]) => [fmtDayLong(d), fmtInt(v)]));
+  const head = [u === "d" ? "Day (UTC)" : u === "w" ? "Week" : "Month"];
+  if(kb) table($("#t-rel"), head.concat(ord([p.label + (p.partial ? " so far" : ""), "Releases"], [q.label, "Releases"])),
+    Array.from({length:n}, (_, i) => [u === "w" ? `Week ${i + 1}` : MONL[(ka[i] || kb[i]).abs % 12]]
+      .concat(ord(ka[i] ? [bucketName(ka[i], u), fmtInt(ka[i].n)] : ["", "—"], kb[i] ? [bucketName(kb[i], u), fmtInt(kb[i].n)] : ["", "—"]))));
+  else table($("#t-rel"), [head[0], "Releases"], ka.map(k => [bucketName(k, u), fmtInt(k.n)]));
 }
+// Two periods' cells in time order: the compared period's first when it is the earlier one.
+const ord = (sel, cmp) => CF ? [...cmp, ...sel] : [...sel, ...cmp];
 
 function renderTags(A, B){
-  const heads = n => [n, A.p.short, B ? B.p.short : ""];
+  const H = n => ({first:n, sel:A.p.label + (A.p.partial ? " so far" : ""), cmp:B ? B.p.label : "", vs:B ? `vs ${B.p.short}` : "", cmpFirst:CF});
   const top = A.tags.filter(t => t.n).slice(0, 15);
   const bt = B ? new Map(B.tags.map(t => [t.name, t])) : null;
   const row = (t, bm) => { const b = bm && bm.get(t.name); return {name:t.name, sel:t.share, selN:t.n, cmp:bm ? (b ? b.share : 0) : null, cmpN:bm ? (b ? b.n : 0) : null}; };
-  rankRows($("#c-tags"), top.map(t => row(t, bt)), !!B, heads("Tag"));
+  rankRows($("#c-tags"), top.map(t => row(t, bt)), !!B, H("Tag"));
   const gt = A.genres.filter(t => t.n).slice(0, 12), bg = B ? new Map(B.genres.map(t => [t.name, t])) : null;
-  rankRows($("#c-genres"), gt.map(t => row(t, bg)), !!B, heads("Genre"));
+  rankRows($("#c-genres"), gt.map(t => row(t, bg)), !!B, H("Genre"));
   $("#i-tags").textContent = ""; $("#i-tags").appendChild(info(TIP.tags));
   $("#i-genres").textContent = ""; $("#i-genres").appendChild(info(TIP.genres));
   // Movers: the largest share change among tags on at least 2% of either period's releases.
@@ -1203,11 +1416,57 @@ function renderTags(A, B){
     if(down && down.d < 0){ n.append(up && up.d > 0 ? " · Falling: " : "Falling: "); n.appendChild(el("b", null, down.name)); n.append(" "); n.appendChild(el("span", "down", dPP(down.d, 0).replace("▼ ", "−"))); }
     if(n.childNodes.length) n.append(` (share of releases, vs ${B.p.label}).`);
   }
-  const names = [...new Set([...A.tags.slice(0, 40).map(t => t.name)])];
-  table($("#t-tags"), B ? ["Tag", A.p.label, "Games", B.p.label, "Games", "Change"] : ["Tag", A.p.label, "Games"],
-        names.map(nm => { const a = A.tags.find(t => t.name === nm), b = B && B.tags.find(t => t.name === nm);
-          return B ? [nm, fmtPct(a.share), fmtInt(a.n), b ? fmtPct(b.share) : "—", b ? fmtInt(b.n) : "—", dPP(a.share, b ? b.share : 0) || "—"]
-                   : [nm, fmtPct(a.share), fmtInt(a.n)]; }));
+  renderTpg(A);
+  renderTagMatrix(A);
+}
+// Every period at the grouping in use, one column each, for the selected period's top 40 tags
+// and 12 genres: the share of releases and the games behind it. Built only while open (Week holds
+// ~1,000 columns), scrolled to the selected period, which is tinted blue; the compared one gray.
+function renderTagMatrix(A){
+  const det = $("#d-tags"), host = $("#t-tags");
+  if(!det.open){ host.textContent = ""; return; }
+  host.textContent = "";
+  const ci = cmpIndex(), Ms = PER.map(metrics);
+  const maps = Ms.map(r => ({t:new Map(r.tags.map(x => [x.name, x])), g:new Map(r.genres.map(x => [x.name, x]))}));
+  const t = document.createElement("table"); t.className = "mx";
+  const hr = document.createElement("tr"); hr.appendChild(el("th", null, ""));
+  PER.forEach((p, i) => { const th = el("th", i === SEL ? "sel" : i === ci ? "cmp" : null, p.short + (p.partial ? "*" : "")); th.title = p.label + (p.partial ? " (so far)" : ""); hr.appendChild(th); });
+  t.appendChild(hr);
+  const block = (title, names, kind) => {
+    const sr = document.createElement("tr"); sr.className = "sec";
+    sr.appendChild(el("td", null, title)); t.appendChild(sr);
+    for(const nm of names){
+      const tr = document.createElement("tr"); tr.appendChild(el("td", null, nm));
+      Ms.forEach((r, i) => {
+        const x = maps[i][kind].get(nm), td = el("td", i === SEL ? "sel" : i === ci ? "cmp" : null, x && x.n ? fmtPct(x.share) : "—");
+        if(x && x.n) td.appendChild(el("small", null, fmtInt(x.n)));
+        tr.appendChild(td);
+      });
+      t.appendChild(tr);
+    }
+  };
+  block("Tags: share of releases · games", A.tags.filter(x => x.n).slice(0, 40).map(x => x.name), "t");
+  block("Genres: share of releases · games", A.genres.filter(x => x.n).slice(0, 12).map(x => x.name), "g");
+  host.appendChild(t);
+  const th = hr.children[SEL + 1];
+  if(th) host.scrollLeft = Math.max(0, th.offsetLeft - host.clientWidth / 2);
+}
+// Tags per game over time, one line per review group (the discount chart's three, in its colours).
+function renderTpg(A){
+  const host = $("#c-tpg"), lg = $("#lg-tpg");
+  const ie = $("#i-tpg"); ie.textContent = ""; ie.appendChild(info(TIP.tpg));
+  if(!A.tpg){ lg.textContent = ""; $("#s-tpg").textContent = ""; empty(host, "Tags per game arrive with the next stats update."); return; }
+  const ge = S.tag_group_edges || [100, 5000];
+  const GR = [{name:`0–${fmtInt(ge[0] - 1)} reviews`, color:C.s2}, {name:`${fmtInt(ge[0])}–${fmtInt(ge[1] - 1)} reviews`, color:"var(--s3)"},
+              {name:`${fmtInt(ge[1])}+ reviews`, color:C.sel}];
+  lg.textContent = "";
+  for(const g of GR){ const e = el("span"), i = el("i", "line"); i.style.background = g.color; e.append(i, g.name); lg.appendChild(e); }
+  const by = A.tpg.map(v => v == null ? "—" : v.toFixed(1));
+  $("#s-tpg").textContent = `Steam tags each release carries (Steam allows 20), by how many reviews it has today. ${A.p.label}${A.p.partial ? " so far" : ""}: `
+    + `${A.tpgAll != null ? A.tpgAll.toFixed(1) : "—"} on average; ${GR.map((g, k) => `${by[k]} at ${g.name}`).join(", ")}.`;
+  trend(host, GR.map((g, k) => ({name:g.name, color:g.color, f:r => r.tpg ? r.tpg[k] : null, cnt:r => [r.tpgN ? r.tpgN[k] : 0, r.tpgG ? r.tpgG[k] : 0], fmtCnt:(k2, of) => `${fmtInt(of)} games`})),
+        {yFmt:v => v.toFixed(1), axisFmt:v => String(v), yMax:20, label:"Average Steam tags per release, by review group",
+         height:fitH(host, 0.24, 160, 230), tipHead:i => { const r = metrics(PER[i]); return `${PER[i].label}${PER[i].partial ? " (so far)" : ""} · ${r.tpgAll != null ? r.tpgAll.toFixed(1) : "—"} tags on average`; }});
 }
 
 // The price trend's lines, each switched on or off from its legend entry (PRICE_OFF holds the off),
@@ -1226,19 +1485,20 @@ function renderPrice(A, B){
   const sh = r => rev ? r.priceGroupsRev : r.priceGroups, nn = r => rev ? r.priceGroupsRevN : r.priceGroupsN;
   columnChart(cp, {cats:PRICE_GROUPS.map((g, i) => ({label:g.label, sel:sh(A)[i], cmp:B ? sh(B)[i] : null,
       selN:nn(A)[i], cmpN:B ? nn(B)[i] : null, tip:g.label + (rev ? " · reviews" : " · releases"),
-      nameSel:A.p.label, nameCmp:B ? B.p.label : ""})), paired:!!B,
+      nameSel:A.p.label, nameCmp:B ? B.p.label : ""})), paired:!!B, cmpFirst:CF,
     height:fitH(cp, 0.42, 170, 240), fmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%",
     label:rev ? "Share of reviews by price range" : "Share of releases by price range",
     valueLabel:pctLabel, xLabel:(c, i) => { const band = (cp.clientWidth - 56) / PRICE_GROUPS.length;
       return band >= 66 ? c.label : band >= 46 ? PRICE_GROUPS[i].mid : PRICE_GROUPS[i].short; }});
   // Typical price over time: median with the middle half around it, the mean (faint) and its
-  // trailing-year average, and the review-weighted mean once stats.py has written it.
+  // trailing-year average, and the review-weighted mean once stats.py has written it. Year view
+  // leaves the average out (owner, Nov 2026): a year is already a year's worth.
   const hasRw = !!S.m.rw, sm = SMOOTH_NAME[G];
   const LINES = [
     {id:"med", name:"Median", color:C.sel, kind:"line", f:r => r.medPrice},
     {id:"iqr", name:"Middle half", color:C.sel, kind:"area"},
     {id:"mean", name:"Mean", color:C.s2, kind:"faint", f:r => r.meanPrice, op:0.45, width:1.5},
-    {id:"avg", name:`Mean, ${sm} average`, color:C.s2, kind:"thick", fi:i => smoothMean(i), width:3},
+    ...(G !== "y" ? [{id:"avg", name:`Mean, ${sm} average`, color:C.s2, kind:"thick", fi:i => smoothMean(i), width:3}] : []),
     ...(hasRw ? [{id:"rw", name:G === "y" ? "Review-weighted mean" : `Review-weighted, ${SMOOTH_NAME[G]}`, color:"var(--s3)", kind:"line", fi:i => rwYear(i)}] : []),
   ];
   const lg = $("#lg-ptrend"); lg.textContent = "";
@@ -1253,7 +1513,7 @@ function renderPrice(A, B){
   const ct = $("#c-ptrend");
   trend(ct, LINES.filter(L => L.kind !== "area" && on(L)).map(L => ({name:L.name, color:L.color, f:L.f, fi:L.fi, op:L.op, width:L.width})),
         {yFmt:v => fmtUsd(v), axisFmt:v => "$" + v, label:"Median, middle half, mean and review-weighted mean price of paid releases per period",
-         height:fitH(ct, 0.42, 170, 240),
+         height:fitH(ct, 0.42, 170, 240), nullWhy:i => `too few paid games (${fmtInt(metrics(PER[i]).priced)})`,
          areas:on(LINES[1]) ? [{name:"Middle half", color:C.sel, op:0.18, lo:r => r.p25, hi:r => r.p75, fmt:(lo, hi) => `${fmtUsd(lo)}–${fmtUsd(hi)}`}] : [],
          tipHead:i => `${PER[i].label}${PER[i].partial ? " (so far)" : ""} · ${fmtInt(metrics(PER[i]).priced)} paid`});
   const dd = $("#d-ptrend"); dd.textContent = "";
@@ -1261,7 +1521,7 @@ function renderPrice(A, B){
     ["Median", "The middle price: half the period's paid releases cost less, half more. Free games are left out."],
     ["Middle half", "The range the middle 50% of prices fall in, from the 25th to the 75th percentile: a quarter of games cost less, a quarter more."],
     ["Mean", "The plain average price. A few expensive games pull it above the median, and a single month can swing it."],
-    [`${sm[0].toUpperCase() + sm.slice(1)} average`, `The mean over the ${G === "y" ? "three years" : "year"} up to each point, which irons out the swings of single ${G === "w" ? "weeks" : G === "m" ? "months" : G === "q" ? "quarters" : "years"}.`],
+    ...(G !== "y" ? [[`${sm[0].toUpperCase() + sm.slice(1)} average`, `The mean over the year up to each point, which irons out the swings of single ${G === "w" ? "weeks" : G === "m" ? "months" : "quarters"}.`]] : []),
     ...(hasRw ? [["Review-weighted", "The average price with each game counted once per Steam review it has: closer to what players actually buy than to what gets listed. "
       + (G === "y" ? "One big release moves it." : `Drawn over the ${SMOOTH_NAME[G]} stretch up to each point, as one big release can swing a single ${G === "w" ? "week" : G === "m" ? "month" : "quarter"}.`)]] : []),
   ]){ dd.append(el("dt", null, t), el("dd", null, d)); }
@@ -1269,12 +1529,13 @@ function renderPrice(A, B){
   const cols = (r, i) => r ? [fmtPct(r.priceGroups[i]), fmtInt(r.priceGroupsN[i]), ...(hasRev ? [fmtShare(r.priceGroupsRev && r.priceGroupsRev[i], r.priceGroupsRevN && r.priceGroupsRevN[i])] : [])]
                            : ["—", "—", ...(hasRev ? ["—"] : [])];
   const pad = (a, b) => [a, b, ...(hasRev ? [""] : [])];
-  table($("#t-price"), ["Price", A.p.label, "Games", ...(hasRev ? ["Reviews"] : []), B ? B.p.label : "—", "Games", ...(hasRev ? ["Reviews"] : [])],
-        PRICE_GROUPS.map((g, i) => [g.label, ...cols(A, i), ...cols(B, i)])
-          .concat([["Median (paid)", ...pad(fmtUsd(A.medPrice), ""), ...pad(B ? fmtUsd(B.medPrice) : "—", "")],
-                   ["Middle half (paid)", ...pad(`${fmtUsd(A.p25)}–${fmtUsd(A.p75)}`, ""), ...pad(B ? `${fmtUsd(B.p25)}–${fmtUsd(B.p75)}` : "—", "")],
-                   ["Mean (paid)", ...pad(fmtUsd(A.meanPrice), fmtInt(A.priced)), ...pad(B ? fmtUsd(B.meanPrice) : "—", B ? fmtInt(B.priced) : "—")],
-                   ...(hasRw ? [["Review-weighted mean", ...pad(fmtUsd(A.rwMean), fmtInt(A.rw) + " reviews"), ...pad(B ? fmtUsd(B.rwMean) : "—", B ? fmtInt(B.rw) + " reviews" : "—")]] : [])]));
+  const hd = r => [r ? r.p.label : "—", "Games", ...(hasRev ? ["Reviews"] : [])];
+  table($("#t-price"), ["Price", ...ord(hd(A), hd(B))],
+        PRICE_GROUPS.map((g, i) => [g.label, ...ord(cols(A, i), cols(B, i))])
+          .concat([["Median (paid)", ...ord(pad(fmtUsd(A.medPrice), ""), pad(B ? fmtUsd(B.medPrice) : "—", ""))],
+                   ["Middle half (paid)", ...ord(pad(`${fmtUsd(A.p25)}–${fmtUsd(A.p75)}`, ""), pad(B ? `${fmtUsd(B.p25)}–${fmtUsd(B.p75)}` : "—", ""))],
+                   ["Mean (paid)", ...ord(pad(fmtUsd(A.meanPrice), fmtInt(A.priced)), pad(B ? fmtUsd(B.meanPrice) : "—", B ? fmtInt(B.priced) : "—"))],
+                   ...(hasRw ? [["Review-weighted mean", ...ord(pad(fmtUsd(A.rwMean), fmtInt(A.rw) + " reviews"), pad(B ? fmtUsd(B.rwMean) : "—", B ? fmtInt(B.rw) + " reviews" : "—"))]] : [])]));
 }
 
 const EA_BUCKETS = [["< 3 months", 0, 91], ["3–6 mo", 91, 183], ["6–12 mo", 183, 365], ["1–2 years", 365, 730], ["2–3 years", 730, 1096], ["3–5 years", 1096, 1826], ["5+ years", 1826, Infinity]];
@@ -1289,18 +1550,27 @@ function renderEA(A, B, p, q){
   const cd = $("#c-eadur");
   columnChart(cd, {cats:EA_BUCKETS.map(b => ({label:b[0], sel:sh(A.eaOut, b), cmp:B ? sh(B.eaOut, b) : null,
       selN:cnt(A.eaOut, b[1], b[2]), cmpN:B ? cnt(B.eaOut, b[1], b[2]) : null, tip:b[0],
-      nameSel:`${p.label} (${fmtInt(A.eaOut.length)})`, nameCmp:q ? `${q.label} (${fmtInt(B.eaOut.length)})` : ""})), paired:!!B,
+      nameSel:`${p.label} (${fmtInt(A.eaOut.length)})`, nameCmp:q ? `${q.label} (${fmtInt(B.eaOut.length)})` : ""})), paired:!!B, cmpFirst:CF,
     height:fitH(cd, 0.42, 170, 240), fmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:"Time in Early Access of games that left it",
     valueLabel:pctLabel, xLabel:(c, i) => cd.clientWidth < 460 ? ["<3m", "3–6m", "6–12m", "1–2y", "2–3y", "3–5y", "5y+"][i] : c.label});
-  const ct = $("#c-eatrend");
+  // Shares of releases on the left scale; games in Early Access at the end of each period (a count
+  // that can only be traced back so far, see the note) on the right one — the owner's pick, Nov 2026.
+  const ct = $("#c-eatrend"), hasStock = A.eaStock != null;
+  $("#lg-eastock").hidden = !hasStock;
   trend(ct, [{name:"Launched in Early Access", color:C.sel, f:r => r.eaShare, cnt:r => [r.eaIn, r.rel]},
              {name:"Left it (1.0)", color:C.s2, f:r => r.eaOutShare, cnt:r => [r.eaOut.length, r.rel]}],
-        {yFmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:"Share of releases launching in Early Access, and of 1.0 launches out of it", height:fitH(ct, 0.42, 170, 240)});
-  table($("#t-ea"), ["Time in Early Access", A.p.label, "Share", B ? B.p.label : "—", "Share"],
-        EA_BUCKETS.map(b => [b[0], fmtInt(cnt(A.eaOut, b[1], b[2])), fmtPct(sh(A.eaOut, b)), B ? fmtInt(cnt(B.eaOut, b[1], b[2])) : "—", B ? fmtPct(sh(B.eaOut, b)) : "—"])
-          .concat([["Median", fmtDur(A.eaMed), "", B ? fmtDur(B.eaMed) : "—", ""],
-                   ["Launched into EA", fmtInt(A.eaIn), fmtPct(A.eaShare), B ? fmtInt(B.eaIn) : "—", B ? fmtPct(B.eaShare) : "—"],
-                   ["Left EA (1.0)", fmtInt(A.eaOut.length), fmtPct(A.eaOutShare), B ? fmtInt(B.eaOut.length) : "—", B ? fmtPct(B.eaOutShare) : "—"]]));
+        {yFmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:"Share of releases launching in Early Access, and of 1.0 launches out of it"
+           + (hasStock ? "; games in Early Access at the end of each period on the right axis" : ""), height:fitH(ct, 0.42, 170, 240),
+         right:hasStock ? {series:[{name:"In Early Access (traceable)", color:"var(--s3)", f:r => r.eaStock}], fmt:v => fmtInt(v) + " games", axisFmt:fmtCompact} : null});
+  $("#n-eatrend").textContent = "Both shares count only games whose Early Access start Steam kept: a game that left Early Access without one counts as an ordinary release on its 1.0 date, and no exit before 2017 is known, so past launches and exits run low."
+    + (hasStock ? ` The games-in-Early-Access line is exact today (${fmtInt(S.now.ea)}) and, for the same reason, a minimum for every earlier period.` : "");
+  const eh = r => [r ? r.p.label : "—", "Share"];
+  table($("#t-ea"), ["Time in Early Access", ...ord(eh(A), eh(B))],
+        EA_BUCKETS.map(b => [b[0], ...ord([fmtInt(cnt(A.eaOut, b[1], b[2])), fmtPct(sh(A.eaOut, b))], [B ? fmtInt(cnt(B.eaOut, b[1], b[2])) : "—", B ? fmtPct(sh(B.eaOut, b)) : "—"])])
+          .concat([["Median", ...ord([fmtDur(A.eaMed), ""], [B ? fmtDur(B.eaMed) : "—", ""])],
+                   ["Launched into EA", ...ord([fmtInt(A.eaIn), fmtPct(A.eaShare)], [B ? fmtInt(B.eaIn) : "—", B ? fmtPct(B.eaShare) : "—"])],
+                   ["Left EA (1.0)", ...ord([fmtInt(A.eaOut.length), fmtPct(A.eaOutShare)], [B ? fmtInt(B.eaOut.length) : "—", B ? fmtPct(B.eaOutShare) : "—"])],
+                   ...(hasStock ? [["In Early Access at the end (traceable)", ...ord([fmtInt(A.eaStock), ""], [B ? fmtInt(B.eaStock) : "—", ""])]] : [])]));
 }
 
 const DEPTH_LABELS = ["10–19%", "20–29%", "30–39%", "40–49%", "50–59%", "60–69%", "70–79%", "80–89%", "90%"];
@@ -1317,44 +1587,61 @@ function renderSales(A, B, p, q){
   const H = $("#sale-sum"); H.textContent = "";
   const none = !A.sale.n;
   H.hidden = none; $("#c-depth").parentNode.hidden = none;
-  tile(H, "Watched from launch", fmtInt(A.sale.n), "games, first price check within 3 days", vsLine(dRel(A.sale.n, B && B.sale.n), B), TIP.watched);
-  tile(H, "Launch discount", fmtPct(A.launchShare, 0), A.sale.l ? `${fmtInt(A.sale.l)} games · ${Math.round(A.launchPct)}% off on average` : "none yet",
-       vsLine(dPP(A.launchShare, B && B.launchShare), B), TIP.launch);
-  tile(H, "First discount after launch", A.km && A.km.med != null ? `${A.km.med} days` : A.km ? `> ${A.km.last} days` : "—",
+  const on = (r, d) => r && r.launchOn ? r.launchOn[d] : null;
+  tile(H, "Watched from launch", fmtInt(A.sale.n), "games, first price check within 3 days", vsLine(dRel(A.sale.n, B && B.sale.n), B, "", SALE_WHY(B)), TIP.watched);
+  tile(H, "Launch discount", fmtPct(A.launchShare, 0), A.sale.l ? `${fmtInt(A.sale.l)} games · ${Math.round(A.launchPct)}% off on average`
+         + (on(A, 10) != null ? ` · ${fmtPct(on(A, 10), 0)} still on it on day 10` : "") : "none yet",
+       vsLine(dPP(A.launchShare, B && B.launchShare), B, "", A.launchShare == null ? false : SALE_WHY(B)), TIP.launch);
+  tile(H, "Next discount after launch", A.km && A.km.med != null ? `${A.km.med} days` : A.km ? `> ${A.km.last} days` : "—",
        A.km ? (A.km.med != null ? "after release: half the games had one by then" : `fewer than half have had one in the ${A.km.last} days watched`) : "too few games watched",
-       B && B.km && B.km.med != null && A.km && A.km.med != null ? vsLine(dAbs(A.km.med, B.km.med, v => v + " days"), B) : null, TIP.sale);
-  tile(H, "That first discount", A.firstPct ? `${Math.round(A.firstPct)}% off` : "—", A.firstN ? `on average, over the ${fmtInt(A.firstN)} games that have had one` : "no game has had one yet",
-       B && B.firstPct && A.firstPct ? vsLine(dAbs(A.firstPct, B.firstPct, v => Math.round(v) + " pp"), B) : null, TIP.firstpct);
+       vsLine(B && B.km && B.km.med != null && A.km && A.km.med != null ? dAbs(A.km.med, B.km.med, v => v + " days") : null, B, "", A.km && A.km.med != null ? SALE_WHY(B) : false), TIP.sale);
+  tile(H, "That discount", A.firstPct ? `${Math.round(A.firstPct)}% off` : "—", A.firstN ? `on average, over the ${fmtInt(A.firstN)} games that have had one` : "no game has had one yet",
+       vsLine(B && B.firstPct && A.firstPct ? dAbs(A.firstPct, B.firstPct, v => Math.round(v) + " pp") : null, B, "", A.firstPct ? SALE_WHY(B) : false), TIP.firstpct);
 
-  // How soon: the launch-week column (launched with a discount), then a Kaplan-Meier curve of the
-  // first discount after launch, with Steam's 30-day lock shaded.
+  // How soon: columns for days 0-14, the share of games still on their launch discount that day
+  // (most run one week or two; owner, Nov 2026: show that they don't all last), the compared
+  // period as an outline over them; then from day 30 the Kaplan-Meier curve of the next discount,
+  // with Steam's 30-day lock shaded. Until stats.py has written the day counts, the launch
+  // discount is one column over the first week, at the share that launched with one.
   const old = A.km ? A.km.last : null;
   const ik = $("#i-km"); ik.textContent = "";
-  ik.appendChild(info("The column over the first week is the share that launched with a discount (Steam caps it at 40% off). The line is the share "
-    + "that has had a discount since, by days after release: nothing before day 30, when Steam allows no discount but the launch one. "
+  ik.appendChild(info("The columns are the share of games on their launch discount on each of their first 15 days (Steam caps it at 40% off; most run one week or two). "
+    + "The line is the share that has had their next discount since, by days after release: nothing before day 30, when Steam allows no discount but the launch one. "
     + "A game not yet discounted counts until its last check (a Kaplan-Meier estimate), so recent periods are not pulled down. "
     + (old != null ? `The line ends at day ${old}, as far as ${p.partial ? "this period's" : "enough of the period's"} games have been watched.` : "")));
+  const dk = $("#d-km"); dk.textContent = "";
   const ck = $("#c-km");
-  const series = [];
-  if(A.km) series.push({name:p.label, color:C.sel, pts:A.km.pts, km:A.km});
-  if(B && B.km) series.push({name:q.label, color:C.cmp, pts:B.km.pts, km:B.km});
-  if(!series.length) empty(ck, A.sale.n ? "Too few games watched from launch in this period." : "No discount history for this period: watching started in late June 2026.");
+  const series = [], hasDays = !!A.launchOn;
+  const from7 = pts => hasDays ? pts.map(x => x[0] === 0 ? [LAUNCH_W, x[1]] : x) : pts;
+  if(A.km) series.push({name:p.label, color:C.sel, pts:from7(A.km.pts), km:A.km});
+  if(B && B.km) series.push({name:q.label, color:C.cmp, pts:from7(B.km.pts), km:B.km});
+  if(!series.length && !hasDays) empty(ck, A.sale.n ? "Too few games watched from launch in this period." : "No discount history for this period: watching started in late June 2026.");
   else {
     const xMax = Math.max(...series.map(x => x.pts[x.pts.length - 1][0]), 45);
-    // The launch week as a column: the selected period's share, and beside it the compared one's.
-    const both = series.length > 1 && A.km && B.km, top = Math.max(A.launchShare || 0, both ? B.launchShare || 0 : 0);
+    const span = S.launch_span || 15;
+    const cols = hasDays ? [{name:`${p.label}: on launch discount`, color:C.sel, op:0.85, w:0.78, pts:A.launchOn.map((v, d) => [d, v]),
+                           fmt:(v, d) => `${fmtPct(v, 0)} · ${fmtInt(A.sale.lo[d])} of ${fmtInt(A.sale.lk[d])}`}]
+      .concat(B && B.launchOn ? [{name:`${q.label}: on launch discount`, color:C.cmp, outline:true, w:0.78, pts:B.launchOn.map((v, d) => [d, v]),
+                                  fmt:(v, d) => `${fmtPct(v, 0)} · ${fmtInt(B.sale.lo[d])} of ${fmtInt(B.sale.lk[d])}`}] : []) : [];
+    // Without the day counts: the launch week as one column, the compared period's beside it.
+    const both = !hasDays && series.length > 1 && A.km && B.km, top = Math.max(A.launchShare || 0, both ? B.launchShare || 0 : 0);
     const col = (r, x0, x1, color, name, dy, cls) => r.launchShare == null ? null : {name:`${name}: launched discounted`, color, op:0.55, hold:[0, LAUNCH_W],
       pts:[[x0, 0, r.launchShare], [x1, 0, r.launchShare]], fmt:() => `${fmtPct(r.launchShare, 0)} · ${fmtInt(r.sale.l)} of ${fmtInt(r.sale.n)}`,
       label:{text:fmtPct(r.launchShare, 0), x:LAUNCH_W / 2, v:top, dy, cls}};
-    const areas = (A.km ? [col(A, 0, both ? LAUNCH_W / 2 : LAUNCH_W, C.sel, p.label, both ? 15 : 0, "vl")] : [])
+    const areas = hasDays ? [] : (A.km ? [col(A, 0, both ? LAUNCH_W / 2 : LAUNCH_W, C.sel, p.label, both ? 15 : 0, "vl")] : [])
       .concat(both ? [col(B, LAUNCH_W / 2, LAUNCH_W, C.cmp, q.label, 0, "vl c")] : []).filter(Boolean);
-    lineChart(ck, {series, areas, x0:0, x1:xMax, height:fitH(ck, 0.42, 170, 240), yMax:1, step:true,
-      bands:[{x0:0, x1:Math.min(30, xMax), fill:"var(--dim)", op:0.55, end:true, label:["Days 0–30:", "launch discount", "only, max 40% off"],
-              reserve:(LAUNCH_W / xMax) * ck.clientWidth + 30}],
-      yFmt:(v, sr, t) => { const c = sr.km.seen(t); return `${fmtPct(v, 0)} · ${fmtInt(c.ev)} discounted, ${fmtInt(c.wait)} still waiting`; },
-      axisFmt:v => Math.round(v * 100) + "%", xFmt:t => `day ${t}`, tipHead:t => `By day ${t} after release`,
+    lineChart(ck, {series, areas, cols, x0:hasDays ? -0.5 : 0, x1:xMax, height:fitH(ck, 0.42, 170, 240), yMax:1, step:true,
+      bands:[{x0:hasDays ? -0.5 : 0, x1:Math.min(30, xMax), fill:"var(--dim)", op:0.55, end:true, label:["Days 0–30:", "launch discount", "only"],
+              reserve:hasDays ? (7.5 / (xMax + 0.5)) * ck.clientWidth : (LAUNCH_W / xMax) * ck.clientWidth + 30}],
+      yFmt:(v, sr, t) => { if(hasDays && t < span) return null; const c = sr.km.seen(t); return `${fmtPct(v, 0)} · ${fmtInt(c.ev)} discounted, ${fmtInt(c.wait)} still waiting`; },
+      axisFmt:v => Math.round(v * 100) + "%", xFmt:t => `day ${t}`, tipHead:t => hasDays && t < span ? `Day ${t} after release: still on the launch discount` : `By day ${t} after release: had their next discount`,
       xTicks:pw => { const st = niceStep(xMax / Math.max(2, Math.floor(pw / 60))), out = []; for(let v = 0; v <= xMax; v += st) out.push([v, v + "d"]); return out; },
-      label:"Share of releases launched with a discount, then share that has had a first discount after launch week, by days since release"});
+      label:"Share of releases still on their launch discount on each of days 0 to 14, then share that has had its next discount, by days since release"});
+    if(hasDays) for(const [t, d] of [
+      ["Columns", `Games on their launch discount that day, of those checked that day. Most launch discounts run one week or two: ${fmtPct(on(A, 3), 0)} are on one on day 3, ${fmtPct(on(A, 10), 0)} on day 10, ${fmtPct(on(A, 14), 0)} on day 14.`],
+      ["Line", "Games that have had their next discount since launch (the first one after the launch week), by day after release."],
+      ...(B && (B.launchOn || B.km) ? [["Gray", `${q.label}, the period you compare with: its columns as an outline, its line in gray.`]] : []),
+    ]) dk.append(el("dt", null, t), el("dd", null, d));
   }
 
   // How deep: the launch discount and the first discount after it, each as a share of its games.
@@ -1403,18 +1690,27 @@ function renderSales(A, B, p, q){
   const kmRow = (r, d) => r && r.km ? (r.km[d] != null ? fmtPct(r.km[d], 0) : "—") : "—";
   const dep = (r, k, i) => { const t = r.sale[k].reduce((a, b) => a + b, 0); return t ? `${fmtPct(r.sale[k][i] / t, 0)} (${fmtInt(r.sale[k][i])})` : "—"; };
   const dayCell = d => `${fmtPct(d[2] / d[1])} (${fmtInt(d[2])})` + (d.length > 4 ? " · " + GROUPS.map(g => `${g.name.replace(" reviews", "")}: ${fmtPct(share(d, g.k), 0)}`).join(" · ") : "");
-  table($("#t-sale"), ["", A.p.label, B ? B.p.label : "—"], [
+  const anyRow = (r, k) => r && r.kmAny && r.kmAny[k] != null ? fmtPct(r.kmAny[k], 0) : "—";
+  const onRow = (r, d) => on(r, d) != null ? fmtPct(on(r, d), 0) : "—";
+  const rows = [
     ["Watched from launch", fmtInt(A.sale.n), B ? fmtInt(B.sale.n) : "—"],
     ["Launched with a discount", fmtShare(A.launchShare, A.sale.l), B ? fmtShare(B.launchShare, B.sale.l) : "—"],
     ["Launch discount, average", A.launchPct ? Math.round(A.launchPct) + "% off" : "—", B && B.launchPct ? Math.round(B.launchPct) + "% off" : "—"],
-    ["Median days to first discount", A.km && A.km.med != null ? String(A.km.med) : "—", B && B.km && B.km.med != null ? String(B.km.med) : "—"],
-    ["First discount within 30 days", kmRow(A, "by30"), kmRow(B, "by30")],
-    ["First discount within 60 days", kmRow(A, "by60"), kmRow(B, "by60")],
-    ["First discount within 90 days", kmRow(A, "by90"), kmRow(B, "by90")],
-    ["First discounts seen", fmtInt(A.firstN), B ? fmtInt(B.firstN) : "—"],
-    ["First discount, average", A.firstPct ? Math.round(A.firstPct) + "% off" : "—", B && B.firstPct ? Math.round(B.firstPct) + "% off" : "—"],
-  ].concat(A.sale.depth ? DEPTH_LABELS.map((lab, i) => [`${lab} off: launch · first discount`, `${dep(A, "lh", i)} · ${dep(A, "fh", i)}`, B && B.sale.depth ? `${dep(B, "lh", i)} · ${dep(B, "fh", i)}` : "—"]) : [])
-   .concat(full.slice().reverse().map(d => [fmtDayLong(d[0]) + " · discounted", dayCell(d), ""])));
+    ...(A.launchOn ? [3, 7, 10, 14].map(d => [`Still on the launch discount, day ${d}`, onRow(A, d), onRow(B, d)]) : []),
+    ...(A.kmAny ? [["Any discount within 30 days", anyRow(A, "by30"), anyRow(B, "by30")], ["Any discount within 90 days", anyRow(A, "by90"), anyRow(B, "by90")]] : []),
+    ["Median days to next discount", A.km && A.km.med != null ? String(A.km.med) : "—", B && B.km && B.km.med != null ? String(B.km.med) : "—"],
+    ["Next discount within 30 days", kmRow(A, "by30"), kmRow(B, "by30")],
+    ["Next discount within 60 days", kmRow(A, "by60"), kmRow(B, "by60")],
+    ["Next discount within 90 days", kmRow(A, "by90"), kmRow(B, "by90")],
+    ["Next discounts seen", fmtInt(A.firstN), B ? fmtInt(B.firstN) : "—"],
+    ["Next discount, average", A.firstPct ? Math.round(A.firstPct) + "% off" : "—", B && B.firstPct ? Math.round(B.firstPct) + "% off" : "—"],
+  ].concat(A.sale.depth ? DEPTH_LABELS.map((lab, i) => [`${lab} off: launch · next discount`, `${dep(A, "lh", i)} · ${dep(A, "fh", i)}`, B && B.sale.depth ? `${dep(B, "lh", i)} · ${dep(B, "fh", i)}` : "—"]) : []);
+  const ts = $("#t-sale");
+  table(ts, ["", ...ord([A.p.label], [B ? B.p.label : "—"])], rows.map(([k, a, b]) => [k, ...ord([a], [b])]));
+  // The catalog, day by day: not a period's figure, so a table of its own under the first.
+  const tmp = el("div");
+  table(tmp, ["Day (UTC)", "Discounted, all priced games"], full.slice().reverse().map(d => [fmtDayLong(d[0]), dayCell(d)]));
+  ts.appendChild(tmp.firstChild);
 }
 
 function renderAI(A, B){
@@ -1448,12 +1744,12 @@ function renderAI(A, B){
     }
     trend(box, c.series, {yFmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:`${c.name} per period`, height:fitH(box, 0.5, 150, 210)});
   }
-  const row = (name, k, nk) => [name, fmtShare(A[k], A.n[nk]), B ? fmtShare(B[k], B.n[nk]) : "—", B ? dPP(A[k], B[k]) || "—" : "—"];
-  table($("#t-ai"), ["", A.p.label, B ? B.p.label : "—", "Change"], [
+  const row = (name, k, nk) => [name, ...ord([fmtShare(A[k], A.n[nk])], [B ? fmtShare(B[k], B.n[nk]) : "—"]), B ? dPP(A[k], B[k]) || "—" : "—"];
+  table($("#t-ai"), ["", ...ord([A.p.label], [B ? B.p.label : "—"]), B ? `Change vs ${B.p.short}` : "Change"], [
     row("AI content disclosed", "ai", "ai"), row("AI generated live", "aiLive", "aiLive"),
     row("Deck Verified", "deck3", "deck3"), row("Deck Playable", "deck2", "deck2"), row("Deck Unsupported", "deck1", "deck1"),
     row("Full controller support", "ctrlFull", "ctrlFull"), row("Partial controller support", "ctrlPart", "ctrlPart"), row("VR", "vr", "vr"),
-    ["Releases Steam's metadata covers", fmtInt(A.pics), B ? fmtInt(B.pics) : "—", ""]]);
+    ["Releases Steam's metadata covers", ...ord([fmtInt(A.pics)], [B ? fmtInt(B.pics) : "—"]), ""]]);
 }
 
 const REV_GROUPS = [["None", [0]], ["1–9", [1]], ["10–49", [2]], ["50–499", [3, 4]], ["500–4,999", [5, 6]], ["5,000+", [7, 8, 9]]];
@@ -1467,32 +1763,49 @@ function renderReception(A, B){
   const cr = $("#c-rev");
   columnChart(cr, {cats:REV_GROUPS.map(([lab, idx]) => ({label:lab, sel:share(A.revb, idx, A.rel), cmp:B ? share(B.revb, idx, B.rel) : null,
       selN:cntOf(A.revb, idx), cmpN:B ? cntOf(B.revb, idx) : null, tip:`${lab} reviews`,
-      nameSel:A.p.label, nameCmp:B ? B.p.label : ""})), paired:!!B,
+      nameSel:A.p.label, nameCmp:B ? B.p.label : ""})), paired:!!B, cmpFirst:CF,
     height:fitH(cr, 0.42, 170, 240), fmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:"Share of releases by review count", valueLabel:pctLabel,
     xLabel:(c, i) => cr.clientWidth < 520 ? ["None", "1–9", "10–49", "50–499", "500–5K", "5K+"][i] : c.label});
   $("#s-lab").textContent = `Average rating ${A.avgRating != null ? Math.round(A.avgRating) + "% positive" : "—"}${B && B.avgRating != null ? ` (${Math.round(B.avgRating)}% in ${B.p.label})` : ""}; ${fmtInt(A.rated)} games rated.`;
   const lg = $("#lg-lab"); lg.textContent = "";
   for(const [lab, , color] of LAB_GROUPS){ const s = el("span"), i = el("i"); i.style.background = color; s.append(i, lab); lg.appendChild(s); }
+  // One bar per period, in time order (the earlier on top); hover or tap a segment for the games
+  // behind every share of that bar, the hovered one marked.
   const stk = $("#c-lab"); stk.textContent = "";
   const barW = Math.max(0, stk.clientWidth - 100);
-  for(const R of [A, B].filter(Boolean)){
+  const stip = el("div", "tip"); stip.hidden = true;
+  for(const R of (CF ? [B, A] : [A, B]).filter(Boolean)){
     stk.appendChild(el("span", "n", R.p.label));
-    const bar = el("div", "bar"), tot = R.lab.reduce((a, b) => a + b, 0);
+    const bar = el("div", "bar"), tot = R.labTot;
     bar.setAttribute("role", "img");
     bar.setAttribute("aria-label", LAB_GROUPS.map(([lab, idx]) => `${lab} ${fmtPct(share(R.lab, idx, tot), 0)} (${fmtInt(cntOf(R.lab, idx))})`).join(", "));
     for(const [lab, idx, color, light] of LAB_GROUPS){
       const v = share(R.lab, idx, tot); if(!v) continue;
-      const sp = el("span", light ? "lt" : null); sp.style.flex = String(v); sp.style.background = color; sp.title = `${lab}: ${fmtPct(v)} (${fmtInt(cntOf(R.lab, idx))} games)`;
+      const sp = el("span", light ? "lt" : null); sp.style.flex = String(v); sp.style.background = color;
       if(barW * v >= 34) sp.textContent = pctLabel(v);       // the share on the segment, where it fits
+      const showTip = e => {
+        stk.querySelectorAll(".bar span.on").forEach(x => x.classList.remove("on")); sp.classList.add("on");
+        stip.textContent = ""; stip.appendChild(el("div", "tt", `${R.p.label}${R.p.partial ? " so far" : ""} · ${fmtInt(tot)} rated games`));
+        for(const [l2, i2, c2] of LAB_GROUPS){
+          tipRow(stip, c2, `${fmtPct(share(R.lab, i2, tot), 0)} · ${fmtInt(cntOf(R.lab, i2))}`, l2);
+          if(l2 === lab) stip.lastChild.style.fontWeight = "600", stip.lastChild.lastChild.style.color = "var(--title)";
+        }
+        stip.hidden = false;
+        const rr = stk.getBoundingClientRect(); placeTip(stip, stk, e.clientX - rr.left, e.clientY - rr.top + 14);
+      };
+      sp.addEventListener("pointermove", showTip); sp.addEventListener("pointerdown", showTip);
+      sp.addEventListener("pointerleave", () => { stip.hidden = true; sp.classList.remove("on"); });
       bar.appendChild(sp);
     }
     stk.appendChild(bar);
   }
+  stk.appendChild(stip);
+  renderLabTimeline();
   $("#s-len").textContent = `Median ${fmtHours(A.lenMed)}${B ? ` (${fmtHours(B.lenMed)} in ${B.p.label})` : ""}, over ${fmtInt(A.lenN)} releases with a Length estimate.`;
   const cl = $("#c-len"), lt = r => r.lenb.reduce((a, b) => a + b, 0);
   columnChart(cl, {cats:LEN_LABELS.map((lab, i) => ({label:lab, sel:lt(A) ? A.lenb[i] / lt(A) : 0, cmp:B && lt(B) ? B.lenb[i] / lt(B) : null,
       selN:A.lenb[i], cmpN:B ? B.lenb[i] : null, tip:lab.includes("h") ? lab : lab + " hours",
-      nameSel:A.p.label, nameCmp:B ? B.p.label : ""})), paired:!!B,
+      nameSel:A.p.label, nameCmp:B ? B.p.label : ""})), paired:!!B, cmpFirst:CF,
     height:fitH(cl, 0.42, 170, 240), fmt:v => fmtPct(v), axisFmt:v => Math.round(v * 100) + "%", label:"Share of releases by Length", valueLabel:pctLabel,
     xLabel:(c, i) => cl.clientWidth < 520 && i % 2 ? null : c.label});
   const tl = $("#c-top"); tl.textContent = "";
@@ -1505,12 +1818,88 @@ function renderReception(A, B){
     li.append(wrap, el("span", "m", `${fmtCompact(reviews)} reviews · ${pct != null ? pct + "%" : "—"}`));
     tl.appendChild(li);
   }
-  table($("#t-recv"), ["", A.p.label, B ? B.p.label : "—"],
+  table($("#t-recv"), ["", ...ord([A.p.label], [B ? B.p.label : "—"])],
     REV_GROUPS.map(([lab, idx]) => [`${lab} reviews`, fmtShare(share(A.revb, idx, A.rel), cntOf(A.revb, idx)), B ? fmtShare(share(B.revb, idx, B.rel), cntOf(B.revb, idx)) : "—"])
-    .concat(LAB_GROUPS.map(([lab, idx]) => [lab, fmtShare(share(A.lab, idx, A.lab.reduce((a, b) => a + b, 0)), cntOf(A.lab, idx)),
-                                            B ? fmtShare(share(B.lab, idx, B.lab.reduce((a, b) => a + b, 0)), cntOf(B.lab, idx)) : "—"]))
+    .concat(LAB_GROUPS.map(([lab, idx]) => [lab, fmtShare(share(A.lab, idx, A.labTot), cntOf(A.lab, idx)),
+                                            B ? fmtShare(share(B.lab, idx, B.labTot), cntOf(B.lab, idx)) : "—"]))
     .concat(LEN_LABELS.map((lab, i) => [`Length ${lab.includes("h") ? lab : lab + " h"}`, fmtShare(lt(A) ? A.lenb[i] / lt(A) : null, A.lenb[i]), B ? fmtShare(lt(B) ? B.lenb[i] / lt(B) : null, B.lenb[i]) : "—"]))
-    .concat([["Median Length", fmtHours(A.lenMed), B ? fmtHours(B.lenMed) : "—"]]));
+    .concat([["Median Length", fmtHours(A.lenMed), B ? fmtHours(B.lenMed) : "—"]])
+    .map(([k, a, b]) => [k, ...ord([a], [b])]));
+}
+
+// The rating mix over every period at the grouping in use: 100% columns, Very positive+ on the
+// baseline up to Negative, and (All releases) the games with too few reviews for a rating on top.
+// The selected column is outlined gold, the compared one gray, as on the calendar; a column over
+// fewer than MIN_N games is left empty. Click picks a period, shift-click compares with it.
+let LAB_MODE = "rated";
+function renderLabTimeline(){
+  const host = $("#c-labt"), all = LAB_MODE === "all";
+  const ie = $("#i-labt"); ie.textContent = ""; ie.appendChild(info(TIP.labt));
+  $("#labmode").querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.m === LAB_MODE));
+    b.onclick = () => { LAB_MODE = b.dataset.m; renderLabTimeline(); };
+  });
+  const segs = LAB_GROUPS.map(([lab, idx, color]) => ({name:lab, color, n:r => idx.reduce((a, i) => a + r.lab[i], 0)}))
+    .concat(all ? [{name:"No rating yet (under 10 reviews)", color:"var(--dim)", n:r => Math.max(0, r.rel - r.labTot)}] : []);
+  const of = r => all ? r.rel : r.labTot;
+  const lg = $("#lg-labt"); lg.textContent = "";
+  for(const g of segs){ const e = el("span"), i = el("i"); i.style.background = g.color; e.append(i, g.name); lg.appendChild(e); }
+  const A = metrics(PER[SEL]);
+  $("#s-labt").textContent = all
+    ? `Each period's releases by Steam rating today, with those still under 10 reviews on top. ${A.p.label}${A.p.partial ? " so far" : ""}: ${fmtPct(A.rel ? (A.rel - A.labTot) / A.rel : null, 0)} have no rating yet.`
+    : `Each period's rated releases (10+ reviews) by Steam rating today. ${A.p.label}${A.p.partial ? " so far" : ""}: ${fmtPct(A.labTot ? segs[0].n(A) / A.labTot : null, 0)} Very positive or better, ${fmtPct(A.labTot ? segs[2].n(A) / A.labTot : null, 0)} Mixed.`;
+  host.textContent = "";
+  const W = Math.max(240, host.clientWidth), H = fitH(host, 0.2, 170, 240);
+  const ml = 48, mr = 8, mt = 8, mb = 22, pw = W - ml - mr, ph = H - mt - mb, n = PER.length, band = pw / n;
+  const bw = Math.max(0.6, band * (band >= 6 ? 0.78 : 0.92)), gap = bw >= 6 ? 2 : 0;
+  const y = v => mt + ph - v * ph, ci = cmpIndex();
+  const svg = svgEl("svg", {viewBox:`0 0 ${W} ${H}`, height:H, role:"img", "aria-label":"Steam rating mix per period"}, host);
+  const ax = svgEl("g", {class:"axis"}, svg);
+  for(const v of [0, 0.25, 0.5, 0.75, 1]){
+    svgEl("line", {x1:ml, x2:W - mr, y1:y(v), y2:y(v), stroke:v === 0 ? C.axis : C.line, "stroke-width":1, "shape-rendering":"crispEdges"}, ax);
+    svgEl("text", {x:ml - 6, y:y(v) + 4, "text-anchor":"end"}, ax).textContent = Math.round(v * 100) + "%";
+  }
+  const nYears = PER[n - 1].y - PER[0].y + 1, fit = Math.max(2, Math.floor(pw / 46)), yEvery = [1, 2, 5, 10].find(k => nYears / k <= fit) || 10;
+  PER.forEach((p, i) => { if(p.yStart && p.y % yEvery === 0) svgEl("text", {x:ml + band * (i + 0.5), y:H - 6, "text-anchor":"middle"}, ax).textContent = String(p.y); });
+  const Ms = PER.map(metrics);
+  Ms.forEach((r, i) => {
+    const tot = of(r); if(tot < MIN_N) return;
+    const x0 = ml + band * (i + 0.5) - bw / 2;
+    let acc = 0;
+    for(const g of segs){
+      const v = g.n(r) / tot; if(!(v > 0)) continue;
+      const yt = y(acc + v), yb = y(acc), h = yb - yt - (gap && acc + v < 0.9999 ? gap : 0);
+      if(h > 0) svgEl("rect", {x:x0, y:yt + (gap && acc + v < 0.9999 ? gap : 0), width:bw, height:h, fill:g.color}, svg);
+      acc += v;
+    }
+    if(i === SEL || i === ci) svgEl("rect", {x:x0 - 1.5, y:mt - 1, width:bw + 3, height:ph + 2, fill:"none", stroke:i === SEL ? "var(--gold)" : "var(--cmp)", "stroke-width":1.5, rx:2}, svg);
+  });
+  const tip = el("div", "tip"); tip.hidden = true; host.appendChild(tip);
+  const cross = svgEl("rect", {y:mt, height:ph, fill:"#fff", opacity:0.06, visibility:"hidden"}, svg);
+  const hit = svgEl("rect", {x:ml, y:mt, width:pw, height:ph, fill:"transparent", class:"click"}, svg);
+  let cur = -1;
+  const show = i => {
+    if(i < 0 || i >= n) return;
+    cur = i;
+    const r = Ms[i], p = PER[i], tot = of(r);
+    cross.setAttribute("x", ml + band * i); cross.setAttribute("width", Math.max(2, band)); cross.setAttribute("visibility", "visible");
+    tip.textContent = "";
+    tip.appendChild(el("div", "tt", `${p.label}${p.partial ? " (so far)" : ""} · ${fmtInt(tot)} ${all ? "releases" : "rated games"}`));
+    if(tot < MIN_N) tip.appendChild(el("div", null, `too few ${all ? "releases" : "rated games"} to show (${fmtInt(tot)})`));
+    else for(const g of [...segs].reverse()) tipRow(tip, g.color, `${fmtPct(g.n(r) / tot, 0)} · ${fmtInt(g.n(r))}`, g.name);
+    tip.hidden = false;
+    placeTip(tip, host, (ml + band * (i + 0.5)) * host.clientWidth / W, mt);
+  };
+  const at = e => { const rr = svg.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.floor(((e.clientX - rr.left) * W / rr.width - ml) / band))); };
+  hit.addEventListener("pointermove", e => show(at(e)));
+  hit.addEventListener("pointerleave", () => { cur = -1; tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+  hit.addEventListener("click", e => e.shiftKey ? compareWith(at(e)) : select(at(e)));
+  host.tabIndex = 0;
+  host.onkeydown = e => {
+    if(e.key === "ArrowLeft" || e.key === "ArrowRight"){ select(SEL + (e.key === "ArrowLeft" ? -1 : 1)); e.preventDefault(); }
+  };
+  host.onfocus = () => show(SEL);
+  host.onblur = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); };
 }
 
 function renderCalendar(A, B){
@@ -1552,13 +1941,30 @@ function renderCalendar(A, B){
   table($("#t-cal"), ["Year", ...MON], years.map(y => [String(y), ...MON.map((_, m) => { const i = y * 12 + m - BASE; return i >= 0 && i < S.months ? fmtInt(S.m.rel[i]) : ""; })]));
 }
 
-function renderNow(){
+// The catalog as it stands today, above the period bar. "Discounted right now" compares with the
+// compared period's average day when there is one (owner, Nov 2026: the row follows Compare), with
+// a week ago under No compare; before the daily check covered the catalog there is nothing to
+// compare with, and the line says so.
+function renderNow(q){
   const host = $("#now"); host.textContent = "";
   const N = S.now, days = S.sale_days, last = days[days.length - 1];
-  const wk = days.find(d => d[0] === (last ? last[0] - 7 : -1));
+  const maxP = Math.max(0, ...days.map(d => d[1])), full = days.filter(d => d[1] >= 0.8 * maxP);
   tile(host, "Games on Steam", fmtInt(S.games), "released, with a store page", null, TIP.games);
-  if(last) tile(host, "Discounted right now", fmtPct(last[2] / last[1]), `${fmtInt(last[2])} of ${fmtInt(last[1])} priced games · ${Math.round(last[3] / Math.max(1, last[2]))}% off on average`,
-                wk ? [dnode(dPP(last[2] / last[1], wk[2] / wk[1])), " vs a week ago"] : null, TIP.onsale);
+  if(last){
+    let line = null;
+    if(VS === "none" || !q){
+      const wk = days.find(d => d[0] === last[0] - 7);
+      line = wk ? [dnode(dPP(last[2] / last[1], wk[2] / wk[1])), " vs a week ago"] : null;
+    } else {
+      const inQ = full.filter(d => d[0] >= q.d0 && d[0] <= Math.min(q.d1, last[0] - 1));
+      if(inQ.length){
+        const avg = inQ.reduce((a, d) => a + d[2] / d[1], 0) / inQ.length;
+        line = [dnode(dPP(last[2] / last[1], avg)), ` vs ${q.short} average${inQ[0][0] > q.d0 ? ` (from ${fmtDayTs(inQ[0][0])})` : ""}`];
+      } else line = [el("span", "nd", `vs ${q.short}: no data (daily price checks of the whole catalog began ${full.length ? fmtDate(full[0][0]) : "Jul 2026"})`)];
+    }
+    tile(host, "Discounted right now", fmtPct(last[2] / last[1]), `${fmtInt(last[2])} of ${fmtInt(last[1])} priced games · ${Math.round(last[3] / Math.max(1, last[2]))}% off on average`,
+         line, TIP.onsale);
+  }
   tile(host, "In Early Access now", fmtInt(N.ea), `half for over ${fmtDur(N.ea_age_median)}`, null, TIP.eanow);
   tile(host, "1.0 dates announced", fmtInt(N.ea_planned), "Early Access games with a 1.0 date ahead", null, TIP.planned);
 }
@@ -1646,6 +2052,7 @@ document.querySelectorAll("#vs button").forEach(b => b.addEventListener("click",
   VS = v; render();
 }));
 $("#cmpsel").addEventListener("change", e => compareWith(+e.target.value));
+$("#d-tags").addEventListener("toggle", () => { if(S) renderTagMatrix(metrics(PER[SEL])); });
 $("#cprev").addEventListener("click", () => { const c = cmpIndex(); if(c != null) compareWith(c - 1); });
 $("#cnext").addEventListener("click", () => { const c = cmpIndex(); if(c != null) compareWith(c + 1); });
 $("#prev").addEventListener("click", () => select(SEL - 1));
@@ -1672,7 +2079,6 @@ fetch("stats.json", {cache:"no-store"})
     START_ABS = yr * 12;
     const t = new Date(S.generated_at * 1000), p2 = n => String(n).padStart(2, "0");
     $("#asof").textContent = `Updated ${MON[t.getUTCMonth()]} ${t.getUTCDate()} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())} UTC.`;
-    renderNow();
     if(!(await fromHash())) defaultView();
     render();
   })
