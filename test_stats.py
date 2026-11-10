@@ -157,6 +157,37 @@ check("review-weighted price: each paid game weighted by its reviews",
       A["rw"][mi(2026, 7)] == 900 + 5000 and A["price_rw"][mi(2026, 7)] == 2499 * 900 + 999 * 5000
       and A["rw"][mi(2026, 8)] == 40)
 
+print("\n== build: full tag lists, tags per game, Early Access stock, launch days ==")
+pics_t = dict(pics, **{"1": dict(pics["1"], tags=[492, 19, 3871]), "2": dict(pics["2"], tags=[19, 12095])})
+doc_t = St.build(NOW, games, pics_t, tags, {}, ea, {}, {}, state)
+tag_july = {n: c[mi(2026, 7)] for n, c in zip(doc_t["tags"]["names"], doc_t["tags"]["m"])}
+check("tags are ranked from PICS's full list where it has one (Indie, Action, 2D)",
+      tag_july.get("Indie") == 1 and tag_july.get("2D") == 1 and tag_july.get("Action") == 1)
+check("...and still skip the adult-flagged game", "Sexual Content" not in doc_t["tags"]["names"])
+check("...falling back to tags.json without PICS tags", "Indie" in doc["tags"]["names"])
+g_jul = [doc_t["tpg"]["g"][k][mi(2026, 7)] for k in range(3)]
+n_jul = [doc_t["tpg"]["n"][k][mi(2026, 7)] for k in range(3)]
+check("tags per game: every PICS-covered game counts (adult ones too), by review group",
+      g_jul == [0, 1, 1] and n_jul == [0, 3, 2] and doc_t["tag_group_edges"] == St.TAG_GROUP_EDGES)
+check("tags per game: a game PICS doesn't cover is not counted", sum(doc_t["tpg"]["g"][k][mi(2015, 3)] for k in range(3)) == 0)
+ea_s = doc["ea_stock"]
+check("EA stock: a game that left counts from its EA start to the month before its 1.0 month",
+      ea_s[mi(2025, 7)] == 0 and ea_s[mi(2025, 8)] == 1 and ea_s[mi(2026, 7)] == 1 and ea_s[mi(2026, 8)] == 0)
+pics_ea = dict(pics, **{"3": {"cats": [2], "ea": True}})
+ea_s2 = St.build(NOW, games, pics_ea, tags, {}, ea, {}, {}, state)["ea_stock"]
+check("EA stock: a game in it today counts from its release month to now",
+      ea_s2[mi(2026, 7)] == 1 and ea_s2[mi(2026, 8)] == 1 and ea_s2[-1] == 1 and ea_s2[mi(2025, 7)] == 0)
+lo, lk = sj["lo"], sj["lk"]
+check("launch days: checked from day 0, discounted days 0-6, not day 7+",
+      len(lo) == St.LAUNCH_SPAN and lk == [1] * St.LAUNCH_SPAN and lo == [1] * 7 + [0] * (St.LAUNCH_SPAN - 7))
+check("any discount: the launch discount is the first, on day 0", sj["ae"] == {"0": 1} and sj["ac"] == {})
+check("never discounted: censored at its last check", doc["sale"].get(str(mi(2026, 8))) is None)
+st2 = St.empty_state()
+st2["games"] = {"1": [day(2026, 7, 4), day(2026, 9, 14)]}
+s2 = St.build(NOW, games, pics, tags, {}, ea, {}, {}, st2)["sale"][str(mi(2026, 7))]
+check("first checked on day 1: day 0 unknown; no discount: censored at day 73",
+      s2["lk"][0] == 0 and s2["lk"][1] == 1 and sum(s2["lo"]) == 0 and s2["ac"] == {"73": 1} and s2["ae"] == {})
+
 print("\n== build: weekly aggregates ==")
 check("weeks start on Monday: 1970-01-01 (a Thursday) is in week 0, Monday 1970-01-05 in week 1",
       St.week_of(0) == 0 and St.week_of(ts(1970, 1, 4)) == 0 and St.week_of(ts(1970, 1, 5)) == 1)

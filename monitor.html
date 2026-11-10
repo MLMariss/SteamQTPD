@@ -45,7 +45,10 @@
   .lede{color:var(--muted); margin:0 0 18px}
   .asof{font-family:var(--mono); font-size:12.5px; color:var(--muted-2)}
 
-  .filters{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 18px}
+  /* The range bar scopes every chart below it, so it stays in view while you scroll (as the
+     period bar on stats.html does): one toggle for 7, 30 or 90 days, or all of it. */
+  .filters{position:sticky; top:0; z-index:10; background:var(--bg); display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+           margin:0 calc(-1 * clamp(16px, 3vw, 48px)) 18px; padding:10px clamp(16px, 3vw, 48px); border-bottom:1px solid var(--line)}
   .filters .lab{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-right:4px}
   .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
   .seg button{appearance:none; background:transparent; color:var(--muted); border:0;
