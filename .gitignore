@@ -3,7 +3,13 @@ __pycache__/
 *.pyc
 *.pyo
 # --- Claude Code / editor local state (per-machine, do NOT commit) ---
-.claude/
+# Exception: the branch guard hook and the settings block that wires it up ARE committed,
+# so Claude Code sessions on the web get the same guard as local ones.
+.claude/*
+!.claude/hooks/
+.claude/hooks/*
+!.claude/hooks/branch_guard.py
+!.claude/settings.json
 .claude-*
 *.local
 
