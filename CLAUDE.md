@@ -1,51 +1,70 @@
-# SteamQTPD — working instructions
+# Global working preferences
+Apply to every project unless the project's CLAUDE.md says otherwise.
 
-## Repo
+# Branches
+* Never edit, commit or push on `main` or `master`. I merge into `main` myself on GitHub.
+* For each new task, create a fresh branch from the latest origin/main, named after the change (for example fix-date-compare). Keep working on that branch until its PR is merged.
+* Don't delete branches.
+* If you find yourself on `main` or `master`, stop and tell me.
+* In Claude Code on the web, the session's own branch is the task branch.
+
+# How to work
+* Read the relevant files before answering or changing anything. Don't guess about code you haven't opened.
+* Write a general solution, not one that only passes the tests. Don't hard-code values to make a test pass. If a test looks wrong, tell me instead of working around it.
+* Keep changes to what the task needs: no refactoring unrelated code, extra features, comments on untouched code, or error handling for cases that can't happen. Small diffs are easier for me to review.
+* When you say something works, name the command you ran and what it returned.
+
+# When stuck or unsure
+* If the same approach fails twice, stop. Tell me what you tried, what the errors said, and your best guess at the cause, then ask how to continue.
+* When a choice would change what you build and the code doesn't answer it, use the AskUserQuestion tool with 2 to 4 options, your recommendation first.
+* Ask before anything hard to undo: deleting files, force pushing, rewriting git history, changing shared settings, or skipping checks like --no-verify.
+
+# Finishing a task
+* When a coding task is done, commit, then end with AskUserQuestion offering the next steps that fit, your recommendation first. Usual options:
+  * Push the task branch and open or update the PR into `main`, then give me the PR link
+  * Review the diff with a subagent in a fresh context first (fix only issues that affect correctness or the requirements)
+  * Keep the commit local for now
+  * Stop here
+* Push once per finished task, only after I pick it. Never push mid-task.
+* Never merge a PR. Merging is my step.
+* Leave out options that don't apply. Don't ask after plain questions or explanations.
+* If AskUserQuestion isn't available, give the same options as a short numbered list so I can answer with a number.
+
+# Context
+* When I switch to an unrelated topic, suggest /clear.
+* When compacting, keep the list of modified files and the test commands.
+
+# This project
+SteamQTPD. These facts extend the rules above; where they differ, these win.
+
+## Deploy
 - Remote: `https://github.com/MLMariss/SteamQTPD`
-- `main` is **live** (GitHub Pages deploys from it). Scraper workflows commit data to `main` continuously.
-- The global CLAUDE.md rule "work only on `test`" does **not** apply here — `test` is a stale ancestor of `main`.
-- `gh` CLI **is installed on the local machine** (v2.96.0, authed as `MLMariss`, scopes `gist read:org repo workflow`) — verified 2026-07-23.
-  - **Read-only `gh` is allowed and expected**: `gh pr view/list/diff/status/checks`, `gh repo view`, `gh run list/view`. Use it to fetch the **real** PR URL and CI state.
-  - **`gh pr merge` is denied.** Never merge.
-  - **`gh pr create` is usable** — it needs the branch on the remote, and since Claude now does the push (see handover below), that precondition is met. Prefer it over hand-building a compare link.
-  - **Remote sessions (Claude Code on the web) have NO `gh`** — `gh: command not found`, verified 2026-09-16. Use the **GitHub MCP tools** (`mcp__github__*`, load via ToolSearch) for the same reads and for opening a PR: `list_pull_requests`, `pull_request_read`, `actions_list` / `get_check_run`, `create_pull_request`. Every rule above carries over unchanged — read freely, **never** `merge_pull_request`. Do not report GitHub as unreachable in a remote session just because `gh` is missing; reach for the MCP tools instead.
+- `main` is **live** — GitHub Pages deploys from it. Never commit or push to it.
+- The scraper workflows commit their data to `main` continuously (`games.json`, `prices.json`,
+  `hltb.json`, `tags.json`, ...), so `main` moves on its own all day. Fetch before you cut a task
+  branch, and expect the branch to fall hundreds of commits behind while you work.
+- Falling behind is normal and merges cleanly: app-code edits (`index.html`, `ARCHITECTURE.md`)
+  touch files disjoint from the scraper data JSON. Verify with
+  `git log --oneline HEAD..origin/main -- index.html ARCHITECTURE.md` (empty => clean).
+- `test` is a stale July 2026 ancestor of `main` and is not a working branch. Nothing is promoted
+  `test` -> `main`; task branches are cut from `origin/main` and merged by PR.
+- Don't delete branches here: public repo, the history is intentionally on display.
 
-## Git handover — MANDATORY
-
-**The user's single control point is the MERGE.** Everything up to and including the push is
-Claude's job; the user reviews the PR, merges it, and pulls. Nothing else should require them.
-
-### The rule: ASK ONCE, THEN PUSH
-
-- **Claude MAY run `git push`** — but **only after asking and getting a clear yes.** It is set
-  to `ask` in `~/.claude/settings.json`, so the harness prompts as well; that prompt is a
-  backstop, **not** a substitute for asking in conversation first.
-- **Ask once per finished task, not per commit.** The failure mode this rule exists to prevent
-  is a stream of small pushes cluttering the branch. Finish the whole task, commit (one commit,
-  or a few genuinely-separable ones), *then* ask: **"task is done — push?"**
-- **Never push mid-task** "just to save progress." Local commits already do that.
-- **Never push to `main`.** Feature branch only.
-- **Never merge a PR.** `gh pr merge` is denied and stays denied — that is the user's step.
-- If the user says "commit and push" up front, that IS the approval — push when the task is
-  done, and say so. Don't re-ask.
-
-### After pushing, always deliver the PR
-
-1. **Check for an existing PR first:**
-   `gh pr list --repo MLMariss/SteamQTPD --head <branch> --json number,url,state`
-   - If an **open** PR exists, the push already updated it → give that real `/pull/<n>` URL and
-     report CI via `gh pr checks <n>`.
-   - If the only PRs are **merged/closed**, a new one is needed.
-2. **Create it** with `gh pr create` (permission is `ask`, so the user confirms), or hand over
-   the pre-filled compare link if creation is declined:
-   `https://github.com/MLMariss/SteamQTPD/compare/main...<branch>?expand=1&title=<url-encoded-title>&body=<url-encoded-body>`
-   URL-encode `title`/`body` (spaces `%20`, newlines `%0A`, `#` `%23`, `&` `%26`); present as a
-   markdown link, never bare.
-3. **End the turn with the clickable PR URL.** That is the deliverable — never end with just
-   "pushed." The user should be able to click through, review, and merge without typing a
-   command.
-
-Title + description as copy-paste blocks too, in case a pre-fill truncates.
+## GitHub tooling
+- `gh` is installed on the local machine (v2.96.0, authed as `MLMariss`, scopes
+  `gist read:org repo workflow`). Read-only `gh` is expected — `gh pr view/list/diff/status/checks`,
+  `gh repo view`, `gh run list/view` — and is how you get the real PR URL and CI state.
+  `gh pr create` is usable; **`gh pr merge` is denied.**
+- Claude Code on the web has **no** `gh` (`command not found`, verified 2026-09-16). Use the GitHub
+  MCP tools there (`mcp__github__*`, load via ToolSearch): `list_pull_requests`, `pull_request_read`,
+  `actions_list` / `get_check_run`, `create_pull_request`. Same rules carry over — read freely,
+  **never** `merge_pull_request`. Don't report GitHub as unreachable in a web session just because
+  `gh` is missing.
+- Before claiming a PR exists, check:
+  `gh pr list --repo MLMariss/SteamQTPD --head <branch> --json number,url,state`. An open PR means
+  the push already updated it; merged/closed means a new one is needed. Compare-link fallback, as a
+  markdown link with `title`/`body` URL-encoded:
+  `https://github.com/MLMariss/SteamQTPD/compare/main...<branch>?expand=1&title=<t>&body=<b>`
 
 ## Product rules (non-negotiable)
 
@@ -83,9 +102,3 @@ Title + description as copy-paste blocks too, in case a pre-fill truncates.
   `stats.py` fails the job if a named list ever holds an adult game.
 - This rule is not a default to weigh against other goals. It outranks result counts, shelf
   breadth, and "the metric says it is good value".
-
-## Branches
-- **One working branch at a time.** Do not spin a new branch per change; commit onto the branch already checked out. If it's unclear which is the working branch, ask — don't invent one.
-- **Never delete branches.** This is a public repo and the history is intentionally on display.
-- Being hundreds of commits behind `main` is normal and merges cleanly — app-code edits (`index.html`, `ARCHITECTURE.md`) touch files disjoint from the scraper data JSON. Verify with:
-  `git log --oneline HEAD..origin/main -- index.html ARCHITECTURE.md` (empty ⇒ clean).
