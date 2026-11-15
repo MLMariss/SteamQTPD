@@ -1,6 +1,6 @@
 {
-  "generated_at": 1794763102,
-  "count": 138429,
+  "generated_at": 1794783704,
+  "count": 138444,
   "tags": {
     "10": [
       "Action",
@@ -1301502,6 +1301502,155 @@
       "Combat",
       "PvP",
       "Multiplayer"
+    ],
+    "4995460": [
+      "Roguelite",
+      "Cooking",
+      "Management",
+      "Automation",
+      "Arcade",
+      "Casual",
+      "Tutorial",
+      "Roguelike"
+    ],
+    "5057320": [
+      "Casual",
+      "Sandbox",
+      "Tabletop",
+      "Board Game",
+      "2D",
+      "Minimalist",
+      "Abstract",
+      "Top-Down"
+    ],
+    "5128330": [
+      "Action Roguelike",
+      "2D Fighter",
+      "4 Player Local",
+      "Casual",
+      "Pixel Graphics",
+      "PvP",
+      "2D",
+      "PvE"
+    ],
+    "5267520": [
+      "Action",
+      "2D",
+      "1980s",
+      "Controller",
+      "Singleplayer",
+      "Arcade",
+      "Indie"
+    ],
+    "5267840": [
+      "Casual",
+      "Solitaire",
+      "Card Game",
+      "Relaxing",
+      "Cozy",
+      "Strategy",
+      "Singleplayer",
+      "Minimalist"
+    ],
+    "5303470": [
+      "Casual",
+      "Puzzle",
+      "Isometric",
+      "Minimalist",
+      "Cozy",
+      "Relaxing",
+      "Hex Grid",
+      "Indie"
+    ],
+    "5341700": [
+      "Casual",
+      "Incremental",
+      "Idler",
+      "Singleplayer",
+      "Indie",
+      "3D",
+      "Isometric",
+      "Stylized"
+    ],
+    "5375310": [
+      "Strategy",
+      "Roguelike",
+      "Card Game",
+      "Roguelike Deckbuilder",
+      "Roguelite",
+      "Turn-Based Tactics",
+      "Card Battler",
+      "2D"
+    ],
+    "5393990": [
+      "Casual",
+      "Indie",
+      "Singleplayer",
+      "Puzzle",
+      "Family Friendly",
+      "Logic",
+      "Underwater",
+      "Colorful"
+    ],
+    "5443080": [
+      "Hobby Sim",
+      "Idler",
+      "Job Simulator",
+      "Investigation",
+      "Life Sim",
+      "Casual",
+      "Simulation",
+      "Arcade"
+    ],
+    "5468610": [
+      "Job Simulator",
+      "Animals",
+      "Physics",
+      "Casual",
+      "Party Game",
+      "Simulation",
+      "Character Customization",
+      "3D"
+    ],
+    "5491940": [
+      "Mining",
+      "Simulation",
+      "Cozy",
+      "Online Co-Op",
+      "Building",
+      "Casual",
+      "Relaxing",
+      "First-Person"
+    ],
+    "5511640": [
+      "Naval Combat",
+      "Roguelike",
+      "Action Roguelike",
+      "Minimalist",
+      "Arcade",
+      "Casual",
+      "Naval",
+      "Relaxing"
+    ],
+    "5523540": [
+      "Strategy",
+      "4X",
+      "Grand Strategy",
+      "Turn-Based Strategy",
+      "Real Time Tactics",
+      "Exploration",
+      "Top-Down",
+      "Aliens"
+    ],
+    "5527560": [
+      "Choose Your Own Adventure",
+      "Interactive Fiction",
+      "Puzzle",
+      "First-Person",
+      "Detective",
+      "Horror",
+      "Psychological Horror",
+      "Adventure"
     ]
   },
   "store_checked": [
@@ -1350804,6 +1350953,7 @@
     4995410,
     4995440,
     4995450,
+    4995460,
     4995530,
     4995590,
     4995720,
@@ -1351673,6 +1351823,7 @@
     5057090,
     5057210,
     5057270,
+    5057320,
     5057340,
     5057560,
     5057630,
@@ -1352604,6 +1352755,7 @@
     5128050,
     5128170,
     5128280,
+    5128330,
     5128370,
     5128520,
     5129030,
@@ -1354011,9 +1354163,11 @@
     5267430,
     5267490,
     5267500,
+    5267520,
     5267570,
     5267650,
     5267750,
+    5267840,
     5268010,
     5268180,
     5268210,
@@ -1354343,6 +1354497,7 @@
     5303120,
     5303180,
     5303370,
+    5303470,
     5303560,
     5303740,
     5303890,
@@ -1354734,6 +1354889,7 @@
     5341350,
     5341480,
     5341630,
+    5341700,
     5341750,
     5341770,
     5341880,
@@ -1355059,6 +1355215,7 @@
     5374810,
     5375140,
     5375180,
+    5375310,
     5375400,
     5375470,
     5375590,
@@ -1355237,6 +1355394,7 @@
     5393940,
     5393950,
     5393960,
+    5393990,
     5394070,
     5394170,
     5394300,
@@ -1355586,6 +1355744,7 @@
     5441770,
     5442010,
     5442520,
+    5443080,
     5443280,
     5443350,
     5443370,
@@ -1355751,6 +1355910,7 @@
     5467860,
     5468040,
     5468140,
+    5468610,
     5469010,
     5469110,
     5469130,
@@ -1355867,6 +1356027,7 @@
     5490870,
     5491410,
     5491440,
+    5491940,
     5492040,
     5492150,
     5493090,
@@ -1355921,6 +1356082,7 @@
     5509960,
     5510580,
     5510930,
+    5511640,
     5512520,
     5512840,
     5513550,
@@ -1355937,6 +1356099,8 @@
     5520100,
     5520680,
     5521140,
+    5523540,
+    5527560,
     5528360
   ]
 }
