@@ -790,7 +790,7 @@ window_days, "top": [ { rank, appid, title, players, peak_24h } ], "top_uncatalo
 "newly_tracked": [ { appid, title, release_ts, players, peak_24h, spark } ] }`, compact. Written
 by `players.py` (§7). `top` is Valve's top 100 by players now, less the apps the catalogue does
 not hold (those are in `top_uncatalogued`, ids only). `spark` is the game's hourly history over
-`window_days`, `null` where Steam gave no answer. No page fetches it; it is published for
+`window_days`, `null` where Steam gave no answer. Shown by `players.html`, and published for
 outside use (video discovery). **`players_state.json`** — `{ times: [ts], series: { "<appid>":
 [players per time] }, sticky: { "<appid>": ts } }`, the history the lists are computed from; not
 published (`*_state.json`).
@@ -1282,6 +1282,10 @@ found:
   as Deadlock) appear by appid only. The hourly clock is the price job's dispatch
   (`trigger_deploy`), as for monitor and stats; a snapshot under 45 minutes after the last is
   skipped. From a branch it is a dry run. `test_players.py`.
+  **`players.html`** shows the file: Trending and Newly tracked (each row with its 7-day
+  sparkline) beside Most played. `noindex`, not linked from the main page; staged by `pages.yml`
+  like `monitor.html`, and a push that changes it deploys. It adds no adult filter of its own
+  because `players.json` holds only games that pass `adult=hide`.
 
 ---
 
@@ -3888,8 +3892,8 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 - **Player counts and trending games (16 Nov 2026).** New job 2.14, `players.py`: hourly player
   counts for Valve's top 100 and a ~1,000-game watchlist of recent releases, and from that
-  history the games spiking against their own last week (`players.json`, for video discovery;
-  no page reads it yet). Dispatched by the price job after every pass. §5, §7.
+  history the games spiking against their own last week (`players.json`, for video discovery),
+  shown on the new `players.html`. Dispatched by the price job after every pass. §5, §7.
 
 - **Faster, sturdier Pages deploys; review prompts published (9 Nov 2026).** Two merged PRs sat
   off the live site after GitHub's `syncing_files` phase ran past `deploy-pages`' 10-min timeout

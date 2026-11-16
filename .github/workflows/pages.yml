@@ -28,6 +28,7 @@ on:
       - how-it-works.html         # the explainer page
       - monitor.html              # the pipeline monitor (its data, monitor.json, rides the 30-min republish)
       - stats.html                # Steam by the numbers (its data, stats.json, rides the same republish)
+      - players.html              # player counts (its data, players.json, rides the same republish)
       - .github/workflows/pages.yml   # a change to WHAT gets published should publish it
       - seo_snapshot.py               # changes what the published page contains
       - sitemap.xml
@@ -120,6 +121,7 @@ jobs:
           cp how-it-works.html _site/
           cp monitor.html _site/
           cp stats.html _site/
+          cp players.html _site/
           for f in *.txt; do [[ "$f" =~ ^[0-9a-f]{32}\.txt$ ]] && cp "$f" _site/; done; true
 
       # Stamp today's date (UTC) as <lastmod> on the tool's own URL in the PUBLISHED sitemap.
@@ -156,7 +158,7 @@ jobs:
       - name: Verify every path the frontend fetches is staged
         run: |
           missing=0
-          for page in index.html stats.html monitor.html how-it-works.html; do
+          for page in index.html stats.html monitor.html players.html how-it-works.html; do
             for p in $( { grep -oE '(fetch|loadLayer)\("[^"]*\.json"' "$page" | sed -E 's/^[a-zA-Z]+\("//'
                           grep -oE '"[A-Za-z0-9_./-]+\.md"' "$page"; } | tr -d '"' | sort -u); do
               if [ ! -f "_site/$p" ]; then echo "MISSING from _site: $p (loaded by $page)"; missing=1; fi
