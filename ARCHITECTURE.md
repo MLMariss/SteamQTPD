@@ -76,6 +76,7 @@ three weeks (§4 "Checkouts", §6 step 4).
    │                            + notices_state.json     │
    │ players.py ──────────────► players.json             │
    │                            + players_state.json     │
+   │                            + players_raw/DAY.json   │
    │ trailers.py ─────────────► trailers.json            │        ┌──────────────────┐
    │                            + trailers_state.json    │        │ Cloudflare Worker │
    │ shots.py ────────────────► shots/shard_NN.json      │reviews │   qtpd-reviews    │
@@ -560,7 +561,7 @@ shelves*).
 | `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
 | `trailers.py`         | `trailers.json`, `trailers_upcoming.json` | daily `13 5 * * *` | Batched `GetItems`; new games (released and upcoming) next run, misses after 30d, every hit re-checked every 60d (§2.1). + `trailers_state.json`. |
 | `shots.py`            | `shots/shard_NN.json` | daily `47 5 * * *` | Batched `GetItems`; same queue rules as trailers (§2.2). + `shots_state.json`. |
-| `players.py`          | `players.json`, `players_state.json` | hourly (dispatched by the price job; `52 * * * *` backstop) | Player counts: one chart call + ~1,000 per-game calls on api.steampowered.com, keyless, ~30 s (§7). |
+| `players.py`          | `players.json`, `players_state.json`, `players_raw/` | one 5-hour run after another, a snapshot every hour | Player counts: one chart call + a per-game call for each watched game (~4k), and the whole catalogue (138k calls, ~18 min) every 2 hours; api.steampowered.com, keyless (§7). |
 
 **Non-Steam scrapers** (hit their own sites, so no Steam-budget contention):
 
@@ -791,9 +792,12 @@ window_days, "top": [ { rank, appid, title, players, peak_24h } ], "top_uncatalo
 by `players.py` (§7). `top` is Valve's top 100 by players now, less the apps the catalogue does
 not hold (those are in `top_uncatalogued`, ids only). `spark` is the game's hourly history over
 `window_days`, `null` where Steam gave no answer. Shown by `players.html`, and published for
-outside use (video discovery). **`players_state.json`** — `{ times: [ts], series: { "<appid>":
-[players per time] }, sticky: { "<appid>": ts } }`, the history the lists are computed from; not
-published (`*_state.json`).
+outside use (video discovery). **`players_state.json`** — `{ swept_at, until: { "<appid>": ts } }`:
+when the catalogue was last swept and how long each game stays on the watchlist; not published
+(`*_state.json`). **`players_raw/YYYY-MM-DD.json`** — `{ times: [ts], series: { "<appid>":
+[players per time] } }`, the history the lists are computed from, one file per UTC day, eight kept;
+not published (not staged by `pages.yml`). A snapshot rewrites only today's file: one file of the
+whole week would put a ~3 MB version into git history every hour (§4 *Checkouts*).
 
 **`ea_dates.json`** — `{ _format: "ea_dates_v1", generated_at, count, swept_at, "games":
 { "<appid>": {ea: 1, v, p} | {s, v} } }`, compact. Written by `ea_dates.py` (§7). Two kinds of
@@ -1269,19 +1273,25 @@ found:
   (one call, Valve's top 100 with players now and the 24-hour peak — SteamDB's "Most Played"
   numbers) and `ISteamUserStats/GetNumberOfCurrentPlayers` (one game per call; 600 calls at 8 in
   parallel took 6 s unthrottled). Steam has no "trending" feed — SteamDB computes its own from
-  its history — so the job keeps 7 days of hourly snapshots in `players_state.json`. The top 100
-  ends near 9,000 players, so a **watchlist** is polled per game as well: releases of the last
-  90 days with 100+ reviews, plus any game seen in the chart or listed as trending in the last
-  30 days (~1,000 games, ~30 s). **Trending** = the last 24 hours' peak is at least 1.5× the
+  its history — so the job keeps 7 days of hourly snapshots in `players_raw/`. The top 100
+  ends near 9,000 players, so a **watchlist** is polled per game every hour: releases of the last
+  90 days with 100+ reviews, any game seen in the chart or listed as trending in the last
+  30 days, and any game a sweep found with 50+ players in the last 7 days (~4,000 games). The
+  **sweep** replaces the watchlist poll every 2 hours and asks for every catalogue game, so a
+  breakout is found whatever its age or review count. Measured 2026-11-16 from one address:
+  138,187 calls at 16 in parallel in 18 min (128/s), all answered, none throttled; 116k games had
+  nobody in them, 3,378 had 50+. Only the watchlist's history is kept. **Trending** = the last 24 hours' peak is at least 1.5× the
   median daily peak of the earlier days, and at least 200 players; peak against peak, because
   players swing with the time of day. A game with players but no earlier day to compare with is
   `newly_tracked`. Both lists stay empty until the job has two days of history. **Adult rule:**
   the lists name games nobody asked for, so only games that pass `adult=hide` (`stats.is_adult`)
   are tracked, and `build()` refuses to write a list naming any other. Only catalogue games are
   tracked: chart entries `games.json` does not hold (software, and games with no store page such
-  as Deadlock) appear by appid only. The hourly clock is the price job's dispatch
-  (`trigger_deploy`), as for monitor and stats; a snapshot under 45 minutes after the last is
-  skipped. From a branch it is a dry run. `test_players.py`.
+  as Deadlock) appear by appid only. **The clock is the job itself:** a run stays up 5 hours and
+  takes a snapshot every hour, and the next trigger (hourly cron, or the price job's dispatch)
+  waits in the concurrency group until it ends. A one-snapshot run could not keep time: on the
+  first day the cron fired 0 times in 4 hours, and the price job dispatches only while a price
+  run is up. A snapshot under 45 minutes after the last is skipped. From a branch it is a dry run. `test_players.py`.
   **`players.html`** shows the file: Trending and Newly tracked (each row with its 7-day
   sparkline) beside Most played. `noindex`; opened from the **Stats menu** in the main page's top
   bar (a native `<details>` like the `?`, listing `stats.html`, `players.html` and
@@ -3891,6 +3901,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Player counts: the whole catalogue every 2 hours (16 Nov 2026).** `players.py` now sweeps
+  all 138k games every 2 hours and follows any with 50+ players hourly, so a breakout no longer
+  has to have 100 reviews or reach the top 100 to be seen. The job became a 5-hour run that
+  takes a snapshot every hour (its cron did not fire), and its history moved from one file to
+  `players_raw/`, one file per day. §4, §5, §7.
 
 - **Player counts and trending games (16 Nov 2026).** New job 2.14, `players.py`: hourly player
   counts for Valve's top 100 and a ~1,000-game watchlist of recent releases, and from that

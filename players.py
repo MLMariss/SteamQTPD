@@ -19,12 +19,23 @@ so does this job. That is why it keeps a state file.
 WHAT IS TRACKED
 ---------------
 The top 100 covers games above roughly 9,000 players, and a breakout starts far below that.
-So each run also polls a watchlist, one call per game:
+So every hour a watchlist is polled, one call per game:
   * games released in the last NEW_DAYS (90) with at least NEW_MIN_REVIEWS (100) reviews,
   * every game seen in the top 100 or listed as trending in the last STICKY_DAYS (30), so
-    a game is still followed after it leaves the chart or turns 90 days old.
+    a game is still followed after it leaves the chart or turns 90 days old,
+  * every game a SWEEP found with SWEEP_MIN_PLAYERS (50) or more in the last SWEEP_KEEP_DAYS (7).
+The sweep is what finds a breakout nobody was watching: every SWEEP_HOURS (2) the whole
+catalogue is polled instead of the watchlist (138k calls; a full pass from one address took
+18 minutes at 16 in parallel on 2026-11-16, every call answered, none throttled). Only the
+watchlist's history is kept — 116k of the 138k games had nobody in them.
 Only games in games.json are tracked: the rest of the chart is software and apps the
 catalogue does not hold, listed by appid only (`top_uncatalogued`).
+
+HOW IT RUNS
+-----------
+GitHub drops most crons on this repo, so one run does not take one snapshot: it stays up for
+RUN_MINUTES, takes a snapshot every hour and commits each one. The workflow's concurrency
+group holds the next run until this one ends, so runs follow each other without a gap.
 
 WHAT COUNTS AS TRENDING
 -----------------------
@@ -47,10 +58,12 @@ Output players.json, format players_v1:
     "trending":      [ { appid, title, release_ts, players, peak_24h, base_peak, ratio,
                          spark: [players per snapshot, null = no answer] } ],
     "newly_tracked": [ { appid, title, release_ts, players, peak_24h, spark } ] }
-players_state.json (the history, not published): { "times": [ts], "series": { "<appid>":
-[players per time, null = no answer] }, "sticky": { "<appid>": last seen in the chart } }.
+players_state.json (not published): { "swept_at", "until": { "<appid>": watched until } }.
+players_raw/YYYY-MM-DD.json (not published), one file per UTC day of history: { "times":
+[ts], "series": { "<appid>": [players per time, null = no answer] } }. Only today's file is
+rewritten by a snapshot, so an hour adds one small version to git history, not a week's worth.
 
-Ownership (one writer per file): THIS -> players.json, players_state.json. Reads
+Ownership (one writer per file): THIS -> players.json, players_state.json, players_raw/. Reads
 games.json, pics.json and tags.json read-only. From a branch it is a dry run (gitsync).
 """
 
@@ -72,14 +85,21 @@ GAMES_FILE = HERE / "games.json"            # read-only (owned by scraper.py)
 PICS_FILE = HERE / "pics.json"              # read-only (owned by pics_merge.py)
 TAGS_FILE = HERE / "tags.json"              # read-only (owned by tags_refresh.py)
 OUT_FILE = HERE / "players.json"            # this job's output (served)
-STATE_FILE = HERE / "players_state.json"    # this job's history (not served)
+STATE_FILE = HERE / "players_state.json"    # this job's watchlist memory (not served)
+RAW_DIR = HERE / "players_raw"              # this job's history, one file per UTC day (not served)
 
 DAY = 86400
 WINDOW_DAYS = 7              # history kept, and the span a trend is judged over
 NEW_DAYS = 90                # a release this recent is watched ...
 NEW_MIN_REVIEWS = 100        # ... once it has this many reviews
 STICKY_DAYS = 30             # a game seen in the chart or trending stays watched this long
-MIN_GAP = 45 * 60            # the price job's dispatch and the cron can both fire: one snapshot an hour
+SWEEP_HOURS = 2              # the whole catalogue is polled this often ...
+SWEEP_MIN_PLAYERS = 50       # ... and a game with this many players joins the watchlist ...
+SWEEP_KEEP_DAYS = 7          # ... for this long after a sweep last saw it there
+SWEEP_WORKERS = 16           # the rate the 2026-11-16 full pass ran at
+RUN_MINUTES = int(os.environ.get("RUN_MINUTES", "0"))   # 0: one snapshot and exit
+INTERVAL = 3600              # between snapshots within a run
+MIN_GAP = 45 * 60            # runs hand over to each other: never two snapshots inside an hour
 MIN_PLAYERS = 200            # a 24-hour peak below this is noise, not a trend
 MIN_RATIO = 1.5              # last 24 hours' peak against the earlier days' median peak
 MIN_DAY_SAMPLES = 12         # a 24-hour window with fewer snapshots is not a day to compare with
@@ -146,22 +166,60 @@ def fetch_count(appid):
     return None
 
 
-def poll(appids):
+def poll(appids, workers=WORKERS):
     """{appid: players or None} for every appid."""
-    with ThreadPoolExecutor(WORKERS) as ex:
+    with ThreadPoolExecutor(workers) as ex:
         return dict(zip(appids, ex.map(fetch_count, appids)))
 
 
 # --------------------------------------------------------------------------- #
 # Watchlist and history
 # --------------------------------------------------------------------------- #
-def watchlist(games, sticky, now):
-    """Sorted appids to poll: recent releases with enough reviews, plus the sticky ones.
-    `games` is {appid: games.json row} already limited to games that pass adult=hide."""
+def watchlist(games, until, now):
+    """Sorted appids to poll: recent releases with enough reviews, plus every game `until`
+    ({appid: watched until}) still holds. `games` is {appid: games.json row} already limited
+    to games that pass adult=hide."""
     new = {a for a, g in games.items()
            if g.get("release_ts") and 0 <= now - g["release_ts"] < NEW_DAYS * DAY
            and (g.get("review_count") or 0) >= NEW_MIN_REVIEWS}
-    return sorted(new | {a for a in sticky if a in games})
+    return sorted(new | {a for a, t in until.items() if t > now and a in games})
+
+
+def keep_watching(until, appids, now, days):
+    """Watch each of `appids` for at least `days` more; never shortens a longer watch."""
+    for a in appids:
+        until[a] = max(until.get(a, 0), now + days * DAY)
+
+
+def day_of(t):
+    return time.strftime("%Y-%m-%d", time.gmtime(t))
+
+
+def split_days(times, series):
+    """{day: {"times", "series"}}: the history cut into UTC days, a game left out of a day
+    it has no reading in."""
+    out = {}
+    for i, t in enumerate(times):
+        out.setdefault(day_of(t), []).append(i)
+    return {d: {"times": [times[i] for i in idx],
+                "series": {str(a): [v[i] for i in idx] for a, v in sorted(series.items())
+                           if any(v[i] is not None for i in idx)}}
+            for d, idx in out.items()}
+
+
+def join_days(docs):
+    """(times, series) from day documents in date order: the inverse of split_days, nulls
+    where a game is missing from a day."""
+    times, series = [], {}
+    for doc in docs:
+        n = len(doc.get("times") or [])
+        for a, v in (doc.get("series") or {}).items():
+            if len(v) == n:
+                series.setdefault(int(a), [None] * len(times)).extend(v)
+        times += doc.get("times") or []
+        for v in series.values():
+            v.extend([None] * (len(times) - len(v)))
+    return times, series
 
 
 def record(state, now, counts):
@@ -250,48 +308,96 @@ def load_games():
             if not is_adult(pics.get(str(g["appid"])), tags.get(str(g["appid"])) or g.get("tags") or [])}
 
 
-def load_state():
+def load_state(now):
+    """{times, series, until, swept_at}. Reads the day files of the window; a v1 state file
+    (history and last-seen stamps in one file, the first day's format) is converted."""
     doc = load_json(STATE_FILE, {})
-    return {"times": doc.get("times") or [],
-            "series": {int(a): v for a, v in (doc.get("series") or {}).items()},
-            "sticky": {int(a): t for a, t in (doc.get("sticky") or {}).items()}}
+    if doc.get("_format") == "players_state_v1":
+        return {"times": doc.get("times") or [],
+                "series": {int(a): v for a, v in (doc.get("series") or {}).items()},
+                "until": {int(a): t + STICKY_DAYS * DAY for a, t in (doc.get("sticky") or {}).items()},
+                "swept_at": 0, "migrate": True}
+    days = [day_of(now - d * DAY) for d in range(WINDOW_DAYS, -1, -1)]
+    times, series = join_days([load_json(RAW_DIR / f"{d}.json", {}) for d in days])
+    return {"times": times, "series": series, "swept_at": doc.get("swept_at") or 0,
+            "until": {int(a): t for a, t in (doc.get("until") or {}).items()}}
 
 
-def main():
-    now = int(time.time())
+def save_state(state, now):
+    """Write the state file and today's day file (every day on a conversion from v1), and
+    delete the day files that have left the window."""
+    save_json(STATE_FILE, {"_format": "players_state_v2", "swept_at": state["swept_at"],
+                           "until": {str(a): t for a, t in sorted(state["until"].items()) if t > now}})
+    RAW_DIR.mkdir(exist_ok=True)
+    for d, doc in split_days(state["times"], state["series"]).items():
+        if d == day_of(now) or state.get("migrate"):
+            save_json(RAW_DIR / f"{d}.json", doc)
+    state.pop("migrate", None)
+    oldest = day_of(now - WINDOW_DAYS * DAY)
+    for f in RAW_DIR.glob("*.json"):
+        if f.stem < oldest:
+            f.unlink()
+
+
+def snapshot(now):
+    """One snapshot: poll, record, write the files. False when it was skipped."""
     games = load_games()
     if not games:
         log("games.json missing or empty — nothing to do.")
-        return
-    state = load_state()
+        return False
+    state = load_state(now)
     if state["times"] and now - state["times"][-1] < MIN_GAP:
         log(f"Last snapshot is {(now - state['times'][-1]) // 60} min old — nothing to do.")
-        return
+        return False
 
     top = fetch_top()
     if top is None:
         sys.exit("players: the top-100 chart did not answer; no snapshot this run")
-    sticky = {a: t for a, t in state["sticky"].items() if now - t < STICKY_DAYS * DAY}
-    sticky.update({x["appid"]: now for x in top})
-    watch = watchlist(games, sticky, now)
-    counts = poll(watch)
+    until = state["until"]
+    keep_watching(until, [x["appid"] for x in top], now, STICKY_DAYS)
+    # A sweep is due 10 minutes early, so an hourly snapshot that starts a little soon still takes it.
+    sweep = now - state["swept_at"] >= SWEEP_HOURS * 3600 - 600
+    polled = sorted(games) if sweep else watchlist(games, until, now)
+    counts = poll(polled, SWEEP_WORKERS if sweep else WORKERS)
     answered = sum(v is not None for v in counts.values())
-    log(f"Watchlist {len(watch)} ({answered} answered) | chart {len(top)} | "
+    log(f"{'Sweep' if sweep else 'Watchlist'} {len(polled)} ({answered} answered) | chart {len(top)} | "
         f"history {len(state['times'])} snapshot(s)")
-    if answered < len(watch) / 2:
-        sys.exit("players: under half the watchlist answered; no snapshot this run")
+    if answered < len(polled) / 2:
+        sys.exit("players: under half the games answered; no snapshot this run")
+    if sweep:
+        keep_watching(until, [a for a, n in counts.items() if (n or 0) >= SWEEP_MIN_PLAYERS], now, SWEEP_KEEP_DAYS)
+        state["swept_at"] = now
+        counts = {a: counts.get(a) for a in watchlist(games, until, now)}
 
     record(state, now, counts)
     doc = build(state, top, games, now)
-    sticky.update({r["appid"]: now for r in doc["trending"]})
+    keep_watching(until, [r["appid"] for r in doc["trending"]], now, STICKY_DAYS)
     save_json(OUT_FILE, doc)
-    save_json(STATE_FILE, {"_format": "players_state_v1", "times": state["times"],
-                           "series": {str(a): v for a, v in state["series"].items()},
-                           "sticky": {str(a): t for a, t in sorted(sticky.items())}})
-    log(f"Done. {len(doc['trending'])} trending, {len(doc['newly_tracked'])} newly tracked, "
-        f"{len(doc['top'])} of the chart in the catalogue.")
-    gitsync.commit(["players.json", "players_state.json"],
-                   f"players: {len(watch)} games, {len(doc['trending'])} trending")
+    save_state(state, now)
+    log(f"Done. {len(counts)} tracked, {len(doc['trending'])} trending, {len(doc['newly_tracked'])} "
+        f"newly tracked, {len(doc['top'])} of the chart in the catalogue.")
+    gitsync.commit(["players.json", "players_state.json", "players_raw"],
+                   f"players: {len(counts)} games, {len(doc['trending'])} trending{' (sweep)' if sweep else ''}")
+    return True
+
+
+def main():
+    """A snapshot every INTERVAL until RUN_MINUTES is up (one snapshot when it is 0). A
+    snapshot is stamped with the time it started, so a sweep's 18 minutes do not shift the hour."""
+    started = time.time()
+    while True:
+        t0 = time.time()
+        nxt = t0 + INTERVAL
+        last = nxt > started + RUN_MINUTES * 60
+        try:
+            snapshot(int(t0))
+        except SystemExit as e:           # Steam did not answer: a red run only if no hour is left to retry in
+            if last:
+                raise
+            log(f"  {e} — trying again next hour")
+        if last:
+            return
+        time.sleep(max(0, nxt - time.time()))
 
 
 if __name__ == "__main__":

@@ -1,15 +1,20 @@
 name: 2.14 Player counts -> players.json
 
-# Hourly player counts for the top 100 and a watchlist of recent releases, and the games
-# spiking against their own last week. See players.py and ARCHITECTURE §7.
+# Hourly player counts for the top 100 and a watchlist, a sweep of the whole catalogue every
+# 2 hours, and the games spiking against their own last week. See players.py and ARCHITECTURE §7.
+#
+# One run stays up for RUN_MINUTES and takes a snapshot every hour, because GitHub drops most
+# crons on this repo: the first day, the hourly cron fired 0 times in 4 hours and the price
+# job's dispatch only arrives while a price run is up. Any trigger that lands while a run is up
+# waits in the concurrency group and starts when it ends, so the runs follow each other.
 on:
   schedule:
-    - cron: "52 * * * *"      # backstop only: GitHub drops most crons on this repo
-  workflow_dispatch:          # dispatched by the price job after every pass (~hourly;
-                              # price_and_sale.py trigger_deploy). From a branch: a dry run.
+    - cron: "52 * * * *"      # starts the next run; one in five firing is enough
+  workflow_dispatch:          # also dispatched by the price job after every pass
+                              # (price_and_sale.py trigger_deploy). From a branch: a dry run.
 
 permissions:
-  contents: write             # commits players.json + players_state.json
+  contents: write             # commits players.json + players_state.json + players_raw/
 
 concurrency:
   group: steam-players        # one writer per file; players.py skips a snapshot under 45 min after the last
@@ -18,7 +23,7 @@ concurrency:
 jobs:
   players:
     runs-on: ubuntu-latest
-    timeout-minutes: 15       # ~1 min of calls; the checkout is the rest
+    timeout-minutes: 345      # RUN_MINUTES + a last snapshot that is a sweep (~20 min) + headroom
     steps:
       - uses: actions/checkout@v5
         with:
@@ -30,6 +35,7 @@ jobs:
             /players.py
             /players.json
             /players_state.json
+            /players_raw/
             /games.json
             /pics.json
             /tags.json
@@ -49,4 +55,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Record player counts
+        env:
+          RUN_MINUTES: "300"
         run: python players.py
