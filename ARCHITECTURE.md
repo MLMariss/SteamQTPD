@@ -74,6 +74,8 @@ three weeks (§4 "Checkouts", §6 step 4).
    │                            + ea_dates_state.json    │
    │ notices.py ──────────────► notices.json             │
    │                            + notices_state.json     │
+   │ players.py ──────────────► players.json             │
+   │                            + players_state.json     │
    │ trailers.py ─────────────► trailers.json            │        ┌──────────────────┐
    │                            + trailers_state.json    │        │ Cloudflare Worker │
    │ shots.py ────────────────► shots/shard_NN.json      │reviews │   qtpd-reviews    │
@@ -518,14 +520,14 @@ pipeline hierarchy:
 | `0.5` | Manual diagnostic: an Early Access game's EA start and planned 1.0 date (same branch trigger) | `ea-dates-probe.yml` |
 | `0.6` | Manual diagnostic: where Steam states Denuvo-style DRM, a required 3rd-party account and kernel anti-cheat (same branch trigger) | `notices-probe.yml` |
 | `1.` | The catalog scraper — the only finder of new games | `scrape.yml` |
-| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12), notices (2.13) |
+| `2.x` | Refreshers — enrich games the scraper already found | prices (2.1), recent (2.2), playtime-raw (2.3), updates (2.4), hltb (2.5), tags (2.6), pics (2.7), pics-new (2.7b), trailers (2.8), shots (2.9), demos (2.10), upcoming (2.11), ea-dates (2.12), notices (2.13), players (2.14) |
 | `3.x` | Summarizers — pure local recompute, `[2.3 / manual]` marks that job 2.3 is their real trigger | playtime-summary (3.1), playtime-ratings (3.2), length-fit (3.3, weekly), length-apply (3.4) |
 | `4.x` | Monitors / generated files | shard-health (4.1), coverage (4.2), freshness (4.3), presets (4.4), monitor (4.5), stats (4.6) |
 | `[ONE-OFF]` | Run-once utilities, deletable when drained | `queue-null-updates.yml` |
 
-**33 workflow files, 32 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
-deliberate: it isn't part of the standing pipeline. **22 of the 33 are cron-scheduled** (monitor
-4.5 also fires on `workflow_run`; monitor 4.5 and stats 4.6 are also dispatched by the price job); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
+**34 workflow files, 33 numbered** — only the `[ONE-OFF]` sits outside the sequence, which is
+deliberate: it isn't part of the standing pipeline. **23 of the 34 are cron-scheduled** (monitor
+4.5 also fires on `workflow_run`; monitor 4.5, stats 4.6 and players 2.14 are also dispatched by the price job); the rest fire on `workflow_run` (coverage 4.2, presets 4.4) or by hand (review-probe 0.1, demo-probe 0.3, batch-probe 0.4,
 ea-dates-probe 0.5, notices-probe 0.6, playtime-summary 3.1, playtime-ratings 3.2, length-apply 3.4, queue-null-updates). Numbering is cosmetic —
 nothing keys off it — with one exception: the `workflow_run` triggers in `coverage.yml`,
 `presets.yml` and `monitor.yml` match the scrape workflow's **exact `name:` string**, so renaming
@@ -558,6 +560,7 @@ shelves*).
 | `pics_summarize.py`   | `pics/` (64 shards)      | after refresh     | Derives frontend view from `pics_raw/`; stores IDs (decode via lookup maps). |
 | `trailers.py`         | `trailers.json`, `trailers_upcoming.json` | daily `13 5 * * *` | Batched `GetItems`; new games (released and upcoming) next run, misses after 30d, every hit re-checked every 60d (§2.1). + `trailers_state.json`. |
 | `shots.py`            | `shots/shard_NN.json` | daily `47 5 * * *` | Batched `GetItems`; same queue rules as trailers (§2.2). + `shots_state.json`. |
+| `players.py`          | `players.json`, `players_state.json` | hourly (dispatched by the price job; `52 * * * *` backstop) | Player counts: one chart call + ~1,000 per-game calls on api.steampowered.com, keyless, ~30 s (§7). |
 
 **Non-Steam scrapers** (hit their own sites, so no Steam-budget contention):
 
@@ -780,6 +783,17 @@ demo are listed** — absence means none, as of the last sweep. Covers released 
 games alike. `swept_at` is the last complete pass; `cursor` (`[phase, appid]`) is non-null only
 while a pass that hit its time budget is waiting to resume. Part of the boot load (small: one
 int per game with a demo).
+
+**`players.json`** — `{ _format: "players_v1", generated_at, since, snapshots, tracked,
+window_days, "top": [ { rank, appid, title, players, peak_24h } ], "top_uncatalogued": [appid],
+"trending": [ { appid, title, release_ts, players, peak_24h, base_peak, ratio, spark } ],
+"newly_tracked": [ { appid, title, release_ts, players, peak_24h, spark } ] }`, compact. Written
+by `players.py` (§7). `top` is Valve's top 100 by players now, less the apps the catalogue does
+not hold (those are in `top_uncatalogued`, ids only). `spark` is the game's hourly history over
+`window_days`, `null` where Steam gave no answer. Shown by `players.html`, and published for
+outside use (video discovery). **`players_state.json`** — `{ times: [ts], series: { "<appid>":
+[players per time] }, sticky: { "<appid>": ts } }`, the history the lists are computed from; not
+published (`*_state.json`).
 
 **`ea_dates.json`** — `{ _format: "ea_dates_v1", generated_at, count, swept_at, "games":
 { "<appid>": {ea: 1, v, p} | {s, v} } }`, compact. Written by `ea_dates.py` (§7). Two kinds of
@@ -1249,6 +1263,31 @@ found:
   so the backfill reaches the ones that matter on day one. Only answered checks change anything,
   and a notice the store stops stating is removed and listed in the job summary. From a branch it
   is an 8-minute dry run whose summary shows what it found. `test_notices.py`.
+- **`players.py` → `players.json` + `players_state.json`** (workflow 2.14, hourly, Nov 2026).
+  How many people are in a game right now, and which games are spiking. Two keyless
+  api.steampowered.com calls, verified 2026-11-16: `ISteamChartsService/GetGamesByConcurrentPlayers`
+  (one call, Valve's top 100 with players now and the 24-hour peak — SteamDB's "Most Played"
+  numbers) and `ISteamUserStats/GetNumberOfCurrentPlayers` (one game per call; 600 calls at 8 in
+  parallel took 6 s unthrottled). Steam has no "trending" feed — SteamDB computes its own from
+  its history — so the job keeps 7 days of hourly snapshots in `players_state.json`. The top 100
+  ends near 9,000 players, so a **watchlist** is polled per game as well: releases of the last
+  90 days with 100+ reviews, plus any game seen in the chart or listed as trending in the last
+  30 days (~1,000 games, ~30 s). **Trending** = the last 24 hours' peak is at least 1.5× the
+  median daily peak of the earlier days, and at least 200 players; peak against peak, because
+  players swing with the time of day. A game with players but no earlier day to compare with is
+  `newly_tracked`. Both lists stay empty until the job has two days of history. **Adult rule:**
+  the lists name games nobody asked for, so only games that pass `adult=hide` (`stats.is_adult`)
+  are tracked, and `build()` refuses to write a list naming any other. Only catalogue games are
+  tracked: chart entries `games.json` does not hold (software, and games with no store page such
+  as Deadlock) appear by appid only. The hourly clock is the price job's dispatch
+  (`trigger_deploy`), as for monitor and stats; a snapshot under 45 minutes after the last is
+  skipped. From a branch it is a dry run. `test_players.py`.
+  **`players.html`** shows the file: Trending and Newly tracked (each row with its 7-day
+  sparkline) beside Most played. `noindex`; opened from the **Stats menu** in the main page's top
+  bar (a native `<details>` like the `?`, listing `stats.html`, `players.html` and
+  `monitor.html`); staged by `pages.yml`
+  like `monitor.html`, and a push that changes it deploys. It adds no adult filter of its own
+  because `players.json` holds only games that pass `adult=hide`.
 
 ---
 
@@ -3852,6 +3891,12 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
   `ubuntu-24.04` is the quick fix while the cause is found.
 
 ## 16. Recent changes
+
+- **Player counts and trending games (16 Nov 2026).** New job 2.14, `players.py`: hourly player
+  counts for Valve's top 100 and a ~1,000-game watchlist of recent releases, and from that
+  history the games spiking against their own last week (`players.json`, for video discovery),
+  shown on the new `players.html`. A **Stats** button in the main page's top bar lists the
+  three data pages (stats, player counts, pipeline monitor). Dispatched by the price job after every pass. §5, §7.
 
 - **Faster, sturdier Pages deploys; review prompts published (9 Nov 2026).** Two merged PRs sat
   off the live site after GitHub's `syncing_files` phase ran past `deploy-pages`' 10-min timeout

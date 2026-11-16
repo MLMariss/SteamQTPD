@@ -302,6 +302,17 @@
   .wtu-grid h3 a{color:inherit}
   .wtu-grid h3 a:hover{color:var(--gold)}
   .wtu-grid p{margin:0; font-size:13px; line-height:1.5; color:var(--muted)}
+  /* Stats menu: the same native <details> as the ? beside it (.help-menu styles its button and
+     un-clips .barwrap), with a short list of the three data pages. It hangs from .bar-main like
+     .help-pop, so on a phone it stays inside the bar wherever the button wraps to. */
+  .stats-pop{position:absolute; z-index:45; top:calc(100% - 4px); right:var(--pad-x);
+        width:min(330px, calc(100% - 2 * var(--pad-x))); background:#1a2336; border:1px solid var(--line);
+        border-radius:12px; box-shadow:0 18px 44px #000c, 0 0 0 1px #0004; padding:6px;
+        text-align:left; font-family:var(--sans); white-space:normal; cursor:auto}
+  .stats-pop a{display:block; padding:9px 12px; border-radius:8px; text-decoration:none;
+        font-size:14px; font-weight:600; color:var(--title)}
+  .stats-pop a span{display:block; font-size:13px; font-weight:400; line-height:1.45; color:var(--muted)}
+  .stats-pop a:hover, .stats-pop a:focus-visible{background:var(--panel-2); color:var(--gold); outline:none}
   .presetbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
              padding:11px var(--card-inset) 0}
   /* An author-sheet display:flex outranks the UA sheet's [hidden]{display:none}, so without
@@ -2043,6 +2054,17 @@ try{
            page, "Table / Card / Grid" are three unexplained words answering a question the
            user hasn't asked yet. CSV and the rest stay: they're actions, not layouts. -->
       <div class="bar-tools">
+        <!-- Stats menu (2026-11-16): the three data pages in one place. The game count and the
+             data age in the strip beside it still open stats.html and monitor.html; players.html
+             had no way in at all. -->
+        <details class="help-menu" id="statsMenu">
+          <summary class="util-btn" aria-label="Stats: Steam by the numbers, player counts, and how fresh the data is">Stats</summary>
+          <div class="stats-pop">
+            <a href="stats.html">Steam by the numbers<span>What comes out on Steam, month by month: releases, tags, prices, Early Access and sales.</span></a>
+            <a href="players.html">Player counts<span>The most played games right now, and the games whose player counts are spiking.</span></a>
+            <a href="monitor.html">Data freshness<span>How fresh and complete every data layer is, scrape by scrape.</span></a>
+          </div>
+        </details>
         <button class="util-btn" id="randomBtn" title="Lucky — jump to a random game from the current results.">Lucky</button>
         <button class="util-btn" id="exportBtn" title="CSV — export the current results to a spreadsheet (pick the columns).">CSV</button>
         <button class="util-btn" id="shareBtn" title="Copy a shareable link to this filtered view" aria-label="Copy link">🔗</button>
@@ -2135,10 +2157,13 @@ try{
           menu.addEventListener("click", e => {
             if(e.target.closest('a[href="#wishBox"]')){ e.preventDefault(); openWish(); }
           });
-          document.addEventListener("click", e => { if(menu.open && !menu.contains(e.target)) menu.open = false; });
-          document.addEventListener("keydown", e => {
-            if(e.key === "Escape" && menu.open){ menu.open = false; menu.querySelector("summary").focus(); }
-          });
+          // The Stats menu closes the same two ways.
+          for(const m of [menu, document.getElementById("statsMenu")]){
+            document.addEventListener("click", e => { if(m.open && !m.contains(e.target)) m.open = false; });
+            document.addEventListener("keydown", e => {
+              if(e.key === "Escape" && m.open){ m.open = false; m.querySelector("summary").focus(); }
+            });
+          }
           window.addEventListener("hashchange", onHash);
           if(location.hash === "#ways-to-use") menu.open = true;
           else if(location.hash === "#wishBox") document.addEventListener("DOMContentLoaded", openWish);

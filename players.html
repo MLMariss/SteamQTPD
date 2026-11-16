@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Player counts: most played and trending on Steam | QTPD</title>
+<!-- Player counts: Valve's top 100 by players now, and the games spiking against their own last
+     week. It shows players.json, which players.py (workflow 2.14) rewrites about hourly. Only
+     games that pass adult=hide are in that file (players.py refuses to write any other), so this
+     page adds no filter of its own. Opened from the Stats menu in the main page's top bar.
+     noindex: a working page for spotting breakouts, like monitor.html. Same tokens as index.html and monitor.html. See ARCHITECTURE §7. -->
+<meta name="description" content="How many people are playing on Steam right now: the most played games, and the games whose player counts are spiking against their own last week." />
+<meta name="robots" content="noindex" />
+<link rel="canonical" href="https://mlmariss.github.io/SteamQTPD/players.html" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0e1320; --panel:#192133; --panel-2:#212c42; --line:#2c3858; --axis:#46557a;
+    --text:#f1f4fb; --title:#ffffff; --muted:#b9c4dd; --muted-2:#94a0c0; --gold:#ffc24d;
+    --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"Chivo Mono",ui-monospace,monospace;
+    --s1:#3987e5;                 /* the sparkline: monitor.html's first series colour */
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5}
+  main{max-width:1920px; margin:0 auto; padding:24px clamp(16px, 3vw, 48px) 56px}
+  a{color:var(--gold)}
+  .crumbs{font-family:var(--mono); font-size:12px; color:var(--muted-2); margin-bottom:14px}
+  .crumbs a{color:var(--muted)}
+  h1{font-size:1.7rem; line-height:1.2; margin:0 0 6px; color:var(--title)}
+  h2{font-size:1.15rem; margin:0 0 4px; color:var(--title)}
+  .lede{color:var(--muted); margin:0 0 18px; max-width:90ch}
+  .asof{font-family:var(--mono); font-size:12.5px; color:var(--muted-2)}
+  .sub{color:var(--muted-2); font-size:13.5px; margin:0 0 10px}
+  section{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+          padding:16px 16px 12px; margin-bottom:18px; min-width:0}
+  @media (max-width:520px){ section{padding:14px 12px 10px} }
+  /* Most played beside the two trend lists once there is room for two tables. */
+  .cols{display:grid; gap:18px; align-items:start}
+  .cols > div{min-width:0}
+  @media (min-width:1100px){ .cols{grid-template-columns:minmax(0, 1fr) minmax(0, 1fr)} }
+
+  .scroll{overflow-x:auto}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th{font:500 12px var(--mono); color:var(--muted-2); text-align:right; padding:6px 8px; white-space:nowrap;
+     border-bottom:1px solid var(--line)}
+  td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap;
+     font-family:var(--mono); font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  th.l, td.l{text-align:left}
+  td.name{font-family:var(--sans); white-space:normal; min-width:150px}
+  td.name a{color:var(--text); text-decoration:none}
+  td.name a:hover{color:var(--gold); text-decoration:underline}
+  td.rank{color:var(--muted-2); width:1%}
+  td.dim{color:var(--muted)}
+  td.up{color:var(--title); font-weight:600}
+  .age{display:block; font:12px var(--mono); color:var(--muted-2)}
+  svg.spark{display:block; width:120px; height:28px; margin-left:auto}
+  svg.spark path{fill:none; stroke:var(--s1); stroke-width:1.5; stroke-linejoin:round; stroke-linecap:round}
+  .empty{color:var(--muted); font-size:14px; margin:6px 0 8px}
+  footer{color:var(--muted-2); font-size:13px; margin-top:8px}
+  code{font-family:var(--mono); font-size:.92em}
+</style>
+</head>
+<body>
+<main>
+  <div class="crumbs"><a href="./">QTPD</a> › Player counts</div>
+  <h1>Player counts</h1>
+  <p class="lede">How many people are in a game on Steam right now, recorded about once an hour, and
+    which games are spiking against their own last week. <span class="asof" id="asof"></span></p>
+
+  <div class="cols">
+    <div>
+      <section>
+        <h2>Trending</h2>
+        <p class="sub">The last 24 hours' peak is at least 1.5× the game's usual daily peak over the
+          earlier days, and at least 200 players. Biggest jump first.</p>
+        <div id="trending"></div>
+      </section>
+      <section>
+        <h2>Newly tracked</h2>
+        <p class="sub">Games that just joined the watchlist with 200+ players and no earlier day to
+          compare with yet. Biggest peak first.</p>
+        <div id="newly"></div>
+      </section>
+    </div>
+    <div>
+      <section>
+        <h2>Most played</h2>
+        <p class="sub">Steam's top 100 by players now. Ranks are Steam's own; a gap is an app the
+          QTPD catalogue does not hold, such as software.</p>
+        <div id="top"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>Data: <a href="players.json">players.json</a>, written by <code>players.py</code> (workflow 2.14)
+    from Steam's public player counts. The watchlist is Steam's top 100 plus games released in the
+    last 90 days with 100+ reviews; a game stays on it for 30 days after it was last in the top 100
+    or trending. Adult games are not tracked.</footer>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = n => n == null ? "–" : Number(n).toLocaleString("en-US");
+const DAY = 86400;
+
+function ago(ts, now){
+  const m = Math.max(0, Math.round((now - ts) / 60));
+  return m < 90 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+}
+
+// "released 12 days ago" under a title: how new the game is, which is what makes a spike interesting.
+function released(ts, now){
+  if (!ts) return "";
+  const d = Math.floor((now - ts) / DAY);
+  if (d > 365) return `<span class="age">released ${new Date(ts * 1000).getUTCFullYear()}</span>`;
+  return `<span class="age">released ${d <= 0 ? "today" : d === 1 ? "yesterday" : d + " days ago"}</span>`;
+}
+
+const nameCell = (r, now) =>
+  `<td class="l name"><a href="https://store.steampowered.com/app/${r.appid}" rel="noopener">${esc(r.title || "App " + r.appid)}</a>${released(r.release_ts, now)}</td>`;
+
+// The game's hourly history as a line, scaled to its own range; a null (no answer) breaks the line.
+function spark(vals){
+  const v = vals || [], known = v.filter(x => x != null);
+  if (known.length < 2) return "";
+  const W = 120, H = 28, P = 2, max = Math.max(...known), min = Math.min(...known), span = max - min || 1;
+  let d = "", pen = false;
+  v.forEach((x, i) => {
+    if (x == null) { pen = false; return; }
+    const px = P + (W - 2 * P) * i / Math.max(1, v.length - 1), py = H - P - (H - 2 * P) * (x - min) / span;
+    d += `${pen ? "L" : "M"}${px.toFixed(1)} ${py.toFixed(1)}`;
+    pen = true;
+  });
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Players over the last 7 days, from ${num(min)} to ${num(max)}"><path d="${d}"/></svg>`;
+}
+
+function table(head, rows){
+  return `<div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+
+function render(d){
+  const now = d.generated_at;
+  $("#asof").textContent = `Updated ${ago(now, Date.now() / 1000)}. ${num(d.tracked)} games tracked, ` +
+    `${num(d.snapshots)} snapshot${d.snapshots === 1 ? "" : "s"} over the last ${Math.max(1, Math.round((now - d.since) / 3600))} h.`;
+
+  // Both trend lists need a full earlier day of snapshots, so they start empty (players.py).
+  const warming = now - d.since < 2 * DAY;
+  const none = what => `<p class="empty">${warming
+    ? "Not enough history yet: this needs about two days of hourly snapshots."
+    : `No games are ${what} right now.`}</p>`;
+
+  $("#trending").innerHTML = d.trending.length ? table(
+    `<th class="l">Game</th><th>Last 7 days</th><th>Jump</th><th>Usual peak</th><th>24h peak</th><th>Now</th>`,
+    d.trending.map(r => `<tr>${nameCell(r, now)}<td>${spark(r.spark)}</td><td class="up">×${r.ratio}</td>` +
+      `<td class="dim">${num(r.base_peak)}</td><td>${num(r.peak_24h)}</td><td>${num(r.players)}</td></tr>`)) : none("trending");
+
+  $("#newly").innerHTML = d.newly_tracked.length ? table(
+    `<th class="l">Game</th><th>Since tracked</th><th>24h peak</th><th>Now</th>`,
+    d.newly_tracked.map(r => `<tr>${nameCell(r, now)}<td>${spark(r.spark)}</td>` +
+      `<td>${num(r.peak_24h)}</td><td>${num(r.players)}</td></tr>`)) : none("newly tracked");
+
+  $("#top").innerHTML = d.top.length ? table(
+    `<th>#</th><th class="l">Game</th><th>Now</th><th>24h peak</th>`,
+    d.top.map(r => `<tr><td class="rank">${r.rank}</td>${nameCell(r, now)}` +
+      `<td>${num(r.players)}</td><td class="dim">${num(r.peak_24h)}</td></tr>`)) : `<p class="empty">No chart in the last snapshot.</p>`;
+}
+
+fetch("players.json", {cache:"no-store"})
+  .then(r => { if (!r.ok) throw new Error(r.status === 404 ? "no snapshot has been recorded yet" : "HTTP " + r.status); return r.json(); })
+  .then(render)
+  .catch(e => { $("#asof").textContent = `Couldn't load the player counts (${e.message}).`; });
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+name: 2.14 Player counts -> players.json
+
+# Hourly player counts for the top 100 and a watchlist of recent releases, and the games
+# spiking against their own last week. See players.py and ARCHITECTURE §7.
+on:
+  schedule:
+    - cron: "52 * * * *"      # backstop only: GitHub drops most crons on this repo
+  workflow_dispatch:          # dispatched by the price job after every pass (~hourly;
+                              # price_and_sale.py trigger_deploy). From a branch: a dry run.
+
+permissions:
+  contents: write             # commits players.json + players_state.json
+
+concurrency:
+  group: steam-players        # one writer per file; players.py skips a snapshot under 45 min after the last
+  cancel-in-progress: false
+
+jobs:
+  players:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15       # ~1 min of calls; the checkout is the rest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          # Shallow + sparse: only this job's files (ARCHITECTURE §4 "Checkouts").
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /players.py
+            /players.json
+            /players_state.json
+            /games.json
+            /pics.json
+            /tags.json
+            /stats.py
+            /gitsync.py
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Configure git (players.py commits its files itself)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Record player counts
+        run: python players.py
