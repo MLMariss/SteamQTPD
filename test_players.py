@@ -21,8 +21,13 @@ games = {a: g for a, g in ((1, game(1, 10, 100)), (2, game(2, 10, 99)), (3, game
                            (4, game(4, 400, 5000)), (5, game(5, -3, 500)))}
 check("a 90-day release with 100+ reviews is watched; 99 reviews, 91 days old and unreleased are not",
       P.watchlist(games, {}, NOW) == [1])
-check("a sticky game is watched whatever its age", P.watchlist(games, {4: NOW}, NOW) == [1, 4])
-check("a sticky appid outside the catalogue is not polled", P.watchlist(games, {999: NOW}, NOW) == [1])
+check("a game watched until later is on the list whatever its age", P.watchlist(games, {4: NOW + 1}, NOW) == [1, 4])
+check("a watch that has run out is off it", P.watchlist(games, {4: NOW}, NOW) == [1])
+check("a watched appid outside the catalogue is not polled", P.watchlist(games, {999: NOW + 1}, NOW) == [1])
+until = {4: NOW + 30 * D}
+P.keep_watching(until, [4, 7], NOW, 7)
+check("a sweep hit is watched 7 more days; a longer watch is not shortened",
+      until == {4: NOW + 30 * D, 7: NOW + 7 * D})
 
 print("\n== history ==")
 st = {"times": [NOW - 8 * D, NOW - 2 * H, NOW - H], "series": {1: [5, 6, 7], 2: [1, 1, 1]}, "sticky": {}}
@@ -32,6 +37,19 @@ check("a snapshot older than the window is dropped, the new one appended",
 check("a watched game keeps its history in step with the times", st["series"][1] == [6, 7, 8])
 check("a game new to the list starts with nulls; no answer is a null", st["series"][3] == [None, None, None])
 check("a game off the watchlist is dropped", 2 not in st["series"])
+
+print("\n== day files ==")
+T0 = 1_800_000_000 - 1_800_000_000 % D                             # a UTC midnight
+dt = [T0 - 2 * H, T0 - H, T0 + H, T0 + 2 * H]
+ds = {1: [5, 6, 7, 8], 2: [None, None, 3, 4], 3: [9, None, None, None]}
+days = P.split_days(dt, ds)
+d0, d1 = sorted(days)
+check("the history is cut at UTC midnight", [days[d]["times"] for d in (d0, d1)] == [dt[:2], dt[2:]])
+check("a game with no reading in a day is left out of that day's file",
+      sorted(days[d0]["series"]) == ["1", "3"] and sorted(days[d1]["series"]) == ["1", "2"])
+check("joining the day files gives the history back, nulls where a game was missing",
+      P.join_days([days[d0], days[d1]]) == (dt, ds))
+check("a missing day file joins as nothing", P.join_days([{}, days[d1]])[0] == dt[2:])
 
 print("\n== trend ==")
 times = [NOW - i * H for i in range(72, -1, -1)]                  # hourly, three days
