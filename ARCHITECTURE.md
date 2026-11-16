@@ -1283,7 +1283,9 @@ found:
   (`trigger_deploy`), as for monitor and stats; a snapshot under 45 minutes after the last is
   skipped. From a branch it is a dry run. `test_players.py`.
   **`players.html`** shows the file: Trending and Newly tracked (each row with its 7-day
-  sparkline) beside Most played. `noindex`, not linked from the main page; staged by `pages.yml`
+  sparkline) beside Most played. `noindex`; opened from the **Stats menu** in the main page's top
+  bar (a native `<details>` like the `?`, listing `stats.html`, `players.html` and
+  `monitor.html`); staged by `pages.yml`
   like `monitor.html`, and a push that changes it deploys. It adds no adult filter of its own
   because `players.json` holds only games that pass `adult=hide`.
 
@@ -3893,7 +3895,8 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 - **Player counts and trending games (16 Nov 2026).** New job 2.14, `players.py`: hourly player
   counts for Valve's top 100 and a ~1,000-game watchlist of recent releases, and from that
   history the games spiking against their own last week (`players.json`, for video discovery),
-  shown on the new `players.html`. Dispatched by the price job after every pass. §5, §7.
+  shown on the new `players.html`. A **Stats** button in the main page's top bar lists the
+  three data pages (stats, player counts, pipeline monitor). Dispatched by the price job after every pass. §5, §7.
 
 - **Faster, sturdier Pages deploys; review prompts published (9 Nov 2026).** Two merged PRs sat
   off the live site after GitHub's `syncing_files` phase ran past `deploy-pages`' 10-min timeout
