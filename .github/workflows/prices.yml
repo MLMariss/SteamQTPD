@@ -15,7 +15,7 @@ on:
 
 permissions:
   contents: write           # commits prices.json as it runs
-  actions: write            # dispatches pages.yml + monitor.yml + stats.yml after each pass (trigger_deploy)
+  actions: write            # dispatches pages.yml + monitor.yml + stats.yml + players.yml after each pass (trigger_deploy)
 
 concurrency:
   group: steam-prices       # never overlap price runs (separate from scraper/recent/hltb)
