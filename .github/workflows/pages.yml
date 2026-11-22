@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       # Shallow + sparse (ARCHITECTURE §4 "Checkouts"). The full tree is ~2.3 GB, most of it
       # scraper input the site never serves (playtime_raw/ alone is 1.5 GB, then pics_raw/,
@@ -185,16 +185,36 @@ jobs:
         with:
           path: _site
 
-      # 20 min, not the action's default 10. GitHub's "syncing_files" phase normally takes ~4 min
-      # for this site, but on 2026-11-09 it ran past 10 min twice in a row; the action then
-      # cancelled both deploys, and two merged PRs stayed off the live site. A slow sync is
-      # better finished than thrown away: the next deploy would sync the same files from scratch.
-      # Cost: a deploy that really hangs holds the one-at-a-time "pages" queue 10 min longer.
-      # (pages-watchdog.yml only clears deploys stuck in "waiting", never a running one.)
+      # deploy-pages finds the artifact by listing this run's artifacts ONCE, and that list can lag
+      # the upload that just finished: 9 of 100 deploys (20-22 Nov 2026) failed with "Found 0
+      # artifact(s)" under a second after "Artifact github-pages successfully finalized". The live
+      # site stayed up but stale until a later deploy got through. So: a short pause first, then
+      # one retry 30 s after a failed attempt, which also covers GitHub's transient "Deployment
+      # failed, try again later" and 502s. Only a failed retry fails the run.
+      - name: Let the uploaded artifact show up in the run's artifact list
+        run: sleep 15
+
+      # 600000 (10 min) is deploy-pages@v5's maximum; it caps anything larger, with a warning. The
+      # 1200000 (20 min) set on 2026-11-09, after GitHub's "syncing_files" phase (normally ~4 min)
+      # ran past 10 min twice in a row, therefore never applied. A deploy that times out is now
+      # retried once below like any other failure. Cost: a deploy that really hangs holds the
+      # one-at-a-time "pages" queue ~21 min (pages-watchdog.yml only clears deploys stuck in
+      # "waiting", never a running one).
       - id: deployment
         uses: actions/deploy-pages@v5
+        continue-on-error: true
         with:
-          timeout: 1200000
+          timeout: 600000
+
+      - name: Wait before retrying a failed deploy
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+
+      - id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        with:
+          timeout: 600000
 
       # IndexNow: tells Bing (which also feeds Copilot and DuckDuckGo), Yandex, Seznam and Naver
       # that the pages changed, so they recrawl in hours instead of whenever. Google ignores it.
