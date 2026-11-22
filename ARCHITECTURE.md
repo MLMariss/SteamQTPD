@@ -3902,6 +3902,14 @@ revert is just `STEAM_DELAY` back to 2.0 and/or fewer slots.
 
 ## 16. Recent changes
 
+- **Pages deploy retries once (22 Nov 2026).** 9 of 100 deploys (20–22 Nov) failed in under a
+  minute: `upload-pages-artifact` finished, and under a second later `deploy-pages` listed the
+  run's artifacts, found none, and gave up. The site stayed live, but stale until the next deploy
+  got through. `pages.yml` now waits 15 s after the upload, and a failed `deploy-pages` attempt is
+  retried once 30 s later; only a failed retry fails the run. The retry also covers GitHub's
+  transient *Deployment failed* and 502 answers. The timeout is now 10 min, `deploy-pages@v5`'s
+  maximum: the 20 min set on 9 Nov (below) was capped to 10 min on every run and never applied.
+
 - **Player counts: the whole catalogue every 2 hours (16 Nov 2026).** `players.py` now sweeps
   all 138k games every 2 hours and follows any with 50+ players hourly, so a breakout no longer
   has to have 100 reviews or reach the top 100 to be seen. The job became a 5-hour run that
